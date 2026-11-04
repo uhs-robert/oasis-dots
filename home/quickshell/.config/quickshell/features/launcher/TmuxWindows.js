@@ -140,10 +140,46 @@ function recent_first(items) {
     });
 }
 
-// The picker's items: the windows the session filter keeps, in the sort's order.
+function session_first(items) {
+    return items.slice().sort(function (a, b) {
+        return a.session_number - b.session_number || a.index - b.index;
+    });
+}
+
+// The windows the session filter keeps, in the sort's order.
 function arranged(items, sort, filter) {
     var kept = items.filter(function (item) { return kept_by_filter(item, filter); });
-    return sort_of(sort) === "recent" ? recent_first(kept) : kept;
+    return sort_of(sort) === "recent" ? recent_first(kept) : session_first(kept);
+}
+
+// A reload while the picker shows keeps the rows where they were, so activity that moves a window up the recent sort
+// does not move the row under the cursor. Gone windows drop out and kept ones take their fresh fields. A new window
+// goes after the last row of its session in the session sort, else (the recent sort, a new session) at the end.
+function kept_order(shown, fresh, sort) {
+    var fresh_by_id = {};
+    for (var i = 0; i < fresh.length; i++) fresh_by_id[fresh[i].id] = fresh[i];
+    var out = [];
+    var seen = {};
+    for (var j = 0; j < shown.length; j++) {
+        var item = fresh_by_id[shown[j].id];
+        if (!item) continue;
+        out.push(item);
+        seen[item.id] = true;
+    }
+    var added = arranged(fresh.filter(function (f) { return !seen[f.id]; }), sort, "all");
+    for (var k = 0; k < added.length; k++) {
+        var at = out.length;
+        if (sort_of(sort) === "sessions") {
+            for (var m = out.length - 1; m >= 0; m--) {
+                if (out[m].session_id === added[k].session_id) {
+                    at = m + 1;
+                    break;
+                }
+            }
+        }
+        out.splice(at, 0, added[k]);
+    }
+    return out;
 }
 
 // A session's header over the windows of it that show: "SESSION 1 · work · 3 WINDOWS · ATTACHED".

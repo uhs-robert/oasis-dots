@@ -65,6 +65,12 @@ Popup {
     readonly property bool showing_alt: root.has_alt_preview && root.alt_preview_shown
     // "grid" of cards or one-line "list" rows; v flips it, and every open starts on the provider's default_browse_view.
     property string browse_view: root.provider && root.provider.default_browse_view === "list" ? "list" : "grid"
+    // Published so a provider can keep work only its cards need (TmuxProvider's pane tails) to the grid.
+    Binding {
+        target: Pickers
+        property: "browse_view"
+        value: root.browse_view
+    }
     readonly property bool browse_list: root.browse && root.browse_view === "list"
     // At the max preview size the cards or rows are hidden, so the scroll cue and the number hints go too.
     readonly property bool items_hidden: root.browse && root.preview_size === "max"
