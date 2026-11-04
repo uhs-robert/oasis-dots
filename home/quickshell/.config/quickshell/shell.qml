@@ -254,6 +254,7 @@ ShellRoot {
     }
     AgentsProvider {}
     FirefoxTabsProvider {}
+    TmuxProvider {}
     WindowsProvider {}
     AppsProvider {}
     ClipboardProvider {}
