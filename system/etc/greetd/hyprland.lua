@@ -132,6 +132,9 @@ hl.on("hyprland.start", function()
 			.. "sleep 1.5; "
 			.. "hyprctl eval 'FULLSCREEN_TERMINAL()'; "
 			.. "wait $terminal_pid; fi; "
+			-- Turn the late dock monitors off before exiting. After a forced teardown of the dock on exit, amdgpu
+			-- left those monitors on "No signal" in the session that starts next.
+			.. (GREETER_HANDOFF and "hyprctl eval 'GREETER_HANDOFF()'; sleep 1; " or "")
 			.. "hyprctl dispatch 'hl.dsp.exit()'"
 	)
 end)

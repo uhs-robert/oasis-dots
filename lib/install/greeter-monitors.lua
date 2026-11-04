@@ -130,6 +130,14 @@ local function hold_rules(held)
 			item.delay
 		)
 	end
+	if #held > 0 then
+		-- hyprland.lua calls this just before the greeter exits; see GREETER_HANDOFF there.
+		local off = {}
+		for _, item in ipairs(held) do
+			off[#off + 1] = string.format("hl.monitor({ output = %q, disabled = true })", item.output)
+		end
+		lines[#lines + 1] = "function GREETER_HANDOFF() " .. table.concat(off, "; ") .. " end"
+	end
 	return lines
 end
 

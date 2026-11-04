@@ -138,7 +138,8 @@ hl.monitor({ output = "desc:Dock C", mode = "1920x1080@60", position = "0x1600",
 hl.monitor({ output = "desc:Dock A", disabled = true })
 hl.monitor({ output = "DP-5", disabled = true })
 hl.timer(function() hl.monitor({ output = "desc:Dock A", mode = "1920x1080@60", position = "2560x0", scale = 1, disabled = false }) end, { timeout = 3000, type = "oneshot" })
-hl.timer(function() hl.monitor({ output = "DP-5", mode = "preferred", position = "auto", scale = 1, transform = 3, disabled = false }) end, { timeout = 1500, type = "oneshot" })'
+hl.timer(function() hl.monitor({ output = "DP-5", mode = "preferred", position = "auto", scale = 1, transform = 3, disabled = false }) end, { timeout = 1500, type = "oneshot" })
+function GREETER_HANDOFF() hl.monitor({ output = "desc:Dock A", disabled = true }); hl.monitor({ output = "DP-5", disabled = true }) end'
 
 case_name='the timer release runs and re-enables the held monitor'
 printf '%s\n' "$out" >"$scratch/held.lua"
@@ -154,10 +155,21 @@ LUA
 expect_eq "$(lua "$scratch/run_timers.lua" "$scratch/held.lua" | tail -2)" 'desc:Dock A disabled=false
 DP-5 disabled=false'
 
+case_name='the handoff turns the held monitors off again'
+cat >"$scratch/run_handoff.lua" <<'LUA'
+hl = { monitor = function(rule) print(rule.output .. " disabled=" .. tostring(rule.disabled)) end, timer = function() end }
+dofile(arg[1])
+print("--")
+GREETER_HANDOFF()
+LUA
+expect_eq "$(lua "$scratch/run_handoff.lua" "$scratch/held.lua" | sed '1,/^--$/d')" 'desc:Dock A disabled=true
+DP-5 disabled=true'
+
 case_name='nothing is held when every entry is delayed, since the release lands only while a monitor draws'
 printf 'return { monitors = { { description = "Only Dock", mode = "1920x1080@60", position = "0x0", start_delay_ms = 3000 } } }\n' >"$machines/alldelayed.lua"
 out=$(HOSTNAME=alldelayed generate) || fail "generator failed: $(cat "$scratch/gen.err")"
 expect_eq "$(rules "$out")" 'hl.monitor({ output = "desc:Only Dock", mode = "1920x1080@60", position = "0x0", scale = 1 })'
+[[ $out != *GREETER_HANDOFF* ]] || fail 'a handoff was generated with nothing held'
 
 case_name='the installer writes the rules to the file it is given'
 write_greeter_monitors "$scratch/installed.lua" 2>/dev/null
