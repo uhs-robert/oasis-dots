@@ -15,6 +15,9 @@ Popup {
     preferred_width: Math.min(440, Math.max(root.watch ? 260 : 200, question_metrics.width / Style.scale + (root.watch ? 24 : 110)))
     footer_hint: "y/Enter yes · n/Esc no"
     body_height: content.implicitHeight + 24
+    // Exclusive for as long as the card asks: a grab that let go once the card was active handed the keyboard back to
+    // the picker still closing behind it, and Hyprland passed it on to a window when that picker unmapped.
+    hold_keyboard: true
 
     readonly property bool watch: root.st.confirm_layout === "watch"
 
