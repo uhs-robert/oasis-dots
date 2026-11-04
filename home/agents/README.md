@@ -1,6 +1,6 @@
 # Agents
 
-Runs every AI coding agent (Claude Code, Codex, Gemini, Qwen, Aider, opencode) in one systemd cgroup with memory and CPU limits. A runaway agent, its test run or a browser it starts then slows down or dies on its own. It cannot freeze the desktop or make the kernel kill something else.
+Runs every AI coding agent (Claude Code, Codex, Gemini, Qwen, Aider, opencode) in one systemd cgroup with memory and CPU limits. A runaway agent, its test run or a browser it starts then slows down or dies on its own, inside the slice. The limits cap the agents only: they reserve no memory for the rest of the machine, which can still run short on its own.
 
 Stow it with `just stow agents` (it is an optional package, under `# ai` in `packages/stow.ini`), then open a new shell. Type `claude` as before. Nothing else changes.
 
@@ -10,7 +10,7 @@ Stow it with `just stow agents` (it is an optional package, under `# ai` in `pac
 - The shim runs `agent-run`, which finds the real `claude` further down `PATH` and starts it in a scope of its own under `agents.slice`. A scope keeps the agent in your terminal: the working directory, environment, input and exit code are unchanged.
 - Each session is its own scope with `OOMPolicy=continue`. An out-of-memory kill takes the one process that grew, never the whole session.
 - An agent started by another agent (Claude starting Codex) is already in the slice and runs directly, with no second scope.
-- With no `systemd-run` or no user manager (a container, a bare TTY), the agent runs without limits. The shim never stops an agent from starting.
+- With no `systemd-run`, no user manager (a container, a bare TTY) or a user manager that refuses the scope, the agent runs without limits. The shim never stops an agent from starting.
 
 Check that a session is capped with `systemctl --user status agents.slice`. Its sessions are listed under it as `run-*.scope`.
 
@@ -20,7 +20,7 @@ Check that a session is capped with `systemctl --user status agents.slice`. Its 
 | --- | --- | --- |
 | `MemoryHigh` | `75%` | Above this share of RAM the kernel throttles the agents and reclaims their memory. |
 | `MemoryMax` | `85%` | At this share the kernel kills a process inside the slice. |
-| `CPUWeight` | `50` | The agents' share of contended CPU. The desktop has the default of 100, so it wins. |
+| `CPUWeight` | `50` | The agents' share of contended CPU against other apps under your user manager (terminals, browsers), which have the default of 100. Hyprland runs in the login session, a separate branch of the cgroup tree, so this weight does not rank agents below it. |
 | `X-LockedCPUQuota` | `62%` | The CPU cap while the screen is locked, as a share of all threads (62% is 10 of 16). systemd ignores this key. The lock screen reads it. |
 
 Change them with a drop-in, which the repo never touches:
