@@ -294,7 +294,7 @@ class HeadlessLoadTest(TreeCase):
             "monitor.focus", "monitor.move_window",
             "move.step",
             "picker.agents", "picker.clipboard", "picker.clipboard_delete", "picker.directory", "picker.emoji",
-            "picker.firefox_tabs", "picker.windows",
+            "picker.firefox_tabs", "picker.tmux", "picker.windows",
             "resize.reset", "resize.step",
             "scratchpad.move", "scratchpad.toggle",
             "submap.enter",
