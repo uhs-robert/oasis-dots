@@ -67,4 +67,5 @@ fi
 
 # A scope, unlike a service, runs the command in this process: the terminal, working directory, environment and exit
 # code stay the agent's. OOMPolicy=continue lets an OOM kill take one process, not the whole session.
-exec systemd-run --user --scope --slice="$slice" --quiet --collect -p OOMPolicy=continue -- "$real" "$@"
+# systemd-run expands ${VAR} in the command's arguments by default, which would rewrite a prompt like 'Explain ${HOME}'.
+exec systemd-run --user --scope --slice="$slice" --quiet --collect --expand-environment=no -p OOMPolicy=continue -- "$real" "$@"
