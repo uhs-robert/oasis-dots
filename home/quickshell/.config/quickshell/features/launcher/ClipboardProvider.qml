@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.features.popups
 import qs.theme
-import "BrowseLayout.js" as BrowseLayout
+import "ClipboardFilter.js" as ClipboardFilter
 
 // cliphist history, newest first: Enter copies an entry back, `d` deletes it in place, `C` clears the lot after a yes/no,
 // `f` narrows it to text or images.
@@ -22,10 +22,10 @@ PickerProvider {
     actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }, { key: "f", desc: "filter", needs_item: false }]
     // Every listed entry; `items` is the ones the type filter keeps.
     property var entries: []
-    // "all", "text" or "image" (BrowseLayout.filters); every open starts at "all".
+    // "all", "text" or "image" (ClipboardFilter.filters); every open starts at "all".
     property string filter: "all"
-    items: root.entries.filter(e => BrowseLayout.kept_by_filter(e.kind, root.filter))
-    status_text: BrowseLayout.filter_labels[root.filter]
+    items: root.entries.filter(e => ClipboardFilter.kept_by_filter(e.kind, root.filter))
+    status_text: ClipboardFilter.filter_labels[root.filter]
     status_active: root.filter !== "all"
 
     readonly property string cache_dir: (Quickshell.env("XDG_RUNTIME_DIR") || Quickshell.cacheDir) + "/quickshell-cliphist"
@@ -166,7 +166,7 @@ PickerProvider {
     // The row goes at once; the history is re-read after the last queued delete lands.
     function run_action(key, item) {
         if (key === "f") {
-            root.filter = BrowseLayout.cycled_filter(root.filter);
+            root.filter = ClipboardFilter.cycled_filter(root.filter);
             return;
         }
         if (key === "C") {

@@ -51,7 +51,6 @@ PickerProvider {
     property var capture_queue: []
     property var close_queue: []
     property bool close_failed: false
-    readonly property bool is_shown: Pickers.is_open && Pickers.provider_name === root.name
 
     // `timeout_s` overrides firefox-tab's own when given.
     function request_argv(request, timeout_s) {

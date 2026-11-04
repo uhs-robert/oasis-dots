@@ -36,6 +36,7 @@ The voice key answers an open choices picker however it opened: a number, a choi
 - Providers: `AppsProvider`, `DirsProvider`, `EmojiProvider`, `ClipboardProvider`, `KeybindsProvider`, `ChoicesProvider`, `AgentsProvider`, `FirefoxTabsProvider`. Agent session parsing is `AgentSessions.js`; its card pieces are `AgentStateBadge.qml`, `AgentContextBar.qml` and `AnsiText.js`.
 - `FirefoxTabsProvider.qml` talks to the extension through `firefox-tab request` (voxcmd's socket client, in `home/voxcmd/.local/share/voxcmd/`); `FirefoxTabs.js` reads its replies, orders the tabs and cycles the window filter; `TabThumbnail.qml` and `TabFavicon.qml` draw a tab's picture and icon.
 - `BrowseLayout.js` holds the preview-size and grid maths for the browse layout.
+- `ClipboardFilter.js` holds the clipboard picker's type filter (`f`).
 - `StartMode.js` and `TypingSettings.qml` hold the per-picker start mode and its Settings > Input > Typing rows.
 - `HyprvimPrompt.qml` and `HyprvimPromptIpc.qml` are the `:` prompt; `hyprvim/` holds its pieces (`CompletionMenu.qml`, `OutputPane.qml`, `PromptSpec.js`, `VimMotions.js`).
-- Tests are in `home/quickshell/tests/` (`picker_browse.js`, `agent_sessions.js`, `picker_start_mode.js`, `firefox_tabs.js`).
+- Tests are in `home/quickshell/tests/` (`picker_browse.js`, `clipboard_filter.js`, `agent_sessions.js`, `picker_start_mode.js`, `firefox_tabs.js`).

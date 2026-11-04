@@ -1,7 +1,7 @@
 .pragma library
 
-// The browse picker's preview dial, card grid or list, quick pick and type filter (PickerProvider.layout "browse"),
-// kept here so node can test them.
+// The browse picker's preview dial, card grid or list and quick pick (PickerProvider.layout "browse"), kept here so
+// node can test them.
 
 var sizes = ["off", "s", "m", "l", "max"];
 // Share of the picker's body the preview takes at each size; the cards get whole rows of what is left. Max takes the
@@ -91,17 +91,4 @@ function digit_index(text, shown) {
 // The corner number a card or row shows: its quick-pick digit while among the first nine on screen, else "".
 function hint_of(index, shown) {
     return index >= shown.first && index < Math.min(shown.end, shown.first + 9) ? String(index - shown.first + 1) : "";
-}
-
-// The clipboard's type filter; binary entries are neither text nor images, so only "all" keeps them.
-var filters = ["all", "text", "image"];
-var filter_labels = { all: "ALL", text: "TEXT", image: "IMAGES" };
-
-function cycled_filter(filter) {
-    var i = filters.indexOf(filter);
-    return filters[(i + 1) % filters.length];
-}
-
-function kept_by_filter(kind, filter) {
-    return filters.indexOf(filter) <= 0 || kind === filter;
 }

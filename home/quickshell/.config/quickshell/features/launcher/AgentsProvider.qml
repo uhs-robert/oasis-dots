@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.core
 import qs.theme
 import qs.features.keeptabs
 import qs.features.keeptabs.views
@@ -44,14 +45,17 @@ PickerProvider {
         tails_proc.running = true;
     }
 
-    // Every pane at once, in one light plain capture, so the cards stay live without a process per card.
+    // Every pane at once, in one light plain capture, so the cards stay live without a process per card. On battery the
+    // cards get one capture per list read instead.
     Timer {
         interval: root.capture_interval_ms
         repeat: true
         triggeredOnStart: true
-        running: Pickers.is_open && Pickers.provider_name === root.name && root.items.length > 0
+        running: root.is_shown && root.items.length > 0 && PowerSource.on_ac
         onTriggered: root.capture_tails()
     }
+
+    onItemsChanged: if (root.is_shown && !PowerSource.on_ac) root.capture_tails()
 
     Process {
         id: tails_proc
@@ -147,10 +151,11 @@ PickerProvider {
                 font.pixelSize: pane.font_px
             }
 
+            // On battery the text is captured only when the selected row changes.
             Timer {
                 interval: root.capture_interval_ms
                 repeat: true
-                running: pane.has_pane
+                running: pane.has_pane && PowerSource.on_ac
                 onTriggered: pane.capture()
             }
 
