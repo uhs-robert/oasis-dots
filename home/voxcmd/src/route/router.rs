@@ -1,9 +1,7 @@
 //! one step of a phrase through the tiers: built-ins, wake word, forced integration, open surface, normal tier, fallback
 //! tier, correction retry, near misses, and the decision (was `route_step` and `route_options`)
 //!
-//! Every stage appends to the `StepTrace` that `explain` prints. The LLM hook sits between the normal and the fallback
-//! tier in bash; it is 2.6 here, so a phrase that reaches it goes straight on to the fallback tier. Nothing here acts:
-//! running the chosen option is 2.3.
+//! Every stage appends to the `StepTrace` that `explain` prints. Nothing here acts: running the chosen option is 2.3.
 use super::matcher::{Arg, IntegrationMatch, Match, Matcher, Outcome};
 use super::near_miss::NearMiss;
 use super::pattern::PlaceholderType;

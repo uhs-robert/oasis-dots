@@ -642,7 +642,7 @@ export VOXCMD_CONFIG_DIR="$config_home/voxcmd"
 # A picker or confirm card has no bar to answer it here, so it gives up quickly.
 export VOXCMD_PICK_TIMEOUT="${VOXCMD_PICK_TIMEOUT:-2}"
 export VOXCMD_CONFIRM_TIMEOUT="${VOXCMD_CONFIRM_TIMEOUT:-2}"
-unset VOXCMD_LLM_CMD TMUXIFIER_LAYOUT_PATH
+unset TMUXIFIER_LAYOUT_PATH
 
 status=0
 "$@" || status=$?

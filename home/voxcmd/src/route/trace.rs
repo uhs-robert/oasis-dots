@@ -96,11 +96,6 @@ pub enum RouteTier {
     Forced,
     Surface,
     Normal,
-    #[allow(
-        dead_code,
-        reason = "the LLM hook is 2.6; the tier keeps its place in the JSON shape"
-    )]
-    Llm,
     Fallback,
 }
 
@@ -110,7 +105,6 @@ impl RouteTier {
             Self::Forced => "forced",
             Self::Surface => "surface",
             Self::Normal => "normal",
-            Self::Llm => "llm",
             Self::Fallback => "fallback",
         }
     }
