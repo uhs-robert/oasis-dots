@@ -1,6 +1,6 @@
 # plans
 
-`plans` reads and edits the front matter of the plan docs under `.plans/`. Each doc is one piece of active work, at `.plans/<project>/<id>.md` in the main checkout of a repo. `plans` replaces the tracker files. The board in phase 2 imports the same library.
+`plans` reads and edits the front matter of the plan docs under `.plans/`. Each doc is one piece of active work, at `.plans/<project>/<id>.md` in the main checkout of a repo. `plans` replaces the tracker files, and `plans serve` shows every repo's docs on a web board.
 
 Stow the package with `just stow plans` (it is in the core list). The command lands in `~/.local/bin/plans`. It needs Python 3 and nothing else.
 
@@ -19,6 +19,7 @@ plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
 plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default
 plans lint [--gh] [--all]
+plans serve [--port N]                # the web board, see below
 ```
 
 A line holds tab-separated columns: the repo (only with `--all`), id, status, owner, rank and waiting_on. `--json` prints the full front matter of each doc, plus its `path`.
@@ -44,6 +45,37 @@ On `ls`, `waiting`, `questions` and `lint`, `--all` reads every repo under the d
 ### Two writers
 
 Every write reads the doc, locks `.plans/`, reads it again and compares the keys it changes. If another writer changed one of them in between, the write stops with exit code 3 and leaves the file as it was. Writes to different keys both land. A body edit counts as a change to the key `body`. The `updated` key never conflicts, because every write sets it to today. The write edits only the changed front matter lines and keeps the body bytes as they were.
+
+## Serve
+
+`plans serve` runs a web board over the docs of every repo under the roots, the same repos as `--all`. Open http://127.0.0.1:8765 in a browser. It needs nothing beyond Python 3.
+
+To run it in the background at every login, enable the user service. `just stow plans` installs it, but nothing enables it:
+
+```bash
+systemctl --user enable --now plans-serve
+```
+
+The board has a column per status and a lane per repo, then per project. The header holds a repo switcher and filters for the id, owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
+
+| Key | Action |
+| --- | --- |
+| `j` `k` | the next or previous card in the column |
+| `h` `l` | the nearest card in the column to the left or right |
+| `H` `L` | move the card one status column; a move to blocked or done asks `y` / `n` |
+| `J` `K` | move the card one place down or up in its cell (its rank) |
+| `e` | edit the owner: a session name or `none` |
+| `o`, Enter | open the doc in `$EDITOR` in a new terminal |
+| `/` | the id filter; Esc goes back to the board |
+| `r` `R` | the next or previous repo in the switcher |
+
+A drag moves a card within its lane, to another status, another place or both. A drop takes the midpoint of the ranks around it. When there is no gap, the board renumbers the repo in steps of 10.
+
+Each write goes through the same safe write path as `plans set`, and the board compares against the values it showed. If an agent changed one of those keys since the board last loaded, the write is refused. The card snaps back and a message names the keys. A renumber skips a doc that an agent re-ranked meanwhile, keeps the agent's rank and says which doc it skipped. Status and owner follow the rules of `plans set`. The other keys are read-only on the board.
+
+`o` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; set it with `systemctl --user set-environment EDITOR=...` if it should differ.
+
+The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port. A write also needs the board's own request header, so a page on another site cannot write.
 
 ## Front matter
 
@@ -98,4 +130,6 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `cli.py`: argument parsing and output only.
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
-`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc.
+`.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
+
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts.
