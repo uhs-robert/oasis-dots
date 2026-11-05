@@ -66,10 +66,18 @@ def key_findings(doc):
         flag("rank", "rank", f"rank {keys['rank']!r} is no integer")
     if "owner_session" in keys and not is_session_or_none(keys["owner_session"]):
         flag("owner_session", "owner-session", f"owner_session {keys['owner_session']!r} is no session name (like dotfiles-56) or none")
+    if "waiting_on" in keys and not isinstance(keys["waiting_on"], str):
+        flag("waiting_on", "waiting-on", 'waiting_on must be a string, "" when the doc waits on nothing')
     for key in parse.LIST_KEYS:
         if key in keys and not isinstance(keys[key], list):
             flag(key, "list", f"{key} must be a list, `[a, b]` or `[]`")
     return findings
+
+
+def owner_of(doc):
+    """The session that owns the doc, or None. An empty or missing owner_session counts as none, and lint flags it."""
+    owner = doc.keys.get("owner_session")
+    return None if owner in (None, "", NO_SESSION) else owner
 
 
 def is_session_or_none(value):

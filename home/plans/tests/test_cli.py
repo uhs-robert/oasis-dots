@@ -51,6 +51,7 @@ class CliTest(unittest.TestCase):
         self.repo = self.make_repo(os.path.join(self.temp.name, "repo"))
         self.env = {**os.environ, "HOME": self.home, "XDG_CONFIG_HOME": os.path.join(self.home, ".config")}
         self.env.pop("PLANS_SESSION", None)
+        self.env.pop("GITHUB_DIR", None)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -167,7 +168,7 @@ class CliTest(unittest.TestCase):
     def test_set_refuses_bad_values(self):
         path = self.add("demo", 10)
         before = self.read(path)
-        for pair in ("status=active", "kind=plan", "rank=high", "owner_session=Bob", "id=x", "updated=x", "colour=x", "nopair"):
+        for pair in ("project=other", "waiting_on=two\nlines", "branch=a\rb", "status=active", "kind=plan", "rank=high", "owner_session=Bob", "id=x", "updated=x", "colour=x", "nopair"):
             with self.subTest(pair=pair):
                 self.plans("set", "demo", pair, code=2)
         self.assertEqual(self.read(path), before)
@@ -257,6 +258,87 @@ class CliTest(unittest.TestCase):
                          ["gh-pr", "gh-issue", "gh-branch", "gh-error"])
         self.assertIn("pr 5 is merged", result.stdout)
         self.assertEqual(self.plans("lint").stdout, "")
+
+    def test_default_roots_without_a_roots_file(self):
+        dev = os.path.join(self.temp.name, "dev")
+        one = self.make_repo(os.path.join(dev, "group", "one"))
+        self.add("in-one", 10, repo=one)
+        self.add("in-dotfiles", 10)
+        # The installer links ~/.local/share/dotfiles/repos to repos/ in the dotfiles checkout.
+        os.makedirs(os.path.join(self.repo, "repos"))
+        os.makedirs(os.path.join(self.home, ".local", "share", "dotfiles"))
+        os.symlink(os.path.join(self.repo, "repos"), os.path.join(self.home, ".local", "share", "dotfiles", "repos"))
+        lines = self.plans("ls", "--all", cwd=self.temp.name, env={"GITHUB_DIR": dev}).stdout.splitlines()
+        self.assertEqual([line.split("\t")[:2] for line in lines], [["one", "in-one"], ["repo", "in-dotfiles"]])
+        os.rename(dev, os.path.join(self.home, "Development"))
+        lines = self.plans("ls", "--all", cwd=self.temp.name).stdout.splitlines()
+        self.assertEqual([line.split("\t")[0] for line in lines], ["one", "repo"])
+        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        self.assertEqual([line.split("\t")[0] for line in self.plans("ls", "--all").stdout.splitlines()], ["repo"])
+
+    def commit_all(self, repo):
+        self.write("README", "x\n", repo=repo)
+        subprocess.run(["git", "-C", repo, "add", "README"], check=True)
+        subprocess.run(["git", "-C", repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"], check=True)
+
+    def test_main_checkout_from_a_repo_a_worktree_and_a_submodule(self):
+        self.commit_all(self.repo)
+        worktree = os.path.join(self.temp.name, "wt")
+        subprocess.run(["git", "-C", self.repo, "worktree", "add", "-q", worktree], check=True)
+        library = self.make_repo(os.path.join(self.temp.name, "library"))
+        self.commit_all(library)
+        subprocess.run(["git", "-C", self.repo, "-c", "protocol.file.allow=always", "submodule", "add", "-q", library, "sub"],
+                       check=True, capture_output=True)
+        submodule = os.path.join(self.repo, "sub")
+        self.assertEqual(cli.roots.main_checkout(self.repo), self.repo)
+        self.assertEqual(cli.roots.main_checkout(worktree), self.repo)
+        self.assertEqual(cli.roots.main_checkout(os.path.join(submodule)), submodule)
+        self.add("in-sub", 10, repo=submodule)
+        self.assertEqual(self.plans("ls", cwd=submodule).stdout.split("\t")[0], "in-sub")
+
+    def test_questions_keep_continuation_lines(self):
+        self.add("asks", 10, questions="- [ ] Which colour?\n  The bar or the frame.\n- [ ] Second?\n")
+        self.assertEqual(self.plans("questions").stdout, "asks\tWhich colour? The bar or the frame.\nasks\tSecond?\n")
+        data = json.loads(self.plans("questions", "--json").stdout)
+        self.assertEqual(data[0]["question"], "Which colour? The bar or the frame.")
+
+    def test_new_refuses_the_old_projects_folder(self):
+        self.plans("new", "projects", "x", code=2)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans", "projects")))
+
+    def test_an_empty_or_missing_owner_is_none(self):
+        empty = self.add("empty", 10, owner='""')
+        missing = self.write(".plans/proj/missing.md", doc_text("missing", 20).replace("owner_session: none\n", ""))
+        self.assertEqual(self.plans("next", "--as", "me-1").stdout, "work\tempty\tplanned\n")
+        self.plans("claim", "empty", "--as", "me-1")
+        self.plans("claim", "missing", "--as", "me-1")
+        self.assertEqual([parse.load(p).keys["owner_session"] for p in (empty, missing)], ["me-1", "me-1"])
+        self.write(".plans/proj/empty.md", self.read(empty).replace("owner_session: me-1", 'owner_session: ""'))
+        self.write(".plans/proj/missing.md", self.read(missing).replace("owner_session: me-1\n", ""))
+        rules = [line.split(": ")[1] for line in self.plans("lint", code=1).stdout.splitlines()]
+        self.assertEqual(rules, ["owner-session", "missing-key"])
+
+    def test_a_doc_deleted_after_the_read_is_one_line(self):
+        path = self.add("demo", 10)
+        real_load = cli.load_doc
+
+        def load_then_delete(root, doc_id):
+            doc = real_load(root, doc_id)
+            os.unlink(path)
+            return doc
+
+        with mock.patch.object(cli, "load_doc", load_then_delete), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                code = cli.main(["set", "demo", "status=building"])
+        self.assertEqual(code, 1)
+        self.assertEqual(len(stderr.getvalue().splitlines()), 1, stderr.getvalue())
+        self.assertIn("deleted since it was read", stderr.getvalue())
+
+    def test_lint_flags_a_waiting_on_that_is_no_string(self):
+        self.add("demo", 10, waiting_on="[]")
+        self.assertEqual(self.plans("lint", code=1).stdout,
+                         ".plans/proj/demo.md:9: waiting-on: waiting_on must be a string, \"\" when the doc waits on nothing\n")
 
     def test_find_by_glob(self):
         self.add("demo", 10, project="a")

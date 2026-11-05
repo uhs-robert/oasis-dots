@@ -12,8 +12,13 @@ class NotInRepo(Exception):
 
 def main_checkout(cwd="."):
     """The main checkout of the repo around `cwd`. A worktree has no `.plans/` (it is git-ignored), so this goes through
-    the common git dir, whose parent is the main checkout."""
-    return os.path.dirname(git_common_dir(cwd))
+    the common git dir. Its parent is the main checkout, except in a submodule: there the common dir is
+    `.git/modules/<name>`, and its `core.worktree` names the checkout."""
+    common = git_common_dir(cwd)
+    worktree = subprocess.run(["git", "--git-dir", common, "config", "--get", "core.worktree"], capture_output=True, text=True)
+    if worktree.returncode == 0 and worktree.stdout.strip():
+        return os.path.normpath(os.path.join(common, worktree.stdout.strip()))
+    return os.path.dirname(common)
 
 
 def git_common_dir(cwd):
@@ -32,14 +37,28 @@ def config_file():
 
 
 def configured_roots(path=None):
-    """The directories in the roots file, one per line. Blank lines and `#` comments are skipped."""
+    """The directories in the roots file, one per line. Blank lines and `#` comments are skipped. Without the file, the
+    roots are the developer checkouts and the dotfiles repo."""
     path = path or config_file()
     try:
         with open(path, encoding="utf-8") as handle:
             lines = handle.read().splitlines()
     except FileNotFoundError:
-        return []
+        return default_roots()
     return [os.path.expanduser(line.strip()) for line in lines if line.strip() and not line.strip().startswith("#")]
+
+
+def default_roots():
+    # $GITHUB_DIR has the default of lib/common/distro.sh. The installer links ~/.local/share/dotfiles/repos to
+    # repos/ in the dotfiles checkout, so the link's target leads back to the repo.
+    found = [os.environ.get("GITHUB_DIR") or os.path.expanduser("~/Development")]
+    dotfiles_repos = os.path.expanduser("~/.local/share/dotfiles/repos")
+    if os.path.isdir(dotfiles_repos):
+        try:
+            found.append(main_checkout(os.path.dirname(os.path.realpath(dotfiles_repos))))
+        except NotInRepo:
+            pass
+    return found
 
 
 def repos_under(root, depth=SCAN_DEPTH):

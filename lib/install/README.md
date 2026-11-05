@@ -4,7 +4,7 @@
 
 ## Stowing
 
-Each `home/<package>/` mirrors `$HOME` and is symlinked in with GNU Stow; `.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works for most packages. The exception is `NO_FOLD_PACKAGES` in `stow.sh` (`systemd`, `calendar`, `agents`, `plans`): systemd ignores drop-in and `.wants` directories that are symlinks, so these are stowed with `--no-folding`. `plans` is there because a folded `~/.local/lib` or `~/.config/plans` would put other files into the repo. Use `just stow`/`restow` for them, never a bare `stow`, and add any new package that ships `~/.config/systemd/user` units or drop-ins to that list. `just migrate-systemd [--dry-run]` (`migrate.sh`) repairs a machine stowed folded.
+Each `home/<package>/` mirrors `$HOME` and is symlinked in with GNU Stow; `.stowrc` pins `--dir=home --target=~`, so a bare `stow <package>` from the repo root works for most packages. The exception is `NO_FOLD_PACKAGES` in `stow.sh` (`systemd`, `calendar`, `agents`, `plans`): systemd ignores drop-in and `.wants` directories that are symlinks, so these are stowed with `--no-folding`. `plans` is there because a folded `~/.local/lib` would put other programs' files into the repo. Use `just stow`/`restow` for them, never a bare `stow`, and add any new package that ships `~/.config/systemd/user` units or drop-ins to that list. `just migrate-systemd [--dry-run]` (`migrate.sh`) repairs a machine stowed folded.
 
 ## External repos
 

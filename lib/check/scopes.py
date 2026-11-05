@@ -252,8 +252,8 @@ STEPS = [
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
-    Step("plans", "install", "python3 -B -m unittest discover -s home/plans/tests -p 'test_*.py'", ("git",), skip_reason="the plans tests need git"),
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
+    Step("plans", "install", "python3 -B -m unittest discover -s home/plans/tests -p 'test_*.py'", ("git",), skip_reason="the plans tests need git"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
     Step("owner-test-bar", "hooks", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),

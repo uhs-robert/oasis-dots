@@ -115,6 +115,13 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(doc.keys["updated"], "2026-11-08")
         self.assertEqual(doc.body, "# demo\n\nNew body.\n")
 
+    def test_a_write_that_renders_outside_the_subset_is_refused(self):
+        doc = parse.load(self.path)
+        with self.assertRaises(parse.ParseError):
+            store.update(doc, {"waiting_on": "two\nlines: here"})
+        self.assertEqual(self.contents(), ORIGINAL.encode())
+        self.assertEqual(self.leftovers(), [])
+
     def test_write_keeps_the_file_mode(self):
         os.chmod(self.path, 0o640)
         store.update(parse.load(self.path), {"status": "building"})

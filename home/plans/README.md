@@ -23,14 +23,14 @@ plans lint [--gh] [--all]
 
 A line holds tab-separated columns: the repo (only with `--all`), id, status, owner, rank and waiting_on. `--json` prints the full front matter of each doc, plus its `path`.
 
-`--all` reads every repo under the directories in `~/.config/plans/roots`, one per line. The package ships `~/Development` and `~/dotfiles`. A root that is a git repo counts as one repo. Any other root is searched three levels down, and the search stops at each repo it finds.
+`--all` reads every repo under the directories in `~/.config/plans/roots`, one per line. Without that file, the roots are `$GITHUB_DIR` (default `~/Development`) and the dotfiles checkout, found through the `~/.local/share/dotfiles/repos` link. A root that is a git repo counts as one repo. Any other root is searched three levels down, and the search stops at each repo it finds.
 
 `--as` names the session, for example `dotfiles-56`. `$PLANS_SESSION` is the fallback. `claim` and `handoff` need one of the two.
 
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc.
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. `handoff` checks every listed doc before it writes any of them.
-- `set` refuses `id` and `updated`, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
-- `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc, and it refuses an id the repo already uses.
+- `set` refuses `id`, `project` and `updated`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
+- `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
 - `lint` checks every rule below and prints `path:line: rule: message`. `lint --gh` also asks GitHub, through the `gh` CLI, for a merged or closed `pr`, a closed `issue` and a `branch` the remote no longer has.
 - `ls` and `lint` name each old layout and say "migrate this repo". The old layouts are `.planning/roadmap.md`, `.plans/roadmap.md`, `.plans/projects/` and root `.md` files that `info/exclude` hides. A doc with the old `kind: plan`, `tracker` or `handoff` counts too, and `ls` skips it.
 
@@ -70,7 +70,7 @@ updated: "2026-11-05"
 | `project` | the folder under `.plans/` |
 | `kind` | feature, bug, refactor, docs, chore, research or design |
 | `status` | idea, planned, approved, building, review, blocked, parked or done |
-| `owner_session` | a session name, or `none` |
+| `owner_session` | a session name, or `none` (an empty or missing value counts as `none`, and lint flags it) |
 | `rank` | one order per repo, lowest first, in steps of 10 |
 | `depends_on` | the ids that must be finished first |
 | `waiting_on` | what the doc waits on the owner for, else `""` |
@@ -91,8 +91,8 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `store.py`: the safe write path (`update`, `create`). Both the CLI and the board write only through it.
 - `validate.py`: the lint rules and the old-layout detection.
 - `query.py`: a repo's docs by glob (there is no index file), and the `ls`, `next`, `waiting` and `questions` queries.
-- `roots.py`: the main checkout from a worktree, and the repos for `--all`.
+- `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
 - `gh.py`: the `lint --gh` checks.
 - `cli.py`: argument parsing and output only.
 
-`.config/plans/roots` is the default list of roots. `tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc.
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc.

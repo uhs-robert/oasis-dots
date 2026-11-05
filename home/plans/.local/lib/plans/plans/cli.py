@@ -9,8 +9,8 @@ from . import gh, parse, query, roots, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
-# `set` leaves these alone: the id is the file name, and every write sets `updated` itself.
-UNSETTABLE = ("id", store.UPDATED)
+# `set` leaves these alone. The id and the project come from the doc's path, and every write sets `updated` itself.
+UNSETTABLE = ("id", "project", store.UPDATED)
 NEW_RANK_GAP = 10
 
 
@@ -28,6 +28,8 @@ def main(argv=None):
         return args.run(args) or OK
     except store.Conflict as error:
         return fail(f"{error}; read it again and retry", STALE)
+    except store.Vanished as error:
+        return fail(str(error), FINDINGS)
     except Refused as error:
         return fail(str(error), FINDINGS)
     except (UsageError, roots.NotInRepo, parse.ParseError, gh.GhMissing) as error:
@@ -251,6 +253,8 @@ def parse_pair(pair):
         raise UsageError(f"{key} cannot be set")
     if key not in parse.KEY_ORDER:
         raise UsageError(f"unknown key {key!r}; the keys are {', '.join(parse.KEY_ORDER)}")
+    if "\n" in raw or "\r" in raw:
+        raise UsageError(f"{key}: a value must be one line")
     return key, coerce(key, raw.strip())
 
 
@@ -274,8 +278,8 @@ def coerce(key, raw):
 
 
 def refuse_other_owner(doc, session, force, verb):
-    owner = doc.keys.get("owner_session")
-    if not force and owner not in (validate.NO_SESSION, session):
+    owner = validate.owner_of(doc)
+    if not force and owner not in (None, session):
         raise Refused(f"{doc.id} is owned by {owner}; {verb} it with --force")
 
 
@@ -311,6 +315,8 @@ def run_new(args):
     for name in (args.project, args.id):
         if not validate.NAME.fullmatch(name):
             raise UsageError(f"{name!r} must be lowercase letters, digits and dashes")
+    if args.project == query.OLD_PROJECTS_DIR:
+        raise UsageError(f"{query.OLD_PROJECTS_DIR!r} is the folder of the old layout; pick another project name")
     repo = current_repo()
     existing = query.find(repo.root, args.id)
     if existing:
