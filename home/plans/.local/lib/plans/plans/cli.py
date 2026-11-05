@@ -203,7 +203,8 @@ def run_questions(args):
 
 def run_next(args):
     session = session_of(args, required=False)
-    steps = query.next_steps(current_repo().docs, session)
+    repo = current_repo()
+    steps = query.next_steps(repo.docs, session, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind})
     if args.json:
         print(json.dumps([{"action": step.action, "id": step.doc.id, "detail": step.detail, "path": step.doc.path} for step in steps], indent=2))
         return
@@ -318,12 +319,18 @@ def run_new(args):
     if args.project == query.OLD_PROJECTS_DIR:
         raise UsageError(f"{query.OLD_PROJECTS_DIR!r} is the folder of the old layout; pick another project name")
     repo = current_repo()
-    existing = query.find(repo.root, args.id)
-    if existing:
-        raise Refused(f"id {args.id!r} exists: {existing[0]}")
+
+    def refuse_taken_id():
+        existing = query.find(repo.root, args.id)
+        if existing:
+            raise Refused(f"id {args.id!r} exists: {existing[0]}")
+
+    # The early check gives the clear message. The one under the lock stops a second `plans new` of the same id in
+    # another project.
+    refuse_taken_id()
     path = os.path.join(repo.root, ".plans", args.project, args.id + ".md")
     try:
-        store.create(path, new_doc_text(args.project, args.id, args.kind, next_rank(repo.docs)))
+        store.create(path, new_doc_text(args.project, args.id, args.kind, next_rank(repo.docs)), refuse_taken_id)
     except FileExistsError:
         raise Refused(f"{path} exists") from None
     print(path)

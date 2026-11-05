@@ -10,6 +10,11 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".local", "lib", "plans"))
 from plans import parse, validate  # noqa: E402
 
+# Git sets these in hooks, where the check can run. Inherited, they point every git call here at that other repo.
+for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
+             "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX"):
+    os.environ.pop(name, None)
+
 GOOD_KEYS = {
     "id": "demo", "project": "proj", "kind": "feature", "status": "planned", "owner_session": "none", "rank": "10",
     "depends_on": "[]", "waiting_on": '""', "issue": "none", "pr": "none", "branch": "none", "updated": '"2026-11-05"',
@@ -117,8 +122,9 @@ class OldLayoutTest(unittest.TestCase):
         self.write(".plans/projects/x.md")
         self.write("NOTES.md")
         self.write("README.md")
+        self.write("my notes.md")
         self.write("other.txt")
-        subprocess.run(["git", "-C", self.repo, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", self.repo, "add", "README.md", "my notes.md"], check=True)
         with open(os.path.join(self.repo, ".git", "info", "exclude"), "a") as handle:
             handle.write("/NOTES.md\n*.md\nother.txt\n")
         found = validate.old_layouts(self.repo)

@@ -8,6 +8,7 @@ from .validate import Finding, key_line
 
 UNSET = (None, "", "none")
 GONE = re.compile(r"HTTP 404|Not Found")
+TIMEOUT_SECONDS = 30
 
 
 class GhMissing(Exception):
@@ -16,9 +17,12 @@ class GhMissing(Exception):
 
 def gh(repo, *args):
     try:
-        return subprocess.run(["gh", *args], cwd=repo, capture_output=True, text=True)
+        return subprocess.run(["gh", *args], cwd=repo, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
     except FileNotFoundError as error:
         raise GhMissing("lint --gh needs the gh CLI") from error
+    except subprocess.TimeoutExpired:
+        # A failed call, so each check reports it as a gh-error finding.
+        return subprocess.CompletedProcess(["gh", *args], 1, "", f"gh timed out after {TIMEOUT_SECONDS} s")
 
 
 def number_or_url(value):
