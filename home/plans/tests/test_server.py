@@ -187,6 +187,17 @@ class BoardJsonTest(unittest.TestCase):
         self.assertIn("bad.md", repos[self.web]["problems"][0]["error"])
         self.assertEqual([doc["id"] for doc in repos[self.alpha_a]["docs"]], ["fine"])
 
+    def test_a_depends_on_that_is_no_list_reaches_the_page_as_a_list(self):
+        """The page iterates depends_on, and a bare number there threw and blanked every later repo."""
+        path = self.fixture.add(self.web, "demo", 10)
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("depends_on: []", "depends_on: 12"))
+        self.fixture.start()
+        web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
+        self.assertEqual(web["docs"][0]["depends_on"], ["12"])
+
     def test_page_is_served(self):
         self.fixture.start()
         status, body = self.fixture.request("GET", "/")

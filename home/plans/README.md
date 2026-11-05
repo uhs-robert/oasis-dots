@@ -96,5 +96,6 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
 - `gh.py`: the `lint --gh` checks.
 - `cli.py`: argument parsing and output only.
+- `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
 `tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc.

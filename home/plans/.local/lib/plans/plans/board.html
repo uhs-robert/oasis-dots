@@ -284,12 +284,18 @@ document.addEventListener("keydown", (event) => {
   action();
 });
 
+// A select or checkbox gives focus back after a pick, so the vim keys work again at once. The text filter keeps its
+// focus until Enter or Escape.
 for (const id of ["repo", "owner", "project", "status", "kind"]) {
-  element(id).addEventListener("change", () => { filters[id] = element(id).value; render(); });
+  element(id).addEventListener("change", () => { filters[id] = element(id).value; element(id).blur(); render(); });
 }
 element("text").addEventListener("input", () => { filters.text = element("text").value; render(); });
 element("text").addEventListener("keydown", (event) => { if (event.key === "Enter") event.target.blur(); });
-element("waiting").addEventListener("change", () => { filters.waiting = element("waiting").checked; render(); });
+element("waiting").addEventListener("change", () => {
+  filters.waiting = element("waiting").checked;
+  element("waiting").blur();
+  render();
+});
 
 // The server sends the board version at connect and after each change on disk. EventSource reconnects by itself.
 const events = new EventSource("/api/events");
