@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Screen brightness, power profile, do not disturb and auto-lock, through the same scripts and bar IPC the keybinds
 # use, so the OSD and the bar stay in sync. Format: ~/.config/voxcmd/README.md
 name = "System"

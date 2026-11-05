@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Default audio output and input and per-app volume (wpctl), and Bluetooth devices (bluetoothctl).
 # Format: ~/.config/voxcmd/README.md
 name = "Devices"

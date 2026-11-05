@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Focuses a monitor, or moves the active window to one, by where it sits, its slot or "laptop". Format: ~/.config/voxcmd/README.md
 name = "Monitors"
 # The monitor taking focus, or the window leaving, is the feedback; a name that fits no monitor still toasts as a failure.

@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Rapid mode: a voice session where every turn is routed as a normal command, so a run of commands needs no key press
 # between them. "click mode" and "type mode" open inside it and return to it. Format: ~/.config/voxcmd/README.md
 name = "Rapid"

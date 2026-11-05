@@ -85,7 +85,7 @@ A notification reports what ran, followed by the last line the command printed, 
 
 "Open firefox and then go to youtube" is two commands in one phrase. voxcmd splits the transcript on "and then", or on ", then" when the transcript has the comma (Whisper usually writes it), and never on a bare "then": "open firefox then ..." is one phrase. Each step is routed as a phrase of its own (steps 1 to 8 above, with its own wake word, force prefix, Voice Help and discard phrases), one after another, each only once the one before has finished. A leading wake word is stripped from the whole phrase first. `$raw_transcript` is the step's own words.
 
-- **Free text takes the rest.** An action that takes dictated text (a timer's "remind me to ...", a calendar event's title) may contain "and then" itself, so an integration marks those actions `free_text = true` and the step that starts with one of their verbs takes the whole remainder of the phrase. Put the dictated command last: "open firefox and then remind me to call mom and then email bob" is two steps, the second a reminder with the whole text.
+- **Free text takes the rest.** An action that takes dictated text (a timer's "remind me to ...", a calendar event's title) can contain "and then" itself, so an integration marks those actions `free_text = true` and the step that starts with one of their verbs takes the whole remainder of the phrase. Put the dictated command last: "open firefox and then remind me to call mom and then email bob" is two steps, the second a reminder with the whole text.
 - **Waiting.** Between steps voxcmd waits for what the step started to show: by default no popup opening or closing and no click overlay, then `VOXCMD_APP_SETTLE_SECS` (0.3 s) for the app; an action that starts something slower declares its own condition with `wait` or `wait_hook` (opening an app waits for its window to have focus, a day in the calendar for the clock popup). It polls, never waits on the compositor's events, and does not wait after the last step. A wait that outlasts `VOXCMD_STEP_TIMEOUT_SECS` (15) stops the sequence.
 - **Stopping.** The first step that does not run stops the rest: no match (a Voice Help phrase counts as one), a cancelled picker, a declined confirm card, a failed command, a timed-out wait, or a discard phrase (silently). One notification says where, instead of the step's own: an error "voxcmd: stopped at step 2 of 3" with the step, the end of its output and "1 more step not run"; for no match an info one with the Voice Help button quoting the step's words (never a free-text target); for a picker or card "Stopped at step 2 of 3: cancelled" or "...: not confirmed". Steps that ran keep their own notifications. A step whose label is private ([`private_labels`](#silent-actions)) is named without it.
 - **Limits.** At most 5 steps; more is refused, and nothing runs. A mode switch ("rapid mode", "type mode") is allowed only as the last step: anywhere else the whole phrase is refused, and nothing runs. Neither is split inside [type mode](#type-mode), whose words are text.
@@ -100,7 +100,7 @@ An integration is one TOML file in `~/.config/voxcmd/integrations/`. It lists ve
 The shipped files are the examples to copy from, and `voxcmd integrations examples` lists the phrases each one takes. `src/config/schema.rs` defines every key and its type (`FILE_KEYS`, `VERB_KEYS`, `ACTION_KEYS` and the structs next to them), so this section says what the keys mean and does not list them again. `voxcmd integrations check` validates your files and reports `file:line:col`, a mistyped key included. `voxcmd integrations list` shows what loaded.
 
 ```toml
-name = "Windows"   # shown in notifications and the picker; defaults to the file name
+name = "Windows"   # shown in notifications and the picker, defaults to the file name
 
 # Tried in order against the whole normalized phrase. The first match counts.
 verbs = [
@@ -140,7 +140,7 @@ A `{name}` in a pattern is one of these, looked up in this order:
 
 The placeholder a hook sees is `VOXCMD_ARG_<NAME>`. For a typed placeholder that is the parsed value, and `VOXCMD_ARG_<NAME>_WORDS` holds the words it captured.
 
-Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of word slots, and only a few shapes are readable. A bare define, `{name}`, reads as one group of its alternatives. A required define inside parentheses, `({name})`, nests a group in a group, which the reader cannot take apart when the define has alternatives, so that verb gets no hints. Write a define bare when the verb should keep them. A typed placeholder other than `{number}` drops the hints for its verb as well.
+Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of word slots, and only a few shapes are readable. A bare define, `{name}`, reads as one group of its alternatives. A required define inside parentheses, `({name})`, nests a group in a group, which the reader cannot take apart when the define has alternatives, so that verb gets no hints. Write a define bare to keep them. A typed placeholder other than `{number}` drops the hints for its verb as well.
 
 ### Actions and hooks
 
@@ -148,12 +148,13 @@ Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of wo
 
 | Variable | Holds |
 | --- | --- |
-| `VOXCMD_ID`, `VOXCMD_LABEL` | the chosen candidate's id and label; with no `candidates` hook the id is the target text. Only in `run` and `wait_hook` |
+| `VOXCMD_ID`, `VOXCMD_LABEL` | the chosen candidate's id and label. Without a `candidates` hook the id is the target text. Set only in `run` and `wait_hook` |
 | `VOXCMD_ARG_<NAME>` | the value of a placeholder, `VOXCMD_ARG_TARGET` for `{target}` |
 | `VOXCMD_ARG_<NAME>_WORDS` | the words the placeholder captured |
 | `VOXCMD_PHRASE`, `VOXCMD_RAW_TRANSCRIPT` | the normalized phrase, and the transcript before normalization and replacements, with its punctuation, digits and symbols |
 | `VOXCMD_CONFIRMED` | `1` when the confirm card asked and was answered yes, else `0` |
-| `VOXCMD_SPOKEN` | `1` when the command came by voice |
+| `VOXCMD_SPOKEN` | `1` in a `[mode]` hook (`rewrite_hook`, `alive`, `ended`, `handle_turn`) when the turn came by voice. Other hooks always get `0` |
+| `VOXCMD_DRY_RUN` | `1` under `--dry-run`, unset otherwise |
 | `VOXCMD_ACTIVE_BEFORE` | in a `wait_hook`, the address of the window that was active before the step |
 | `VOXCMD_ACTION`, `VOXCMD_INTEGRATION` | the action id and the file stem |
 | `VOXCMD_SELF` | the path of the voxcmd binary that launched the hook. A hook calls `"$VOXCMD_SELF" util ...`, never a name on `PATH` |
@@ -196,11 +197,11 @@ A `[surface]` table, `state_file = "overview.json"`, names a file under `$XDG_RU
 These are top-level keys of the file:
 
 ```toml
-target_match = "words"                      # word matching instead of fzf; see below
+target_match = "words"                      # word matching instead of fzf, see below
 match_ignore_words = ["run", "press"]       # words dropped from both target and candidates before word matching
 action_labels = false                       # leave the action word out of picker labels, for candidate labels that already say what runs
 confirm = true                              # ask before running any of this integration's actions
-confirm_labels = ['\bclose\b', '^lock\b']  # regexes (any case) on the option's label; a match asks first
+confirm_labels = ['\bclose\b', '^lock\b']  # regexes (any case) on the option's label, a match asks first
 ```
 
 ### Intents
@@ -238,7 +239,7 @@ An action whose effect is already its feedback, like opening a bar popup, sends 
 silent = true             # every action of this integration
 
 [actions.weather]
-silent = true             # or only this action; an action's own value wins over the file's
+silent = true             # or only this action, which wins over the file's value
 ```
 
 An integration whose option labels hold private text, such as the screen text Click reads, sets `private_labels = true`. The error toast, which the bar keeps in its history, then names only the integration and action ("Click: click: wlrctl: no seat") and the debug log leaves the label out too; the command's own failure reason still follows.
@@ -912,7 +913,7 @@ With no session, picker or recording open it does nothing and says nothing. `vox
 
 ## No-match log
 
-A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels = true`. Delete the file to clear it.
+A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd log misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels = true`. Delete the file to clear it.
 
 ## Design
 
@@ -922,7 +923,7 @@ A mode that hears free speech (type, click and rapid mode) must not accept "<mod
 
 ## Code
 
-- The binary is the Rust crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it). `just voxcmd-build` builds it from the main checkout and links it as `~/.local/bin/voxcmd`; ship-batch rebuilds it after a merge that touches the crate. The build bakes in its checkout (share dir, auto-stop), so `voxcmd-build` refuses to run in a worktree. `voxcmd-rs` is an alias for the same binary, kept one release. The open port phases are tracked in `.plans/projects/voxcmd-port/` in the main checkout.
+- The binary is the Rust crate in `home/voxcmd/` (`Cargo.toml`, `src/`; stow ignores it). `just voxcmd-build` builds it from the main checkout and links it as `~/.local/bin/voxcmd`; ship-batch rebuilds it after a merge that touches the crate. The build bakes in its checkout (share dir, auto-stop), so `voxcmd-build` refuses to run in a worktree. `voxcmd-rs` is an alias for the same binary, kept one release.
 - `voxcmd-wake` and auto-stop are still Python (until their ports) and call `~/.local/bin/voxcmd`. `VOXCMD_STAND_IN_BIN` only names where the tests' stand-ins put the share dir and auto-stop.
 - Integrations are the TOML files in `integrations/`, some with a `.sh` hook beside them. The bash `integrations.d/*.sh` are gone: a leftover one is not read, and `voxcmd integrations check` warns about it. The hidden `voxcmd internal click-match`, `click-ocr` and `click-at` stay as test entry points for the click tests.
 - Tests run through `home/voxcmd/tests/sandbox.sh`, which builds this checkout and puts the Rust binary first on PATH ([AGENTS.md](../../../../AGENTS.md#the-live-desktop)); `just voxcmd-test` runs `cargo test`, then the suites. Each suite is a check step (`lib/check.sh --only voxcmd-phrases`, `voxcmd-click`, `voxcmd-calendar`, `voxcmd-wake`, `voxcmd-firefox`, `voxcmd-rust`; the ducker's is `voxtype-duck`): a hand run records no pass, so the final `--changed` run repeats it. Iterating on one section with `VOXCMD_ONLY_SECTIONS=` by hand is fine; a check run with it set records no pass. Every new or fixed phrasing gets a row in `tests/phrases.tsv`.
