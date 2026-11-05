@@ -144,6 +144,8 @@ class CliTest(unittest.TestCase):
         self.assertEqual(self.plans("next", env={"PLANS_SESSION": "me-1"}).stdout, expected)
         self.assertTrue(self.plans("next").stdout.endswith("work\tfree\tplanned\n"))
         self.assertEqual(json.loads(self.plans("next", "--as", "me-1", "--json").stdout)[2]["action"], "work")
+        skipped = self.plans("next", "--as", "me-1", "--skip", "mine", "--skip", "asks").stdout
+        self.assertEqual(skipped, "blocked\tblocked\tblocked by asks\nwork\tfree\tplanned\n")
 
     def test_waiting_and_questions(self):
         self.add("asks", 10, waiting_on='"owner: which colour"', questions="- [ ] Which colour?\n- [x] Old one\n")
