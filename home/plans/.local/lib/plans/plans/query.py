@@ -100,7 +100,7 @@ def questions(docs):
 
 
 class Step(NamedTuple):
-    # "ask" (the doc waits on the owner), "blocked" (an unfinished dependency) or "work" (the first free doc).
+    # "ask" (the doc waits on the owner), "blocked" (an unfinished dependency) or "work" (a free doc: the first one, or every one with `all`).
     action: str
     doc: object
     detail: str
@@ -112,7 +112,8 @@ def next_steps(docs, session=None, unreadable_ids=(), skip=(), all=False):
     unfinished dependency. A dependency in `unreadable_ids` exists but cannot be read, so it blocks too. The first free
     doc gives the `work` line, and the walk ends there unless `all` is set, which gives a `work` line for every free doc.
     A dependent of a free doc stays blocked, because that doc is not done. A doc in `skip` gets no line, but it still
-    counts as a dependency. Asks come first so a high-ranked doc that waits on a question keeps its place: the owner answers while lower-ranked work goes on."""
+    counts as a dependency. Asks come first so a high-ranked doc that waits on a question keeps its place: the owner
+    answers while lower-ranked work goes on."""
     by_id = {doc.id: doc for doc in docs}
     steps = []
     for doc in sorted(docs, key=rank_order):
