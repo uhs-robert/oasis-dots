@@ -137,15 +137,15 @@ impl TraceEvent {
     }
 }
 
-/// The awk dies when a candidate is stored with a zero image size (or a zero window size for the hint).
+/// The stream has no usable `#window` line: it is missing, or its image or window size is zero, so no position scales.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MatchError {
-    DivisionByZero,
+    ZeroSize,
 }
 
 impl std::fmt::Display for MatchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("division by zero attempted")
+        f.write_str("image or window size is zero")
     }
 }
 
@@ -173,11 +173,7 @@ pub struct Output {
 type Fallible<T> = Result<T, MatchError>;
 
 fn divide(a: f64, b: f64) -> Fallible<f64> {
-    if b == 0.0 {
-        Err(MatchError::DivisionByZero)
-    } else {
-        Ok(a / b)
-    }
+    if b == 0.0 { Err(MatchError::ZeroSize) } else { Ok(a / b) }
 }
 
 /// Nearest integer, half away from zero.
@@ -333,7 +329,11 @@ impl Matcher {
         let result = match parse_line(input) {
             Line::Window(numbers) => {
                 [self.gx, self.gy, self.gw, self.gh, self.iw, self.ih] = numbers.map(|field| field.value());
-                Ok(())
+                if [self.gw, self.gh, self.iw, self.ih].contains(&0.0) {
+                    Err(MatchError::ZeroSize)
+                } else {
+                    Ok(())
+                }
             }
             Line::Strip([y0, own_top, own_bottom]) => self.on_strip(y0, own_top, own_bottom),
             Line::Block(row) => {

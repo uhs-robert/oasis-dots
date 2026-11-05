@@ -207,6 +207,9 @@ pub fn take_shot(tools: &Tools, work: &Path, stable_id: &str, window: Geometry) 
         image = Some(read_size()?);
     }
     let image = image.unwrap_or_default();
+    if image.0 == 0 || image.1 == 0 || window.w == 0 || window.h == 0 {
+        return Err(ClickError::new("screen size is zero", 1));
+    }
     if !scale_is_uniform(image, window) {
         return Err(ClickError::new("capture does not match the window's shape", 1));
     }
@@ -225,8 +228,11 @@ pub fn cut_strips(tools: &Tools, work: &Path, image_w: i64, cuts: &[Cut]) -> Res
         ));
     }
     let _ = std::fs::remove_file(work.join("shot.ppm"));
-    // A mean that does not parse reads as dark, as the awk's string comparison did for an empty one.
-    Ok(outcome.stdout.trim().parse().unwrap_or(0.0))
+    outcome
+        .stdout
+        .trim()
+        .parse()
+        .map_err(|_| ClickError::new("image processing failed", 1))
 }
 
 #[cfg(test)]
@@ -314,6 +320,27 @@ mod tests {
         let stubs = Stubs::new(Some((256, 100)), Some((256, 100)));
         let error = shot(&stubs, "18000004").err().unwrap();
         assert_eq!(error, ClickError::new("capture does not match the window's shape", 1));
+    }
+
+    #[test]
+    fn a_zero_sized_capture_is_an_error_not_a_uniform_scale() {
+        // 0x0 against any window has equal scales, so only the explicit check stops it.
+        let stubs = Stubs::new(None, Some((0, 0)));
+        let error = shot(&stubs, "").err().unwrap();
+        assert_eq!(error, ClickError::new("screen size is zero", 1));
+    }
+
+    #[test]
+    fn a_mean_that_does_not_parse_is_an_error_not_dark() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("magick");
+        std::fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();
+        let tools = Tools {
+            magick: vec!["sh".into(), path.into()],
+            ..Tools::default()
+        };
+        let error = cut_strips(&tools, dir.path(), 256, &[]).err().unwrap();
+        assert_eq!(error, ClickError::new("image processing failed", 1));
     }
 
     #[test]
