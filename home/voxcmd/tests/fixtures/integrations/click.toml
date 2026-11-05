@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Clicks visible text in the focused window by OCR: "click sign in", "right click settings", "double click readme".
 # "click mode" opens a voice session where each spoken target is clicked without repeating "click".
 name = "Click"

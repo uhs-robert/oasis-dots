@@ -1,9 +1,8 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Timers and reminders as transient systemd user timers. Format: ~/.config/voxcmd/README.md
 name = "Timers"
 
 # "stop" is left out of the cancel verbs: Media's "stop {target}" would claim "stop the timer" as a player name.
-# "{target} timer" breaks the README's put-it-last advice safely: voxcmd still finds the group by counting "(".
+# "{target} timer" puts the target before other words, which is safe: the target is captured lazily.
 verbs = [
   { action = "list",       match = '((list|show|check)( me)?|what are)( all)?( the| my)? (active |running )?(timers|reminders)( and (timers|reminders))?' },
   { action = "list",       match = 'what (timers|reminders)( and (timers|reminders))?( do i have| are (there|running|set|active)| are there)?' },

@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Focuses, attaches or creates tmux sessions, tmuxifier layouts included. Format: ~/.config/voxcmd/README.md
 name = "Tmux"
 # The session's terminal taking focus is the feedback.

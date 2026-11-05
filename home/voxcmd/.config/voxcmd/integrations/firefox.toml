@@ -1,4 +1,3 @@
-#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Focuses Firefox tabs and opens sites: "go to <tab>", "open <site> in firefox".
 # Opening a site without saying where is firefox-sites.toml, a fallback after the apps. Format: ~/.config/voxcmd/README.md
 name = "Firefox"
