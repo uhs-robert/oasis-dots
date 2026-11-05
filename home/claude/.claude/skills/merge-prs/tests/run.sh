@@ -1041,15 +1041,37 @@ echo 'head_date_fail=1' >>"$GH_STATE"
 gate 7
 check "check-run path stops rather than reading a bogus time" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
 
-echo "== gate: a read that fails then recovers"
-cr_setup "30 min"
-echo 'head_date_fail_reads=2' >>"$GH_STATE"
-gate 7
-check "two failures are retried past" "! grep -q 'cannot read the commit' <<<\"\$out\""
+echo "== retry_gh: a read that fails then recovers"
+# retry_gh is run on its own, from the script's own text, against the fake gh.
+retry_read() {
+  (
+    # shellcheck disable=SC1090 # The text is the script's own function.
+    source <(sed -n '/^retry_gh()/,/^}/p' "$script")
+    PATH="$here:$PATH" retry_gh "$@"
+  )
+}
+gate_setup
+printf 'head_date=2001-02-03T04:05:06Z\nhead_date_fail_reads=2\n' >>"$GH_STATE"
+out=$(retry_read api repos/me/repo/commits/abc --jq .commit.committer.date 2>&1)
+code=$?
+check "two failures are retried and the answer comes back clean" "[[ $code == 0 && \$out == 2001-02-03T04:05:06Z ]]"
+gate_setup
+printf 'head_date=2001-02-03T04:05:06Z\nhead_date_fail_reads=3\n' >>"$GH_STATE"
+out=$(retry_read api repos/me/repo/commits/abc --jq .commit.committer.date 2>&1)
+code=$?
+check "three failures return the failing code with the last stderr" "[[ $code == 1 && \$out == 'gh: HTTP 502' ]]"
+gate_setup
+comment 'someone[bot]' '-5 min' 'row one'
+comment 'someone[bot]' '-4 min' 'row two'
+echo 1 >"$GH_STATE.page_fail"
+out=$(retry_read api --paginate repos/me/repo/issues/7/comments 2>/dev/null)
+check "a paginated read that fails after page 1 prints each row once" "[[ \$(grep -c 'row one' <<<\"\$out\") == 1 && \$(grep -c 'row two' <<<\"\$out\") == 1 ]]"
+
+echo "== gate: a read that fails three times dies"
 cr_setup "30 min"
 echo 'head_date_fail_reads=3' >>"$GH_STATE"
 gate 7
-check "three failures die with the old message" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\""
+check "with the old message" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\""
 
 echo "== gate: an unreadable completion time"
 cr_setup "30 min"

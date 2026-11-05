@@ -118,6 +118,13 @@ case "$args" in
 # cr_reviews: ;-separated "login|commit" PR reviews. $GH_STATE.comments holds the issue comments, one JSON object per line.
 *"/pulls/"*"/reviews"*) gate_state && get cr_reviews | tr ';' '\n' && exit 0 ;;
 *"/issues/"*"/comments"*)
+  # $GH_STATE.page_fail=N: a paginated read prints its first page, then fails, N times.
+  if [[ -f $GH_STATE.page_fail && $(<"$GH_STATE.page_fail") -gt 0 ]]; then
+    echo $(($(<"$GH_STATE.page_fail") - 1)) >"$GH_STATE.page_fail"
+    head -1 "$GH_STATE.comments"
+    echo "gh: HTTP 502" >&2
+    exit 1
+  fi
   [[ ! -f $GH_STATE.comments ]] || cat "$GH_STATE.comments"
   exit 0
   ;;

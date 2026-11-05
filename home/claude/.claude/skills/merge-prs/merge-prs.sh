@@ -10,15 +10,27 @@ die() {
   exit 1
 }
 
-# Runs gh, retrying a failed call up to 3 times. Only for calls that read: a retried write can apply twice. The graphql
-# review query is left out on purpose, as the plan leaves every graphql call alone.
+# Runs gh, retrying a failed call up to 3 times. Only for calls that only read: a retried write can apply twice (a
+# graphql mutation stays on plain gh). Each try is buffered and its stdout printed only on success, so a --paginate call
+# that fails on page 2 does not print page 1 again on the retry. After the last failed try, that try's stderr is printed
+# and its exit code returned.
 retry_gh() {
-  local try
+  local try out err_file code
+  err_file=$(mktemp)
   for try in 1 2 3; do
-    gh "$@" && return 0
+    code=0
+    out=$(gh "$@" 2>"$err_file") || code=$?
+    if ((code == 0)); then
+      [[ -z $out ]] || printf '%s\n' "$out"
+      cat "$err_file" >&2
+      rm -f "$err_file"
+      return 0
+    fi
     ((try == 3)) || sleep "${MERGE_PRS_GH_RETRY_PAUSE:-2}"
   done
-  return 1
+  cat "$err_file" >&2
+  rm -f "$err_file"
+  return "$code"
 }
 
 method=""
@@ -140,7 +152,7 @@ review_wait_s=${MERGE_PRS_REVIEW_WAIT:-1200}
 review_poll_s=${MERGE_PRS_REVIEW_POLL:-20}
 
 read_review() {
-  gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$1" -f query="$review_query" \
+  retry_gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -F number="$1" -f query="$review_query" \
     --jq "$review_jq" || die "cannot read the review state of #$1"
 }
 
@@ -265,8 +277,10 @@ rereview_reason() {
     rereview_why="$unmeasured changed with no countable lines"
     return
   fi
-  covered=$(retry_gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
-  changed=$(retry_gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
+  covered=$(retry_gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename') ||
+    die "cannot list the files of $reviewed"
+  changed=$(retry_gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename') ||
+    die "cannot list the files of $head"
   new_file=""
   while IFS= read -r file; do
     [[ -n $file ]] || continue
