@@ -36,5 +36,42 @@ expect allow agent 'echo stash'
 expect allow agent 'git commit -m "stash"'
 expect allow agent 'git log --grep stash'
 
+# Forms that get past a plain "git is the first word" check.
+expect deny agent 'sudo git stash'
+expect deny agent 'sudo -u root git stash pop'
+expect deny agent 'env FOO=1 git stash'
+expect deny agent 'command git stash'
+expect deny agent 'time git stash'
+expect deny agent 'nice git stash'
+expect deny agent 'nice -n 5 git stash'
+expect deny agent 'timeout 5 git stash'
+expect deny agent 'echo x | xargs git stash'
+expect deny agent '! git stash'
+expect deny agent 'exec git stash'
+expect deny agent '/usr/bin/git stash'
+expect deny agent 'env -i /opt/bin/git stash drop'
+expect deny agent "bash -c 'git stash pop'"
+expect deny agent 'sh -c "cd x && git stash"'
+expect deny agent "bash -lc 'git stash'"
+expect deny agent $'git status\ngit stash pop'
+expect deny agent '(git stash)'
+# shellcheck disable=SC2016 # the command text is data, not expanded here
+expect deny agent 'echo $(git stash pop)'
+expect deny agent 'echo hi & git stash'
+expect deny agent '{ git stash; }'
+expect deny agent 'if true; then git stash; fi'
+expect deny agent 'if false; then :; else git stash; fi'
+expect deny agent 'for i in 1; do git stash; done'
+expect deny agent 'git "stash" pop'
+
+# Quoted text and heredoc bodies are not commands.
+expect allow agent 'git commit -m "wip; git stash pop later"'
+expect allow agent "git commit -m 'run git stash && more'"
+expect allow agent "echo 'git stash'"
+expect allow agent $'cat <<EOF\ngit stash pop\nEOF'
+expect allow agent $'cat <<-\'EOF\' > f\n\tgit stash\n\tEOF'
+expect deny agent $'cat <<EOF\nhello\nEOF\ngit stash pop'
+expect allow agent 'git log --grep="git stash"'
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
