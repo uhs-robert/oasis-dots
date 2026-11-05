@@ -287,7 +287,7 @@ class HeadlessLoadTest(TreeCase):
             "hyprvim.edit_selection", "hyprvim.jump_mark", "hyprvim.terminal",
             "media.brightness_down", "media.brightness_up", "media.mute", "media.mute_mic", "media.next",
             "media.play_pause", "media.prev", "media.volume_down", "media.volume_up",
-            "menu.agents", "menu.drun", "menu.ssh",
+            "menu.agents", "menu.drun", "menu.ssh", "menu.tmux",
             "monitor.focus", "monitor.move_window",
             "move.step",
             "picker.agents", "picker.clipboard", "picker.clipboard_delete", "picker.directory", "picker.emoji",
@@ -307,7 +307,7 @@ class HeadlessLoadTest(TreeCase):
             "workspace.cycle", "workspace.focus", "workspace.focus_last", "workspace.move",
             "workspace.move_window",
         ])
-        self.assertEqual(len(listing["actions"]), 22 + len(lua_ids) + len(KEYLESS_IPC_IDS))
+        self.assertEqual(len(listing["actions"]), 21 + len(lua_ids) + len(KEYLESS_IPC_IDS))
 
     def test_the_real_tree_defines_the_keyless_ipc_actions(self):
         listing, findings = registry.load_list(REPO_DIR)
