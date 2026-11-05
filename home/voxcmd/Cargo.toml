@@ -25,6 +25,10 @@ tract-onnx = "=0.23.10"
 insta = "=1.48.0"
 tempfile = "=3.27.0"
 
+# The tract models make the plain release binary 40 MB; without symbols it is 29 MB.
+[profile.release]
+strip = true
+
 # Keeps each worktree's debug build small. The crate itself keeps its debug info, for backtrace line numbers.
 [profile.dev]
 incremental = false
