@@ -4,6 +4,8 @@
 # should be idle so the numbers are the listener's own cost.
 #
 #   home/voxcmd/tests/wake-sample.sh [minutes]
+#
+# It finds the Python listener or `voxcmd wake listen` by its command line; WAKE_SAMPLE_PID names the process when both run.
 set -euo pipefail
 
 minutes=${1:-60}
@@ -13,7 +15,7 @@ interval_s=10
   exit 2
 }
 
-pid=$(pgrep -f '^[^ ]*python3 .*/voxcmd-wake$' | head -n 1 || true)
+pid=${WAKE_SAMPLE_PID:-$(pgrep -f '^[^ ]*python3 .*/voxcmd-wake$|(^|/)voxcmd wake listen$' | head -n 1 || true)}
 [ -n "$pid" ] || {
   echo 'wake-sample: voxcmd-wake is not running (voxcmd wake on)' >&2
   exit 1
