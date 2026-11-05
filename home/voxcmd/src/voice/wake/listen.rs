@@ -26,7 +26,6 @@ use std::os::fd::FromRawFd;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::Instant;
@@ -371,18 +370,38 @@ struct Shared {
     verdict: Option<Verdict>,
 }
 
+/// The confirmation child under way, for a stop to end. `confirm` holds the lock from before it spawns the child until
+/// the child's group is recorded, so a stop either finds the group or sets `stopping` before any child exists.
+#[derive(Default)]
+struct Confirming {
+    stopping: bool,
+    /// The process group of the confirmation under way, 0 when none.
+    group: libc::pid_t,
+}
+
+type ConfirmRegistry = Arc<Mutex<Confirming>>;
+
+/// Ends the confirmation under way and refuses any later one, so a stopped listener leaves no voxtype behind.
+fn stop_confirming(registry: &ConfirmRegistry) {
+    let mut confirming = registry.lock().unwrap();
+    confirming.stopping = true;
+    if confirming.group > 0 {
+        // SAFETY: signals the process group of a child this process spawned.
+        unsafe { libc::kill(-confirming.group, libc::SIGKILL) };
+    }
+}
+
 /// `voxcmd internal wake-confirm /dev/stdin` with the clip as its stdin, on a worker thread.
 struct ConfirmWorker {
     shared: Arc<Mutex<Shared>>,
-    /// The process group of the confirmation under way, 0 when none, so a stop can end it.
-    group: Arc<AtomicI32>,
+    registry: ConfirmRegistry,
 }
 
 impl ConfirmWorker {
     fn new() -> Self {
         Self {
             shared: Arc::default(),
-            group: Arc::new(AtomicI32::new(0)),
+            registry: Arc::default(),
         }
     }
 }
@@ -396,10 +415,10 @@ impl Confirmer for ConfirmWorker {
     fn start(&mut self, wav: Vec<u8>, generation: u64, started_at: f64) {
         self.shared.lock().unwrap().running = true;
         let shared = Arc::clone(&self.shared);
-        let group = Arc::clone(&self.group);
+        let registry = Arc::clone(&self.registry);
         let spawned = std::thread::Builder::new().name("wake-confirm".into()).spawn(move || {
-            let answer = confirm(&wav, &group);
-            group.store(0, Ordering::SeqCst);
+            let answer = confirm(&voxcmd_command(), &wav, &registry, &|| {});
+            registry.lock().unwrap().group = 0;
             let mut shared = shared.lock().unwrap();
             shared.verdict = Some(Verdict {
                 answer,
@@ -419,12 +438,12 @@ impl Confirmer for ConfirmWorker {
     }
 }
 
-/// The installed voxcmd for the commands the listener runs. This binary by default, through `/proc/self/exe` so a
-/// rebuild that replaces the file does not break it; `VOXCMD_WAKE_VOXCMD` names another (the suites' stub).
+/// The voxcmd for the commands the listener runs: this binary's path, which holds the new build after a rebuild
+/// (`ask::this_binary`). `VOXCMD_WAKE_VOXCMD` names another (the suites' stub).
 fn voxcmd_command() -> std::ffi::OsString {
     std::env::var_os("VOXCMD_WAKE_VOXCMD")
         .filter(|path| !path.is_empty())
-        .unwrap_or_else(|| "/proc/self/exe".into())
+        .unwrap_or_else(|| crate::ask::this_binary().into())
 }
 
 /// `content` in an anonymous memfd, read from the start: no path another process can open, gone when closed.
@@ -461,12 +480,15 @@ fn wait_within(child: &mut Child, limit: Duration) -> Option<ExitStatus> {
 
 /// Exit 0 is the wake word and 1 is not. Any other code, a timeout included, is a failure (`wake-confirm` exits 2 for
 /// its own). What it heard is never read: it goes to /dev/null.
-fn confirm(wav: &[u8], group: &AtomicI32) -> Answer {
+///
+/// `after_spawn` runs between the spawn and the registration of the child, the one window a stop can land in; it is
+/// empty outside the test that drives that window.
+fn confirm(program: &std::ffi::OsStr, wav: &[u8], registry: &ConfirmRegistry, after_spawn: &dyn Fn()) -> Answer {
     let Ok(audio) = private_audio_file(wav) else {
         debug("wake: confirm could not make its audio file");
         return Answer::Failed;
     };
-    let mut command = Command::new(voxcmd_command());
+    let mut command = Command::new(program);
     command
         .args(["internal", "wake-confirm", "/dev/stdin"])
         .env("VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS", CONFIRM_TIMEOUT_SECS.to_string())
@@ -475,6 +497,10 @@ fn confirm(wav: &[u8], group: &AtomicI32) -> Answer {
         .stderr(Stdio::null())
         // Its own group, so a hung voxtype under it goes with it.
         .process_group(0);
+    let mut confirming = registry.lock().unwrap();
+    if confirming.stopping {
+        return Answer::Failed;
+    }
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
@@ -482,7 +508,9 @@ fn confirm(wav: &[u8], group: &AtomicI32) -> Answer {
             return Answer::Failed;
         }
     };
-    group.store(child.id() as i32, Ordering::SeqCst);
+    after_spawn();
+    confirming.group = child.id() as libc::pid_t;
+    drop(confirming);
     let limit = Duration::from_secs(CONFIRM_TIMEOUT_SECS + CONFIRM_KILL_GRACE_SECS);
     match wait_within(&mut child, limit).and_then(|status| status.code()) {
         Some(0) => Answer::Confirmed,
@@ -594,7 +622,7 @@ fn run_live(settings: &Settings, scorer: Box<dyn Scorer>, decider: Decider) -> R
             .then(|| Box::new(other_app_recording) as Box<dyn FnMut() -> bool>),
     );
     let worker = ConfirmWorker::new();
-    let confirm_group = Arc::clone(&worker.group);
+    let confirm_registry = Arc::clone(&worker.registry);
     let mut state_file = StateFile::new(paths::wake_state(), std::process::id());
     let mut listener = Listener::new(
         (
@@ -618,16 +646,8 @@ fn run_live(settings: &Settings, scorer: Box<dyn Scorer>, decider: Decider) -> R
     );
     listener.run();
     // A confirmation still running would leave a voxtype behind. wake.json stays: the unit's ExecStopPost removes it.
-    kill_group(&confirm_group);
+    stop_confirming(&confirm_registry);
     Ok(())
-}
-
-fn kill_group(group: &AtomicI32) {
-    let group = group.load(Ordering::SeqCst);
-    if group > 0 {
-        // SAFETY: signals the process group of a child this process spawned.
-        unsafe { libc::kill(-group, libc::SIGKILL) };
-    }
 }
 
 #[cfg(test)]
@@ -1193,6 +1213,54 @@ mod tests {
         }
         rig.steps(1);
         assert_eq!(rig.states().last().unwrap(), &(State::Armed, None));
+    }
+
+    // ---- a stop while a confirmation starts -----------------------------------------------------------------------
+
+    #[test]
+    fn a_stop_between_the_spawn_and_the_registration_still_ends_the_confirmation() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("pid");
+        let stub = dir.path().join("wake-confirm-stub");
+        std::fs::write(
+            &stub,
+            format!("#!/bin/sh\necho $$ >'{}'\nexec sleep 30\n", pid_file.display()),
+        )
+        .unwrap();
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let registry = ConfirmRegistry::default();
+        let (spawned_tx, spawned_rx) = std::sync::mpsc::channel();
+        let (answer_tx, answer_rx) = std::sync::mpsc::channel();
+        let worker_registry = Arc::clone(&registry);
+        std::thread::spawn(move || {
+            let answer = confirm(stub.as_os_str(), &[0; 8], &worker_registry, &|| {
+                // The child exists and is not registered yet: the stop lands here.
+                spawned_tx.send(()).unwrap();
+                std::thread::sleep(Duration::from_millis(300));
+            });
+            answer_tx.send(answer).unwrap();
+        });
+        spawned_rx.recv().unwrap();
+        stop_confirming(&registry);
+        // Without the fix nothing ends the stub and the worker waits out its 8 s limit.
+        assert_eq!(answer_rx.recv_timeout(Duration::from_secs(3)), Ok(Answer::Failed));
+        let pid: libc::pid_t = std::fs::read_to_string(&pid_file).unwrap().trim().parse().unwrap();
+        // SAFETY: signal 0 only checks that the process exists.
+        assert_ne!(unsafe { libc::kill(pid, 0) }, 0, "the confirmation outlived the stop");
+    }
+
+    #[test]
+    fn a_confirmation_that_starts_after_the_stop_never_spawns() {
+        let registry = ConfirmRegistry::default();
+        stop_confirming(&registry);
+        let answer = confirm(
+            std::ffi::OsStr::new("/nonexistent/never-run"),
+            &[0; 8],
+            &registry,
+            &|| panic!("spawned after the stop"),
+        );
+        assert_eq!(answer, Answer::Failed);
     }
 
     #[test]
