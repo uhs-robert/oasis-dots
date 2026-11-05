@@ -2,6 +2,7 @@
 pub mod capture;
 pub mod decider;
 pub mod gate;
+pub mod listen;
 pub mod models;
 pub mod scorer;
 pub mod settings;
