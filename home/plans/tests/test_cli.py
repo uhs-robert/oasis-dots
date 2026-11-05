@@ -98,6 +98,7 @@ class CliTest(unittest.TestCase):
         data = json.loads(self.plans("ls", "--json").stdout)
         self.assertEqual(data[0]["rank"], 10)
         self.assertEqual(data[0]["depends_on"], [])
+        self.assertEqual(data[0]["fix_rounds"], 0)
         self.assertEqual(data[0]["path"], os.path.join(self.repo, ".plans/other/first.md"))
 
     def test_ls_from_a_worktree_reads_the_main_checkout(self):
@@ -170,10 +171,16 @@ class CliTest(unittest.TestCase):
         changed = [b for a, b in zip(before.splitlines(), after.splitlines()) if a != b]
         self.assertEqual([line.split(":")[0] for line in changed], ["status", "depends_on", "waiting_on", "pr", "updated"])
 
+    def test_set_adds_fix_rounds_to_a_doc_without_it(self):
+        path = self.add("demo", 10)
+        self.plans("set", "demo", "fix_rounds=2")
+        self.assertEqual(parse.load(path).keys["fix_rounds"], 2)
+        self.assertEqual(self.plans("lint").stdout, "")
+
     def test_set_refuses_bad_values(self):
         path = self.add("demo", 10)
         before = self.read(path)
-        for pair in ("project=other", "waiting_on=two\nlines", "branch=a\rb", "status=active", "kind=plan", "rank=high", "owner_session=Bob", "id=x", "updated=x", "colour=x", "nopair"):
+        for pair in ("project=other", "waiting_on=two\nlines", "branch=a\rb", "status=active", "kind=plan", "rank=high", "fix_rounds=-1", "owner_session=Bob", "id=x", "updated=x", "colour=x", "nopair"):
             with self.subTest(pair=pair):
                 self.plans("set", "demo", pair, code=2)
         self.assertEqual(self.read(path), before)
@@ -222,9 +229,9 @@ class CliTest(unittest.TestCase):
         path = self.plans("new", "proj2", "fresh", "--kind", "bug").stdout.strip()
         self.assertEqual(path, os.path.join(self.repo, ".plans", "proj2", "fresh.md"))
         doc = parse.load(path)
-        self.assertEqual({key: doc.keys[key] for key in ("id", "project", "kind", "status", "owner_session", "rank", "updated")},
+        self.assertEqual({key: doc.keys[key] for key in ("id", "project", "kind", "status", "owner_session", "rank", "fix_rounds", "updated")},
                          {"id": "fresh", "project": "proj2", "kind": "bug", "status": "idea", "owner_session": "none",
-                          "rank": 50, "updated": TODAY})
+                          "rank": 50, "fix_rounds": 0, "updated": TODAY})
         self.assertEqual(list(doc.keys), list(parse.KEY_ORDER))
         self.assertEqual(list(doc.sections()), list(parse.SECTIONS))
         self.assertEqual(self.plans("lint").stdout, "")

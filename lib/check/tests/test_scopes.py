@@ -24,7 +24,6 @@ CASES = [
     ("lib/check/steps/symlinks.sh", " checkscope"),
     ("lib/check/registry.allow", " checkscope"),
     ("lib/check/qml-ipc.allow", " checkscope"),
-    ("lib/plan_new.py", " checkscope"),
     # A check module or allow list that a step of another folder reads reaches that folder as well.
     ("lib/check/steps/qml.py", " checkscope quickshell"),
     ("lib/check/qml-layers.allow", " checkscope quickshell"),

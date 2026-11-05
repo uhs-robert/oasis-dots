@@ -20,6 +20,7 @@ waiting_on: "owner: pick a colour"
 issue: 12
 pr: none
 branch: feat/demo
+fix_rounds: 1
 updated: "2026-11-05"
 ---
 # demo
@@ -56,6 +57,7 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(parsed.keys["depends_on"], ["a", "b c"])
         self.assertEqual(parsed.keys["waiting_on"], "owner: pick a colour")
         self.assertEqual(parsed.keys["branch"], "feat/demo")
+        self.assertEqual(parsed.keys["fix_rounds"], 1)
         self.assertEqual(parsed.keys["updated"], "2026-11-05")
         self.assertEqual(list(parsed.keys), list(parse.KEY_ORDER))
 
@@ -95,13 +97,13 @@ class ParseTest(unittest.TestCase):
         parsed = doc(DOC)
         text = parsed.render({"status": "building", "depends_on": [], "waiting_on": "", "new_key": "x"})
         before, after = DOC.splitlines(), text.splitlines()
-        changed = [i for i, (a, b) in enumerate(zip(before[:13], after[:13])) if a != b]
+        changed = [i for i, (a, b) in enumerate(zip(before[:14], after[:14])) if a != b]
         self.assertEqual(changed, [4, 7, 8])
         self.assertEqual(after[4], "status: building")
         self.assertEqual(after[7], "depends_on: []")
         self.assertEqual(after[8], 'waiting_on: ""')
-        self.assertEqual(after[13], "new_key: x")
-        self.assertEqual(after[14:], before[13:])
+        self.assertEqual(after[14], "new_key: x")
+        self.assertEqual(after[15:], before[14:])
         self.assertTrue(text.endswith(parsed.body))
         self.assertEqual(text.split("---\n", 2)[2], parsed.body)
 

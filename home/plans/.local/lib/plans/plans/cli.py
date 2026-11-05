@@ -157,6 +157,8 @@ def one_line(value):
 
 def doc_json(doc, repo=None):
     data = dict(doc.keys)
+    for key, value in parse.DEFAULTS.items():
+        data.setdefault(key, value)
     data["path"] = doc.path
     if repo is not None:
         data["repo"] = repo.name
@@ -264,9 +266,9 @@ def coerce(key, raw):
     if key in parse.LIST_KEYS:
         inner = raw[1:-1] if raw.startswith("[") and raw.endswith("]") else raw
         return [item.strip() for item in inner.split(",") if item.strip()]
-    if key == "rank":
+    if key in parse.INTEGER_KEYS:
         if not parse.INTEGER.fullmatch(raw):
-            raise UsageError(f"rank must be a whole number, not {raw!r}")
+            raise UsageError(f"{key} must be a whole number, not {raw!r}")
         return int(raw)
     closed_sets = {"kind": validate.KINDS, "status": validate.STATUSES}
     if key in closed_sets and raw not in closed_sets[key]:
@@ -346,7 +348,7 @@ def new_doc_text(project, doc_id, kind, rank):
     keys = {
         "id": doc_id, "project": project, "kind": kind, "status": "idea", "owner_session": validate.NO_SESSION,
         "rank": rank, "depends_on": [], "waiting_on": "", "issue": "none", "pr": "none", "branch": "none",
-        "updated": store.today(),
+        "fix_rounds": 0, "updated": store.today(),
     }
     head = "".join(f"{key}: {parse.format_value(keys[key])}\n" for key in parse.KEY_ORDER)
     sections = "".join(f"\n## {title}\n" for title in parse.SECTIONS)

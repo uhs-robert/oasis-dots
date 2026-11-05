@@ -17,7 +17,7 @@ for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GI
 
 GOOD_KEYS = {
     "id": "demo", "project": "proj", "kind": "feature", "status": "planned", "owner_session": "none", "rank": "10",
-    "depends_on": "[]", "waiting_on": '""', "issue": "none", "pr": "none", "branch": "none", "updated": '"2026-11-05"',
+    "depends_on": "[]", "waiting_on": '""', "issue": "none", "pr": "none", "branch": "none", "fix_rounds": "0", "updated": '"2026-11-05"',
 }
 GOOD_BODY = "# demo\n\n## Goal\n\n## Decisions\n\n## Plan\n\n## Open questions\n\n- [ ] One?\n  more of it\n- [x] Two\n\n## Owner checks\n"
 
@@ -61,6 +61,10 @@ class DocRulesTest(unittest.TestCase):
 
     def test_rank_integer(self):
         self.assertEqual(rules(make({"rank": "high"})), ["rank"])
+
+    def test_fix_rounds_integer_and_optional(self):
+        self.assertEqual(rules(make({"fix_rounds": "two"})), ["fix-rounds"])
+        self.assertEqual(rules(make(drop=("fix_rounds",))), [])
 
     def test_owner_session(self):
         for good in ("none", "dotfiles-56", "oasisfox-5c", "my-repo-00"):

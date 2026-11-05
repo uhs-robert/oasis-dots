@@ -54,7 +54,7 @@ def key_findings(doc):
 
     keys = doc.keys
     for key in parse.KEY_ORDER:
-        if key not in keys:
+        if key not in keys and key not in parse.DEFAULTS:
             flag(key, "missing-key", f"no {key} key")
     if "kind" in keys and keys["kind"] not in KINDS:
         flag("kind", "kind", f"kind {keys['kind']!r} is none of {', '.join(KINDS)}")
@@ -62,8 +62,9 @@ def key_findings(doc):
         flag("status", "status", f"status {keys['status']!r} is none of {', '.join(STATUSES)}")
     if "id" in keys and keys["id"] != doc.file_id:
         flag("id", "id", f"id {keys['id']!r} differs from the file name {doc.file_id!r}")
-    if "rank" in keys and not isinstance(keys["rank"], int):
-        flag("rank", "rank", f"rank {keys['rank']!r} is no integer")
+    for key in parse.INTEGER_KEYS:
+        if key in keys and not isinstance(keys[key], int):
+            flag(key, key.replace("_", "-"), f"{key} {keys[key]!r} is no integer")
     if "owner_session" in keys and not is_session_or_none(keys["owner_session"]):
         flag("owner_session", "owner-session", f"owner_session {keys['owner_session']!r} is no session name (like dotfiles-56) or none")
     if "waiting_on" in keys and not isinstance(keys["waiting_on"], str):

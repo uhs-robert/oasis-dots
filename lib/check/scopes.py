@@ -178,8 +178,7 @@ PATH_SCOPES = [
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "hooks"),
     (".claude/skills/ship-batch/*", "skills"),
-    # checkscope: the runner's own modules and tests, and the scripts whose tests are unittest cases in lib/check/tests.
-    ("lib/plan_new.py", "checkscope"),
+    # checkscope: the runner's own modules and tests.
     ("lib/check/*", "checkscope"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.

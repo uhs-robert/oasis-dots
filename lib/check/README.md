@@ -48,7 +48,7 @@ A scope is a folder, and a change reaches the steps of the scopes its path falls
 | `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar`, `home/agents`, `home/plans` | the install tests, calendar-sync-syntax, agent-run, plans |
 | `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator` and `orchestrator-handoff` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
 | `skills` | the `ship-batch` and `merge-prs` skills | their suites (5 to 11 minutes) |
-| `checkscope` | `lib/check`, `lib/plan_new.py`, the `lib/docs` generators | check-scope, check-cache |
+| `checkscope` | `lib/check`, the `lib/docs` generators | check-scope, check-cache |
 | `docsgen` | the keymaps, the IpcHandler files, the `lib/docs` generators | docs-generated |
 
 A file that a step of another folder reads gets one row naming both scopes, ahead of its folder's row. Markdown reaches no scope, in any folder; the exceptions are the two files `docs-generated` compares (`docs/keybinds.md`, the Quickshell README), found by grepping the steps and tests for `.md`. Other `.md` mentions there are strings in test data.
