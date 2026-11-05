@@ -18,6 +18,8 @@ SESSION = re.compile(r"[a-z0-9][a-z0-9.]*(-[a-z0-9.]+)*-[a-z0-9]+")
 NO_SESSION = "none"
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 CHECKLIST_ITEM = re.compile(r"- \[[ xX]\] .*")
+# The keys whose value a write must take from a closed set.
+CLOSED_VALUES = {"kind": KINDS, "status": STATUSES}
 MIGRATE = "migrate this repo"
 
 
@@ -83,6 +85,15 @@ def owner_of(doc):
 
 def is_session_or_none(value):
     return value == NO_SESSION or (isinstance(value, str) and SESSION.fullmatch(value) is not None)
+
+
+def write_problem(key, value):
+    """Why a write may not set `key` to `value`, or None. `plans set`, `plans claim` and the board all check with it."""
+    if key in CLOSED_VALUES and value not in CLOSED_VALUES[key]:
+        return f"{key} {value!r} is none of {', '.join(CLOSED_VALUES[key])}"
+    if key == "owner_session" and not is_session_or_none(value):
+        return f"{value!r} is no session name (like dotfiles-56) or none"
+    return None
 
 
 def section_findings(doc):

@@ -1,12 +1,14 @@
 """`plans serve`: one local web board over the plan docs of every repo under the roots.
 
 The board reads each repo through query.read_repo, so it sees what `plans ls --all` sees. A watcher thread polls the doc
-mtimes and pushes a new board version to the page by server-sent events.
+mtimes and pushes a new board version to the page by server-sent events. Every write goes through store.update, with
+the values the page showed as the basis, so an edit made after the page last loaded refuses the write.
 """
 
 import http.server
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -15,7 +17,7 @@ import time
 
 from typing import NamedTuple
 
-from . import parse, query, roots, validate
+from . import parse, query, roots, store, validate
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -24,6 +26,25 @@ RESCAN_SECONDS = 30
 KEEPALIVE_SECONDS = 15
 PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "board.html")
 GITHUB_REMOTE_PREFIXES = ("git@github.com:", "https://github.com/", "ssh://git@github.com/")
+# The page sends this header with every write. A page on another site cannot add a custom header to a request here
+# without a CORS preflight, and this server answers none, so a forged cross-site write never gets through.
+WRITE_HEADER = "X-Plans-Board"
+MAX_BODY_BYTES = 64 * 1024
+# The board edits only these through /api/update. Rank changes go through /api/move, and the rest stays read-only.
+EDITABLE_KEYS = ("status", "owner_session")
+RANK_STEP = 10
+# Hyprland writes this launcher for the terminal it opens. $TERMINAL is the fallback outside that desktop.
+HYPR_TERMINAL = os.path.join("hypr", "bin", "term")
+FALLBACK_EDITOR = "nvim"
+
+
+class Refused(Exception):
+    """A write the server turns down before it reaches store.update."""
+
+    def __init__(self, code, message, **extra):
+        super().__init__(message)
+        self.code = code
+        self.data = {"error": message, **extra}
 
 
 class RepoView(NamedTuple):
@@ -108,6 +129,22 @@ class Board:
         self.stopping.set()
         with self.changed:
             self.changed.notify_all()
+
+    def find_doc(self, path):
+        """The readable doc the board shows at `path`, or None. Writes accept only these paths."""
+        for view in self.views.values():
+            for doc in view.repo.docs:
+                if doc.path == path:
+                    return view, doc
+        return None, None
+
+    def find_any_doc(self, path):
+        """Like find_doc, but also the docs behind error cards, which `o` opens so the owner can fix them."""
+        for view in self.views.values():
+            for doc in view.repo.docs + view.repo.unreadable + view.repo.old_kind:
+                if doc.path == path:
+                    return doc
+        return None
 
     def as_json(self):
         with self.changed:
@@ -231,6 +268,43 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_events()
         return self.send_json(404, {"error": f"no page {self.path}"})
 
+    def do_POST(self):  # noqa: N802
+        if not self.host_is_local():
+            return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
+        if not self.write_is_from_board():
+            return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
+        actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc}
+        action = actions.get(self.path)
+        if action is None:
+            return self.send_json(404, {"error": f"no action {self.path}"})
+        code, data = run_action(action, self.board, self.read_json)
+        # The page reloads the board right after a write, so the board reads the disk before it answers. A failed
+        # read must not cost the page its answer; the watcher tries again.
+        try:
+            self.board.poll()
+        except Exception as error:  # noqa: BLE001
+            self.log_error("scan after a write failed: %r", error)
+        return self.send_json(code, data)
+
+    def write_is_from_board(self):
+        origin = self.headers.get("Origin")
+        origin_is_local = origin is None or origin in {f"http://{host}" for host in self.allowed_hosts()}
+        is_json = (self.headers.get("Content-Type") or "").split(";")[0].strip() == "application/json"
+        return self.headers.get(WRITE_HEADER) == "1" and is_json and origin_is_local
+
+    def read_json(self):
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise Refused(400, "bad Content-Length") from None
+        # A negative length would make rfile.read wait for the client to close the connection.
+        if not 0 <= length <= MAX_BODY_BYTES:
+            raise Refused(413, f"the body length must be 0 to {MAX_BODY_BYTES} bytes")
+        try:
+            return json.loads(self.rfile.read(length) or b"null")
+        except ValueError:
+            raise Refused(400, "the body is no JSON") from None
+
     def send_page(self):
         with open(PAGE, "rb") as handle:
             body = handle.read()
@@ -270,6 +344,181 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.wfile.flush()
         except OSError:
             pass
+
+
+def run_action(action, board, read_request):
+    """The status code and JSON answer of one write action, with each refusal mapped to its code."""
+    try:
+        request = read_request()
+        if not isinstance(request, dict):
+            raise Refused(400, "the body must be a JSON object")
+        return 200, action(board, request) or {}
+    except Refused as refusal:
+        return refusal.code, refusal.data
+    except store.Conflict as conflict:
+        return 409, {"error": str(conflict), "path": conflict.path, "keys": conflict.keys}
+    except store.Vanished as vanished:
+        return 410, {"error": str(vanished), "path": vanished.path}
+    except parse.ParseError as error:
+        return 422, {"error": str(error), "path": error.path}
+    except UnicodeDecodeError as error:
+        # parse.read decodes before store.update writes anything, so nothing landed.
+        return 422, {"error": f"a doc is not UTF-8: {error.reason}"}
+    except OSError as error:
+        # The failure can come after os.replace (the directory fsync), so the write may have landed.
+        return 500, {"error": f"the write failed and may have landed: {error}", "maybe_applied": True}
+
+
+def board_doc(board, request):
+    path = request.get("path")
+    view, doc = board.find_doc(path)
+    if doc is None:
+        raise Refused(404, f"no readable doc on the board at {path!r}; reload the board")
+    return view, doc
+
+
+def based_on(doc, basis):
+    """`doc` with the values the page showed for the keys in `basis`. The board's copy can be newer than the page,
+    and store.update must compare the disk against what the owner saw, or it would miss an edit made in between."""
+    if not isinstance(basis, dict) or any(key not in parse.KEY_ORDER for key in basis):
+        raise Refused(400, "basis must map front matter keys to the values the page showed")
+    if any(isinstance(value, bool) or not isinstance(value, (str, int)) for value in basis.values()):
+        raise Refused(400, "a basis value must be a string or a whole number")
+    return parse.Doc(doc.path, doc.render(basis))
+
+
+def checked_changes(request, allowed_keys):
+    changes, basis = request.get("changes"), request.get("basis")
+    if not isinstance(changes, dict) or not changes:
+        raise Refused(400, "changes must map keys to new values")
+    for key, value in changes.items():
+        if key not in allowed_keys:
+            raise Refused(400, f"the board cannot set {key}")
+        problem = validate.write_problem(key, value) if isinstance(value, str) else f"{key} must be a string"
+        if problem:
+            raise Refused(400, problem)
+    if not isinstance(basis, dict) or set(changes) - set(basis):
+        raise Refused(400, "basis must hold the shown value of every changed key")
+    return changes, basis
+
+
+def update_doc(board, request):
+    """Set status or owner_session. Request: {path, basis: {key: shown value}, changes: {key: new value}}."""
+    _, doc = board_doc(board, request)
+    changes, basis = checked_changes(request, EDITABLE_KEYS)
+    store.update(based_on(doc, basis), changes)
+
+
+def move_doc(board, request):
+    """Drop a card into a status column between two neighbours. Request: {path, basis: {status, rank}, status,
+    above: path or null, below: path or null}. The new rank is the midpoint of the neighbours' ranks. When they leave
+    no gap, the repo's ranks are renumbered in steps of RANK_STEP."""
+    view, doc = board_doc(board, request)
+    status = request.get("status")
+    problem = validate.write_problem("status", status)
+    if problem:
+        raise Refused(400, problem)
+    basis = request.get("basis")
+    if not isinstance(basis, dict) or not isinstance(basis.get("rank"), int) or "status" not in basis:
+        raise Refused(400, "basis must hold the shown status and rank")
+    # The neighbours' ranks come from the disk, not from the page: the drop means "between these two" as they are now.
+    repo = query.read_repo(view.root)
+    ranked = [other for other in sorted(repo.docs, key=query.rank_order)
+              if isinstance(other.keys.get("rank"), int) and other.path != doc.path]
+    above, below = (neighbour(ranked, request.get(side)) for side in ("above", "below"))
+    refuse_moved_neighbours(ranked, doc, status, above, below)
+    if above is None and below is None:
+        rank = basis["rank"]
+    else:
+        rank = rank_between(above and above.keys["rank"], below and below.keys["rank"])
+    if rank is not None:
+        # Both keys go in even when one keeps the shown value: store.update compares only the keys it writes, and an
+        # agent's change to either must refuse the move.
+        store.update(based_on(doc, basis), {"status": status, "rank": rank})
+        return {"renumbered": 0, "skipped": [], "uncertain": []}
+    order = list(ranked)
+    order.insert(order.index(below) if below is not None else order.index(above) + 1, doc)
+    return renumber(order, doc, based_on(doc, basis), status)
+
+
+def neighbour(ranked, path):
+    if path is None:
+        return None
+    found = next((other for other in ranked if other.path == path), None)
+    if found is None:
+        raise Refused(409, f"the card next to the drop at {path} moved or left; reload the board", keys=["rank"])
+    return found
+
+
+def refuse_moved_neighbours(ranked, doc, status, above, below):
+    """409 unless `above` and `below` are still next to each other in the target cell (same project and status), with
+    nothing before `below` or after `above` when the other side is empty. An agent may have re-ranked or moved them
+    since the page loaded, and a drop between them would then renumber over the agent's ranks."""
+    cell = [other for other in ranked if other.keys.get("project") == doc.keys.get("project")
+            and other.keys.get("status") == status]
+    slots = zip([None] + cell, cell + [None])
+    if not any(before is above and after is below for before, after in slots):
+        raise Refused(409, "the cards around the drop changed since the board loaded; reload the board", keys=["rank"])
+
+
+def rank_between(above, below):
+    """A whole number strictly between the two ranks (None means no card on that side), or None when there is none.
+    A rank stays at 0 or above, because the front matter subset has no negative numbers."""
+    if above is None:
+        return below - RANK_STEP if below >= RANK_STEP else (below // 2 if below > 0 else None)
+    if below is None:
+        return above + RANK_STEP
+    return (above + below) // 2 if below - above >= 2 else None
+
+
+def renumber(order, moved, moved_basis, status):
+    """Give `order` the ranks RANK_STEP, 2 * RANK_STEP and so on. The moved doc goes first, so a stale page refuses the
+    whole move. Each other doc is its own store.update: a doc that an agent re-ranked meanwhile keeps the agent's rank
+    and lands in `skipped`. A doc whose write failed partway lands in `uncertain`, and the rest are renumbered."""
+    new_ranks = {doc.path: RANK_STEP * (index + 1) for index, doc in enumerate(order)}
+    store.update(moved_basis, {"status": status, "rank": new_ranks[moved.path]})
+    renumbered, skipped, uncertain = 1, [], []
+    for doc in order:
+        if doc is moved or doc.keys["rank"] == new_ranks[doc.path]:
+            continue
+        try:
+            store.update(doc, {"rank": new_ranks[doc.path]})
+            renumbered += 1
+        except (store.Conflict, store.Vanished, parse.ParseError, UnicodeDecodeError) as error:
+            skipped.append({"path": doc.path, "id": doc.id, "error": str(error)})
+        except OSError as error:
+            # As in run_action: the new rank may have landed, so this doc is neither renumbered nor skipped.
+            uncertain.append({"path": doc.path, "id": doc.id, "error": str(error)})
+    return {"renumbered": renumbered, "skipped": skipped, "uncertain": uncertain}
+
+
+def open_doc(board, request):
+    """Open the doc in the editor, in a new terminal window."""
+    path = request.get("path")
+    doc = board.find_any_doc(path)
+    if doc is None:
+        raise Refused(404, f"no doc on the board at {path!r}; reload the board")
+    try:
+        editor = shlex.split(os.environ.get("VISUAL") or os.environ.get("EDITOR") or FALLBACK_EDITOR)
+        process = subprocess.Popen([*terminal_command(), *editor, doc.path], cwd=os.path.dirname(doc.path),
+                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   start_new_session=True)
+    except ValueError as error:
+        raise Refused(500, f"cannot read $VISUAL, $EDITOR or $TERMINAL: {error}") from None
+    except OSError as error:
+        raise Refused(500, f"cannot start the terminal: {error}") from None
+    # Reaps the terminal launcher when it exits, so it leaves no zombie behind.
+    threading.Thread(target=process.wait, daemon=True).start()
+
+
+def terminal_command():
+    state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    launcher = os.path.join(state, HYPR_TERMINAL)
+    if os.access(launcher, os.X_OK):
+        return [launcher, "-e"]
+    if os.environ.get("TERMINAL"):
+        return [*shlex.split(os.environ["TERMINAL"]), "-e"]
+    raise Refused(501, f"no terminal to open the doc in: set $TERMINAL or provide {launcher}")
 
 
 class Server(http.server.ThreadingHTTPServer):
