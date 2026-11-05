@@ -66,14 +66,14 @@ Settings go in `~/.config/voxcmd/autostop.conf` (`name = value`, `#` comments; i
 1. The transcript is lowercased, punctuation is dropped and whitespace collapsed: `"Set volume to 40%."` becomes `set volume to 40`.
 2. Replacement files in `replacements.d/` rewrite whole words, for words the speech model keeps getting wrong.
    "What can I say", "voice help" and "show voice commands" then open [Voice Help](#voice-help) before any integration is tried, and "never mind", "cancel", "forget it" and "nothing" end there, running nothing.
-2b. While a bar surface is open (an integration's `surface_open`, today the [overview](#overview)), the phrase goes to that integration's verbs first; if they match nothing, routing goes on.
-3. A phrase that starts with an integration's [force prefix](#force-prefixes) skips every other integration and the LLM hook: the rest of the phrase is matched against that integration's verbs alone, whatever its tier, then goes through steps 5, 6 and 8. Nothing matching there is a "no match", with no other integration tried.
+2b. While a bar surface is open (an integration's [`[surface]`](#actions-and-hooks), today the [overview](#overview)), the phrase goes to that integration's verbs first; if they match nothing, routing goes on.
+3. A phrase that starts with an integration's [force prefix](#force-prefixes) skips every other integration: the rest of the phrase is matched against that integration's verbs alone, whatever its tier, then goes through steps 5, 6 and 8. Nothing matching there is a "no match", with no other integration tried.
 4. Each integration's verbs are tried in order against the whole phrase; the first match per integration counts.
-5. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match=words`, [word matching](#word-matching).
-6. A target that matches none of the candidates runs the action the integration names for that case in `no_match_actions`, if any. A [word matching](#word-matching) target with no words left after the filler and `match_ignore_words` are dropped names nothing, so it runs no such action and the phrase can fall through to the fallbacks.
-7. If nothing so far can run, the [LLM hook](#llm-hook) gets a turn, then the [fallback integrations](#fallback-integrations) go through steps 4 to 6.
+5. A verb with a target whose integration lists candidates for that action matches the target against them: fuzzy (`fzf --filter`, an exact label winning outright) or, for an integration with `target_match = "words"`, [word matching](#word-matching).
+6. A target that matches none of the candidates runs the `no_match` action of the verb's action, if it has one. A [word matching](#word-matching) target with no words left after the filler and `match_ignore_words` are dropped names nothing, so it runs no such action and the phrase can fall through to the fallbacks.
+7. If nothing so far can run, the [fallback integrations](#fallback-integrations) go through steps 4 to 6.
 7b. If still nothing can run, and no force prefix or open surface took the phrase, the verbs whose words are all in the phrase in another order are offered as [near misses](#near-misses), each as a weak pick. A [correction retry](#how-a-phrase-is-routed) (step 9) is tried first and wins when it matches.
-8. One option runs (after a [confirm card](#confirm) if the integration sets `confirm=1` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
+8. One option runs (after a [confirm card](#confirm) if the integration sets `confirm = true` or the option's label matches its `confirm_labels`). Several, or a single weak word match, open a picker, the Quickshell one when the bar is running and `rofi -dmenu` otherwise, which can also be [answered by voice](#answering-by-voice); cancelling does nothing. None sends a "no match" notification with a Voice Help button.
 
 9. A phrase that matched nothing, or only weak matches, is retried on the part after its last correction point, then earlier points: after "no", "no wait", "wait", "I mean", "sorry", "actually", "scratch that" or "let me rephrase", after leading filler ("um", "uh", "okay", "so", "hey"), and from the second occurrence of the first word. "Exit, exit overview" is "exit overview", "close two, no wait, close three" is "close three" and "um, okay so open firefox" is "open firefox". The retry is taken only when it is one option that is not a weak match; otherwise step 8 goes on with the phrase as spoken. A phrase that matches as spoken is never retried ("remind me to say sorry" is a reminder), and no other tail is tried, since a leftover "four" can be a command of its own. A [voice session](#voice-sessions) turn is retried the same way (its mode's integration only); [type mode](#type-mode) never is. `$raw_transcript` is the retried part.
 
@@ -85,8 +85,8 @@ A notification reports what ran, followed by the last line the command printed, 
 
 "Open firefox and then go to youtube" is two commands in one phrase. voxcmd splits the transcript on "and then", or on ", then" when the transcript has the comma (Whisper usually writes it), and never on a bare "then": "open firefox then ..." is one phrase. Each step is routed as a phrase of its own (steps 1 to 8 above, with its own wake word, force prefix, Voice Help and discard phrases), one after another, each only once the one before has finished. A leading wake word is stripped from the whole phrase first. `$raw_transcript` is the step's own words.
 
-- **Free text takes the rest.** An action that takes dictated text (a timer's "remind me to ...", a calendar event's title) may contain "and then" itself, so an integration lists those actions in `free_text_actions` and the step that starts with one of their verbs takes the whole remainder of the phrase. Put the dictated command last: "open firefox and then remind me to call mom and then email bob" is two steps, the second a reminder with the whole text.
-- **Waiting.** Between steps voxcmd waits for what the step started to show: by default no popup opening or closing and no click overlay, then `VOXCMD_APP_SETTLE_SECS` (0.3 s) for the app; an action that starts something slower declares its own condition in `step_waits` (opening an app waits for its window to have focus, a day in the calendar for the clock popup). It polls, never waits on the compositor's events, and does not wait after the last step. A wait that outlasts `VOXCMD_STEP_TIMEOUT_SECS` (15) stops the sequence.
+- **Free text takes the rest.** An action that takes dictated text (a timer's "remind me to ...", a calendar event's title) may contain "and then" itself, so an integration marks those actions `free_text = true` and the step that starts with one of their verbs takes the whole remainder of the phrase. Put the dictated command last: "open firefox and then remind me to call mom and then email bob" is two steps, the second a reminder with the whole text.
+- **Waiting.** Between steps voxcmd waits for what the step started to show: by default no popup opening or closing and no click overlay, then `VOXCMD_APP_SETTLE_SECS` (0.3 s) for the app; an action that starts something slower declares its own condition with `wait` or `wait_hook` (opening an app waits for its window to have focus, a day in the calendar for the clock popup). It polls, never waits on the compositor's events, and does not wait after the last step. A wait that outlasts `VOXCMD_STEP_TIMEOUT_SECS` (15) stops the sequence.
 - **Stopping.** The first step that does not run stops the rest: no match (a Voice Help phrase counts as one), a cancelled picker, a declined confirm card, a failed command, a timed-out wait, or a discard phrase (silently). One notification says where, instead of the step's own: an error "voxcmd: stopped at step 2 of 3" with the step, the end of its output and "1 more step not run"; for no match an info one with the Voice Help button quoting the step's words (never a free-text target); for a picker or card "Stopped at step 2 of 3: cancelled" or "...: not confirmed". Steps that ran keep their own notifications. A step whose label is private ([`private_labels`](#silent-actions)) is named without it.
 - **Limits.** At most 5 steps; more is refused, and nothing runs. A mode switch ("rapid mode", "type mode") is allowed only as the last step: anywhere else the whole phrase is refused, and nothing runs. Neither is split inside [type mode](#type-mode), whose words are text.
 - **Confirm cards and pickers** work as in any phrase, in any step, and listen for a spoken answer when the phrase was spoken.
@@ -95,108 +95,113 @@ A notification reports what ran, followed by the last line the command printed, 
 
 ## Integrations
 
-Integrations are the TOML files in `~/.config/voxcmd/integrations/` (the shipped ones are the reference until the README is rewritten around that format). The rest of this section describes the former bash format: `integrations.d/*.sh` is no longer read, and `voxcmd integrations check` warns about a leftover file.
+An integration is one TOML file in `~/.config/voxcmd/integrations/`. It lists verbs (phrase patterns), the actions they run and, for a verb that names a target, a hook that says what the target can mean. voxcmd tries the files in file-name order.
 
-Each `~/.config/voxcmd/integrations.d/*.sh` was a bash file sourced in its own subshell:
+The shipped files are the examples to copy from, and `voxcmd integrations examples` lists the phrases each one takes. `src/config/schema.rs` defines every key and its type (`FILE_KEYS`, `VERB_KEYS`, `ACTION_KEYS` and the structs next to them), so this section says what the keys mean and does not list them again. `voxcmd integrations check` validates your files and reports `file:line:col`, a mistyped key included. `voxcmd integrations list` shows what loaded.
+
+```toml
+name = "Windows"   # shown in notifications and the picker; defaults to the file name
+
+# Tried in order against the whole normalized phrase. The first match counts.
+verbs = [
+  { action = "focus", match = '{focus} {target}' },
+]
+
+# Example phrases for Voice Help, with a spoken part in angle brackets.
+examples = ["focus <window title>"]
+
+[actions.focus]
+run = 'hyprctl dispatch "hl.dsp.focus({ window = \"address:$VOXCMD_ID\" })"'
+candidates = "window_candidates"
+```
+
+A `windows.sh` beside `windows.toml` is the integration's hook library. voxcmd sources it before every hook of that integration, so `window_candidates` is a function in it:
 
 ```bash
-name="Windows"     # shown in notifications and the picker; defaults to the file name
-confirm=0          # 1 asks before running any of this integration's actions
-
-# "action  pattern": the pattern is an ERE matched against the whole normalized phrase.
-# {target} captures free text, {number} digits; at most one per pattern. {focus} is an intent (see Intents).
-verbs=(
-  "focus  {focus} {target}"
-)
-
-# Commands are eval'd with $id (the chosen candidate's id, else the target), $target (the spoken text) and
-# $raw_transcript (the transcript before normalization and replacements, with its punctuation, digits and symbols),
-# and $confirmed, 1 when the confirm card asked and was answered yes, else 0.
-# The last line a command prints is appended to the notification, so it can say what actually happened.
-declare -A actions=(
-  [focus]='hyprctl dispatch "hl.dsp.focus({ window = \"address:$id\" })"'
-)
-
-# Optional. Example phrases for Voice Help, with placeholders in angle brackets.
-examples=(
-  "focus <window title>"
-)
-
-# Optional. Called with the action name and the spoken target for verbs with a target; prints a JSON array of
-# {id, label}. The target lets it list only what that phrase can mean, or [] to leave the phrase to a fallback;
-# $raw_transcript is set here too.
-# Printing nothing means "no candidates, use the target text"; printing [] means nothing can match.
-candidates() {
-  hyprctl clients -j | jq -c 'map({id: .address, label: "\(.class) \(.title)"})'
+window_candidates() {
+  hyprctl clients -j | jq -r '.[] | [.address, "\(.class) \(.title)"] | @tsv'
 }
 ```
 
-An integration whose targets are open-ended can catch a target that matches no candidate instead of letting it end as "no match":
+Files in `~/.config/voxcmd/integrations/` that do not end in `.toml` are never loaded as integrations, which is why `.sh` libraries can sit there. Helpers that several integrations share live in `~/.local/share/voxcmd/`, and a library sources one as `source "$VOXCMD_SHARE_DIR/spoken-time.sh"`. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow", "friday at 9"), the duration and day parsers (`parse_duration`, `parse_day`), the formatters for the times it prints (`format_at`, `format_length`) and the bar's clock format (`clock_time_format`), used by `timers.sh`, `answers.sh` and `calendar.sh`. `spoken-position.sh` reads a spoken position (`spoken_position`: "two", "twenty five", "second", "twenty first", "13th"; `spoken_ordinal` only ordinals, which need their own suffix, so "2th" is nothing) for the picker replies, workspaces, windows and monitors, never for counts and amounts, where "second" is a unit of time. `monitor-words.sh` names monitors (`monitor_places`, `monitor_named`) for `monitors.sh` and `overview.sh`; see [Monitors](#monitors).
 
-```bash
-# Optional. Maps an action to the one to run when its target matches no candidate; that action gets $target and an empty $id.
-declare -A no_match_actions=(
-  [open_project]='create_project'
-)
+The tracked `integrations/` and `replacements.d/` ignore everything except what ships (an allowlist in each folder's `.gitignore`), so private integrations dropped into the stowed folders stay out of git.
+
+### Verbs and patterns
+
+`verbs` is an ordered list of `{ action, match }`. `match` is a regex over the whole normalized phrase (see [step 1](#how-a-phrase-is-routed)): the pattern is anchored at both ends, and `.` matches any character. Order verbs from specific to general, as `media.toml` does with `play` before `play {target}`. The first verb that matches counts, and the integration offers its action. A verb with `requires = "<stem>"` counts only while that integration is loaded. The action `yield` matches and offers nothing, which leaves the phrase to the other integrations.
+
+A `{name}` in a pattern is one of these, looked up in this order:
+
+- A placeholder: `{target}` (free text), `{number}` (digits) or `{name:type}`. The types are `text`, `number`, `position` ("two", "second"), `ordinal`, `duration` (seconds), `time` (epoch seconds) and `day` (`YYYY-MM-DD`). A typed placeholder whose words do not parse rejects that verb, and the next verb is tried. A name appears once per pattern. Words are captured lazily, so optional words after a slot, as in `open {target}( in firefox)?`, stay out of the target.
+- A define from the file's `[define]` table, a pattern fragment that other patterns reuse (`answers.toml` keeps its spoken lead-ins there). Defines can use each other.
+- `{mode_object}` and `{mode_exit}`, built from the `[mode]` table's `exit_object` (see [Voice sessions](#voice-sessions)).
+- An [intent](#intents).
+
+The placeholder a hook sees is `VOXCMD_ARG_<NAME>`. For a typed placeholder that is the parsed value, and `VOXCMD_ARG_<NAME>_WORDS` holds the words it captured.
+
+Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of word slots, and only a few shapes are readable. A bare define, `{name}`, reads as one group of its alternatives. A required define inside parentheses, `({name})`, nests a group in a group, which the reader cannot take apart when the define has alternatives, so that verb gets no hints. Write a define bare when the verb should keep them. A typed placeholder other than `{number}` drops the hints for its verb as well.
+
+### Actions and hooks
+
+`[actions.<id>]` holds one table per action id that a verb names. An action that only runs a command can be a plain string: `[actions]` then `list = 'list_timers'`. A command or hook is a shell string. voxcmd runs it with `bash`, after sourcing the integration's `<stem>.sh`, and hands the match over in environment variables. Spoken text reaches a hook only through them.
+
+| Variable | Holds |
+| --- | --- |
+| `VOXCMD_ID`, `VOXCMD_LABEL` | the chosen candidate's id and label; with no `candidates` hook the id is the target text. Only in `run` and `wait_hook` |
+| `VOXCMD_ARG_<NAME>` | the value of a placeholder, `VOXCMD_ARG_TARGET` for `{target}` |
+| `VOXCMD_ARG_<NAME>_WORDS` | the words the placeholder captured |
+| `VOXCMD_PHRASE`, `VOXCMD_RAW_TRANSCRIPT` | the normalized phrase, and the transcript before normalization and replacements, with its punctuation, digits and symbols |
+| `VOXCMD_CONFIRMED` | `1` when the confirm card asked and was answered yes, else `0` |
+| `VOXCMD_SPOKEN` | `1` when the command came by voice |
+| `VOXCMD_ACTIVE_BEFORE` | in a `wait_hook`, the address of the window that was active before the step |
+| `VOXCMD_ACTION`, `VOXCMD_INTEGRATION` | the action id and the file stem |
+| `VOXCMD_SELF` | the path of the voxcmd binary that launched the hook. A hook calls `"$VOXCMD_SELF" util ...`, never a name on `PATH` |
+| `VOXCMD_SHARE_DIR`, `VOXCMD_INTEGRATION_DIR`, `VOXCMD_INTEGRATIONS` | the share directory, the integrations directory and the loaded stems |
+| `VOXCMD_MATCH_IGNORE_WORDS` | the integration's `match_ignore_words`, space separated |
+
+The keys of an action:
+
+- `run`: the command. The last line it prints is appended to the notification, so it can say what happened. A failed command reports the end of its error output.
+- `candidates`: a hook for a verb with a target. It prints one candidate per line as `id<TAB>label<TAB>match_text`. The label defaults to the id, and `match_text` is the text the target is matched against when that differs from the label shown (`keybinds.toml` matches the bare description and shows the submap after it). A line has at most three fields. The hook can list only what the phrase can mean, since it gets the target. Exit 0 with nothing printed lists no candidates, so a target matches nothing and `no_match` runs. Exit 3 means yield: the integration offers nothing for this phrase, and `no_match` does not run. A failed or timed-out hook offers nothing too. `provider = "screen_text"` replaces `candidates` with voxcmd's own OCR source, and `run = "click_at <button>"` is the matching built-in click (see [Click](#click)).
+- `no_match`: the action to run when the target matches none of the candidates. It gets an empty `VOXCMD_ID`. A target that names no candidate ends as "no match" without it.
+- `timeout_secs`: how long this action's hooks can run. The default is 3, and the limit is 300.
+- `silent`: see [Silent actions](#silent-actions).
+- `listen_for_pick`: see [Answering by voice](#answering-by-voice).
+- `free_text`, `wait` and `wait_hook`: how the action takes part in a [sequence](#sequences). `free_text = true` marks an action whose target is dictated text, which can say "and then", so the step that starts with one of its verbs takes the rest of the phrase. `wait` names a built-in condition polled until it holds: `active_window_is_id`, `active_window_changed`, `window_gone` or `popup_open:<name>`. `wait_hook` is a shell condition polled until it succeeds, in the integration's own library with `VOXCMD_ID` and `VOXCMD_ACTIVE_BEFORE` set. Either gives up after `VOXCMD_STEP_TIMEOUT_SECS`. An action with neither waits until no popup is opening or closing and no click overlay is up, then `VOXCMD_APP_SETTLE_SECS`.
+- `enter_mode`, `leave_mode`, `mode_switch`, `mode_entry` and `miss`: the action opens, leaves or switches a [voice session](#voice-sessions) mode, or reports that a turn found nothing to act on.
+
+An integration can also list everything it can run for [Voice Help](#voice-help)'s Tab, with one `[[help]]` entry per action:
+
+```toml
+[[help]]
+action = "focus"             # asks the action's own candidates hook with no target
+
+[[help]]
+action = "enter_submap"
+list = "submap_help"         # or a hook printing id<TAB>label rows
+
+[[help]]
+action = "exit_submap"
+id = ""                      # or one fixed row
+label = "Exit submap"
 ```
 
-An integration takes part in [sequences](#sequences) with two optional settings:
+An integration whose options sit on screen sets `picker = "hints"`. When every option of a pick comes from that integration and each option's id carries its box (the `screen_text` provider writes ids that way), the options are numbered over their boxes with [`voxcmd ask hints`](#click-hints) instead of listed as text. A command that came by voice listens for the answer whatever the number of options, since the user is looking at the choices. If any option has no box, the text picker asks as usual.
 
-```bash
-# Actions whose target is free text, which may say "and then": a step starting with one of their verbs takes the rest of the phrase.
-free_text_actions=(remind)
+A `[surface]` table, `state_file = "overview.json"`, names a file under `$XDG_RUNTIME_DIR/voxcmd` that the bar writes while the integration's surface is up. The surface is open while the file's top-level `open` is `true`. While it is open the phrase goes to that integration's verbs first, and while it is closed the integration's `candidates` hooks do not run.
 
-# What a step waits for before the next one starts, a shell condition polled until it succeeds (VOXCMD_STEP_TIMEOUT_SECS at most).
-# It runs in the integration's context with $id, $target and $raw_transcript as the action had them, and $active_before, the address of
-# the window that was active before the step. voxcmd provides popup_is_open <name> (no bar counts as open), ui_settled (no popup opening
-# or closing and no click overlay), and active_window_address. An action without an entry waits for ui_settled, then VOXCMD_APP_SETTLE_SECS.
-declare -A step_waits=(
-  [focus]='[ "$(active_window_address)" = "$id" ]'
-)
+### Matching and confirming
+
+These are top-level keys of the file:
+
+```toml
+target_match = "words"                      # word matching instead of fzf; see below
+match_ignore_words = ["run", "press"]       # words dropped from both target and candidates before word matching
+action_labels = false                       # leave the action word out of picker labels, for candidate labels that already say what runs
+confirm = true                              # ask before running any of this integration's actions
+confirm_labels = ['\bclose\b', '^lock\b']  # regexes (any case) on the option's label; a match asks first
 ```
-
-An integration can also list everything it can run for [Voice Help](#voice-help)'s Tab:
-
-```bash
-help_action=focus   # Tab lists candidates "focus" "" and picking one runs focus on it
-
-# Optional. Lists the entries instead, as [{id, label, action}]; action defaults to help_action.
-help_choices() {
-  hyprctl clients -j | jq -c 'map({id: .address, label: .title})'
-}
-```
-
-An integration whose options sit on screen can ask several matches to be shown there instead of listed as text:
-
-```bash
-pick_command=voxcmd-hints   # the former script; click.toml's `picker = "hints"` runs `voxcmd ask hints` instead
-
-# Prints "<left> <top> <width> <height>" in global logical pixels for an option id, or fails when it has none.
-pick_box() {
-  IFS=, read -r _ _ _ left top width height <<<"$1"
-  echo "$left $top $width $height"
-}
-```
-
-When every option of a pick comes from one integration with both, each choice gains `box: [left, top, width, height]` and `pick_command` asks it, with `Which one?`, instead of `voxcmd ask pick`. A command that came by voice passes `--listen` to it whatever the number of options, since the user is looking at the choices. If any option has no box the text picker asks as usual. `voxcmd --reply` trusts the pending pick only while the process that wrote it still runs as `voxcmd ask ...`.
-
-Candidates may also carry `match_text`, the text the target is matched against when it should differ from the label shown (`keybinds.sh` matches the bare description and shows the submap after it).
-
-Optional settings for integrations whose actions differ in risk, or whose targets need stricter matching:
-
-```bash
-fallback=1                       # tried only when no other integration can run the phrase
-target_match=words               # word matching instead of fzf; see below
-match_ignore_words=(run press)   # words dropped from both target and candidates before word matching
-action_labels=0                  # leave the action word out of picker labels, for candidate labels that already say what runs
-confirm_labels=('\bclose\b' '^lock\b')   # regexes (case-insensitive, jq syntax) on the option's label; a match asks first
-```
-
-Patterns are bash ERE, so there are no non-capturing groups; voxcmd finds the target's group by counting the `(` before the placeholder (an escaped `\(` does not count), which is why only one placeholder is allowed. Intents are expanded before that count, so they can sit anywhere in a pattern. Order verbs from specific to general, as `media.sh` does with `play` before `play {target}`. Integration files are plain shell, so helper functions defined in the file are available to its commands. voxcmd sources the file inside a function, though, so a `declare` at its top level is gone by the time a command runs: declare an array a helper reads with `declare -g`, as `spoken-time.sh` does for its number words.
-
-Helpers several integrations share live in `~/.local/share/voxcmd/`, since every file in `integrations/` is loaded as an integration; an integration sources one from `$voxcmd_share_dir`, which voxcmd resolves from its own real path. `spoken-time.sh` holds the spoken clock-time parser (`parse_clock`: "3 pm", "three thirty pm", "noon", "9 am tomorrow", "friday at 9"), the duration and day parsers (`parse_duration`, `parse_day`), the formatters for the times it prints (`format_at`, `format_length`) and the bar's clock format (`clock_time_format`), used by `timers.sh`, `answers.sh` and `calendar.sh`. `spoken-position.sh` reads a spoken position (`spoken_position`: "two", "twenty five", "second", "twenty first", "13th"; `spoken_ordinal` only ordinals, which need their own suffix, so "2th" is nothing) for the picker replies, workspaces, windows and monitors, never for counts and amounts, where "second" is a unit of time. `monitor-words.sh` names monitors (`monitor_places`, `monitor_named`) for `monitors.sh` and `overview.sh`; see [Monitors](#monitors).
-
-The tracked `integrations/` and `replacements.d/` ignore everything except what ships, so private integrations dropped into the stowed folders stay out of git.
 
 ### Intents
 
@@ -214,7 +219,7 @@ Verbs that mean the same thing in several integrations are written once, as an i
 | `{start}`      | start, begin, kick off                                                        |
 | `{stop}`       | stop, end, finish                                                             |
 
-The list lives in `voxcmd` itself (`intents`). Words of an integration's own, like Media's "play" and "pause" or Timers' "remind me", stay in its patterns. `intent_forms <intent>` prints an intent's forms one per line, for an integration that rebuilds phrases from them (`apps.sh` checks "<form> <target>" against the keybinds).
+The list lives in `voxcmd` itself (`intents`). Words of an integration's own, like Media's "play" and "pause" or Timers' "remind me", stay in its patterns. `"$VOXCMD_SELF" util intents <intent>` prints an intent's forms one per line, for a hook that rebuilds phrases from them (`firefox.sh` does).
 
 `~/.config/voxcmd/intents.local` (ignored by git) adds forms without editing the repo, one intent per line, normalized like the phrase:
 
@@ -229,34 +234,36 @@ A name that is no intent yet declares a new one for your own integrations; `targ
 
 An action whose effect is already its feedback, like opening a bar popup, sends no notification on success, since a toast would only cover what it opened. A failure still sends the error.
 
-```bash
-silent=1                  # every action of this integration
-silent_actions=(weather)  # only these actions
+```toml
+silent = true             # every action of this integration
+
+[actions.weather]
+silent = true             # or only this action; an action's own value wins over the file's
 ```
 
-An integration whose option labels hold private text, such as the screen text `click.sh` reads, sets `private_labels=1`. The error toast, which the bar keeps in its history, then names only the integration and action ("Click: click: wlrctl: no seat") and the debug log leaves the label out too; the command's own failure reason still follows.
+An integration whose option labels hold private text, such as the screen text Click reads, sets `private_labels = true`. The error toast, which the bar keeps in its history, then names only the integration and action ("Click: click: wlrctl: no seat") and the debug log leaves the label out too; the command's own failure reason still follows.
 
-```bash
-private_labels=1          # error toasts leave out the option's label
+```toml
+private_labels = true     # error toasts leave out the option's label
 ```
 
-`keybinds.sh` is silent: a bind has a visible effect of its own, and many open bar popups. So are `media.sh`'s volume and mute actions, since the bar's volume OSD shows the change; play, pause, next and previous still notify. Opening Voice Help sends nothing either.
+`keybinds.toml` is silent: a bind has a visible effect of its own, and many open bar popups. So are `media.toml`'s volume and mute actions, since the bar's volume OSD shows the change; play, pause, next and previous still notify. Opening Voice Help sends nothing either.
 
 ### Force prefixes
 
 A phrase starting with one of an integration's `force_prefixes` goes to that integration alone, with the prefix dropped, even when another integration has a verb for the rest. Prefixes are normalized like the phrase and must be followed by at least one word; the first integration (by file name) whose prefix matches wins.
 
-```bash
-force_prefixes=(keybind "key bind")   # "keybind toggle fullscreen" runs the keybind, never another verb
+```toml
+force_prefixes = ["keybind", "key bind"]   # "keybind toggle fullscreen" runs the keybind, never another verb
 ```
 
 ### Fallback integrations
 
-An integration with `fallback=1` is tried only when the normal integrations, and the LLM hook, leave nothing to run: either no verb matched or every match ran out of candidates. That lets a fallback declare a catch-all verb such as `{target}` without making every phrase ambiguous with the integrations that understand it. Fallbacks are matched among themselves like normal integrations.
+An integration with `fallback = true` is tried only when the normal integrations leave nothing to run: either no verb matched or every match ran out of candidates. That lets a fallback declare a catch-all verb such as `{target}` without making every phrase ambiguous with the integrations that understand it. Fallbacks are matched among themselves like normal integrations.
 
 ### Word matching
 
-`target_match=words` is for long candidate lists where a fuzzy hit on scattered letters would run the wrong thing. Both the target and each candidate are lowercased and split into words; filler (`the`, `a`, `to`, `please`, ...) and `match_ignore_words` are dropped, number words become digits and plurals singular. Then:
+`target_match = "words"` is for long candidate lists where a fuzzy hit on scattered letters would run the wrong thing. Both the target and each candidate are lowercased and split into words; filler (`the`, `a`, `to`, `please`, ...) and `match_ignore_words` are dropped, number words become digits and plurals singular. Then:
 
 - **strong**: the same words in any order, or the same letters run together (`full screen` for `fullscreen`). A single strong match runs.
 - **weak**: the target's words all name words of the candidate and cover at least half of them (`close` for `Close Window`), or the target holds every candidate word plus one more (`open terminal` for `Terminal`). A spoken word of four letters or more also names a candidate word containing it. Weak matches always open the picker, the best ten first, even when there is only one. A single weak match from a spoken command [listens for the answer](#answering-by-voice) on its own.
@@ -266,14 +273,14 @@ Strong matches hide weak ones.
 
 ### Near misses
 
-A verb pattern is a fixed sequence, so "kitchen blinds raise" misses `raise the (blinds|shades) {target}` though every word is there. When the normal tier, the LLM hook, the fallback integrations and the [correction retry](#how-a-phrase-is-routed) all leave nothing to run, voxcmd reads each verb's pattern as a set of word slots and offers the verbs whose slots the phrase fills, in any order:
+A verb pattern is a fixed sequence, so "kitchen blinds raise" misses `raise the (blinds|shades) {target}` though every word is there. When the normal tier, the fallback integrations and the [correction retry](#how-a-phrase-is-routed) all leave nothing to run, voxcmd reads each verb's pattern as a set of word slots and offers the verbs whose slots the phrase fills, in any order:
 
 - A literal word is a slot. A group with alternatives, `(move|send|bring up)`, is one slot that any alternative fills (an alternative of several words needs all of them). `{number}` is a slot that a digit word fills ("forty" does not). Optional groups, `(...)?`, are dropped.
 - Filler words (`the a an this that my please to of on over`) are optional on both sides: a slot whose alternatives are all filler is dropped, filler words in an alternative with other words are dropped ("go to" needs "go"), and a leftover filler word in the phrase counts for nothing. A group like `(to|onto|on)` stays a slot, since "onto" is not filler.
 - Each slot needs a word of its own. Then, with `{target}`, at least one other non-filler word must be left, all in one run with no slot word between them, and the words left (from the first to the last, filler inside included) are the target; without a placeholder no non-filler word may be left, so stray speech stays a no match, as does a phrase missing a word.
-- A verb that cannot be read reliably is skipped, never guessed at: character classes, anchors, `.`, `*`, `+`, a `?` after a single character, a group glued to a word, `{target}` inside a group, a required group with nested alternatives, and a pattern with no slot of its own (`{target}` alone). A phrase of more than 16 words is not tried.
+- A verb that cannot be read reliably is skipped, never guessed at: character classes, anchors, `.`, `*`, `+`, a `?` after a single character, a group glued to a word, `{target}` inside a group, a required group with nested alternatives, a typed placeholder other than `{number}`, and a pattern with no slot of its own (`{target}` alone). A phrase of more than 16 words is not tried.
 
-Each near miss then goes through the normal matching of its integration (candidates, [word matching](#word-matching)) and every resulting option is forced weak; a target that names no candidate offers nothing, rather than the integration's `no_match_actions` report, so the picker always opens, and listens for the reply when the phrase was spoken. Nothing runs without a pick. At most ten options are offered, the ones with the fewest words left over first. Voice session turns and the steps of a [sequence](#sequences) skip the tier. `--dry-run` marks such an option `[near miss]`.
+Each near miss then goes through the normal matching of its integration (candidates, [word matching](#word-matching)) and every resulting option is forced weak; a target that names no candidate offers nothing, rather than the action's `no_match` report, so the picker always opens, and listens for the reply when the phrase was spoken. Nothing runs without a pick. At most ten options are offered, the ones with the fewest words left over first. Voice session turns and the steps of a [sequence](#sequences) skip the tier. `--dry-run` marks such an option `[near miss]`.
 
 A phrase that matches nothing even so goes to the [no-match log](#no-match-log).
 
@@ -585,7 +592,7 @@ Needs `grim`, `tesseract` and `tesseract-data-eng`, `imagemagick`, `wlrctl` and 
 
 ### Click hints
 
-`voxcmd ask hints [--listen] <label> <choices-json>` is the picker `click.sh` uses for several matches (`pick_command`). Choices are `{id, label, box: [left, top, width, height]}`; it prints the picked id and exits 1 on cancel. The Quickshell bar draws a numbered keycap and an outline over each box (`qs-ipc call clickhints`, see the bar's README), and the other screens stay quiet. Answer by:
+`voxcmd ask hints [--listen] <label> <choices-json>` is the picker Click uses for several matches (`picker = "hints"`). Choices are `{id, label, box: [left, top, width, height]}`; it prints the picked id and exits 1 on cancel. The Quickshell bar draws a numbered keycap and an outline over each box (`qs-ipc call clickhints`, see the bar's README), and the other screens stay quiet. Answer by:
 
 - number keys `1`-`9` and `0` (box 10), or a click on a box; `Esc`, `q` or a click anywhere else cancels, and `?` lists the keys;
 - voice, as with any [picker](#answering-by-voice): "two", "the second one", a label's words, "cancel". With `--listen` (a spoken command) the reply recording starts just before the numbers appear, and an unclear reply listens once more. The overlay shows Listening or Transcribing, and its 10 s timeout waits while voxtype records.
@@ -629,7 +636,7 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
 - **Numbers:** windows are numbered 1.. by monitor slot (the monitor `SUPER + CTRL + n` focuses; Hyprland's order for unslotted ones), then workspace id, then reading order (top to bottom, left to right) inside the workspace, the order `]`/`[` cycle in. The overview computes them and draws them while the voice session is open; voxcmd only reads them, so the two cannot disagree. Workspaces are said as "workspace three" or by ordinal ("the third workspace", which voxcmd rewrites to "workspace 3" before routing, so Keybinds' "go to workspace 3" hears it too) (digit keys in the overview mean the same ids; in the special view the nth special workspace). Monitors are said as in [Monitors](#monitors): by position (`left`, `right`, `middle` or `center`, `top`, `bottom`, "top left" where both apply), by slot ("monitor two") or as the `laptop`; a word that fits no monitor or several says so and does nothing.
 - **Routing:** while the overview is open its phrases go to it before any other integration, which is how "close two" and "go to workspace three" never reach Apps and Keybinds. With the overview open and no session, a phrase it understands runs and the session attaches; a phrase it does not (`open firefox`) is routed as usual. In the session every turn is a phrase for the overview alone: what it does not understand is "no match", never another integration's command. "Show workspaces" opens it from anywhere.
 - **Selection:** voice marks and the keys' marks are the same list, so `Space` on one window and "four" on another give two marks, and `m`, `x` and the voice verbs act on them alike. A verb with numbers acts on those windows only; without any ("move the marked windows to workspace 5") on the marks. A number the overview does not show reports `no window 9` and acts on nothing.
-- **Ending it:** `done`, `close overview` and the other exits close the overview with the session; unlike click and rapid mode, the overview keeps its bare exits. So does a bare `exit`, `stop`, `cancel` or `quit`, which ends the whole voice session, so nothing modal is left open with nothing listening. Focusing a window or workspace ends it too, since the overview closes. Silence for 20 s ends only the session, and so does closing the overview by key: a listen checks `session_alive` before it opens the microphone again and the turn heard after the close is routed as a normal command.
+- **Ending it:** `done`, `close overview` and the other exits close the overview with the session; unlike click and rapid mode, the overview keeps its bare exits. So does a bare `exit`, `stop`, `cancel` or `quit`, which ends the whole voice session, so nothing modal is left open with nothing listening. Focusing a window or workspace ends it too, since the overview closes. Silence for 20 s ends only the session, and so does closing the overview by key: a listen checks the mode's `alive` hook before it opens the microphone again and the turn heard after the close is routed as a normal command.
 - **Contract:** the overview writes `$XDG_RUNTIME_DIR/voxcmd/overview.json` whenever what it shows changes, and `{"version":1,"open":false}` when it closes:
 
   ```json
@@ -641,12 +648,12 @@ The overlay writes the number into the pick's FIFO, a voice reply the displayed 
   ```
 
   A window's `n` is its voice number and `id` its address; a workspace's `n` is the number said in "workspace three" and `id` its reference (`"3"`, or `"sp:<name>"` for a special one); `slot` is 0 for a monitor without one; `horizontal` and `vertical` are empty while all monitors share that axis. voxcmd asks `qs-ipc call overview state` (`open` or `closed`) as well, since a bar that died leaves the file behind, and acts through `qs-ipc call overview act <verb> "<args>"`, which answers `ok` or `error: <why>`: `mark`, `unmark`, `close` and `focus` take window addresses (none: the marks), `move <workspace> <addresses...>`, `send <monitor> <addresses...>`, `workspace <ref>`, `workspace_to_monitor <id> <monitor>`, `swap_workspaces <ref> <ref>`, `clear` and `close_overview`.
-- **For other surfaces:** `surface_open` in an integration (a function that succeeds while its bar surface is up) gives it the phrase before any verb is matched, through that integration's verbs alone, and a phrase it matches nothing in is routed normally. `session_alive` ends a mode whose surface closed. The calendar, weather and Firefox tabs can take part the same way: publish items and take one action entry.
+- **For other surfaces:** a `[surface]` table in an integration (see [Actions and hooks](#actions-and-hooks)) gives it the phrase while its bar surface is up, through that integration's verbs alone, and a phrase it matches nothing in is routed normally. The mode's `alive` hook ends a mode whose surface closed. The calendar, weather and Firefox tabs can take part the same way: publish items and take one action entry.
 - Needs the bar (`qs-ipc`) and, for a session, [auto-stop](#auto-stop). Tests: `home/voxcmd/tests/run-overview.sh` (a step of `run.sh`) against a fixture `overview.json` and the sandbox's stub bar; entry phrases are in `phrases.tsv`.
 
 ### Rapid mode
 
-`SUPER + CTRL + COMMA` (Leader, `CTRL + COMMA`), `voxcmd session rapid`, or saying "rapid mode" (also "start rapid mode", "enter rapid fire mode") opens a [voice session](#voice-sessions) where every turn is routed as a normal command, so a run of commands needs no key press between them. Force prefixes, the LLM hook and fallbacks work as usual, a confirm card is answered by voice, and a picker of several options listens for its answer too.
+`SUPER + CTRL + COMMA` (Leader, `CTRL + COMMA`), `voxcmd session rapid`, or saying "rapid mode" (also "start rapid mode", "enter rapid fire mode") opens a [voice session](#voice-sessions) where every turn is routed as a normal command, so a run of commands needs no key press between them. Force prefixes and fallbacks work as usual, a confirm card is answered by voice, and a picker of several options listens for its answer too.
 
 - **Ending it:** `cortana done` and the other [wake word](#wake-word) forms (`cortana that's all`, `cortana done with rapid mode`, `cortana exit`, `cortana quit`), silence for about 10 s (`VOXCMD_SESSION_NO_SPEECH_SECS`); three turns in a row that did nothing; the Stop Voice key; or 5 minutes or 40 turns. Bare `done`, `I'm done`, `that's all`, `exit`, `quit`, `stop` and `done with rapid mode`, also repeated ("Stop. Stop. Stop."), are not exits: a toast says `say cortana done to leave`, and the turn counts as one that did nothing. The mode-naming forms ("stop rapid mode", "quit rapid fire mode", "rapid mode off", also as the last step of a sequence) are not exits either but give "Not understood", though they still run as commands outside a session; `cancel` is the silent discard, and `pause` or `stop the music` still pause the music (a bare `stop` does only outside a session). In a [sequence](#sequences) a bare `done` or `exit` step runs the steps before it, then gives the hint.
 - **Other modes:** "click mode" and "type mode" open inside it and return to it when they end. "click mode" and "type mode" stay bare in rapid mode, as they are commands. Inside click mode "rapid mode" is clicked as text; "cortana rapid mode" comes back to it.
@@ -720,7 +727,7 @@ Settings > Input > Voice saves its choices to `${XDG_STATE_HOME:-~/.local/state}
 
 voxcmd and its hooks read it with `voxcmd util voice-env KEY`; `voxcmd-wake` and `voxtype-duck` have their own Python readers. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity and the pause switches (exactly 0 or 1) are read once when the listener starts, so Settings runs `systemctl --user try-restart` on it after a change. Ducking is read at the start of each duck.
 
-`voxtype-duck.service` lowers the default output sink while voxtype records (not each app's stream, which voxtype's own `duck_media` did and is now off in `config.toml`; a machine with its own copy of that file needs `duck_media = false` by hand, or both duck). It follows `voxtype status --follow`, restores 500 ms after recording ends, keeps a volume or mute you changed during the duck, and journals the duck in `$XDG_RUNTIME_DIR/voxcmd/duck.json` so a restart, a stop or `voxtype-duck --restore` can undo it. Roll back with `systemctl --user disable --now voxtype-duck` and `duck_media = true`.
+`voxtype-duck.service` lowers the default output sink while voxtype records (not each app's stream, which voxtype's own `duck_media` did and is now off in `config.toml`; a machine with its own copy of that file needs `duck_media = false` by hand, or both duck). It follows `voxtype status --follow`, restores 500 ms after recording ends, keeps a volume or mute you changed during the duck, and journals the duck in `$XDG_RUNTIME_DIR/voxcmd/duck.json` so a restart, a stop or `voxtype-duck --restore` can undo it. The journal lives in the runtime directory, which a reboot clears. When the follower is killed with SIGKILL and the machine reboots before the unit restarts, nothing remembers the saved volume and the sink stays low: set it by hand, for example `wpctl set-volume @DEFAULT_AUDIO_SINK@ 1`. Roll back with `systemctl --user disable --now voxtype-duck` and `duck_media = true`.
 
 ### Calendar
 
@@ -785,7 +792,7 @@ One-time setup: stow `voxcmd`, run `just firefox-host` (the installer does too),
 
 `voxcmd help` (leader `CTRL + SLASH`, saying "voice help" or "what can I say", or the button on a "no match" notification) shows every integration's `examples` in the picker, labelled with the integration's name and with fallback integrations last. Picking a phrase without placeholders runs it as if it had been spoken. A phrase with a placeholder (`set volume to <number>`) cannot be completed from a click, so it comes back as a "Say: ..." notification instead.
 
-Tab on an entry of an integration that sets `help_action` or `help_choices` replaces the list with everything that integration can run, titled with its name (Keybinds: every submap and described bind), like Tab completing a command in HyprVim's prompt. Such entries show `Tab: <name> (<count>)`; Tab on the others does nothing. The list searches like any picker list, picking an entry runs it like the spoken phrase would (asking first where the integration's `confirm_labels` say so), and Backspace on an empty search goes back to the examples with the search and row restored. The rofi fallback shows the examples only.
+Tab on an entry of an integration with a [`[[help]]` entry](#actions-and-hooks) replaces the list with everything that integration can run, titled with its name (Keybinds: every submap and described bind), like Tab completing a command in HyprVim's prompt. Such entries show `Tab: <name> (<count>)`; Tab on the others does nothing. The list searches like any picker list, picking an entry runs it like the spoken phrase would (asking first where the integration's `confirm_labels` say so), and Backspace on an empty search goes back to the examples with the search and row restored. The rofi fallback shows the examples only.
 
 The button works with any notification daemon that supports actions, the bar's included: `notify-send --action` waits for the notification to close, so a detached process waits on it instead of voxcmd.
 
@@ -799,10 +806,6 @@ fire fox = firefox
 ```
 
 voxtype's own `[text.replacements]` run first, at transcription.
-
-## LLM hook
-
-Off by default and a stub: voxcmd never calls a model. Set `VOXCMD_LLM_CMD` to a shell command and, when no normal integration has anything to run, it receives `{transcript, integrations: [{name, actions, verbs}]}` on stdin and should print `{integration, action, target}`. The answer goes through the same candidate matching and confirmation as a verb match. Fallback integrations are tried only after it.
 
 ## Picker
 
@@ -829,7 +832,7 @@ A recording started while a picker waits is always a reply, so `cancel` there cl
 
 The reply picks as if the choice had been clicked and closes the picker. A reply that matches nothing or several choices leaves the picker open and sends a notification; press the key again to retry.
 
-While it waits, `voxcmd ask pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored. The reply goes into the picker's result FIFO, so `voxcmd ask pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
+While it waits, `voxcmd ask pick` keeps `$XDG_RUNTIME_DIR/voxcmd/pending-pick.json` (`{pid, fifo, label, choices, expansions, view}`) and removes it when the pick ends however it ends. A file whose owner is gone is ignored: voxcmd trusts it only while `/proc/<pid>/cmdline` reads `voxcmd ask pick`, `confirm` or `hints`, so a pid that another process has since taken does not count. The reply goes into the picker's result FIFO, so `voxcmd ask pick` closes the picker itself afterwards: the Quickshell one over `qs-ipc call picker close`, rofi by ending it.
 
 #### Pickers the bar publishes
 
@@ -861,13 +864,33 @@ While it waits, `voxcmd ask confirm` keeps the same `pending-pick.json` as the p
 
 ## Voice sessions
 
-A session keeps the microphone re-opening after each spoken turn, so related commands need no repeated verb. [Rapid mode](#rapid-mode), [click mode](#click-mode), [type mode](#type-mode) and the [overview](#overview)'s session are the modes so far. A session is a stack of modes: one opened from another's turn (rapid mode's "click mode", click mode's "type mode") goes on top of it, and when it ends the session returns to the mode underneath; saying the entry phrase of a mode already open underneath goes back to it, and of the current mode does nothing. The bottom mode ending, or a cap, Stop Voice or `end-session`, ends the session and every mode in it. An integration opens a mode from an action with `session_begin <kind> "$file" "<label>"` and leaves it with `session_leave <kind> [reason]` (which also leaves the modes opened over it, and fails when the kind is not open), and supplies `session_rewrite`, which prints the phrase to route for what was said (nothing when it names nothing usable); with none, the words are routed as spoken. A turn of several [steps](#sequences) is split first, and `session_rewrite` runs on each. `session_exit_phrases` (optional) is a regex of further phrases that end the mode, besides "done", "I'm done" and "that's all", matched whole before `session_rewrite`. A bare "exit", "stop", "cancel" or "quit" ends the whole session with every mode in it (`session_default_exits=0` turns that off for a mode where they are content, as in click and rapid mode; `session_bare_exits=0` does too). `session_miss_actions=(action ...)` lists actions that mean the turn found nothing to act on, and `session_ended` (optional) runs in the background whenever the mode ends, to tidy what it left on screen, and `session_alive` (optional) fails once the mode's screen is gone, which ends the mode before the next listen or turn. More optional settings: `session_exit_hint` (what the bar shows as the way out), `session_allows_switches=1` with `mode_actions=(action ...)` (while this mode is open, a turn that is exactly one of these actions' phrases, from any integration, runs instead of being rewritten; no shipped mode sets it now), `mode_entry_actions=(action ...)` (actions that open a mode but must not switch modes from inside one, so they stay out of `mode_actions`; a [sequence](#sequences) treats them as mode switches, so they can only be its last step), `session_default_exits=0` (the exit words and phrases apply only after the wake word), `session_handle_turn <words> [ending]` (the mode takes the words itself, as type mode types them), `session_private=1` (no words in logs or toasts), `session_open_ended=1` (its time is not counted against the session's), `session_listen_silence_secs`, `session_listen_max_secs` and `session_listen_no_speech_secs` (its listens' auto-stop), and the one-recording settings type mode uses (see `integrations/typing.toml` for the TOML form): `session_one_recording=1` (the mode is one recording, handed to `session_handle_turn` once with its ending's action and then left), `session_wake_listens=1` (kept in `session.json` as `wake_listens`, but the [wake listener](#cortana-wake-listener) no longer reads it and pauses for every recording; type mode leaves it off) and `session_endings` (`"<action> <regex>"` rows matched against the words after the wake word, heard at each pause of the recording by [auto-stop](#auto-stop): `discard` cancels the recording, `end_session` ends the session after handling it, and any other action is passed to `session_handle_turn`).
+A session keeps the microphone re-opening after each spoken turn, so related commands need no repeated verb. [Rapid mode](#rapid-mode), [click mode](#click-mode), [type mode](#type-mode) and the [overview](#overview)'s session are the modes so far. A session is a stack of modes: one opened from another's turn (rapid mode's "click mode", click mode's "type mode") goes on top of it, and when it ends the session returns to the mode underneath; saying the entry phrase of a mode already open underneath goes back to it, and of the current mode does nothing. The bottom mode ending, or a cap, Stop Voice or `end-session`, ends the session and every mode in it.
+
+An integration declares its mode in its TOML file. Its actions open and leave the mode, and its `[mode]` table says how the turns are heard. `integrations/typing.toml` is the fullest example, and `src/config/schema.rs` (`ModeEntry`) lists every key.
+
+**Actions**
+
+- `enter_mode = true` opens the integration's mode before the action's `run`, which can be empty. `leave_mode = "<reason>"` leaves it, and the modes opened over it, and does nothing when the mode is not open. An action cannot do both, and both need a `[mode]` table.
+- `mode_switch = true` marks the actions that open or leave a mode by their phrase. While the open mode has `allows_switches = true`, a turn that is exactly one such phrase, from any integration, runs instead of being rewritten (no shipped mode sets it now). `mode_entry = true` marks an action that opens a mode but must not switch modes from inside one, so it stays out of that set. A [sequence](#sequences) treats both as mode switches, so they can only be its last step.
+- `miss = true` marks an action that ran but found nothing to act on: the turn counts as unclear.
+
+**The `[mode]` table**
+
+- `label` is the name the bar shows. It defaults to the integration's name. `exit_hint` is what the bar shows as the way out. `exit_object` names the mode for `{mode_object}` and `{mode_exit}` ("stop {object}", "{object} off" and the like).
+- `exit_phrases` is a pattern of further phrases that end the mode, besides "done", "I'm done" and "that's all". It is matched against the whole turn before `rewrite`.
+- `default_exits = false` makes the exit words and `exit_phrases` count only after the wake word. A bare "exit", "stop", "cancel" or "quit" ends the whole session with every mode in it, and `bare_exits = false` turns that off too. Click mode, rapid mode and type mode set `default_exits = false`, since in them these words are content. A mode of this kind never accepts "<mode> stop" or "<mode> off" as an exit. Only "cortana stop" and its like leave it.
+- `rewrite` is `{ drop, keep, prefix }`, three whole-text patterns that say what a turn's words become before routing. A turn matching `drop` routes nothing, one matching `keep` routes as spoken, and any other gets `prefix` in front: click mode turns "sign in" into "click sign in". `rewrite_hook` replaces it with a hook that gets the words in `VOXCMD_PHRASE` and prints the phrase to route, or nothing when the words name nothing usable. Setting both is an error. With neither, the words route as spoken. A turn of several [steps](#sequences) is split first, and the rewrite runs on each step.
+- `alive` is a hook that fails once the mode's screen is gone, which ends the mode before the next listen or turn. A hook that times out or cannot run counts as alive. `ended` runs in the background whenever the mode ends, to tidy what it left on screen.
+- `private = true` keeps the words out of logs and toasts. `open_ended = true` leaves the mode's time out of the session's. `listen = { silence_secs, max_secs, no_speech_secs }` sets the auto-stop of its listens.
+- `timeout_secs` is how long the mode's hooks can run, 3 by default. `handle_turn` has a limit that grows with the text, and this can only lengthen it.
+- `handle_turn` is a hook that takes the turn's words itself (`VOXCMD_TEXT`), as type mode types them. With `one_recording = true` the mode is one recording, handed to `handle_turn` once and then left, with the ending's action in `VOXCMD_ENDING`. `endings` lists how that recording ends after the wake word: rows of `{ action, match }`, the first whole match wins, heard at each pause of the recording by [auto-stop](#auto-stop). `discard` cancels the recording, `end_session` ends the session after handling it, and any other action goes to `handle_turn`.
+- `wake_listens` is kept in `session.json`, but the [wake listener](#cortana-wake-listener) no longer reads it and pauses for every recording. Type mode leaves it off.
 
 - **State:** `$XDG_RUNTIME_DIR/voxcmd/session.json`, the current mode as `{kind, integration, label, exit_hint, unclear, mode_started, last_heard, open_ended, one_recording, wake_listens}`, plus `recording_owner` (the listener of a one-recording mode's recording, which has its transcript to type for as long as it owns the session) and `ending` (`{action, by}`, by `voice`, `key`, `cap`, `pause` or `idle`) once that recording has been ended, with the session's `{started, owner, owner_start, turns}` and `stack`, the modes underneath it, bottom first, each with the mode fields (`[]` with one mode). `owner` is the PID of the listener that hears the next turn and `owner_start` its start time (field 22 of `/proc/<pid>/stat`), so a reused PID is not mistaken for it; each new listen takes it over, and `owner_handover` is set from the moment its recording starts until its listener is the owner. A session whose owner has died is stale: it is deleted the first time anything looks, and never keeps the microphone open. Every change holds `flock` on `session.lock` beside it.
 - **Routing:** while a session is open, `voxcmd listen` sends the transcript to the session instead of [routing](#how-a-phrase-is-routed) it, unless a picker or card is waiting for a reply, which keeps priority (but not over type mode, whose dictation is never a reply). Exit words end the mode before anything is routed, then the [wake word](#wake-word), then switches to another mode; a recording heard in one mode and finished in another ("the mode changed, say it again") is never acted on. Pressing the Voice Command key while a turn is still being handled starts the next turn at once, and the turn's own listener leaves the session to it.
-- **Idle end:** a session listen allows `VOXCMD_SESSION_NO_SPEECH_SECS` (10 s) of silence, whatever auto-stop's `no_speech_secs` is; hearing nothing ends the mode, with a notification, instead of cancelling silently, and the session goes on in the mode underneath if there is one (type mode's one recording has its own bounds). `session_begin` refuses to open a session when `voxcmd-autostop --check` fails.
+- **Idle end:** a session listen allows `VOXCMD_SESSION_NO_SPEECH_SECS` (10 s) of silence, whatever auto-stop's `no_speech_secs` is; hearing nothing ends the mode, with a notification, instead of cancelling silently, and the session goes on in the mode underneath if there is one (type mode's one recording has its own bounds). Opening a mode refuses to start a session when `voxcmd-autostop --check` fails.
 - **Stricter auto-stop:** a session listens to the room between turns, so before a pause ends a turn it wants 0.4 s of speech (`VOXCMD_SESSION_MIN_SPEECH_SECS`) and a 1.5 s pause (`VOXCMD_SESSION_SILENCE_SECS`), whatever auto-stop's `min_speech_secs` and `silence_secs` are. A word shorter than that is still heard, only at the 10 s deadline. A picker or overlay asked during a turn listens as any [reply](#answering-by-voice) does.
-- **Noise transcripts:** Whisper turns silence and noise into stock phrases. A turn whose whole transcript, normalized, is empty or one of `you`, `bye`, `the end`, `thank you`, `thank you for watching`, `thanks for watching` or `blank audio` (whisper.cpp's `[BLANK_AUDIO]`) heard nothing: it listens again without counting toward the unusable turns below, though it counts toward the turn and time caps. Outside a session these are routed like any command. The list is `session_noise_transcripts` in `voxcmd`.
+- **Noise transcripts:** Whisper turns silence and noise into stock phrases. A turn whose whole transcript, normalized, is empty or one of `you`, `bye`, `the end`, `thank you`, `thank you for watching`, `thanks for watching` or `blank audio` (whisper.cpp's `[BLANK_AUDIO]`) heard nothing: it listens again without counting toward the unusable turns below, though it counts toward the turn and time caps. Outside a session these are routed like any command. The list is `TRANSCRIBER_NOISE` in `src/session/turn.rs`.
 - **Never a loop:** three unusable turns in a row end it, a turn that ran nothing (a picker cancelled or timed out) counting as unusable; so do `VOXCMD_SESSION_MAX_TURNS` turns (40) or `VOXCMD_SESSION_MAX_SECS` (300) open, whichever comes first; a listen that cannot start ends it; a listener that dies mid-session ends it. Each says why in a transient notification.
 - **Settling:** after a turn voxcmd waits, for at most 2 s, until neither the click overlay (`qs-ipc call clickhints state`) nor a popup (`popup state`) is open or animating, then 0.3 s for the clicked app to draw, before listening again (`VOXCMD_UI_SETTLE_MAX_SECS`, `VOXCMD_APP_SETTLE_SECS`). A bar that does not answer counts as settled.
 - `voxcmd end-session` ends it by hand, with every mode in it, and [Stop Voice](#stop-voice) ends it along with any picker or recording. A key or terminal command that tries to open a mode while a session is open only says so.
@@ -889,7 +912,13 @@ With no session, picker or recording open it does nothing and says nothing. `vox
 
 ## No-match log
 
-A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels=1`. Delete the file to clear it.
+A phrase that still matches nothing, after the [near misses](#near-misses), is appended to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/no-match.log` as one line, the ISO time, a tab and the normalized phrase, so you can review what keeps missing. `voxcmd misses [N]` prints the last N (default 20) lines. The file keeps its last 1000 lines. Nothing is logged for a dry run, a transcript heard in a private mode ([type mode](#type-mode)), a voice session turn, or a phrase forced to an integration with `private_labels = true`. Delete the file to clear it.
+
+## Design
+
+voxcmd routes a phrase in one process with no daemon, so every command starts from nothing. The target is a p95 under 10 ms for a route with no hooks and under 30 ms with one live lookup. That is why patterns are `regex` crate patterns with a literal prefilter, and why a hook runs only when a verb needs it.
+
+A mode that hears free speech (type, click and rapid mode) must not accept "<mode> stop" or "<mode> off" as an exit, since those words are content there. Its exits are "cortana stop" and the like, which is `default_exits = false` in its `[mode]` table (see [Voice sessions](#voice-sessions)). The overview keeps its bare exits.
 
 ## Code
 
