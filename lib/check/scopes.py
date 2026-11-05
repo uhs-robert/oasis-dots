@@ -158,8 +158,8 @@ PATH_SCOPES = [
     ("home/voxtype/*", VOX_DUCK),
     ("home/systemd/.config/systemd/user/voxtype-duck.service", VOX_DUCK),
     ("extras/voxcmd-firefox/*", VOXCMD_SUITES),
-    # install: the installer libraries, their tests, the packages they read, the host-side calendar script, and the agent
-    # launcher (a small package whose own scope would cost more than it saves).
+    # install: the installer libraries, their tests, the packages they read, the host-side calendar script, the agent
+    # launcher and the plans CLI (small packages whose own scope would cost more than it saves).
     ("lib/install/*", "install"),
     ("lib/common/*", "install"),
     ("packages/snapper.ini", "install"),
@@ -168,6 +168,7 @@ PATH_SCOPES = [
     ("system/usr/local/bin/qs-greeter", "install"),
     ("home/calendar/*", "install"),
     ("home/agents/*", "install"),
+    ("home/plans/*", "install"),
     # hooks: the agent hooks, the owner-test-bar and orchestrator (reviewers) tests. skills: the ship-batch and merge-prs
     # suites, which take minutes where the hook tests take seconds.
     ("home/claude/.claude/hooks/*", "hooks"),
@@ -251,6 +252,7 @@ STEPS = [
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
+    Step("plans", "install", "python3 -B -m unittest discover -s home/plans/tests -p 'test_*.py'", ("git",), skip_reason="the plans tests need git"),
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),

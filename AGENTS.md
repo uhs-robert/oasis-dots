@@ -27,6 +27,7 @@ Before editing an area, read its README's code map: the `## Code` section of a f
 | Betterbird / tbkeys | [`home/thunderbird/README.md`](home/thunderbird/README.md) |
 | Yazi | [`home/yazi/.config/yazi/README.md`](home/yazi/.config/yazi/README.md) |
 | Agent cgroup (`agents.slice`, `agent-run`) | [`home/agents/README.md`](home/agents/README.md) |
+| The `plans` CLI for plan docs | [`home/plans/README.md`](home/plans/README.md) |
 
 ## Commands
 
