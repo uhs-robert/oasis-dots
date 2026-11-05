@@ -2,13 +2,17 @@
 use std::fmt;
 use std::process::ExitCode;
 
-/// Exit codes are 0, 1 and 2 only. Never 3: a hook that calls `voxcmd ask` would pass it on as "yield".
+/// Exit codes are 0, 1 and 2, and 78 for `wake listen` alone. Never 3: a hook that calls `voxcmd ask` would pass it on
+/// as "yield".
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Exit {
     /// Nothing matched, did not parse, the action failed, or the user cancelled or declined.
     Failed = 1,
     /// Usage or unreadable configuration.
     Usage = 2,
+    /// `wake listen` has no setup to run with (sysexits EX_CONFIG). The wake unit lists it in `RestartPreventExitStatus`,
+    /// since restarting cannot install a model.
+    Setup = 78,
 }
 
 /// What a handler returns when it did not succeed. `main` prints `voxcmd: <subcommand>: <message>` to stderr.
@@ -31,6 +35,15 @@ impl CliError {
     pub fn usage(subcommand: &str, message: impl Into<String>) -> Self {
         Self {
             exit: Exit::Usage,
+            subcommand: subcommand.to_string(),
+            message: message.into(),
+        }
+    }
+
+    /// The listener cannot start for want of setup; see `Exit::Setup`.
+    pub fn setup(subcommand: &str, message: impl Into<String>) -> Self {
+        Self {
+            exit: Exit::Setup,
             subcommand: subcommand.to_string(),
             message: message.into(),
         }
