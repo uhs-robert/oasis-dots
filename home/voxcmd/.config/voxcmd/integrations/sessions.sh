@@ -14,26 +14,24 @@ hyprctl_eval() {
 # Prints the launcher's session names as a JSON array. `hyprctl eval` prints nothing back, so Hyprland's Lua writes
 # them to a file, one per call since phrases are routed in parallel. Prints nothing when Hyprland cannot answer, which
 # leaves the phrase to the action to report.
+# The hook runner kills a hook that outlives its 3 s limit with SIGKILL, which no trap catches. So hyprctl gets a shorter
+# limit of its own and the rm below always runs.
 session_names() {
   local dir="${XDG_RUNTIME_DIR:-/tmp}/voxcmd" file
   mkdir -p "$dir"
   file=$(mktemp "$dir/launcher-sessions.XXXXXX") || return 0
-  hyprctl eval "$launcher_module.write_names('$file')" >/dev/null 2>&1 && cat "$file" 2>/dev/null
+  timeout 2 hyprctl eval "$launcher_module.write_names('$file')" >/dev/null 2>&1 && cat "$file" 2>/dev/null
   rm -f "$file"
   return 0
 }
 
-# id<TAB>label per session, both the name. A name holding a tab or newline splits the row, as it never did in JSON.
-# When the names cannot be read (Hyprland down, or a reply that is not a JSON list) bash had no hook answer and
-# launched the spoken target as the name, so the target is offered as the one session, and the action reports the failure.
+# id<TAB>label per session, both the name. Tab and newline are stripped from names and empty names skipped, so a name
+# never splits a row. Prints nothing when the names cannot be read (Hyprland down, or a reply that is not a JSON list).
 session_candidates() {
-  local names rows
+  local names
   names=$(session_names)
-  if [ -n "$names" ] && rows=$(jq -r '.[] | [., .] | join("\t")' <<<"$names" 2>/dev/null); then
-    [ -z "$rows" ] || printf '%s\n' "$rows"
-  elif [ -n "${VOXCMD_ARG_TARGET:-}" ]; then
-    printf '%s\t%s\n' "$VOXCMD_ARG_TARGET" "$VOXCMD_ARG_TARGET"
-  fi
+  [ -n "$names" ] || return 0
+  jq -r '.[] | gsub("[\t\n]"; "") | select(. != "") | [., .] | join("\t")' <<<"$names" 2>/dev/null || true
 }
 
 # The name goes to Lua as a JSON string, which Lua reads the same for anything but \u escapes jq only writes for control

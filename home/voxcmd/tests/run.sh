@@ -1512,6 +1512,24 @@ VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work tmux session" >/
 check "a tmux phrase launches no launcher session" "! grep -Fq '.launch(' '$log'"
 # Sessions' "skip" verb offers nothing, so the phrase passes on to Tmux rather than stopping at Sessions.
 check "Sessions yields a tmux phrase to Tmux" "VOXCMD_CONFIG_DIR='$sessions_config' '$voxcmd' explain 'open the work tmux session' 2>&1 | grep -q '^option 1: *Tmux'"
+# A name holding a tab or newline stays one session, and a name of nothing but those is no session.
+export SANDBOX_LAUNCHER_SESSIONS=$'wo\trk\n\t'
+: >"$log"
+VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work session" >/dev/null 2>&1
+check "a tab in a name does not split it, and a name of only a tab is no session" "grep -Fq '.launch(\"work\")' '$log'"
+# A hyprctl of our own first on PATH whose eval hangs. The hook runner kills a candidates hook at 3 s with SIGKILL, which
+# no trap catches, so the hook has to end before that on its own.
+sessions_stub=$root/sessions-stub
+mkdir -p "$sessions_stub"
+cat >"$sessions_stub/hyprctl" <<STUB
+#!/bin/bash
+: >"$sessions_stub/hung"
+exec sleep 60
+STUB
+chmod +x "$sessions_stub/hyprctl"
+PATH="$sessions_stub:$PATH" VOXCMD_CONFIG_DIR=$sessions_config "$voxcmd" run "open the work session" >/dev/null 2>&1
+check "the hanging hyprctl was really reached" "[[ -e '$sessions_stub/hung' ]]"
+check "a hyprctl that hangs past the hook's timeout leaves no temp file" "[[ -z \$(find '$XDG_RUNTIME_DIR/voxcmd' -maxdepth 1 -name 'launcher-sessions.*') ]]"
 unset SANDBOX_LAUNCHER_SESSIONS
 
 section "keeptabs.toml jumps to agents"
