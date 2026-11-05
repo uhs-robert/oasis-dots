@@ -26,6 +26,9 @@ pub trait Frames {
 pub struct PwRecord {
     child: Child,
     pending: Vec<u8>,
+    /// Set once the child was ended and reaped. Its pid is free for the kernel to reuse after that, so a second
+    /// `end_child` could signal an unrelated process.
+    ended: bool,
 }
 
 impl PwRecord {
@@ -52,6 +55,7 @@ impl PwRecord {
         Ok(Self {
             child: command.spawn()?,
             pending: Vec::new(),
+            ended: false,
         })
     }
 
@@ -112,13 +116,23 @@ impl Frames for PwRecord {
     }
 
     fn close(&mut self) {
-        end_child(&mut self.child);
+        self.end();
+    }
+}
+
+impl PwRecord {
+    /// Ends the child once, whether by `close` or by the drop that follows it.
+    fn end(&mut self) {
+        if !self.ended {
+            self.ended = true;
+            end_child(&mut self.child);
+        }
     }
 }
 
 impl Drop for PwRecord {
     fn drop(&mut self) {
-        end_child(&mut self.child);
+        self.end();
     }
 }
 
