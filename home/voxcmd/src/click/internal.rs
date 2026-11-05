@@ -15,9 +15,6 @@ pub fn click_match(args: &ClickMatchArgs) -> Result<Option<String>, CliError> {
     std::io::stdin()
         .read_to_end(&mut input)
         .map_err(|error| CliError::failed("click-match", format!("reading stdin: {error}")))?;
-    // Known divergence from gawk (C.UTF-8): it counts each invalid byte as a character and passes it through, where this
-    // turns it into U+FFFD, so the 48-character label cut and the label bytes differ on invalid UTF-8. OCR text is
-    // valid UTF-8 in practice, and byte-level matching would need the whole matcher off `str`; pinned in tests/click_match.rs.
     let input = String::from_utf8_lossy(&input);
     let output = match_stream(
         &input,

@@ -72,7 +72,7 @@ fn a_zero_image_size_fails_with_status_2_and_no_candidates() {
     let output = click_match("sign in", &[], &PAGE.replace("256 154", "0 154"));
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("division by zero attempted"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("image or window size is zero"));
 }
 
 #[test]
@@ -82,8 +82,7 @@ fn a_backslash_in_the_target_is_kept() {
     assert!(!output.stdout.is_empty());
 }
 
-/// Pins the known divergence from the awk (see `click_match` in src/click/internal.rs): invalid bytes become U+FFFD
-/// before the 48-character label cut, where gawk keeps the bytes.
+/// Invalid bytes become U+FFFD before the 48-character label cut.
 #[test]
 fn invalid_utf8_becomes_replacement_characters_before_the_label_is_cut() {
     let mut page = b"#window 100 50 160 96 256 154\n#strip 0 0 0 154\n5\t1\t1\t1\t1\t1\t80\t40\t48\t24\t95\t".to_vec();
