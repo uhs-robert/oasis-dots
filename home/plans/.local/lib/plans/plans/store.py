@@ -76,11 +76,14 @@ def update(doc, changes, date=None):
     return updated
 
 
-def create(path, text):
+def create(path, text, check_under_lock=None):
     """Write a new doc, or raise FileExistsError rather than overwrite one. The temp file is hard-linked into place.
-    A link fails when the name exists, so even a writer outside the lock is never overwritten."""
+    A link fails when the name exists, so even a writer outside the lock is never overwritten. `check_under_lock` runs
+    while the lock is held and raises to refuse the write."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with locked(plans_dir_of(path)):
+        if check_under_lock:
+            check_under_lock()
         temp = write_temp(path, text)
         try:
             os.chmod(temp, 0o666 & ~current_umask())

@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 sys.dont_write_bytecode = True
@@ -17,6 +17,10 @@ PACKAGE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PACKAGE, ".local", "lib", "plans"))
 from plans import cli, parse, query  # noqa: E402
 
+# Git sets these in hooks, where the check can run. Inherited, they point every git call here at that other repo.
+for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
+             "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX"):
+    os.environ.pop(name, None)
 ENTRY = os.path.join(PACKAGE, ".local", "bin", "plans")
 TODAY = datetime.date.today().isoformat()
 SECTIONS = "\n## Goal\n\n## Decisions\n\n## Plan\n\n## Open questions\n\n{questions}\n## Owner checks\n"
@@ -115,6 +119,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("old layout .plans/roadmap.md; migrate this repo", result.stderr)
         self.assertIn("1 docs on the old kind plan/tracker/handoff scheme; migrate this repo", result.stderr)
         self.assertIn("broken.md: outside the front matter subset", result.stderr)
+        self.assertIn(os.path.join(self.repo, ".plans/topic/broken.md") + ": line 1: no front matter", self.plans("show", "broken", code=2).stderr)
 
     def test_ls_all_scans_the_configured_roots(self):
         dev = os.path.join(self.temp.name, "dev")
@@ -339,6 +344,39 @@ class CliTest(unittest.TestCase):
         self.add("demo", 10, waiting_on="[]")
         self.assertEqual(self.plans("lint", code=1).stdout,
                          ".plans/proj/demo.md:9: waiting-on: waiting_on must be a string, \"\" when the doc waits on nothing\n")
+
+    def test_an_unreadable_dependency_blocks(self):
+        self.write(".plans/proj/broken.md", "no front matter\n")
+        self.add("needs", 10, depends_on="[broken]")
+        self.add("later", 20)
+        self.assertEqual(self.plans("next").stdout, "blocked\tneeds\tblocked by broken (unreadable)\nwork\tlater\tplanned\n")
+
+    def test_new_checks_the_id_again_under_the_lock(self):
+        self.add("taken", 10, project="first")
+        real_find = cli.query.find
+        calls = []
+
+        def find_late(root, doc_id):
+            # The early check runs before another `plans new` writes the same id.
+            calls.append(doc_id)
+            return [] if len(calls) == 1 else real_find(root, doc_id)
+
+        with mock.patch.object(cli.query, "find", find_late), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            stderr = io.StringIO()
+            with redirect_stderr(stderr), redirect_stdout(io.StringIO()):
+                code = cli.main(["new", "second", "taken"])
+        self.assertEqual(code, 1, stderr.getvalue())
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans", "second", "taken.md")))
+
+    def test_gh_timeout_is_a_gh_error(self):
+        self.add("slow", 10, pr="5")
+        bin_dir = os.path.join(self.temp.name, "bin")
+        self.write("gh", "#!/bin/sh\nexec sleep 5\n", repo=bin_dir)
+        os.chmod(os.path.join(bin_dir, "gh"), 0o755)
+        doc = parse.load(os.path.join(self.repo, ".plans/proj/slow.md"))
+        with mock.patch.dict(os.environ, {"PATH": bin_dir + os.pathsep + os.environ["PATH"]}), mock.patch.object(cli.gh, "TIMEOUT_SECONDS", 0.2):
+            findings = cli.gh.check(self.repo, [doc])
+        self.assertEqual([(f.rule, f.message) for f in findings], [("gh-error", "could not read pr 5: gh timed out after 0.2 s")])
 
     def test_find_by_glob(self):
         self.add("demo", 10, project="a")

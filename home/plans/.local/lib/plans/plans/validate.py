@@ -150,5 +150,6 @@ def excluded_root_docs(repo):
     matched = [name for name in root_docs if any(fnmatch.fnmatchcase(name, pattern.lstrip("/")) for pattern in patterns)]
     if not matched:
         return []
-    tracked = subprocess.run(["git", "-C", repo, "ls-files", "--", *matched], capture_output=True, text=True).stdout.split()
+    listed = subprocess.run(["git", "-C", repo, "ls-files", "-z", "--", *matched], capture_output=True, text=True).stdout
+    tracked = listed.split("\0")
     return [name for name in matched if name not in tracked]

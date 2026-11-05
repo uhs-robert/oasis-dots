@@ -34,7 +34,7 @@ class ParseError(Exception):
     def __init__(self, path, errors):
         self.path = path
         self.errors = errors
-        super().__init__("; ".join(f"line {line}: {message}" for line, message in errors))
+        super().__init__(f"{path}: " + "; ".join(f"line {line}: {message}" for line, message in errors))
 
 
 class Doc:

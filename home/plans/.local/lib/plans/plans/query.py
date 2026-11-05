@@ -106,10 +106,11 @@ class Step(NamedTuple):
     detail: str
 
 
-def next_steps(docs, session=None):
+def next_steps(docs, session=None, unreadable_ids=()):
     """What to do next, per the `next` rule: walk the active docs by rank and skip those another session owns. Each doc
     above the first free one gives an `ask` line when it waits on the owner, else a `blocked` line naming its first
-    unfinished dependency. The first free doc gives the `work` line, and the walk ends there. Asks come first so a
+    unfinished dependency. A dependency in `unreadable_ids` exists but cannot be read, so it blocks too. The first free
+    doc gives the `work` line, and the walk ends there. Asks come first so a
     high-ranked doc that waits on a question keeps its place: the owner answers while lower-ranked work goes on."""
     by_id = {doc.id: doc for doc in docs}
     steps = []
@@ -120,7 +121,7 @@ def next_steps(docs, session=None):
         if waiting_on:
             steps.append(Step("ask", doc, str(waiting_on)))
             continue
-        blocker = first_unfinished_dependency(doc, by_id)
+        blocker = first_unfinished_dependency(doc, by_id, unreadable_ids)
         if blocker:
             steps.append(Step("blocked", doc, blocker))
             continue
@@ -134,9 +135,11 @@ def owned_by_other(doc, session):
     return owner is not None and owner != session
 
 
-def first_unfinished_dependency(doc, by_id):
+def first_unfinished_dependency(doc, by_id, unreadable_ids=()):
     """A dependency is finished when its doc is done or gone, because a merged piece deletes its doc."""
     for dependency in doc.keys.get("depends_on") or []:
+        if dependency in unreadable_ids:
+            return f"{dependency} (unreadable)"
         target = by_id.get(dependency)
         if target is not None and target.keys.get("status") != FINISHED_STATUS:
             return dependency
