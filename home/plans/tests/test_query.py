@@ -77,6 +77,27 @@ class NextTest(unittest.TestCase):
         docs = [make("a", 10, waiting_on="owner"), make("b", 20, status="review")]
         self.assertEqual(lines(query.next_steps(docs)), [("ask", "a", "owner")])
 
+    def test_all_lists_every_free_doc_in_rank_order(self):
+        docs = [make("c", 30, status="approved"), make("a", 10), make("b", 20, status="building"), make("idea", 5, status="idea")]
+        self.assertEqual(lines(query.next_steps(docs, all=True)),
+                         [("work", "a", "planned"), ("work", "b", "building"), ("work", "c", "approved")])
+        self.assertEqual(lines(query.next_steps(docs)), [("work", "a", "planned")])
+
+    def test_all_skips_other_owners_and_blocks_dependents_of_free_docs(self):
+        docs = [make("theirs", 10, owner="other-1"), make("base", 20), make("dep", 30, depends_on="[base]"),
+                make("ask", 40, waiting_on="owner"), make("last", 50)]
+        self.assertEqual(lines(query.next_steps(docs, "me-1", all=True)), [
+            ("work", "base", "planned"),
+            ("blocked", "dep", "base"),
+            ("ask", "ask", "owner"),
+            ("work", "last", "planned"),
+        ])
+
+    def test_all_honours_skip_and_unreadable_dependencies(self):
+        docs = [make("one", 10), make("two", 20), make("needs", 30, depends_on="[lost]")]
+        self.assertEqual(lines(query.next_steps(docs, skip={"one"}, unreadable_ids={"lost"}, all=True)),
+                         [("work", "two", "planned"), ("blocked", "needs", "lost (unreadable)")])
+
 
 if __name__ == "__main__":
     unittest.main()

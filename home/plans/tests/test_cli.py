@@ -147,6 +147,19 @@ class CliTest(unittest.TestCase):
         skipped = self.plans("next", "--as", "me-1", "--skip", "mine", "--skip", "asks").stdout
         self.assertEqual(skipped, "blocked\tblocked\tblocked by asks\nwork\tfree\tplanned\n")
 
+    def test_next_all(self):
+        self.add("first", 10)
+        self.add("theirs", 15, owner="other-1")
+        self.add("second", 20, status="approved")
+        self.add("after", 25, depends_on="[second]")
+        self.add("third", 30, owner="me-1")
+        self.assertEqual(self.plans("next", "--as", "me-1").stdout, "work\tfirst\tplanned\n")
+        expected = ("work\tfirst\tplanned\nwork\tsecond\tapproved\nblocked\tafter\tblocked by second\n"
+                    "work\tthird\tplanned\n")
+        self.assertEqual(self.plans("next", "--all", "--as", "me-1").stdout, expected)
+        as_json = json.loads(self.plans("next", "--all", "--as", "me-1", "--json").stdout)
+        self.assertEqual([step["id"] for step in as_json if step["action"] == "work"], ["first", "second", "third"])
+
     def test_waiting_and_questions(self):
         self.add("asks", 10, waiting_on='"owner: which colour"', questions="- [ ] Which colour?\n- [x] Old one\n")
         self.add("calm", 20)
