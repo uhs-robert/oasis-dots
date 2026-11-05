@@ -296,7 +296,7 @@ oasisfox-config:
     config_dir="$HOME/.config/oasisfox"
     [[ -d $config_dir ]] || { echo "oasisfox-config: no config at $config_dir (run 'just stow oasisfox')" >&2; exit 1; }
     cd "$oasisfox"
-    node tools/build-config/cli.ts "$config_dir"
+    node tools/build-config/cli.ts "$config_dir" --live || { echo "oasisfox-config: build-config failed. If it says Unknown option '--live', update the OasisFox checkout at $oasisfox and run 'just build' there" >&2; exit 1; }
 
 # Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md, the IPC table in the Quickshell README)
 docs-gen:
