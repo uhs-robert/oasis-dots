@@ -70,7 +70,9 @@ check_words() {
 scan() {
   local text=$1 quote="" word="" in_word=false c i backslash=\\
   local -a words=()
-  text=$(drop_heredoc_bodies "$text")
+  text=${text//$'\\\n'/}
+  drop_heredoc_bodies "$text"
+  text=$heredoc_stripped
   for ((i = 0; i < ${#text}; i++)); do
     c=${text:i:1}
     if [[ $quote == "'" ]]; then
@@ -103,19 +105,35 @@ scan() {
   ((${#words[@]})) && check_words
 }
 
-# Removes the lines a heredoc body occupies, keeping the line that opens it.
+# Sets heredoc_stripped to $1 with each heredoc body removed, keeping the line that opens it. An unquoted heredoc
+# still expands $(...) and backticks, so those parts of its body lines are kept as commands. A `<<` after a `#` or
+# in `<<<` does not open a heredoc. The body ends only on a line equal to the whole delimiter.
 drop_heredoc_bodies() {
-  local line delim="" strip_tabs=false
+  local line delim="" strip_tabs=false expands=false prefix rest
+  heredoc_stripped=""
   while IFS= read -r line || [[ -n $line ]]; do
     if [[ -n $delim ]]; then
       $strip_tabs && line=${line#"${line%%[!$'\t']*}"}
-      [[ $line == "$delim" ]] && delim=""
+      if [[ $line == "$delim" ]]; then
+        delim=""
+      elif $expands; then
+        rest=$line
+        while [[ $rest =~ (\$\(([^\)]*)\)|\`([^\`]*)\`) ]]; do
+          heredoc_stripped+="${BASH_REMATCH[2]}${BASH_REMATCH[3]}"$'\n'
+          rest=${rest#*"${BASH_REMATCH[1]}"}
+        done
+        # An opener left without a closer cannot be read, so deny.
+        [[ $rest == *\$\(* || $rest == *\`* ]] && denied=true
+      fi
       continue
     fi
-    printf '%s\n' "$line"
-    if [[ $line =~ \<\<(-?)[[:space:]]*[\'\"]?([A-Za-z_][A-Za-z0-9_]*) ]]; then
-      delim=${BASH_REMATCH[2]}
-      [[ -n ${BASH_REMATCH[1]} ]] && strip_tabs=true || strip_tabs=false
+    heredoc_stripped+=$line$'\n'
+    prefix=${line%%<<*}
+    [[ $prefix =~ (^|[[:space:]])# ]] && continue
+    if [[ $line =~ (^|[^<])\<\<(-?)[[:space:]]*([\'\"]?)([A-Za-z_][A-Za-z0-9_]*) ]]; then
+      delim=${BASH_REMATCH[4]}
+      [[ -n ${BASH_REMATCH[2]} ]] && strip_tabs=true || strip_tabs=false
+      [[ -z ${BASH_REMATCH[3]} ]] && expands=true || expands=false
     fi
   done <<<"$1"
 }
