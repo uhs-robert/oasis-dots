@@ -40,6 +40,13 @@
   .badge { padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; }
   .badge.depends { color: var(--accent); }
   a { color: var(--accent); }
+  .card.dragging { position: relative; z-index: 6; opacity: 0.85; pointer-events: none; }
+  .drop-marker { height: 3px; margin: -1px 0; background: var(--accent); border-radius: 2px; }
+  .owner-input { width: 100%; margin-top: 3px; background: var(--bg); color: var(--text);
+                 border: 1px solid var(--accent); border-radius: 3px; font: inherit; }
+  #confirm { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
+             background: rgba(0, 0, 0, 0.5); }
+  #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -53,10 +60,11 @@
   <select id="status" title="status"></select>
   <select id="kind" title="kind"></select>
   <label><input id="waiting" type="checkbox"> waiting on owner</label>
-  <span id="keys">j k cards, h l columns, / filter, r repo</span>
+  <span id="keys">j k cards, h l columns, H L status, J K rank, e owner, o open, / filter, r repo</span>
 </header>
 <div id="board"></div>
 <div id="message"></div>
+<div id="confirm"><div></div></div>
 <script>
 "use strict";
 
@@ -82,11 +90,174 @@ function show_message(text, kind) {
   show_message.timer = setTimeout(() => { box.style.display = "none"; }, 6000);
 }
 
+const WRITE_HEADERS = { "Content-Type": "application/json", "X-Plans-Board": "1" };
+// A move into one of these asks first, because it takes the doc out of the work order.
+const CONFIRM_STATUSES = ["blocked", "done"];
+let pending_confirm = null;
+
+// One write. A refusal (409 and the rest) names the reason, and the reload snaps the card back to the disk state.
+async function write(action, body) {
+  const response = await fetch(`/api/${action}`, { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify(body) });
+  const answer = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+  if (response.status === 409 && answer.keys) {
+    show_message(`Refused: ${doc_name(body.path)} changed since the board read it (${answer.keys.join(", ")}). Reloaded.`);
+  } else if (answer.maybe_applied) {
+    show_message(`The write failed partway and may have landed: ${answer.error}. Reloaded; check the card.`);
+  } else if (!response.ok) {
+    show_message(`Refused: ${answer.error}`);
+  } else {
+    const ids = (list) => (list || []).map((doc) => doc.id).join(", ");
+    const notes = [];
+    if (answer.skipped && answer.skipped.length) notes.push(`these changed meanwhile and kept their rank: ${ids(answer.skipped)}`);
+    if (answer.uncertain && answer.uncertain.length) notes.push(`these failed to write and may have the new rank: ${ids(answer.uncertain)}`);
+    if (notes.length) show_message(`Renumbered, but ${notes.join("; ")}`);
+  }
+  if (action !== "open") await load_board();
+  return response.ok;
+}
+
+function doc_by_path(path) {
+  for (const repo of board.repos) {
+    const doc = repo.docs.find((doc) => doc.path === path);
+    if (doc) return doc;
+  }
+  return null;
+}
+
+function doc_name(path) {
+  const doc = doc_by_path(path);
+  return doc ? doc.id : path;
+}
+
+function ask(question, on_yes) {
+  const box = element("confirm");
+  box.firstElementChild.textContent = `${question}  y / n`;
+  box.style.display = "flex";
+  pending_confirm = on_yes;
+}
+
+function answer_confirm(yes) {
+  const on_yes = pending_confirm;
+  pending_confirm = null;
+  element("confirm").style.display = "none";
+  if (yes && on_yes) on_yes();
+}
+
+function set_status(doc, status) {
+  const send = () => write("update", { path: doc.path, basis: { status: doc.status }, changes: { status } });
+  if (CONFIRM_STATUSES.includes(status)) ask(`Move ${doc.id} to ${status}?`, send);
+  else send();
+}
+
+// H and L step one status column, empty or not.
+function shift_status(offset) {
+  const doc = doc_by_path(selected_path);
+  if (!doc) return;
+  const status = board.statuses[board.statuses.indexOf(doc.status) + offset];
+  if (status) set_status(doc, status);
+}
+
+// The docs of the target cell in rank order, without the moved doc, including the ones the filters hide.
+// The server leaves docs without a whole-number rank out of its cell, so this does too.
+function cell_docs_of(doc, status) {
+  const repo = board.repos.find((repo) => repo.docs.includes(doc));
+  return repo.docs.filter((other) => other.project === doc.project && other.status === status && other !== doc
+    && Number.isInteger(other.rank));
+}
+
+// The neighbours of a drop at `index` among the shown cards of the cell. The server refuses the move unless the two
+// are still next to each other in the full cell, so the neighbours come from the full cell: the shown card under the
+// drop and the doc right before it, or the doc right after the last shown card.
+function drop_request(doc, status, shown_cards, index) {
+  const cell_docs = cell_docs_of(doc, status);
+  let above, below;
+  if (index < shown_cards.length) {
+    below = doc_by_path(shown_cards[index].dataset.path);
+    above = cell_docs[cell_docs.indexOf(below) - 1] || null;
+  } else {
+    above = index > 0 ? doc_by_path(shown_cards[index - 1].dataset.path) : null;
+    below = cell_docs[above ? cell_docs.indexOf(above) + 1 : 0] || null;
+  }
+  return {
+    path: doc.path, basis: { status: doc.status, rank: doc.rank }, status,
+    above: above && above.path, below: below && below.path,
+  };
+}
+
+function cell_cards(cell, without_path) {
+  return [...cell.querySelectorAll(".card")].filter((card) => card.dataset.path !== without_path);
+}
+
+function move_confirmed(doc, status, request) {
+  const send = () => write("move", request);
+  if (status !== doc.status && CONFIRM_STATUSES.includes(status)) ask(`Move ${doc.id} to ${status}?`, send);
+  else send();
+}
+
+// J and K swap the card with its neighbour in the cell, which changes only its rank.
+function shift_rank(offset) {
+  const doc = doc_by_path(selected_path);
+  const card = selected_card();
+  if (!doc || !card) return;
+  const siblings = cell_cards(card.parentElement, null);
+  const target = siblings.indexOf(card) + offset;
+  if (target < 0 || target >= siblings.length) return;
+  const others = cell_cards(card.parentElement, doc.path);
+  write("move", drop_request(doc, doc.status, others, target));
+}
+
+function edit_owner() {
+  const doc = doc_by_path(selected_path);
+  const card = selected_card();
+  if (!doc || !card) return;
+  const input = make("input", "owner-input");
+  const close_input = () => { input.remove(); release_held_reload(); };
+  input.value = doc.owner_session;
+  input.placeholder = "session name or none";
+  card.append(input);
+  input.focus();
+  input.select();
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && input.value.trim() !== doc.owner_session) {
+      write("update", { path: doc.path, basis: { owner_session: doc.owner_session }, changes: { owner_session: input.value.trim() } });
+    }
+    if (event.key === "Enter" || event.key === "Escape") { event.stopPropagation(); close_input(); }
+  });
+  input.addEventListener("blur", close_input);
+}
+
+// An error card opens too, so the owner can fix the doc. A repo-level error card names the repo, not a doc.
+function can_open(path) {
+  return Boolean(doc_by_path(path))
+    || board.repos.some((repo) => repo.problems.some((problem) => problem.path === path && path !== repo.root));
+}
+
+function open_doc() {
+  if (can_open(selected_path)) write("open", { path: selected_path });
+}
+
+// A render rebuilds every card, which would drop the owner's typing or the card under the pointer. A reload
+// asked for meanwhile waits, and release_held_reload fetches the newest board once the input or the drag ends.
+let held_reload = false;
+let drag_in_progress = false;
+
+function board_is_busy() {
+  return drag_in_progress || Boolean(document.querySelector(".owner-input"));
+}
+
+function release_held_reload() {
+  if (!held_reload) return;
+  held_reload = false;
+  load_board();
+}
+
 async function load_board() {
+  if (board_is_busy()) { held_reload = true; return; }
   const response = await fetch("/api/board", { cache: "no-store" });
   const fresh = await response.json();
   // Two loads can finish out of order, and the older answer must not replace the newer board.
   if (board && fresh.version < board.version) return;
+  if (board_is_busy()) { held_reload = true; return; }
   board = fresh;
   fill_filter_choices();
   render();
@@ -158,6 +329,9 @@ function card_node(repo, doc) {
   card.append(meta);
   if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
   card.addEventListener("click", () => select_card(doc.path));
+  card.querySelector(".owner").addEventListener("click", () => { select_card(doc.path); edit_owner(); });
+  card.querySelector(".owner").title = "click or e: change the owner";
+  card.addEventListener("pointerdown", (event) => start_drag(event, card, doc));
   return card;
 }
 
@@ -258,6 +432,73 @@ function step_repo(offset) {
   render();
 }
 
+// Drag by pointer events rather than HTML drag and drop: the card can only land in its own lane, and the marker
+// shows the slot the drop takes.
+const DRAG_THRESHOLD_PX = 4;
+
+function start_drag(event, card, doc) {
+  if (event.button !== 0 || event.target.closest("a, input")) return;
+  const lane = card.parentElement.dataset.lane;
+  const origin = { x: event.clientX, y: event.clientY };
+  let dragging = false;
+  let target = null;
+  const marker = make("div", "drop-marker");
+
+  const slot_at = (x, y) => {
+    const cell = document.elementsFromPoint(x, y).find((node) => node.classList.contains("cell"));
+    if (!cell || cell.dataset.lane !== lane) return null;
+    const cards = cell_cards(cell, doc.path);
+    const index = cards.filter((other) => {
+      const box = other.getBoundingClientRect();
+      return box.top + box.height / 2 < y;
+    }).length;
+    return { cell, cards, index };
+  };
+
+  const on_move = (move) => {
+    if (!dragging && Math.hypot(move.clientX - origin.x, move.clientY - origin.y) < DRAG_THRESHOLD_PX) return;
+    dragging = true;
+    drag_in_progress = true;
+    card.classList.add("dragging");
+    card.style.transform = `translate(${move.clientX - origin.x}px, ${move.clientY - origin.y}px)`;
+    target = slot_at(move.clientX, move.clientY);
+    marker.remove();
+    if (target) target.cell.insertBefore(marker, target.cards[target.index] || null);
+  };
+
+  // Only pointerup drops. A cancelled pointer, a window that loses focus or Escape ends the drag where it began, so
+  // a held reload never waits on a drag that cannot finish.
+  const end_drag = (drop) => {
+    document.removeEventListener("pointermove", on_move);
+    document.removeEventListener("pointerup", on_up);
+    document.removeEventListener("pointercancel", on_cancel);
+    document.removeEventListener("keydown", on_escape, true);
+    window.removeEventListener("blur", on_cancel);
+    marker.remove();
+    card.classList.remove("dragging");
+    card.style.transform = "";
+    drag_in_progress = false;
+    if (drop && dragging && target) {
+      const status = target.cell.dataset.status;
+      move_confirmed(doc, status, drop_request(doc, status, target.cards, target.index));
+    }
+    release_held_reload();
+  };
+  const on_up = () => end_drag(true);
+  const on_cancel = () => end_drag(false);
+  const on_escape = (key) => {
+    if (key.key !== "Escape") return;
+    key.stopPropagation();
+    end_drag(false);
+  };
+
+  document.addEventListener("pointermove", on_move);
+  document.addEventListener("pointerup", on_up);
+  document.addEventListener("pointercancel", on_cancel);
+  document.addEventListener("keydown", on_escape, true);
+  window.addEventListener("blur", on_cancel);
+}
+
 function typing_in_field(event) {
   return ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName);
 }
@@ -270,9 +511,21 @@ const KEYS = {
   r: () => step_repo(1),
   R: () => step_repo(-1),
   "/": () => element("text").focus(),
+  H: () => shift_status(-1),
+  L: () => shift_status(1),
+  J: () => shift_rank(1),
+  K: () => shift_rank(-1),
+  e: () => edit_owner(),
+  o: () => open_doc(),
+  Enter: () => open_doc(),
 };
 
 document.addEventListener("keydown", (event) => {
+  if (pending_confirm) {
+    event.preventDefault();
+    if (["y", "n", "Escape"].includes(event.key)) answer_confirm(event.key === "y");
+    return;
+  }
   if (event.key === "Escape") {
     if (typing_in_field(event)) event.target.blur();
     return;

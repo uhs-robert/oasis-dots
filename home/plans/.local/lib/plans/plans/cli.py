@@ -277,11 +277,9 @@ def coerce(key, raw):
         if not parse.INTEGER.fullmatch(raw):
             raise UsageError(f"{key} must be a whole number, not {raw!r}")
         return int(raw)
-    closed_sets = {"kind": validate.KINDS, "status": validate.STATUSES}
-    if key in closed_sets and raw not in closed_sets[key]:
-        raise UsageError(f"{key} {raw!r} is none of {', '.join(closed_sets[key])}")
-    if key == "owner_session" and not validate.is_session_or_none(raw):
-        raise UsageError(f"{raw!r} is no session name (like dotfiles-56) or none")
+    problem = validate.write_problem(key, raw)
+    if problem:
+        raise UsageError(problem)
     if key in ("issue", "pr") and parse.INTEGER.fullmatch(raw):
         return int(raw)
     return raw
