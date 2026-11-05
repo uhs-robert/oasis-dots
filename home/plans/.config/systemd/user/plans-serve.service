@@ -1,0 +1,19 @@
+[Unit]
+Description=plans board: a web board over the plan docs of every repo, on 127.0.0.1:8765
+Documentation=https://github.com/uhs-robert/oasis-dots/blob/main/home/plans/README.md
+# The board's `o` key opens a terminal, which needs the Wayland session's environment.
+PartOf=graphical-session.target
+# Not After=graphical-session.target: the target wants this unit once enabled, and a target orders itself after the
+# units it wants, so that would be a cycle.
+After=graphical-session-pre.target
+
+# Off unless asked for: `systemctl --user enable --now plans-serve` starts it now and at every login. Nothing enables
+# it on install.
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I %h/.local/bin/plans serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
