@@ -18,6 +18,12 @@ from . import parse
 UPDATED = "updated"
 
 
+class Vanished(Exception):
+    def __init__(self, path):
+        self.path = path
+        super().__init__(f"{path}: deleted since it was read")
+
+
 class Conflict(Exception):
     def __init__(self, path, keys):
         self.path = path
@@ -55,13 +61,19 @@ def update(doc, changes, date=None):
     copy the caller read and based its changes on. Raises Conflict (file untouched) when a changed key differs on disk
     from `doc`, and parse.ParseError when the file on disk left the subset."""
     with locked(plans_dir_of(doc.path)):
-        fresh = parse.load(doc.path)
+        try:
+            fresh = parse.load(doc.path)
+        except FileNotFoundError:
+            raise Vanished(doc.path) from None
         conflicting = [key for key in changes if key != UPDATED and fresh.value(key) != doc.value(key)]
         if conflicting:
             raise Conflict(doc.path, conflicting)
-        text = fresh.render({**changes, UPDATED: date or today()})
-        replace_atomically(doc.path, text)
-    return parse.Doc(doc.path, text)
+        updated = parse.Doc(doc.path, fresh.render({**changes, UPDATED: date or today()}))
+        # A value with a line break renders as broken front matter, so the check runs on the result, for every caller.
+        if updated.errors:
+            raise parse.ParseError(doc.path, updated.errors)
+        replace_atomically(doc.path, updated.text)
+    return updated
 
 
 def create(path, text):

@@ -79,17 +79,24 @@ class Question(NamedTuple):
 
 
 def questions(docs):
-    """The unchecked `- [ ]` items under each doc's Open questions."""
+    """The unchecked `- [ ]` items under each doc's Open questions. An indented line continues the item above it, and
+    joins its text after a space."""
     found = []
     for doc in sorted(docs, key=rank_order):
         section = doc.sections().get("Open questions")
         if not section:
             continue
+        current = None
         for line in section[1].splitlines():
             item = UNCHECKED_ITEM.fullmatch(line)
             if item:
-                found.append(Question(doc, item.group(1)))
-    return found
+                current = [item.group(1)]
+                found.append(Question(doc, current))
+            elif current is not None and line.startswith((" ", "\t")) and line.strip():
+                current.append(line.strip())
+            else:
+                current = None
+    return [Question(question.doc, " ".join(question.text)) for question in found]
 
 
 class Step(NamedTuple):
@@ -123,8 +130,8 @@ def next_steps(docs, session=None):
 
 
 def owned_by_other(doc, session):
-    owner = doc.keys.get("owner_session")
-    return owner not in (None, "", validate.NO_SESSION) and owner != session
+    owner = validate.owner_of(doc)
+    return owner is not None and owner != session
 
 
 def first_unfinished_dependency(doc, by_id):
