@@ -94,10 +94,20 @@ const WRITE_HEADERS = { "Content-Type": "application/json", "X-Plans-Board": "1"
 // A move into one of these asks first, because it takes the doc out of the work order.
 const CONFIRM_STATUSES = ["blocked", "done"];
 let pending_confirm = null;
+// Set when a write lost the server. The event stream reloads the board when it reconnects, even on an unchanged version.
+let server_lost = false;
 
 // One write. A refusal (409 and the rest) names the reason, and the reload snaps the card back to the disk state.
 async function write(action, body) {
-  const response = await fetch(`/api/${action}`, { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify(body) });
+  let response;
+  try {
+    response = await fetch(`/api/${action}`, { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify(body) });
+  } catch {
+    // The connection can drop after the server wrote, so the message cannot say that the write failed.
+    server_lost = true;
+    show_message(`Server unreachable: the change to ${doc_name(body.path)} may have landed. The board reloads when the server is back.`);
+    return false;
+  }
   const answer = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
   if (response.status === 409 && answer.keys) {
     show_message(`Refused: ${doc_name(body.path)} changed since the board read it (${answer.keys.join(", ")}). Reloaded.`);
@@ -211,7 +221,14 @@ function edit_owner() {
   const card = selected_card();
   if (!doc || !card) return;
   const input = make("input", "owner-input");
-  const close_input = () => { input.remove(); release_held_reload(); };
+  // input.remove() fires blur, which calls close_input again on the input that is already leaving.
+  let closed = false;
+  const close_input = () => {
+    if (closed) return;
+    closed = true;
+    input.remove();
+    release_held_reload();
+  };
   input.value = doc.owner_session;
   input.placeholder = "session name or none";
   card.append(input);
@@ -259,6 +276,7 @@ async function load_board() {
   if (board && fresh.version < board.version) return;
   if (board_is_busy()) { held_reload = true; return; }
   board = fresh;
+  server_lost = false;
   fill_filter_choices();
   render();
 }
@@ -553,7 +571,7 @@ element("waiting").addEventListener("change", () => {
 // The server sends the board version at connect and after each change on disk. EventSource reconnects by itself.
 const events = new EventSource("/api/events");
 events.addEventListener("version", (event) => {
-  if (!board || Number(event.data) !== board.version) load_board();
+  if (!board || server_lost || Number(event.data) !== board.version) load_board();
 });
 </script>
 </body>
