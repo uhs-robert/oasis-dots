@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The wake word listener: its decision logic (wake_test.py, fake scores and stubbed commands) and `voxcmd wake`
-# against a stub systemctl, inside the sandbox. The microphone is never opened.
+# The wake word listener: the Python listener's decision logic (wake_test.py, fake scores and stubbed commands),
+# `voxcmd wake` against a stub systemctl, and the Rust `voxcmd wake listen` run in the background against a stub
+# pw-record, inside the sandbox. The microphone is never opened.
 #
 #   home/voxcmd/tests/run-wake.sh
 set -euo pipefail
@@ -260,6 +261,251 @@ check "daemon passes no ducking, voxtype-duck owns it" 0 "$(daemon_args | grep -
 check "daemon passes no ducking even from the environment" 0 "$(VOXCMD_DUCK_MEDIA_VOLUME=0 daemon_args | grep -c -e '--duck-media-volume')"
 rm -f "$voice_env"
 unset VOXCMD_VOICE_ENV_FILE
+
+# ---- voxcmd wake listen: the lifecycle, against stub pw-record, pactl and playerctl ------------------------------------
+# The real listener binary runs in the background with stubs first on PATH, so the microphone is never opened: pw-record
+# is a script that prints silence (or the committed clip) and records its pid. It needs the two downloaded feature models.
+real_home=$(getent passwd "$(id -u)" | cut -d: -f6)
+feature_models="$real_home/.local/share/voxcmd-wake/models"
+if [ ! -f "$feature_models/melspectrogram.onnx" ] || [ ! -f "$feature_models/embedding_model.onnx" ]; then
+  printf 'skipped the listener lifecycle checks: the feature models are not in %s (voxcmd wake listen --fetch-models)\n' "$feature_models"
+else
+  listen_bin="$SANDBOX_DIR/listen-bin"
+  pw_dir="$SANDBOX_DIR/pw"
+  mkdir -p "$listen_bin" "$pw_dir"
+  cat >"$listen_bin/pw-record" <<'STUB'
+#!/bin/sh
+# Stands in for the microphone. $SANDBOX_DIR/pw/mode: silence (the default), die (exit at once) or clip (the committed
+# clip first). It writes silence in 80 ms frames after that.
+d="$SANDBOX_DIR/pw"
+echo "$$" >"$d/$$.pid"
+printf '%s\n' "$*" >>"$d/args"
+case "$(cat "$d/mode" 2>/dev/null)" in
+die) exit 1 ;;
+clip) cat "$d/clip.s16" ;;
+esac
+while :; do
+  head -c 2560 /dev/zero
+  sleep 0.08
+done
+STUB
+  cat >"$listen_bin/pactl" <<'STUB'
+#!/bin/sh
+# `pactl -f json list <what>`: no streams, or with $SANDBOX_DIR/pw/mic-busy one from another app.
+if [ -e "$SANDBOX_DIR/pw/mic-busy" ]; then
+  case "$4" in
+  source-outputs) echo '[{"index":1,"source":1,"client":7,"properties":{"application.name":"zoom"}}]' ;;
+  sources) echo '[{"index":1,"name":"alsa_input.mic","properties":{}}]' ;;
+  *) echo '[]' ;;
+  esac
+else
+  echo '[]'
+fi
+STUB
+  cat >"$listen_bin/playerctl" <<'STUB'
+#!/bin/sh
+if [ -e "$SANDBOX_DIR/pw/playing" ]; then echo Playing; else echo Paused; fi
+STUB
+  cat >"$listen_bin/voxcmd-stub" <<'STUB'
+#!/bin/sh
+# The voxcmd the listener runs for the confirmation and the recording: logs each call, and answers the confirmation
+# from $SANDBOX_DIR/pw/confirm-exit (0 wake word, 1 not, default 0). The clip arrives as stdin.
+case "$1 $2" in
+"internal wake-confirm")
+  printf 'confirm %s stdin_bytes=%s stdin_head=%s\n' "$*" "$(wc -c </dev/stdin)" "$(head -c 4 /dev/stdin)" >>"$SANDBOX_DIR/pw/voxcmd-calls"
+  exit "$(cat "$SANDBOX_DIR/pw/confirm-exit" 2>/dev/null || echo 0)"
+  ;;
+*) printf 'run %s\n' "$*" >>"$SANDBOX_DIR/pw/voxcmd-calls" ;;
+esac
+STUB
+  chmod +x "$listen_bin"/*
+  cp "$tests_dir/fixtures/wake/silence_then_noise.s16" "$pw_dir/clip.s16"
+  # The suite never reaches the microphone: refuse to go on if the stub is not what a start would run.
+  [ "$(PATH="$listen_bin:$PATH" command -v pw-record)" = "$listen_bin/pw-record" ] || {
+    echo 'wake lifecycle: the pw-record stub is not first on PATH, refusing to run a listener' >&2
+    exit 1
+  }
+  wake_json="$XDG_RUNTIME_DIR/voxcmd/wake.json"
+  voxtype_state="$XDG_RUNTIME_DIR/voxtype/state"
+  session_json="$XDG_RUNTIME_DIR/voxcmd/session.json"
+  mkdir -p "$XDG_RUNTIME_DIR/voxtype" "$XDG_RUNTIME_DIR/voxcmd"
+  listener=""
+
+  # start_listener [VAR=value...]: the listener in the background; its pid is $listener.
+  start_listener() {
+    rm -f "${wake_json:?}"
+    env PATH="$listen_bin:$PATH" VOXCMD_WAKE_MODEL_DIR="$feature_models" VOXCMD_WAKE_VOXCMD="$listen_bin/voxcmd-stub" \
+      "$@" voxcmd wake listen >"$pw_dir/listener.out" 2>&1 &
+    listener=$!
+  }
+  # wait_for <seconds> <command...>: polls every 50 ms until the command succeeds.
+  wait_for() {
+    local limit="$1" started=$EPOCHREALTIME
+    shift
+    while ! "$@" 2>/dev/null; do
+      [ "$(awk -v now="$EPOCHREALTIME" -v then="$started" -v limit="$limit" 'BEGIN { print (now - then < limit) }')" = 1 ] || return 1
+      sleep 0.05
+    done
+  }
+  wake_field() { jq -r ".$1 // \"none\"" "$wake_json" 2>/dev/null || echo unreadable; }
+  armed() { [ "$(wake_field state)" = armed ]; }
+  paused_for() { [ "$(wake_field state)" = paused ] && [ "$(wake_field reason)" = "$1" ]; }
+  # Live pw-record stubs: a pid file whose process still exists and is not a zombie.
+  live_stubs() {
+    local count=0 file pid state
+    for file in "$pw_dir"/*.pid; do
+      [ -e "$file" ] || continue
+      pid=$(basename "$file" .pid)
+      state=$(awk '{ sub(/^.*\) /, ""); print substr($0, 1, 1) }' "/proc/$pid/stat" 2>/dev/null || true)
+      if [ -n "$state" ] && [ "$state" != Z ]; then count=$((count + 1)); fi
+    done
+    echo "$count"
+  }
+  last_stub() { find "$pw_dir" -name '*.pid' -printf '%T@ %f\n' | sort -n | tail -n 1 | sed 's/^[^ ]* //; s/\.pid$//'; }
+  stub_gone() { [ ! -e "/proc/$1" ]; }
+  stop_listener() {
+    if [ -n "$listener" ]; then
+      kill -TERM "$listener" 2>/dev/null || true
+      wait "$listener" 2>/dev/null || true
+    fi
+    listener=""
+  }
+  reset_stubs() {
+    stop_listener
+    rm -f "${pw_dir:?}"/*.pid "${pw_dir:?}/args" "${pw_dir:?}/mode" "${pw_dir:?}/mic-busy" "${pw_dir:?}/playing" \
+      "${pw_dir:?}/voxcmd-calls" "${pw_dir:?}/confirm-exit" "${voxtype_state:?}" "${session_json:?}"
+  }
+  cleanup_listener() {
+    stop_listener
+    local file
+    for file in "$pw_dir"/*.pid; do
+      if [ -e "$file" ]; then kill "$(basename "$file" .pid)" 2>/dev/null || true; fi
+    done
+    return 0
+  }
+  trap cleanup_listener EXIT
+
+  # Unit start: wake.json holds the listener's own pid and a state within 2 s, and pw-record gets the tagged raw arguments.
+  reset_stubs
+  start_listener
+  wait_for 2 armed || true
+  check "the first state is written within 2 s, with the listener's own pid" "$listener armed" "$(wake_field pid) $(wake_field state)"
+  check "no reason while armed" none "$(wake_field reason)"
+  check "pw-record gets the tag and the raw 16 kHz mono s16 arguments" \
+    '-P { voxcmd.tag = "wake" } --rate 16000 --channels 1 --format s16 --raw -' "$(head -n 1 "$pw_dir/args")"
+
+  # Stop: SIGTERM kills pw-record, leaves wake.json readable with the pid, and exits 0.
+  stub=$(last_stub)
+  kill -TERM "$listener"
+  status=0
+  wait "$listener" || status=$?
+  listener=""
+  check "SIGTERM exits 0" 0 "$status"
+  check "SIGTERM leaves no pw-record" 1 "$(wait_for 2 stub_gone "$stub" && echo 1 || echo 0)"
+  check "wake.json is still whole after the stop" armed "$(wake_field state)"
+
+  # Restart: start, stop, start again: one pw-record runs.
+  reset_stubs
+  start_listener
+  wait_for 2 armed || true
+  stop_listener
+  start_listener
+  wait_for 2 armed || true
+  check "a restart runs exactly one pw-record" 1 "$(live_stubs)"
+  check "out of the two that were started" 2 "$(find "$pw_dir" -name '*.pid' | wc -l)"
+
+  # SIGKILL: no cleanup runs, so PR_SET_PDEATHSIG has to end pw-record.
+  reset_stubs
+  start_listener
+  wait_for 2 armed || true
+  stub=$(last_stub)
+  kill -KILL "$listener"
+  wait "$listener" 2>/dev/null || true
+  listener=""
+  check "SIGKILL of the listener ends pw-record" 1 "$(wait_for 2 stub_gone "$stub" && echo 1 || echo 0)"
+
+  # Pause releases the microphone, resume takes it again.
+  reset_stubs
+  start_listener
+  wait_for 2 armed || true
+  stub=$(last_stub)
+  printf 'recording\n' >"$voxtype_state"
+  check "voxtype recording pauses with its reason within 1.5 s" 1 "$(wait_for 1.5 paused_for voxtype_recording && echo 1 || echo 0)"
+  check "and pw-record is gone, not even a zombie" 1 "$(wait_for 1.5 stub_gone "$stub" && echo 1 || echo 0)"
+  check "so no stream is open" 0 "$(live_stubs)"
+  sleep 1
+  check "a paused listener starts no stream" 1 "$(wc -l <"$pw_dir/args")"
+  printf 'idle\n' >"$voxtype_state"
+  check "idle again: armed within 3 s" 1 "$(wait_for 3 armed && echo 1 || echo 0)"
+  check "with a new pw-record" 1 "$(live_stubs)"
+  check "and no reason left in wake.json" none "$(wake_field reason)"
+
+  # The other pause checks.
+  touch "$pw_dir/mic-busy"
+  check "another app recording pauses with mic_in_use" 1 "$(wait_for 3 paused_for mic_in_use && echo 1 || echo 0)"
+  check "and releases the stream" 0 "$(live_stubs)"
+  rm -f "${pw_dir:?}/mic-busy"
+  check "which ends when the app stops" 1 "$(wait_for 3 armed && echo 1 || echo 0)"
+  owner_start=$(awk '{ sub(/^.*\) /, ""); print $20 }' "/proc/$$/stat")
+  printf '{"owner": %s, "owner_start": "%s"}\n' "$$" "$owner_start" >"$session_json"
+  check "an open voice session pauses" 1 "$(wait_for 3 paused_for session_open && echo 1 || echo 0)"
+  rm -f "${session_json:?}"
+  check "which ends with the session" 1 "$(wait_for 3 armed && echo 1 || echo 0)"
+  reset_stubs
+  start_listener VOXCMD_WAKE_PAUSE_FOR_MEDIA=1
+  wait_for 2 armed || true
+  touch "$pw_dir/playing"
+  check "media playing pauses when asked to" 1 "$(wait_for 3 paused_for media_playing && echo 1 || echo 0)"
+  reset_stubs
+  touch "$pw_dir/mic-busy"
+  start_listener VOXCMD_WAKE_PAUSE_FOR_MIC=0
+  wait_for 2 armed || true
+  sleep 1.5
+  check "another app recording does not pause when switched off" armed "$(wake_field state)"
+
+  # pw-record dies: the listener stays up, never claims a stream it lacks, and restarts it after 1 s, then 2 s.
+  reset_stubs
+  echo die >"$pw_dir/mode"
+  start_listener
+  sleep 3.6
+  check "a dying pw-record leaves the listener running" 1 "$(kill -0 "$listener" 2>/dev/null && echo 1 || echo 0)"
+  check "paused, and not for a pause check" "paused none" "$(wake_field state) $(wake_field reason)"
+  check "restarted at 0 s, 1 s and 3 s" 3 "$(wc -l <"$pw_dir/args")"
+  echo silence >"$pw_dir/mode"
+  check "a pw-record that works again arms it" 1 "$(wait_for 5 armed && echo 1 || echo 0)"
+
+  # A trigger: the stub's clip has a spike, a lowered threshold fires on it, and the confirmation gets the clip as a WAV
+  # on stdin. `listen --start-only` runs only on a yes.
+  for answer in 0 1; do
+    reset_stubs
+    echo clip >"$pw_dir/mode"
+    echo "$answer" >"$pw_dir/confirm-exit"
+    start_listener VOXCMD_WAKE_THRESHOLD=0.4 VOXCMD_WAKE_FRAMES=2
+    wait_for 8 grep -q '^confirm' "$pw_dir/voxcmd-calls" || true
+    sleep 0.5
+    check "a trigger is confirmed once, on /dev/stdin, with the 2 s WAV (answer $answer)" \
+      "confirm internal wake-confirm /dev/stdin stdin_bytes=64044 stdin_head=RIFF" "$(grep '^confirm' "$pw_dir/voxcmd-calls" | head -n 1)"
+    check "listen --start-only runs only on a yes (answer $answer)" "$((1 - answer))" "$(grep -c '^run listen --start-only$' "$pw_dir/voxcmd-calls")"
+  done
+  reset_stubs
+
+  # Missing setup: exit 78 at once, and a failed download is an error, not a hang.
+  empty_models="$SANDBOX_DIR/no-models"
+  mkdir -p "$empty_models"
+  status=0
+  VOXCMD_WAKE_MODEL_DIR="$empty_models" voxcmd wake listen 2>"$pw_dir/missing.err" || status=$?
+  check "no models exits 78" 78 "$status"
+  check "and says which" 1 "$(grep -c 'melspectrogram.onnx is not in' "$pw_dir/missing.err")"
+  check "and never started a stream" 0 "$(find "$pw_dir" -name '*.pid' | wc -l)"
+  status=0
+  VOXCMD_WAKE_MODEL_DIR="$empty_models" VOXCMD_WAKE_MODEL_URL="http://127.0.0.1:1/" voxcmd wake listen --fetch-models 2>/dev/null || status=$?
+  check "a failed download exits 1" 1 "$status"
+  status=0
+  VOXCMD_WAKE_SENSITIVITY=loud voxcmd wake listen 2>/dev/null || status=$?
+  check "a bad environment setting exits 78" 78 "$status"
+  cleanup_listener
+  trap - EXIT
+fi
 
 if [ "$failures" -gt 0 ]; then
   printf '%d of %d wake checks failed\n' "$failures" "$total"

@@ -36,6 +36,11 @@ pub fn pending_pick() -> PathBuf {
     runtime_dir().join("pending-pick.json")
 }
 
+/// The wake listener's state (`armed`, `ready` or `paused`, and its pid) for the bar and typing.sh.
+pub fn wake_state() -> PathBuf {
+    runtime_dir().join("wake.json")
+}
+
 /// voxtype's `idle`/`recording`/`transcribing`, rewritten on every transition.
 pub fn voxtype_state() -> PathBuf {
     user_runtime_dir().join("voxtype/state")

@@ -154,9 +154,13 @@ pub enum WakeCommand {
         /// Download the wake models and exit
         #[arg(long)]
         fetch_models: bool,
-        /// Check the models and the microphone, then exit
+        /// Check that the models are in place, then exit
         #[arg(long)]
         check: bool,
+        /// Score a raw 16 kHz s16 mono file instead of the microphone: one `frame score` line per 80 ms frame and a
+        /// `trigger` line where the listener would fire. Writes no `wake.json`
+        #[arg(long, value_name = "FILE", conflicts_with_all = ["fetch_models", "check"])]
+        pcm: Option<std::path::PathBuf>,
     },
 }
 

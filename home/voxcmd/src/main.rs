@@ -108,7 +108,11 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
             label,
             choices_json,
         }) => ask::hints::run(ask.listen, &label, &choices_json),
-        Command::Wake(WakeCommand::Listen { .. }) => later("wake listen", "4.1"),
+        Command::Wake(WakeCommand::Listen {
+            fetch_models,
+            check,
+            pcm,
+        }) => voice::wake::listen::run(fetch_models, check, pcm.as_deref()).map(|()| None),
         Command::Wake(WakeCommand::On) => voice::wake_switch::run(voice::wake_switch::Switch::On),
         Command::Wake(WakeCommand::Off) => voice::wake_switch::run(voice::wake_switch::Switch::Off),
         Command::Wake(WakeCommand::Toggle) => voice::wake_switch::run(voice::wake_switch::Switch::Toggle),
