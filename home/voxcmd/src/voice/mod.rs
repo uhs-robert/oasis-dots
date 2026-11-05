@@ -1,6 +1,7 @@
 //! the voice key's loop: starting a recording (`listen`), the watcher that hands its transcript on (`internal
 //! watch`), Stop Voice (`stop`), the wait for the screen to settle between turns (`internal settle`), the wake
-//! listener's switch (`wake on|off|toggle|status`), its confirmation of a trigger (`internal wake-confirm`) and the
+//! listener's switch (`wake on|off|toggle|status`), the listener itself (`wake listen`, in `wake/`), its confirmation of a
+//! trigger (`internal wake-confirm`) and the
 //! stopper a chained dictation ending leaves (`internal chain-stop`)
 //!
 //! voxtype records and transcribes; voxcmd only reads its state file and calls `voxtype record start|stop|cancel`.
