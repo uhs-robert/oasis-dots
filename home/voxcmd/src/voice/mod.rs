@@ -8,6 +8,7 @@ pub mod chain_stop;
 pub mod listen;
 pub mod settle;
 pub mod stop;
+pub mod wake;
 pub mod wake_confirm;
 pub mod wake_switch;
 pub mod watch;
