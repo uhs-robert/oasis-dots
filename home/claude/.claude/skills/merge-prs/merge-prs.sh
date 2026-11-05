@@ -10,6 +10,17 @@ die() {
   exit 1
 }
 
+# Runs gh, retrying a failed call up to 3 times. Only for calls that read: a retried write can apply twice. The graphql
+# review query is left out on purpose, as the plan leaves every graphql call alone.
+retry_gh() {
+  local try
+  for try in 1 2 3; do
+    gh "$@" && return 0
+    ((try == 3)) || sleep "${MERGE_PRS_GH_RETRY_PAUSE:-2}"
+  done
+  return 1
+}
+
 method=""
 keep_branch=false
 review_gate=true
@@ -163,7 +174,7 @@ head_rows='.commits[] | [.sha, (if (.parents | length) > 1 then (.parents[1:] | 
 merges_only_default() {
   local parent status
   for parent in $1; do
-    status=$(gh api "repos/$slug/compare/$default...$parent" --jq .status) || die "cannot compare $parent with $default"
+    status=$(retry_gh api "repos/$slug/compare/$default...$parent" --jq .status) || die "cannot compare $parent with $default"
     [[ $status == behind || $status == identical ]] || return 1
   done
 }
@@ -176,7 +187,7 @@ commit_signature() {
   local sha=$1 rows file patch_json hash
   commit_signature_of=${signature_cache[$sha]-}
   [[ -z ${signature_cache[$sha]+set} ]] || return 0
-  rows=$(gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, (.patch | if . == null then null else (split("\n") | map(select(startswith("@@") | not)) | join("\n")) end | tojson)] | @tsv') ||
+  rows=$(retry_gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, (.patch | if . == null then null else (split("\n") | map(select(startswith("@@") | not)) | join("\n")) end | tojson)] | @tsv') ||
     die "cannot read the patches of $sha"
   commit_signature_of=""
   while IFS=$'\t' read -r file patch_json; do
@@ -221,9 +232,9 @@ rereview_reason() {
   rereview_why=""
   generated_skipped=false
   mapfile -t prefixes < <(generated_prefixes)
-  reviewed_commits=$(gh api "repos/$slug/compare/$default...$reviewed" --jq "$commit_rows") ||
+  reviewed_commits=$(retry_gh api "repos/$slug/compare/$default...$reviewed" --jq "$commit_rows") ||
     die "cannot compare $reviewed with $default"
-  head_shas=$(gh api "repos/$slug/compare/$default...$head" --jq "$head_rows") ||
+  head_shas=$(retry_gh api "repos/$slug/compare/$default...$head" --jq "$head_rows") ||
     die "cannot compare $head with $default"
   while IFS=$'\t' read -r sha merged subject; do
     [[ -n $sha ]] || continue
@@ -232,7 +243,7 @@ rereview_reason() {
     # A rebase gives the reviewed commits new shas; the same subject with the same files and counts is still that commit.
     ! reviewed_by_content "$sha" "$subject" "$reviewed_commits" || continue
     # Generated files never count; a commit of only those is the hook's rebuild, not work to review.
-    sha_files_text=$(gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
+    sha_files_text=$(retry_gh api --paginate "repos/$slug/commits/$sha" --jq '.files[] | [.filename, .changes] | @tsv') || die "cannot read the files of $sha"
     only_generated=1
     while IFS=$'\t' read -r file changes; do
       [[ -n $file ]] || continue
@@ -254,8 +265,8 @@ rereview_reason() {
     rereview_why="$unmeasured changed with no countable lines"
     return
   fi
-  covered=$(gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
-  changed=$(gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
+  covered=$(retry_gh api "repos/$slug/compare/$default...$reviewed" --jq '.files[].filename')
+  changed=$(retry_gh api "repos/$slug/compare/$default...$head" --jq '.files[].filename')
   new_file=""
   while IFS= read -r file; do
     [[ -n $file ]] || continue
@@ -314,7 +325,7 @@ infer_connected() {
   local name=$1 app_slug=$2 login
   if [[ -n $app_slug ]]; then
     if ! $suites_loaded; then
-      suite_slugs=$(gh api --paginate "repos/$slug/commits/$default/check-suites?per_page=100" --jq '.check_suites[].app.slug') ||
+      suite_slugs=$(retry_gh api --paginate "repos/$slug/commits/$default/check-suites?per_page=100" --jq '.check_suites[].app.slug') ||
         die "cannot read the check suites of $default"
       suites_loaded=true
     fi
@@ -358,12 +369,12 @@ resolve_gates() {
 comments_json=""
 # The PR's issue comments as one JSON object per line, for the unavailable patterns and CodeRabbit's summary marker.
 load_comments() {
-  comments_json=$(gh api --paginate "repos/$slug/issues/$1/comments?per_page=100" \
+  comments_json=$(retry_gh api --paginate "repos/$slug/issues/$1/comments?per_page=100" \
     --jq '.[] | {login: (.user.login // ""), created_at, body} | tojson') || die "cannot read the comments of #$1"
 }
 
 commit_date() {
-  gh api "repos/$slug/commits/$1" --jq .commit.committer.date || die "cannot read the commit $1"
+  retry_gh api "repos/$slug/commits/$1" --jq .commit.committer.date || die "cannot read the commit $1"
 }
 
 # Whether a comment by the reviewer, created at or after $2, holds one of its unavailable patterns (case-insensitive).
@@ -391,7 +402,7 @@ reviewed_head() {
   login_pattern=$(rjq "$name" '.github.logins // [] | map(sub("^app/"; "") | sub("\\[bot\\]$"; "")) | join(" ")')
   while IFS='|' read -r login commit; do
     [[ $commit == "$head" && " $login_pattern " == *" $(bare_login "$login") "* ]] && return 0
-  done < <(gh api --paginate "repos/$slug/pulls/$number/reviews?per_page=100" --jq '.[] | [(.user.login // ""), (.commit_id // "")] | join("|")')
+  done < <(retry_gh api --paginate "repos/$slug/pulls/$number/reviews?per_page=100" --jq '.[] | [(.user.login // ""), (.commit_id // "")] | join("|")')
   return 1
 }
 
@@ -400,7 +411,7 @@ reviewed_head() {
 head_push_time() {
   local committed suite
   committed=$(commit_date "$1") || exit 1
-  suite=$(gh api "repos/$slug/commits/$1/check-suites" --jq '[.check_suites[].created_at] | min // empty') ||
+  suite=$(retry_gh api "repos/$slug/commits/$1/check-suites" --jq '[.check_suites[].created_at] | min // empty') ||
     die "cannot read the check suites of $1"
   if [[ -n $suite && $suite > $committed ]]; then echo "$suite"; else echo "$committed"; fi
 }
@@ -430,7 +441,7 @@ eval_check_run() {
   since=$(date -u -d "@$head_epoch" +%FT%TZ) || exit 1
   mapfile -t check_names < <(rjq "$name" '.github.check_names // [] | .[]')
   # Read outside the loop's process substitution, which would hide a failed call as "no runs" and let the PR through.
-  runs_out=$(gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
+  runs_out=$(retry_gh api --paginate "repos/$slug/commits/$head/check-runs?per_page=100" \
     --jq '.check_runs[] | [.name, .status, (.conclusion // ""), (.started_at // ""), (.completed_at // "")] | join("|")') ||
     die "cannot read the check runs of $head"
   while IFS='|' read -r rname rstatus rconc rstart rdone; do

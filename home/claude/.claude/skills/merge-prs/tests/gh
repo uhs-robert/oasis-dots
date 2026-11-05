@@ -128,6 +128,13 @@ case "$args" in
     echo "gh: HTTP 502" >&2
     exit 1
   }
+  # head_date_fail_reads=N: the call fails N times, then answers (merge-prs retries a read 3 times).
+  fails=$(get head_date_fail_reads)
+  if [[ -n $fails && $fails -gt 0 ]]; then
+    put head_date_fail_reads $((fails - 1))
+    echo "gh: HTTP 502" >&2
+    exit 1
+  fi
   date=$(get head_date)
   echo "${date:-2000-01-01T00:00:00Z}"
   exit 0
