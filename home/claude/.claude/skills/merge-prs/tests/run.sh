@@ -4,6 +4,8 @@
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 script=${1:-$here/../merge-prs.sh}
+# The retry pause would slow every failing-read case.
+export MERGE_PRS_GH_RETRY_PAUSE=0
 # Every case's repo lives under one folder, removed on exit: a case makes a fresh one, and 200 of them per run filled
 # /tmp's inodes when they were left behind.
 suite=$(mktemp -d)
@@ -1038,6 +1040,16 @@ cr_setup "30 min"
 echo 'head_date_fail=1' >>"$GH_STATE"
 gate 7
 check "check-run path stops rather than reading a bogus time" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== gate: a read that fails then recovers"
+cr_setup "30 min"
+echo 'head_date_fail_reads=2' >>"$GH_STATE"
+gate 7
+check "two failures are retried past" "! grep -q 'cannot read the commit' <<<\"\$out\""
+cr_setup "30 min"
+echo 'head_date_fail_reads=3' >>"$GH_STATE"
+gate 7
+check "three failures die with the old message" "[[ $code != 0 ]] && grep -q 'cannot read the commit' <<<\"\$out\""
 
 echo "== gate: an unreadable completion time"
 cr_setup "30 min"
