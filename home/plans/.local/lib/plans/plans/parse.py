@@ -8,8 +8,11 @@ any YAML parser reads.
 import os
 import re
 
-KEY_ORDER = ("id", "project", "kind", "status", "owner_session", "rank", "depends_on", "waiting_on", "issue", "pr", "branch", "updated")
+KEY_ORDER = ("id", "project", "kind", "status", "owner_session", "rank", "depends_on", "waiting_on", "issue", "pr", "branch", "fix_rounds", "updated")
 LIST_KEYS = ("depends_on",)
+INTEGER_KEYS = ("rank", "fix_rounds")
+# A doc may leave these keys out, and then holds this value. fix_rounds came after the first docs were written.
+DEFAULTS = {"fix_rounds": 0}
 SECTIONS = ("Goal", "Decisions", "Plan", "Open questions", "Owner checks")
 # A body edit counts as a change to this pseudo-key (store.update compares it like any other key).
 BODY = "body"

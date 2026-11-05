@@ -60,6 +60,7 @@ waiting_on: "owner: pick a colour"
 issue: none
 pr: 12
 branch: feat/plans-cli
+fix_rounds: 0
 updated: "2026-11-05"
 ---
 ```
@@ -75,6 +76,7 @@ updated: "2026-11-05"
 | `depends_on` | the ids that must be finished first |
 | `waiting_on` | what the doc waits on the owner for, else `""` |
 | `issue`, `pr`, `branch` | a number, a URL or a name, else `none` |
+| `fix_rounds` | the review fix rounds the piece has had; a doc without the key holds 0 |
 | `updated` | the date of the last write, set by every write |
 
 `kind` is the Conventional Commits type of the PR that ships the piece. A test-only fix is a bug, and a rename is a refactor.
