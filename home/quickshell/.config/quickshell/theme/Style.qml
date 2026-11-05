@@ -39,6 +39,7 @@ Singleton {
             materia: {}
         })
     // Bar island shapes any style without lualine can borrow (Theme options); "slant" is the plain look.
+    // A new shape needs entries in `island_shape_kits`, `borrow_names.bar_island_shape`, Island.qml and IslandOutlines.js. A style takes a default shape only with the owner's sign-off.
     readonly property var island_shapes: ["slant", "octagon", "watch", "window", "rect", "capsule", "visor", "chevron", "lean", "hex", "ticket", "tab", "pixel", "notch", "none", "underline", "brackets", "full", "strip"]
     // What a shape brings to a style that does not own it, in place of that style's own shape sizes: `sizes` copied from
     // the owner, a border at least `min_border` wide (in the palette's muted text colour where the host has none), and

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): refuse commits and --continue steps with conflict markers staged, check runs piped into a filter
 # that hides their exit code from && or ||, synthetic CPU load, and process kills by name or pattern.
+# This hook steers agents. It is not a security boundary. Do not chase shell forms that get around it.
 set -u
 input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
