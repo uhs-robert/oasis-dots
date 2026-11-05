@@ -331,20 +331,76 @@ fn regex(pattern: &str) -> Regex {
     Regex::new(pattern).expect("a valid pattern")
 }
 
+/// Words that start a reply naming a position or a direction ("pick the top one").
+const PICK_VERBS: [&str; 7] = ["pick", "choose", "select", "take", "use", "go with", "the"];
+/// Words that start an ordinal reply beyond `PICK_VERBS` ("number 3", "option two").
+const ORDINAL_NOUNS: [&str; 5] = ["number", "option", "choice", "item", "entry"];
+/// Yes words every question accepts, the single-choice picker and the confirm card alike.
+const YES_WORDS: [&str; 9] = ["yes", "yeah", "yep", "yup", "sure", "okay", "ok", "do it", "go ahead"];
+/// No words every question accepts. Normalizing drops the apostrophe, so "don't" arrives as "dont".
+const NO_WORDS: [&str; 5] = ["no", "nope", "nah", "dont", "do not"];
+/// Cancel words of a pick reply. Regex text, for the optional space and the "none of them" tail.
+const CANCEL_WORDS: [&str; 5] = [
+    "cancel",
+    "never ?mind",
+    "none( of (them|these|those))?",
+    "nothing",
+    "forget it",
+];
+/// Yes words only a single-choice picker takes: it asks whether its one choice is the one meant.
+const SINGLE_CHOICE_YES_EXTRA: [&str; 3] = ["(that|this)( one)?", "thats it", "thats the one"];
+/// No words only a confirm card takes; a no word anywhere there wins.
+const CONFIRM_NO_EXTRA: [&str; 5] = ["cancel", "never ?mind", "stop", "forget it", "leave it"];
+/// Yes word only a confirm card takes.
+const CONFIRM_YES_EXTRA: [&str; 1] = ["confirm"];
+
+/// Where a direction word points: which box edge is the extreme.
+#[derive(Clone, Copy, PartialEq)]
+enum Edge {
+    Top,
+    Left,
+    Bottom,
+    Right,
+}
+
+/// The direction words a reply may say (with an optional "most"), and the edge each names.
+const DIRECTIONS: [(&str, Edge); 6] = [
+    ("top", Edge::Top),
+    ("upper", Edge::Top),
+    ("bottom", Edge::Bottom),
+    ("lower", Edge::Bottom),
+    ("left", Edge::Left),
+    ("right", Edge::Right),
+];
+
+fn alternation(words: &[&str]) -> String {
+    words.join("|")
+}
+
+fn anchored(pattern: &str) -> Regex {
+    regex(&format!("^{pattern}$"))
+}
+
 static EXPAND: LazyLock<Regex> = LazyLock::new(|| regex("^expand (.+)$"));
-static CANCEL: LazyLock<Regex> =
-    LazyLock::new(|| regex("^(cancel|never ?mind|none( of (them|these|those))?|nothing|forget it)$"));
-/// Replies that take or turn down the only choice without naming it: a picker with one choice (a weak match's) only
-/// asks whether that is the one meant.
+static CANCEL: LazyLock<Regex> = LazyLock::new(|| anchored(&format!("({})", alternation(&CANCEL_WORDS))));
 static SINGLE_CHOICE_YES: LazyLock<Regex> = LazyLock::new(|| {
-    regex("^(yes|yeah|yep|yup|sure|okay|ok|do it|go ahead|(that|this)( one)?|thats it|thats the one)( please)?$")
+    let words = [&YES_WORDS[..], &SINGLE_CHOICE_YES_EXTRA[..]].concat();
+    anchored(&format!("({})( please)?", alternation(&words)))
 });
-static SINGLE_CHOICE_NO: LazyLock<Regex> = LazyLock::new(|| regex("^(no|nope|nah|dont|do not)( thanks| thank you)?$"));
-static ORDINAL_LEAD: LazyLock<Regex> =
-    LazyLock::new(|| regex("^(pick|choose|select|take|use|go with|the|number|option|choice|item|entry) (.+)$"));
+static SINGLE_CHOICE_NO: LazyLock<Regex> =
+    LazyLock::new(|| anchored(&format!("({})( thanks| thank you)?", alternation(&NO_WORDS))));
+static ORDINAL_LEAD: LazyLock<Regex> = LazyLock::new(|| {
+    let leads = [&PICK_VERBS[..], &ORDINAL_NOUNS[..]].concat();
+    anchored(&format!("({}) (.+)", alternation(&leads)))
+});
 static ENDS_IN_ONE: LazyLock<Regex> = LazyLock::new(|| regex("^(.+) one$"));
 static DIRECTION: LazyLock<Regex> = LazyLock::new(|| {
-    regex("^((pick|choose|select|take|use|go with|the) )*(top|upper|bottom|lower|left|right)(most)?( one)?$")
+    let words: Vec<&str> = DIRECTIONS.iter().map(|(word, _)| *word).collect();
+    anchored(&format!(
+        "(({}) )*({})(most)?( one)?",
+        alternation(&PICK_VERBS),
+        alternation(&words)
+    ))
 });
 
 /// What a normalized reply does to the choices shown.
@@ -451,11 +507,7 @@ fn ordinal_position(text: &str, count: usize) -> Option<i64> {
 /// height of the extreme tie, and a vertical tie goes to the leftmost, a horizontal one to the topmost.
 fn direction_position(text: &str, choices: &[PickChoice]) -> Option<i64> {
     let direction = DIRECTION.captures(text)?;
-    let direction = match &direction[3] {
-        "upper" => "top",
-        "lower" => "bottom",
-        other => other,
-    };
+    let direction = DIRECTIONS.iter().find(|(word, _)| *word == &direction[3])?.1;
     struct Edges {
         position: i64,
         left: f64,
@@ -483,17 +535,17 @@ fn direction_position(text: &str, choices: &[PickChoice]) -> Option<i64> {
     }
     let tolerance = boxes.iter().map(|edges| edges.height).reduce(f64::min)? / 2.0;
     let signed_edge = |edges: &Edges| match direction {
-        "top" => -edges.top,
-        "left" => -edges.left,
-        "bottom" => edges.bottom,
-        _ => edges.right,
+        Edge::Top => -edges.top,
+        Edge::Left => -edges.left,
+        Edge::Bottom => edges.bottom,
+        Edge::Right => edges.right,
     };
     let extreme = boxes.iter().map(signed_edge).reduce(f64::max)?;
     let mut nearest: Vec<&Edges> = boxes
         .iter()
         .filter(|edges| signed_edge(edges) >= extreme - tolerance)
         .collect();
-    let vertical = matches!(direction, "top" | "bottom");
+    let vertical = matches!(direction, Edge::Top | Edge::Bottom);
     nearest.sort_by(|a, b| {
         let key = |edges: &Edges| {
             if vertical {
@@ -513,18 +565,43 @@ const FILLER: [&str; 23] = [
     "select", "take", "use", "go", "with", "do", "run",
 ];
 
+/// One suffix a stem drops: the word must be longer than `longer_than` characters, and must not end in `except`.
+struct StemRule {
+    suffixes: &'static [&'static str],
+    longer_than: usize,
+    except: Option<&'static str>,
+}
+
+/// Tried in order; the first rule that fits drops its suffix, then a trailing "e" goes from a word still over 3 characters.
+const STEM_RULES: [StemRule; 3] = [
+    StemRule {
+        suffixes: &["ing"],
+        longer_than: 5,
+        except: None,
+    },
+    StemRule {
+        suffixes: &["ed", "es"],
+        longer_than: 4,
+        except: None,
+    },
+    StemRule {
+        suffixes: &["s"],
+        longer_than: 3,
+        except: Some("ss"),
+    },
+];
+
 /// A crude English stem, so "locked" names "Lock" and "closing" names "Close".
 fn stem(word: &str) -> &str {
     let length = word.chars().count();
-    let stemmed = if length > 5 && word.ends_with("ing") {
-        &word[..word.len() - 3]
-    } else if length > 4 && (word.ends_with("ed") || word.ends_with("es")) {
-        &word[..word.len() - 2]
-    } else if length > 3 && word.ends_with('s') && !word.ends_with("ss") {
-        &word[..word.len() - 1]
-    } else {
-        word
-    };
+    let stemmed = STEM_RULES
+        .iter()
+        .find_map(|rule| {
+            let suffix = rule.suffixes.iter().find(|suffix| word.ends_with(**suffix))?;
+            let fits = length > rule.longer_than && !rule.except.is_some_and(|except| word.ends_with(except));
+            fits.then(|| &word[..word.len() - suffix.len()])
+        })
+        .unwrap_or(word);
     if stemmed.chars().count() > 3 && stemmed.ends_with('e') {
         &stemmed[..stemmed.len() - 1]
     } else {
@@ -557,12 +634,15 @@ fn labels_sharing_most_words(text: &str, spoken: &[String]) -> Vec<usize> {
 
 // ---- matching a confirm reply ---------------------------------------------------------------------------------------
 
-/// A no word anywhere wins, so a mixed "yeah never mind" is the safe answer. Normalizing drops the apostrophe, so
-/// "don't" arrives as "dont".
-static CONFIRM_NO: LazyLock<Regex> =
-    LazyLock::new(|| regex("(^| )(no|nope|nah|dont|do not|cancel|never ?mind|stop|forget it|leave it)( |$)"));
-static CONFIRM_YES: LazyLock<Regex> =
-    LazyLock::new(|| regex("^(yes|yeah|yep|yup|sure|okay|ok|confirm|do it|go ahead)( |$)"));
+/// A no word anywhere wins, so a mixed "yeah never mind" is the safe answer.
+static CONFIRM_NO: LazyLock<Regex> = LazyLock::new(|| {
+    let words = [&NO_WORDS[..], &CONFIRM_NO_EXTRA[..]].concat();
+    regex(&format!("(^| )({})( |$)", alternation(&words)))
+});
+static CONFIRM_YES: LazyLock<Regex> = LazyLock::new(|| {
+    let words = [&YES_WORDS[..], &CONFIRM_YES_EXTRA[..]].concat();
+    regex(&format!("^({})( |$)", alternation(&words)))
+});
 
 /// Yes, no or unclear for a normalized reply to a yes/no question. A reply leading with a yes word or with the
 /// question's verb ("close it", "close slack") is a yes.
