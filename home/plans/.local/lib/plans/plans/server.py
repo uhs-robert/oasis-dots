@@ -188,6 +188,9 @@ def doc_json(doc):
     data = {key: doc.keys.get(key, parse.DEFAULTS.get(key)) for key in parse.KEY_ORDER}
     data["id"] = doc.id
     data["path"] = doc.path
+    # Lint flags a depends_on that is no list, but the page iterates it, so it always gets one.
+    if not isinstance(data["depends_on"], list):
+        data["depends_on"] = [] if data["depends_on"] in (None, "") else [str(data["depends_on"])]
     return data
 
 
