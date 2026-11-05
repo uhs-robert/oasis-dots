@@ -73,5 +73,20 @@ expect allow agent $'cat <<-\'EOF\' > f\n\tgit stash\n\tEOF'
 expect deny agent $'cat <<EOF\nhello\nEOF\ngit stash pop'
 expect allow agent 'git log --grep="git stash"'
 
+# Line continuations, expansions inside an unquoted heredoc, and heredoc openers.
+expect deny agent $'git \\\nstash pop'
+expect allow agent $'git stash \\\nlist'
+expect deny agent $'cat <<EOF\n$(git stash pop)\nEOF'
+expect deny agent $'cat <<EOF\nnote `git stash`\nEOF'
+expect deny agent $'cat <<EOF\nsay $(echo hi; git stash drop) now\nEOF'
+expect deny agent $'cat <<EOF\n$(git stash\nEOF'
+expect allow agent $'cat <<EOF\nuse git stash $(echo ok) here\nEOF'
+expect allow agent $'cat <<\'EOF\'\n$(git stash pop)\nEOF'
+expect allow agent $'cat <<"EOF"\n$(git stash pop)\nEOF'
+expect deny agent $'echo x # cat <<EOF\ngit stash pop'
+expect deny agent $'cat <<EOF\nEOF2\nEOF\ngit stash'
+expect allow agent $'cat <<EOF\nEOF2 git stash\nEOF'
+expect deny agent $'cat <<< word\ngit stash pop'
+
 echo "$pass passed, $fail failed"
 ((fail == 0))
