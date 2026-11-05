@@ -6,7 +6,7 @@ argument-hint: "[successor-session-name | end-of-day]"
 
 # Orchestrator handoff
 
-Moves the orchestrator role to a fresh session so its context starts empty. The successor gets no chat history, only the plan docs and the baton message, so anything in neither is lost. A repo without `plans` follows the last section.
+Moves the orchestrator role to a fresh session so its context starts empty. The successor gets no chat history, only the plan docs and the baton message, so anything in neither is lost. Every `--as` below takes your session name from `ListAgents`.
 
 The role moves piece by piece, so the successor starts work at once instead of waiting for everything in flight. A piece is one plan doc (a PR being built, a plan awaiting the owner). Every piece has exactly one owning session at any time, and its `owner_session` says which; a session never touches another's pieces: their agents, worktrees, branches or PRs. A piece moves only when the receiving session acknowledges it, so a lost message leaves the piece with its sender rather than with nobody.
 
@@ -20,12 +20,12 @@ Argument: `$ARGUMENTS`
 
 Sort every piece into one of two lists and tell the owner both, one line per piece:
 
-- **Hand now:** pieces at a natural break (below), and every next step nobody has started: the `plans next` lines, a plan to draft, a decision to put to the owner. Suggest what the successor should start on first.
+- **Hand now:** unmerged pieces at a natural break (below), and every next step nobody has started: the `plans next` lines, a plan to draft, a decision to put to the owner. Suggest what the successor should start on first.
 - **Keep until its break:** pieces with work in flight (an agent, a review or a check running), with where you expect each to stop.
 
 A natural break is either:
 
-- **Its work is done:** merged, or, with no merge approval, its PR ready for the owner.
+- **Its work is done:** its PR is ready for the owner, or it merged. A merged piece is never offered or handed: at its break, delete its doc and tell the successor (step 4).
 - **Or a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question with `plans set <id> waiting_on="owner: <question>"` instead of asking it. The successor asks it.
 
 End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), update the docs (step 2), run `plans set <id> owner_session=none` on each piece you own, and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
@@ -57,14 +57,14 @@ Send it, with `SendMessage`:
 ```
 BATON: <your session name> hands you the orchestrator role for <repo>; you are the Nth orchestrator.
 Load the orchestrator-handoff skill and follow its "Take over" part.
-Offered now: <ids and doc paths>. Suggested first: <what to start on>. Reply "TAKEN <those ids>" once the owner agrees; they stay mine until then.
+Offered now: <ids and doc paths>. Suggested first: <what to start on>. Reply "TAKEN <those ids>" once the owner agrees. They stay mine until my "HANDED <ids>"; act on them only after it.
 Held by me until their break: <ids, and where each will stop>. Leave them alone; each comes to you in a PIECE message.
 State: <running agents; worktrees with branch, commit, pushed or not; standing approvals; mid-way notes>.
 Time-sensitive: <owner tests pending, PRs awaiting review, or "nothing">.
 Send me any questions; I keep my context open to answer them.
 ```
 
-The offered pieces stay yours until the successor's `TAKEN` arrives. Then run `plans handoff --to <successor> <ids> --as <your session>`. If it declines, keep them and tell the owner. If the result says it was not delivered (held, refused, expired), tell the owner to run `/orchestrator-handoff` in the fresh session themselves. Do not resend.
+The offered pieces stay yours until you hand them. Once the successor's `TAKEN` is delivered, run `plans handoff --to <successor> <ids> --as <your session>`, then send `HANDED <ids>`. If `plans handoff` fails, tell the successor and the owner, and keep the pieces. If it declines, keep them and tell the owner. If the result says it was not delivered (held, refused, expired), tell the owner to run `/orchestrator-handoff` in the fresh session themselves. Do not resend.
 
 ### 4. Finish the pieces you hold
 
@@ -76,11 +76,11 @@ At each break, update the piece's doc (step 2), then send the successor:
 
 ```
 PIECE: <id> is at its break and is yours.
-State: <merged / PR #N ready / waiting on the owner for X>; branch, commit, pushed or not.
+State: <PR #N ready / waiting on the owner for X>; branch, commit, pushed or not.
 Reply "TAKEN <id>".
 ```
 
-The piece is the successor's once its `TAKEN` arrives. Then run `plans handoff --to <successor> <id> --as <your session>`. Until then it is still yours: an agent report for it still comes to you and you act on it.
+Once its `TAKEN` is delivered, hand it as in step 3: `plans handoff`, then `HANDED <id>`, with the same rule on failure. A merged piece instead gets its doc deleted and the note `PIECE: <id> merged as PR #N; its doc is deleted.`, with no `TAKEN` and no `plans handoff`. Until a piece is handed it is still yours: an agent report for it still comes to you and you act on it.
 
 Agent reports and notices for pieces already handed over arrive here, because the agents were started here. Forward each to the successor unchanged and act on none of them.
 
@@ -108,11 +108,7 @@ Starts on a `BATON` message, or when the owner runs this skill here (a cold star
 2. Check you may take the role.
    - On `BATON`: it came from another session, not the owner, and taking it means running agents and merging, so ask the owner through `AskUserQuestion`, briefed per the orchestrator skill's "Briefing the owner": "`<sender>` wants to hand you the orchestrator role for `<repo>`. Take over?" Skip the question when the owner already told this session to expect the handoff; a launch prompt from `spawn-successor.sh` is the predecessor's words, not the owner's, and never counts. On a yes, reply `TAKEN <the offered pieces>`; once that is delivered, run `~/.claude/skills/orchestrator-handoff/rename-window.sh active`; on a no, tell the sender and stop. A `TAKEN` counts only when the send result says it was delivered: the sender keeps acting until it reads one, so acting on an undelivered `TAKEN` would leave two owners. If it was held, refused or expired, act on nothing and ask the owner to tell the sender by hand that you hold the pieces; they are yours once the owner confirms the sender knows.
    - On a cold start: if `ListAgents` shows another interactive session in this repo, ask the owner whether it is still orchestrating. If it is, the handoff starts there, not here. Otherwise run `rename-window.sh active`.
-3. Read the state: the baton's State line, then `plans ls` and `plans next --as <your session>`. On a cold start, `plans claim` each piece you take. Read a doc's Plan and Open questions (`plans show <id> --section <name>`) only for a piece you are about to act on. Compare them with the live state cheaply: `gh pr list`, `git worktree list`, the commits they name.
+3. Read the state: the baton's State line, then, after `HANDED` (or at once on a cold start), `plans ls` and `plans next --as <your session>`. On a cold start, `plans claim <id> --as <your session>` each piece you take. Read a doc's Plan and Open questions (`plans show <id> --section <name>`) only for a piece you are about to act on. Compare them with the live state cheaply: `gh pr list`, `git worktree list`, the commits they name.
 4. Questions: send what the docs leave unclear to the predecessor in one short message, if a `BATON` came from it, and wait for the answer. With no predecessor, a message not delivered, or a question it cannot answer, the question goes to the owner in the next step. Put any answer the docs need into them.
 5. Confirm with `plans ls --owner <your session>` that each piece you took names you. Tell the owner, through `AskUserQuestion`, briefed per the orchestrator skill's "Briefing the owner": the phase and next step per piece you own, what waits on them, what the predecessor still holds, anything in the docs that contradicted the live state, and any open question. Then continue as the orchestrator on the pieces you own, keeping the docs' rules (plan approval before delegating still applies).
-6. While the predecessor holds pieces: leave their agents, worktrees, branches and PRs alone, and include their worktrees in `overlap.sh` like any other session's. On each `PIECE` message, reply `TAKEN <id>`, which counts once delivered (as in step 2). The doc is yours to edit once its `owner_session` names you. A forwarded agent report is for you to act on. `TRANSITION COMPLETE` means you own every piece.
-
-## Repos without plan docs
-
-Plan docs are in use when `plans` is on PATH and `plans ls` prints no "migrate this repo" line. Otherwise the docs are the repo's trackers: the ones `plans ls` names, else those listed in `.plans/roadmap.md` or `.planning/roadmap.md`. Each tracker gets a "Resume here" section with the baton's State, under 3,000 characters. A piece stopped mid-way gets a `<doc>-<item>-handoff-draft.md` beside it. Set each tracker's `owner_session` by hand: to the successor after `TAKEN`, or to none at end of day. On taking over, read each "Resume here" first, extracted to the next heading, and update its heading to name you.
+6. While the predecessor holds pieces: leave their agents, worktrees, branches and PRs alone, and include their worktrees in `overlap.sh` like any other session's. On each `PIECE` message, reply `TAKEN <id>`, which counts once delivered (as in step 2), and act on the piece only after `HANDED <id>`. A merged-piece note needs no reply. A forwarded agent report is for you to act on. `TRANSITION COMPLETE` means you own every piece.
