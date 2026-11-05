@@ -113,6 +113,10 @@ CASES = [
     ("home/agents/.local/bin/agent-run", " install"),
     ("home/agents/.local/share/agent-shims/bin/claude", " install"),
     ("home/agents/tests/agent_run.sh", " install"),
+    # So does the plans CLI. Its README, like all Markdown, reaches none.
+    ("home/plans/.local/lib/plans/plans/store.py", " install"),
+    ("home/plans/tests/test_store.py", " install"),
+    ("home/plans/README.md", ""),
     # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
     (".claude/hooks/guard-legacy-hyprctl.sh", " hooks"),
     ("home/claude/.claude/skills/orchestrator/reviewers.json", " hooks"),

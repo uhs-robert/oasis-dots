@@ -45,7 +45,7 @@ A scope is a folder, and a change reaches the steps of the scopes its path falls
 | `hypr` | `home/hypr`, `system/etc/greetd` (not its `quickshell/`), `.luacheckrc` | stylua, luacheck, the hypr tests |
 | `quickshell` | `home/quickshell`, `system/etc/greetd/quickshell`, the `qml*` check modules | qmllint, the qml-* checks, lock-skins, style-exports, shaders, time-format, the node and headless-qs tests, the input vectors |
 | `voxclick`, `voxphrases`, `voxduck`, `voxrest`, `voxrust` | `home/voxcmd`, `home/voxtype`, `extras/voxcmd-firefox` | see Voxcmd scopes below |
-| `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar`, `home/agents` | the install tests, calendar-sync-syntax, agent-run |
+| `install` | `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar`, `home/agents`, `home/plans` | the install tests, calendar-sync-syntax, agent-run, plans |
 | `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator` and `orchestrator-handoff` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
 | `skills` | the `ship-batch` and `merge-prs` skills | their suites (5 to 11 minutes) |
 | `checkscope` | `lib/check`, `lib/plan_new.py`, the `lib/docs` generators | check-scope, check-cache |
@@ -99,6 +99,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `calendar-sync-syntax`: the syntax check of `calendar-sync`.
 - `install-<test>`: one step per `lib/install/tests/*.sh` (found by name; see Scopes). They cover the Firefox policy and `install_voxcmd`, pacman and makepkg tuning, snapper setup, the CodeRabbit entry of the dev tools picker, the greeter keyring, log and monitors, the `migrate-quickshell-*` and `migrate-lock-assets` migrations, and `load.sh` (sourcing the install libraries prints nothing and never exits). Each needs the tools its file names (jq, zsh).
 - `agent-run`: `home/agents/tests/agent_run.sh` runs `agent-run` through the package's shims against a stub `systemd-run` and stub agents: outside `agents.slice` the agent gets its own scope with `OOMPolicy=continue`, inside it (or with no `systemd-run` or user manager) it runs directly, a missing agent exits 127, arguments with spaces, the working directory and the exit code survive, and every shim is a symlink to `agent-run`. Needs python3 (for the fake user manager socket).
+- `plans`: the unittest suite of the `plans` CLI (`home/plans/tests/`): the front matter subset, every lint rule, `ls`, `next`, `waiting` and `questions`, each command end to end on temp git repos with a stub `gh`, and the safe write path (a stale read exits 3 and leaves the file as it was, writes to different keys from one read all land, forked writers racing on one doc leave one complete write, a crash after the temp file is written leaves the doc and no temp file). Needs git.
 - `hook-<test>`: one step per `.claude/hooks/tests/*.sh` and `home/claude/.claude/hooks/tests/*.sh` (found by name; see Scopes), each the test of the hook of that name. Each needs jq, plus tmux and flock where its file names them.
 - `owner-test-bar`: the owner-test-bar skill's `tests/run.sh`, when it changes. Needs jq.
 - `ship-batch`, `merge-prs`: those skills' `tests/run.sh`, when either changes.
