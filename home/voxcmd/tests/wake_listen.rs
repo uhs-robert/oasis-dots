@@ -55,6 +55,8 @@ fn wake_listen(args: &[&str], env: &[(&str, &str)], model_dir: Option<&Path>) ->
         }
     }
     command
+        // The setup errors send a toast; dry run prints it to stderr instead of the owner's desktop.
+        .env("VOXCMD_DRY_RUN", "1")
         .env("XDG_RUNTIME_DIR", runtime.path())
         .env("VOXCMD_VOICE_ENV_FILE", runtime.path().join("no-voice.env"))
         .envs(env.iter().copied());
