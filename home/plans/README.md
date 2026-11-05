@@ -10,7 +10,7 @@ Run `plans` anywhere in a repo or one of its worktrees. It always reads the main
 
 ```bash
 plans ls [--owner S] [--project P] [--status a,b] [--all] [--json]   # one line per doc
-plans next [--as S] [--skip ID]... [--json]   # ask lines, blocked lines, then one work line
+plans next [--as S] [--skip ID]... [--all] [--json]   # ask lines, blocked lines, then one work line (every free doc with --all)
 plans waiting [--all] [--json]        # docs with a non-empty waiting_on
 plans questions [--all] [--json]      # the unchecked "- [ ]" items under Open questions
 plans show <id> [--section NAME] [--json]
@@ -27,7 +27,7 @@ A line holds tab-separated columns: the repo (only with `--all`), id, status, ow
 
 `--as` names the session, for example `dotfiles-56`. `$PLANS_SESSION` is the fallback. `claim` and `handoff` need one of the two.
 
-- `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
+- `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. `--all` does not stop there: it prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. `handoff` checks every listed doc before it writes any of them.
 - `set` refuses `id`, `project` and `updated`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
 - `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.

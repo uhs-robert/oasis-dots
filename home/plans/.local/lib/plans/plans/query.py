@@ -106,13 +106,13 @@ class Step(NamedTuple):
     detail: str
 
 
-def next_steps(docs, session=None, unreadable_ids=(), skip=()):
+def next_steps(docs, session=None, unreadable_ids=(), skip=(), all=False):
     """What to do next, per the `next` rule: walk the active docs by rank and skip those another session owns. Each doc
     above the first free one gives an `ask` line when it waits on the owner, else a `blocked` line naming its first
     unfinished dependency. A dependency in `unreadable_ids` exists but cannot be read, so it blocks too. The first free
-    doc gives the `work` line, and the walk ends there. A doc in `skip` gets no line, but it still counts as a
-    dependency. Asks come first so a
-    high-ranked doc that waits on a question keeps its place: the owner answers while lower-ranked work goes on."""
+    doc gives the `work` line, and the walk ends there unless `all` is set, which gives a `work` line for every free doc.
+    A dependent of a free doc stays blocked, because that doc is not done. A doc in `skip` gets no line, but it still
+    counts as a dependency. Asks come first so a high-ranked doc that waits on a question keeps its place: the owner answers while lower-ranked work goes on."""
     by_id = {doc.id: doc for doc in docs}
     steps = []
     for doc in sorted(docs, key=rank_order):
@@ -127,7 +127,8 @@ def next_steps(docs, session=None, unreadable_ids=(), skip=()):
             steps.append(Step("blocked", doc, blocker))
             continue
         steps.append(Step("work", doc, str(doc.keys.get("status"))))
-        break
+        if not all:
+            break
     return steps
 
 

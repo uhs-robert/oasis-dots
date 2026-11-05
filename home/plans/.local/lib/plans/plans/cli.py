@@ -55,6 +55,7 @@ def build_parser():
     next_ = commands.add_parser("next", help="the ask lines, then the work line, for this session")
     add_session_option(next_)
     next_.add_argument("--skip", action="append", default=[], metavar="ID", help="leave this doc out (repeatable)")
+    next_.add_argument("--all", action="store_true", help="a work line for every free doc, not only the first")
     next_.add_argument("--json", action="store_true")
     next_.set_defaults(run=run_next)
 
@@ -208,7 +209,7 @@ def run_next(args):
     session = session_of(args, required=False)
     repo = current_repo()
     steps = query.next_steps(repo.docs, session, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind},
-                             skip=set(args.skip))
+                             skip=set(args.skip), all=args.all)
     if args.json:
         print(json.dumps([{"action": step.action, "id": step.doc.id, "detail": step.detail, "path": step.doc.path} for step in steps], indent=2))
         return
