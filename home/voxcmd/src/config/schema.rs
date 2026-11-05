@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// Which pass of routing tries the integration: the normal tier first, the fallback tier only when nothing else
-/// (the LLM hook included) offered an option.
+/// offered an option.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
     Normal,
