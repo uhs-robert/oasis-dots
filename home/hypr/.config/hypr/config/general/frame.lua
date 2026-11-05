@@ -356,8 +356,7 @@ end)()
 local release_events = {
   "window.open",
   "window.update_rules", -- floats and tiles on 0.56; a backstop on 0.57, where a second release is harmless
-  "window.close",
-  "window.destroy",
+  "window.close", -- not window.destroy: on logout Hyprland fires that mid-teardown and hl.get_windows() segfaults (#1486)
   "window.move_to_workspace",
   "window.fullscreen",
 }

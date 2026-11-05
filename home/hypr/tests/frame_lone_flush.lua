@@ -481,6 +481,10 @@ layers = { { mapped = true, namespace = "quickshell-frame" } }
 alive_pids[4242] = nil
 io.open = real_open
 
+-- Logout destroys each window inside Hyprland's compositor cleanup; a window.destroy handler that reads the window list
+-- there segfaults Hyprland (#1486). window.close covers a normal close.
+check("no window.destroy handler is registered", handlers["window.destroy"] == nil)
+
 if failures > 0 then
 	print(failures .. " failed")
 	os.exit(1)
