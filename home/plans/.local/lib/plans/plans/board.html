@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>plans</title>
+<style>
+  :root {
+    --bg: #16181d; --panel: #1f232b; --card: #282d37; --line: #343a46; --text: #d8dee9; --dim: #8a93a5;
+    --accent: #88c0d0; --warn: #ebcb8b; --bad: #bf616a; --good: #a3be8c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+           padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 8px 0 0; font-size: 15px; }
+  header select, header input { background: var(--card); color: var(--text); border: 1px solid var(--line);
+                                border-radius: 4px; padding: 3px 6px; font: inherit; }
+  header input[type=text] { width: 14em; }
+  header label { color: var(--dim); }
+  #keys { margin-left: auto; color: var(--dim); font-size: 12px; }
+  #message { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: none;
+             max-width: 80vw; padding: 8px 14px; border-radius: 6px; background: var(--bad); color: #fff; }
+  #message.info { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+  #board { display: grid; padding: 0 12px 40px; }
+  .column-head { position: sticky; top: 42px; z-index: 4; padding: 6px; background: var(--bg); color: var(--dim);
+                 font-weight: 600; text-transform: uppercase; font-size: 11px; border-bottom: 1px solid var(--line); }
+  .repo-head { grid-column: 1 / -1; margin-top: 14px; padding: 4px 0; font-size: 14px; font-weight: 600;
+               color: var(--accent); }
+  .lane-head { grid-column: 1 / -1; padding: 2px 0 0 4px; color: var(--dim); font-size: 12px; }
+  .cell { min-height: 34px; padding: 3px; border-right: 1px dashed var(--line); }
+  .card { margin: 3px 0; padding: 5px 7px; background: var(--card); border: 1px solid var(--line);
+          border-left: 3px solid var(--dim); border-radius: 4px; cursor: default; user-select: none; }
+  .card.selected { outline: 2px solid var(--accent); }
+  .card.waiting { border-left-color: var(--warn); }
+  .card.problem { border-left-color: var(--bad); background: #3a2a2e; }
+  .card .id { font-weight: 600; word-break: break-all; }
+  .card .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; color: var(--dim); font-size: 11px; }
+  .card .waiting-on { margin-top: 3px; color: var(--warn); font-size: 12px; }
+  .card .error { margin-top: 3px; color: #f0b8bd; font-size: 11px; word-break: break-word; }
+  .badge { padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; }
+  .badge.depends { color: var(--accent); }
+  a { color: var(--accent); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>plans</h1>
+  <select id="repo" title="repo (r / R)"></select>
+  <input id="text" type="text" placeholder="/ filter id" autocomplete="off">
+  <select id="owner" title="owner"></select>
+  <select id="project" title="project"></select>
+  <select id="status" title="status"></select>
+  <select id="kind" title="kind"></select>
+  <label><input id="waiting" type="checkbox"> waiting on owner</label>
+  <span id="keys">j k cards, h l columns, / filter, r repo</span>
+</header>
+<div id="board"></div>
+<div id="message"></div>
+<script>
+"use strict";
+
+const ALL = "";
+let board = null;
+let selected_path = null;
+const filters = { repo: ALL, text: "", owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
+const element = (id) => document.getElementById(id);
+
+function make(tag, class_name, text) {
+  const node = document.createElement(tag);
+  if (class_name) node.className = class_name;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function show_message(text, kind) {
+  const box = element("message");
+  box.textContent = text;
+  box.className = kind || "";
+  box.style.display = "block";
+  clearTimeout(show_message.timer);
+  show_message.timer = setTimeout(() => { box.style.display = "none"; }, 6000);
+}
+
+async function load_board() {
+  const response = await fetch("/api/board", { cache: "no-store" });
+  const fresh = await response.json();
+  // Two loads can finish out of order, and the older answer must not replace the newer board.
+  if (board && fresh.version < board.version) return;
+  board = fresh;
+  fill_filter_choices();
+  render();
+}
+
+function fill_select(id, label, values) {
+  const select = element(id);
+  const current = select.value;
+  select.replaceChildren(new Option(label, ALL), ...values.map((value) => new Option(value, value)));
+  select.value = values.includes(current) ? current : ALL;
+  filters[id] = select.value;
+}
+
+function fill_filter_choices() {
+  const docs = board.repos.flatMap((repo) => repo.docs);
+  const distinct = (key) => [...new Set(docs.map((doc) => String(doc[key])))].sort();
+  const repo_select = element("repo");
+  const current = repo_select.value;
+  repo_select.replaceChildren(new Option("all repos", ALL), ...board.repos.map((repo) => new Option(repo.label, repo.root)));
+  repo_select.value = board.repos.some((repo) => repo.root === current) ? current : ALL;
+  filters.repo = repo_select.value;
+  fill_select("owner", "any owner", distinct("owner_session"));
+  fill_select("project", "any project", distinct("project"));
+  fill_select("status", "any status", board.statuses.slice());
+  fill_select("kind", "any kind", board.kinds.slice());
+}
+
+// Each filter select and the front matter key it compares.
+const SELECT_FILTER_KEYS = { owner: "owner_session", project: "project", status: "status", kind: "kind" };
+
+function doc_is_shown(doc) {
+  const select_matches = Object.entries(SELECT_FILTER_KEYS)
+    .every(([filter, key]) => filters[filter] === ALL || String(doc[key]) === filters[filter]);
+  const text_matches = !filters.text || doc.id.includes(filters.text);
+  return select_matches && text_matches && (!filters.waiting || Boolean(doc.waiting_on));
+}
+
+// An unreadable doc has no keys to filter on, so any select filter hides it, and the text filter matches its id.
+function problem_is_shown(problem) {
+  const select_filter_set = Object.keys(SELECT_FILTER_KEYS).some((filter) => filters[filter] !== ALL);
+  return !select_filter_set && !filters.waiting && (!filters.text || problem.id.includes(filters.text));
+}
+
+function pr_link(repo, pr) {
+  if (pr === null || pr === undefined || pr === "none" || pr === "") return null;
+  const text = String(pr);
+  if (/^https?:\/\//.test(text)) return { href: text, label: "PR" };
+  const number = text.replace(/^#/, "");
+  if (/^[0-9]+$/.test(number) && repo.web_url) return { href: `${repo.web_url}/pull/${number}`, label: `#${number}` };
+  return { href: null, label: `PR ${text}` };
+}
+
+function card_node(repo, doc) {
+  const card = make("div", "card");
+  card.dataset.path = doc.path;
+  card.dataset.status = doc.status;
+  if (doc.waiting_on) card.classList.add("waiting");
+  card.append(make("div", "id", doc.id));
+  const meta = make("div", "meta");
+  meta.append(make("span", "badge", doc.kind), make("span", "badge owner", doc.owner_session),
+              make("span", "badge", `rank ${doc.rank}`));
+  const link = pr_link(repo, doc.pr);
+  if (link) {
+    const node = link.href ? make("a", "badge", link.label) : make("span", "badge", link.label);
+    if (link.href) { node.href = link.href; node.target = "_blank"; node.rel = "noopener"; }
+    meta.append(node);
+  }
+  for (const dependency of doc.depends_on || []) meta.append(make("span", "badge depends", `after ${dependency}`));
+  card.append(meta);
+  if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
+  card.addEventListener("click", () => select_card(doc.path));
+  return card;
+}
+
+function problem_node(problem) {
+  const card = make("div", "card problem");
+  card.dataset.path = problem.path;
+  card.append(make("div", "id", problem.id), make("div", "error", problem.error));
+  card.addEventListener("click", () => select_card(problem.path));
+  return card;
+}
+
+function lane_cells(container, statuses, lane_key) {
+  const cells = {};
+  for (const status of statuses) {
+    const cell = make("div", "cell");
+    cell.dataset.status = status;
+    cell.dataset.lane = lane_key;
+    container.append(cell);
+    cells[status] = cell;
+  }
+  return cells;
+}
+
+function render() {
+  const container = element("board");
+  const statuses = board.statuses;
+  container.style.gridTemplateColumns = `repeat(${statuses.length}, minmax(150px, 1fr))`;
+  container.replaceChildren(...statuses.map((status) => make("div", "column-head", status)));
+  for (const repo of board.repos) {
+    if (filters.repo !== ALL && repo.root !== filters.repo) continue;
+    const docs = repo.docs.filter(doc_is_shown);
+    if (!docs.length && !repo.problems.some(problem_is_shown)) continue;
+    container.append(make("div", "repo-head", repo.label));
+    const problems = repo.problems.filter(problem_is_shown);
+    if (problems.length) {
+      container.append(make("div", "lane-head", "unreadable"));
+      const cells = lane_cells(container, statuses, `${repo.root}\n`);
+      for (const problem of problems) cells[problem.status || statuses[0]].append(problem_node(problem));
+    }
+    const projects = [...new Set(docs.map((doc) => doc.project))].sort();
+    for (const project of projects) {
+      container.append(make("div", "lane-head", project));
+      const cells = lane_cells(container, statuses, `${repo.root}\n${project}`);
+      for (const doc of docs.filter((doc) => doc.project === project)) {
+        cells[statuses.includes(doc.status) ? doc.status : statuses[0]].append(card_node(repo, doc));
+      }
+    }
+  }
+  const cards = all_cards();
+  if (!cards.some((card) => card.dataset.path === selected_path)) selected_path = cards.length ? cards[0].dataset.path : null;
+  mark_selected();
+}
+
+function all_cards() { return [...document.querySelectorAll("#board .card")]; }
+function selected_card() { return all_cards().find((card) => card.dataset.path === selected_path) || null; }
+
+function select_card(path) {
+  selected_path = path;
+  mark_selected();
+  const card = selected_card();
+  if (card) card.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function mark_selected() {
+  for (const card of all_cards()) card.classList.toggle("selected", card.dataset.path === selected_path);
+}
+
+function column_index(card) { return board.statuses.indexOf(card.parentElement.dataset.status); }
+
+// j and k walk one column top to bottom across every lane, so they never jump sideways.
+function step_in_column(offset) {
+  const card = selected_card();
+  if (!card) return;
+  const column = all_cards().filter((other) => column_index(other) === column_index(card));
+  const next = column[column.indexOf(card) + offset];
+  if (next) select_card(next.dataset.path);
+}
+
+// h and l go to the nearest column that has cards, and there to the card closest in height to the current one.
+function step_column(offset) {
+  const card = selected_card();
+  if (!card) return;
+  const top = card.getBoundingClientRect().top;
+  for (let column = column_index(card) + offset; column >= 0 && column < board.statuses.length; column += offset) {
+    const candidates = all_cards().filter((other) => column_index(other) === column);
+    if (!candidates.length) continue;
+    const distance = (other) => Math.abs(other.getBoundingClientRect().top - top);
+    candidates.sort((a, b) => distance(a) - distance(b));
+    select_card(candidates[0].dataset.path);
+    return;
+  }
+}
+
+function step_repo(offset) {
+  const select = element("repo");
+  select.selectedIndex = (select.selectedIndex + offset + select.options.length) % select.options.length;
+  filters.repo = select.value;
+  render();
+}
+
+function typing_in_field(event) {
+  return ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName);
+}
+
+const KEYS = {
+  j: () => step_in_column(1),
+  k: () => step_in_column(-1),
+  h: () => step_column(-1),
+  l: () => step_column(1),
+  r: () => step_repo(1),
+  R: () => step_repo(-1),
+  "/": () => element("text").focus(),
+};
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    if (typing_in_field(event)) event.target.blur();
+    return;
+  }
+  if (typing_in_field(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+  const action = KEYS[event.key];
+  if (!action) return;
+  event.preventDefault();
+  action();
+});
+
+for (const id of ["repo", "owner", "project", "status", "kind"]) {
+  element(id).addEventListener("change", () => { filters[id] = element(id).value; render(); });
+}
+element("text").addEventListener("input", () => { filters.text = element("text").value; render(); });
+element("text").addEventListener("keydown", (event) => { if (event.key === "Enter") event.target.blur(); });
+element("waiting").addEventListener("change", () => { filters.waiting = element("waiting").checked; render(); });
+
+// The server sends the board version at connect and after each change on disk. EventSource reconnects by itself.
+const events = new EventSource("/api/events");
+events.addEventListener("version", (event) => {
+  if (!board || Number(event.data) !== board.version) load_board();
+});
+</script>
+</body>
+</html>

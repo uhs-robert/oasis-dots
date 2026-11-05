@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import gh, parse, query, roots, store, validate
+from . import gh, parse, query, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -101,6 +101,10 @@ def build_parser():
     lint.add_argument("--gh", action="store_true", help="also check PRs, branches and issues on GitHub")
     lint.add_argument("--all", action="store_true", help="every repo under ~/.config/plans/roots")
     lint.set_defaults(run=run_lint)
+
+    serve = commands.add_parser("serve", help=f"a web board over every repo's docs, on {server.HOST}")
+    serve.add_argument("--port", type=int, default=server.DEFAULT_PORT)
+    serve.set_defaults(run=run_serve)
     return parser
 
 
@@ -380,3 +384,10 @@ def repo_lint_lines(repo, args):
         findings += gh.check(repo.root, repo.docs)
     findings.sort(key=lambda finding: (finding.path, finding.line))
     return lines + [f"{where(f.path)}:{f.line}: {f.rule}: {f.message}" for f in findings]
+
+
+def run_serve(args):
+    try:
+        return server.serve(args.port)
+    except OSError as error:
+        raise UsageError(f"cannot serve on {server.HOST}:{args.port}: {error.strerror or error}") from None

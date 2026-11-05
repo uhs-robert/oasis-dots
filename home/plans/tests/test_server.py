@@ -1,0 +1,390 @@
+"""The board's read side: the board JSON, the Host check, the mtime watcher, the event stream and shutdown."""
+
+import http.client
+import json
+import os
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unittest
+
+from unittest import mock
+
+sys.dont_write_bytecode = True
+PACKAGE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(PACKAGE, ".local", "lib", "plans"))
+from plans import parse, query, roots, server  # noqa: E402
+
+for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
+             "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX"):
+    os.environ.pop(name, None)
+ENTRY = os.path.join(PACKAGE, ".local", "bin", "plans")
+POLL = 0.05
+KEEPALIVE = 0.1
+
+
+def doc_text(doc_id, rank, project="proj", status="planned", owner="none", waiting_on='""', pr="none"):
+    return (f"---\nid: {doc_id}\nproject: {project}\nkind: feature\nstatus: {status}\nowner_session: {owner}\n"
+            f"rank: {rank}\ndepends_on: []\nwaiting_on: {waiting_on}\nissue: none\npr: {pr}\nbranch: none\n"
+            f"fix_rounds: 0\nupdated: \"2026-11-01\"\n---\n# {doc_id}\n\n## Goal\n\nBody.\n")
+
+
+def wait_until(condition, timeout=5):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+class Fixture:
+    """Temp git repos under one root, a roots file naming it, and a board server on a free port."""
+
+    def __init__(self, test):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = os.path.join(self.temp.name, "repos")
+        self.roots_file = os.path.join(self.temp.name, "roots")
+        with open(self.roots_file, "w", encoding="utf-8") as handle:
+            handle.write(self.root + "\n")
+        self.test = test
+        self.httpd = None
+        test.addCleanup(self.temp.cleanup)
+
+    def repo(self, rel):
+        path = os.path.join(self.root, rel)
+        os.makedirs(path, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
+        return path
+
+    def add(self, repo, doc_id, rank, **keys):
+        project = keys.get("project", "proj")
+        path = os.path.join(repo, ".plans", project, doc_id + ".md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(doc_text(doc_id, rank, **keys))
+        return path
+
+    def start(self, watch=True):
+        self.board = server.Board(self.roots_file, poll_seconds=POLL)
+        self.board.poll(rescan=True)
+        self.httpd = server.make_server(self.board, 0, keepalive_seconds=KEEPALIVE)
+        self.port = self.httpd.server_address[1]
+        self.threads = [threading.Thread(target=self.httpd.serve_forever, daemon=True)]
+        self.threads[0].start()
+        if watch:
+            self.start_watcher()
+        self.test.addCleanup(self.stop)
+
+    def start_watcher(self):
+        self.watcher = threading.Thread(target=self.board.watch, daemon=True)
+        self.threads.append(self.watcher)
+        self.watcher.start()
+
+    def stop(self):
+        if self.httpd:
+            self.board.stop()
+            self.httpd.shutdown()
+            self.httpd.server_close()
+            for thread in self.threads:
+                thread.join(5)
+            self.httpd = None
+
+    def request(self, method, path, body=None, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        base = {"Host": f"127.0.0.1:{self.port}"}
+        data = None if body is None else json.dumps(body).encode()
+        connection.request(method, path, data, {**base, **(headers or {})})
+        response = connection.getresponse()
+        payload = response.read()
+        connection.close()
+        return response.status, json.loads(payload) if response.getheader("Content-Type") == "application/json" else payload
+
+    def board_json(self):
+        status, data = self.request("GET", "/api/board")
+        self.test.assertEqual(status, 200)
+        return data
+
+    def open_events(self):
+        """A raw socket on the event stream, past the response headers."""
+        connection = socket.create_connection(("127.0.0.1", self.port), timeout=5)
+        connection.sendall(f"GET /api/events HTTP/1.1\r\nHost: 127.0.0.1:{self.port}\r\n\r\n".encode())
+        received = b""
+        while b"\r\n\r\n" not in received:
+            received += connection.recv(4096)
+        return connection, received.split(b"\r\n\r\n", 1)[1]
+
+
+def read_versions(connection, already=b"", count=1):
+    """The data of the next `count` version events on an event stream. Only frames that end in their blank line
+    count, so a frame split across two reads is never parsed half-received."""
+    received = already
+
+    def whole_version_frames():
+        frames = received.split(b"\n\n")[:-1]
+        return [frame for frame in frames if b"event: version" in frame]
+
+    while len(whole_version_frames()) < count:
+        received += connection.recv(4096)
+    return [int(line.split(b": ")[1]) for frame in whole_version_frames()[:count]
+            for line in frame.splitlines() if line.startswith(b"data: ")]
+
+
+class BoardJsonTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = Fixture(self)
+        self.web = self.fixture.repo("web")
+        subprocess.run(["git", "-C", self.web, "remote", "add", "origin", "git@github.com:someone/web.git"], check=True)
+        self.alpha_a = self.fixture.repo("a/alpha")
+        self.alpha_b = self.fixture.repo("b/alpha")
+
+    def test_docs_come_in_rank_order_with_keys_and_path(self):
+        self.fixture.add(self.web, "second", 20, waiting_on='"owner: pick"', pr=12)
+        first = self.fixture.add(self.web, "first", 10, project="other", owner="dotfiles-56")
+        self.fixture.start()
+        web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
+        self.assertEqual([doc["id"] for doc in web["docs"]], ["first", "second"])
+        self.assertEqual(web["docs"][0]["path"], first)
+        self.assertEqual(web["docs"][0]["owner_session"], "dotfiles-56")
+        self.assertEqual(web["docs"][1]["waiting_on"], "owner: pick")
+        self.assertEqual(web["docs"][1]["pr"], 12)
+        self.assertEqual(web["web_url"], "https://github.com/someone/web")
+
+    def test_repos_with_one_folder_name_show_the_parent(self):
+        self.fixture.start()
+        labels = {repo["root"]: repo["label"] for repo in self.fixture.board_json()["repos"]}
+        self.assertEqual(labels, {self.web: "web", self.alpha_a: "a/alpha", self.alpha_b: "b/alpha"})
+
+    def test_unreadable_and_old_kind_docs_are_problems(self):
+        broken = os.path.join(self.web, ".plans", "proj", "broken.md")
+        os.makedirs(os.path.dirname(broken))
+        with open(broken, "w", encoding="utf-8") as handle:
+            handle.write("---\nid: broken\nstatus: building\nkind: yes\n---\n")
+        old = self.fixture.add(self.web, "old", 30)
+        with open(old, encoding="utf-8") as handle:
+            text = handle.read().replace("kind: feature", "kind: tracker")
+        with open(old, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        self.fixture.start()
+        web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
+        problems = {problem["id"]: problem for problem in web["problems"]}
+        self.assertEqual(web["docs"], [])
+        self.assertEqual(problems["broken"]["status"], "building")
+        self.assertIn("line 4", problems["broken"]["error"])
+        self.assertIn("old kind tracker", problems["old"]["error"])
+
+    def test_a_doc_that_is_not_utf8_is_a_problem_and_the_other_repos_still_read(self):
+        bad = self.fixture.add(self.web, "bad", 10)
+        with open(bad, "ab") as handle:
+            handle.write(b"\xff\xfe")
+        self.fixture.add(self.alpha_a, "fine", 10)
+        self.fixture.start()
+        repos = {repo["root"]: repo for repo in self.fixture.board_json()["repos"]}
+        self.assertIn("bad.md", repos[self.web]["problems"][0]["error"])
+        self.assertEqual([doc["id"] for doc in repos[self.alpha_a]["docs"]], ["fine"])
+
+    def test_page_is_served(self):
+        self.fixture.start()
+        status, body = self.fixture.request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn(b"<title>plans</title>", body)
+
+
+class RestartTest(unittest.TestCase):
+    def test_a_restarted_server_starts_above_the_old_versions(self):
+        """An open page drops a board older than the one it shows, so a new server's first board must count as newer."""
+        fixture = Fixture(self)
+        repo = fixture.repo("web")
+        old = server.Board(fixture.roots_file)
+        for rank in range(5):
+            fixture.add(repo, "demo", rank)
+            os.utime(os.path.join(repo, ".plans", "proj", "demo.md"), ns=(time.time_ns(), time.time_ns() + rank))
+            old.poll(rescan=True)
+        new = server.Board(fixture.roots_file)
+        new.poll(rescan=True)
+        self.assertGreater(new.version, old.version)
+        # The page holds the version in a JavaScript number, exact only up to 2**53.
+        self.assertLess(new.version, 2**53)
+
+
+class HostCheckTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = Fixture(self)
+        self.fixture.start()
+
+    def test_a_foreign_host_is_refused(self):
+        for host in ("evil.example", f"evil.example:{self.fixture.port}", "127.0.0.1:1"):
+            for path in ("/", "/api/board", "/api/events"):
+                status, data = self.fixture.request("GET", path, headers={"Host": host})
+                self.assertEqual(status, 403, (host, path))
+
+    def test_localhost_is_served(self):
+        status, _ = self.fixture.request("GET", "/api/board", headers={"Host": f"localhost:{self.fixture.port}"})
+        self.assertEqual(status, 200)
+
+
+class WatcherTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = Fixture(self)
+        self.repo = self.fixture.repo("web")
+        self.path = self.fixture.add(self.repo, "demo", 10)
+
+    def docs(self):
+        return {doc["id"]: doc for repo in self.fixture.board_json()["repos"] for doc in repo["docs"]}
+
+    def problems(self):
+        return [problem for repo in self.fixture.board_json()["repos"] for problem in repo["problems"]]
+
+    def test_an_edit_on_disk_reaches_the_event_stream(self):
+        self.fixture.start()
+        connection, rest = self.fixture.open_events()
+        self.addCleanup(connection.close)
+        [first] = read_versions(connection, rest)
+        self.fixture.add(self.repo, "demo", 10, status="building")
+        received = b""
+        while b"event: version" not in received:
+            received += connection.recv(4096)
+        [second] = read_versions(connection, received)
+        self.assertGreater(second, first)
+        self.assertEqual(self.docs()["demo"]["status"], "building")
+
+    def test_a_new_repo_shows_after_the_rescan(self):
+        self.fixture.start()
+        self.fixture.board.rescan_seconds = POLL
+        other = self.fixture.repo("other")
+        self.fixture.add(other, "late", 10)
+        self.assertTrue(wait_until(lambda: "late" in self.docs()))
+
+    def test_a_doc_deleted_or_renamed_mid_scan_is_read_again(self):
+        # No watcher yet: a concurrent poll would read the touched repo before the patch and leave nothing to inject.
+        self.fixture.start(watch=False)
+        renamed = os.path.join(os.path.dirname(self.path), "moved.md")
+        real_read = parse.read
+        for current, change in ((self.path, lambda: os.rename(self.path, renamed)), (renamed, lambda: os.unlink(renamed))):
+            # A newer mtime makes the poll read the repo again, and the read then meets the change.
+            os.utime(current, ns=(time.time_ns(), time.time_ns() + 10**9))
+            calls = []
+
+            def read_after_change(path, change=change, calls=calls):
+                if not calls:
+                    calls.append(path)
+                    change()
+                return real_read(path)
+
+            with mock.patch.object(parse, "read", read_after_change):
+                self.fixture.board.poll(rescan=True)
+            self.assertTrue(calls)
+            self.assertEqual(self.problems(), [])
+        self.assertEqual(self.docs(), {})
+        self.fixture.start_watcher()
+        time.sleep(POLL * 3)
+        self.assertTrue(self.fixture.watcher.is_alive())
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a file without read permission")
+    def test_a_doc_without_read_permission_is_a_problem_until_fixed(self):
+        self.fixture.start()
+        os.chmod(self.path, 0)
+        self.addCleanup(os.chmod, self.path, 0o644)
+        self.assertTrue(wait_until(lambda: self.problems()))
+        self.assertIn("Permission denied", self.problems()[0]["error"])
+        os.chmod(self.path, 0o644)
+        self.assertTrue(wait_until(lambda: not self.problems() and "demo" in self.docs()))
+
+    def test_the_watcher_survives_a_failed_scan(self):
+        self.fixture.start()
+        with mock.patch.object(roots, "all_repos", side_effect=RuntimeError("boom")), \
+                mock.patch.object(sys, "stderr"):
+            self.fixture.board.rescan_seconds = 0
+            time.sleep(POLL * 5)
+        self.assertTrue(self.fixture.watcher.is_alive())
+        self.fixture.add(self.repo, "demo", 10, status="done")
+        self.assertTrue(wait_until(lambda: self.docs()["demo"]["status"] == "done"))
+
+
+class EventStreamTest(unittest.TestCase):
+    def test_closed_streams_end_their_threads(self):
+        fixture = Fixture(self)
+        fixture.repo("web")
+        fixture.start()
+        baseline = threading.active_count()
+        streams = [fixture.open_events() for _ in range(20)]
+        for connection, rest in streams:
+            read_versions(connection, rest)
+        self.assertGreaterEqual(threading.active_count(), baseline + 20)
+        for connection, _ in streams:
+            connection.close()
+        # Each thread notices at its next keepalive write. The first write after a close can still succeed, so
+        # allow a few rounds.
+        self.assertTrue(wait_until(lambda: threading.active_count() <= baseline, timeout=KEEPALIVE * 40))
+        status, _ = fixture.request("GET", "/api/board")
+        self.assertEqual(status, 200)
+
+    def test_stop_ends_open_streams(self):
+        fixture = Fixture(self)
+        fixture.repo("web")
+        fixture.start()
+        connection, rest = fixture.open_events()
+        self.addCleanup(connection.close)
+        read_versions(connection, rest)
+        fixture.board.stop()
+        received = b""
+        while True:
+            chunk = connection.recv(4096)
+            if not chunk:
+                break
+            received += chunk
+        self.assertNotIn(b"event: version", received)
+
+
+class ShutdownTest(unittest.TestCase):
+    def test_sigterm_exits_cleanly_with_a_stream_open(self):
+        fixture = Fixture(self)
+        fixture.add(fixture.repo("web"), "demo", 10)
+        port = free_port()
+        config = os.path.join(fixture.temp.name, "config")
+        os.makedirs(os.path.join(config, "plans"))
+        os.symlink(fixture.roots_file, os.path.join(config, "plans", "roots"))
+        process = subprocess.Popen([sys.executable, "-B", ENTRY, "serve", "--port", str(port)],
+                                   env={**os.environ, "XDG_CONFIG_HOME": config}, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(process.stderr.close)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        self.assertIn(f"127.0.0.1:{port}", process.stderr.readline())
+        fixture.port = port
+        connection, rest = fixture.open_events()
+        self.addCleanup(connection.close)
+        read_versions(connection, rest)
+        process.send_signal(signal.SIGTERM)
+        self.assertEqual(process.wait(timeout=10), 0)
+        self.assertEqual(process.stderr.read(), "")
+
+    def home(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        return temp.name
+
+    def test_a_taken_port_is_a_usage_error(self):
+        holder = socket.socket()
+        holder.bind(("127.0.0.1", 0))
+        holder.listen()
+        self.addCleanup(holder.close)
+        result = subprocess.run([sys.executable, "-B", ENTRY, "serve", "--port", str(holder.getsockname()[1])],
+                                capture_output=True, text=True, timeout=30,
+                                env={**os.environ, "HOME": self.home(), "XDG_CONFIG_HOME": self.home()})
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("cannot serve", result.stderr)
+
+
+def free_port():
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    return port
+
+
+if __name__ == "__main__":
+    unittest.main()
