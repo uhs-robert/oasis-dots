@@ -3,6 +3,7 @@
 -- follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
+local Scripts = require("lib.scripts") ---@class Scripts
 
 Act.define("terminal.open", {
   label = "Terminal",
@@ -68,4 +69,10 @@ Act.define("submap.enter", {
     if not Submap.registry[name] then error("unknown submap '" .. name .. "'", 0) end
     Submap.enter(name)
   end,
+})
+
+Act.define("plans.board", {
+  label = "Kanban Plans",
+  intent = "Open the plans board in the browser, starting its service when it is down.",
+  run = Act.Cmd(Scripts.plans_open),
 })

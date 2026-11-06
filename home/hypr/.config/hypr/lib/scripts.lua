@@ -22,6 +22,7 @@ local Scripts = {
   tmux_layout           = HYPR    .. "tmux-layout",
   keybind_help          = HYPR    .. "keybind-help.lua",
   kitty_window_cmd      = HYPR    .. "kitty-window-cmd.sh",
+  plans_open            = HYPR    .. "plans-open.sh",
 }
 
 return Scripts
