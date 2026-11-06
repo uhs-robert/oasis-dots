@@ -94,7 +94,7 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `/` | the id filter; Esc goes back to the board |
 | `r` | the repo search box |
 
-The repo search box lists the repos that have plan docs, with all repos first. Typing keeps the repos whose `owner/name` label or folder name holds the letters in order, best match first, and a hit at a word start or in a run ranks higher. Arrow keys move the highlight, Enter or a click picks, Esc closes the list, and Tab leaves without a pick. Pick all repos, or empty the box and press Esc, to clear the filter. The pick does not survive a page reload. The matcher has a node test: `node home/plans/tests/fuzzy.test.mjs`. The `plans` check step does not run it.
+The repo search box lists the repos that have plan docs, with all repos first. Typing keeps the repos whose `owner/name` label or folder name holds the letters in order, best match first, and a hit at a word start or in a run ranks higher. Arrow keys move the highlight, Enter or a click picks, Esc closes the list, and Tab leaves without a pick. Pick all repos, or empty the box and press Esc, to clear the filter. The pick does not survive a page reload. The matcher has a node test: `node home/plans/tests/fuzzy.test.mjs`. `tests/test_board_fuzzy.py` runs it in the `plans` check step.
 
 A drag moves a card within its lane, to another status, another place or both. A drop takes the midpoint of the ranks around it. When there is no gap, the board renumbers the repo in steps of 10.
 
