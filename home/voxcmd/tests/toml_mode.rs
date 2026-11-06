@@ -731,6 +731,20 @@ fn the_shipped_rapid_toml_answers_a_leave_word_with_the_hint_and_an_exit_phrase_
             "{words}"
         );
     }
+    // A phrase that routes whole is not shortened to its tail: this note is kept, not the hint.
+    std::fs::write(
+        rig.path().join("config/integrations/notes.toml"),
+        "name = \"Notes\"\nverbs = [{ action = \"note\", match = 'note .+' }]\n[actions]\nnote = 'echo noted >> \"$WORK/ran\"'\n",
+    )
+    .unwrap();
+    let before = rig.calls().matches("say cortana done to leave").count();
+    rig.hear("rapid", json!({}), "note say no wait stop");
+    assert_eq!(rig.read_work("ran"), "noted\n", "{}", rig.calls());
+    assert_eq!(rig.calls().matches("say cortana done to leave").count(), before);
+    // Each step of a sequence is read the same way: the second step is the hint.
+    rig.hear("rapid", json!({}), "note it and then um stop");
+    assert_eq!(rig.read_work("ran"), "noted\nnoted\n", "{}", rig.calls());
+    assert_eq!(rig.calls().matches("say cortana done to leave").count(), before + 1);
     // The exit phrases that name the mode are not exits inside it and give the generic answer, not the hint.
     let hints = rig.calls().matches("say cortana done to leave").count();
     for words in [

@@ -12,6 +12,7 @@ use crate::actions::{Spoken, StepOutcome};
 use crate::debug::debug;
 use crate::notify::{self, Kind};
 use crate::paths;
+use crate::route::router::StepContext;
 use crate::route::runner::Runner;
 use crate::route::sequence;
 use crate::text::normalize::{Replacements, apply_replacements, normalize};
@@ -529,7 +530,7 @@ impl TurnRun<'_> {
         } else {
             let text = replaced(&split.steps[0]);
             let rewritten = if self.mode.has_rewrite {
-                self.rewrite_with_corrections(text)
+                self.rewrite_with_corrections(text, false)
             } else {
                 text
             };
@@ -553,23 +554,34 @@ impl TurnRun<'_> {
 
     /// The mode's rewrite of one step. A step it leaves as spoken gets the rewrite of each correction tail too, because
     /// routing shortens "um stop" to "stop" and the mode must see that "stop" as it would a bare one.
-    fn rewrite_with_corrections(&self, text: String) -> String {
-        let rewrite_one = |text: &str| {
-            mode::rewrite(self.mode, self.file, &[text.to_string()])
-                .and_then(|mut rewritten| rewritten.pop())
-                .unwrap_or_default()
+    fn rewrite_with_corrections(&self, text: String, in_sequence: bool) -> String {
+        let rewritten = mode::rewrite(self.mode, self.file, std::slice::from_ref(&text))
+            .and_then(|mut rewritten| rewritten.pop())
+            .unwrap_or_default();
+        if rewritten == text {
+            self.rewrite_correction_tail(&text, in_sequence).unwrap_or(rewritten)
+        } else {
+            rewritten
+        }
+    }
+
+    /// The first correction tail of `text` the mode rewrites, as rewritten. None when routing takes the phrase as
+    /// spoken with a strong option, as the router does before it retries a correction ("remind me to say no wait stop"
+    /// is a reminder).
+    fn rewrite_correction_tail(&self, text: &str, in_sequence: bool) -> Option<String> {
+        let context = StepContext {
+            in_sequence,
+            in_session_turn: self.runner.rt.in_session_turn,
+            ..StepContext::default()
         };
-        let rewritten = rewrite_one(&text);
-        if rewritten != text {
-            return rewritten;
+        let (trace, options) = self.runner.router.route_step_with_options(text, context);
+        if trace.corrected.is_none() && options.iter().any(|option| !option.weak) {
+            return None;
         }
-        for tail in correction_tails(&text) {
-            let rewritten_tail = rewrite_one(&tail);
-            if rewritten_tail != tail {
-                return rewritten_tail;
-            }
-        }
-        rewritten
+        correction_tails(text).into_iter().find_map(|tail| {
+            let rewritten = mode::rewrite(self.mode, self.file, std::slice::from_ref(&tail))?.pop()?;
+            (rewritten != tail).then_some(rewritten)
+        })
     }
 
     /// What each step routes as in the mode: rewritten by its `session_rewrite`, or unchanged when it has none or leaves
@@ -591,7 +603,8 @@ impl TurnRun<'_> {
                 if self.mode.allows_switches && router.is_mode_action(&text) {
                     text
                 } else if rewritten == text {
-                    step.clone()
+                    self.rewrite_correction_tail(&text, true)
+                        .unwrap_or_else(|| step.clone())
                 } else {
                     rewritten
                 }

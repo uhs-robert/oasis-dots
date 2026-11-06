@@ -387,6 +387,7 @@ open firefox four	picker	an arbitrary tail is never retried: the weak match asks
 sorry	none	a correction word with nothing after it
 open firefox, sorry	picker	nothing follows the correction word: the weak match asks as before
 remind me to say sorry	Timers/remind	a correction word inside a command that matches whole
+remind me in 5 minutes to say no wait stop	Timers/remind	a correction word inside a command that matches whole, with the time first
 remind me to say no wait	Timers/remind
 open firefox open	picker	the repeated word is a tail that routes no better: the weak match asks as before
 press enter	Keys/enter
