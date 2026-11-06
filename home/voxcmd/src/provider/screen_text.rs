@@ -4,49 +4,21 @@
 //! It captures and reads the window, matches the spoken target against the text, and drops what another window or the
 //! bar hides. A failure and "everything found is hidden" are each one candidate whose id says so (`error:<why>`,
 //! `covered:`), which `click_at` reports: an empty list would read as "not on screen" and hand the phrase on.
-use super::capture::Tools;
-use super::covering;
-use super::driver::{self, Mode, WindowSel};
-use super::explain::{
-    ClickTrace, CoveredAt, ExplainSink, InfoTrace, PassTrace, TraceKind, VerdictAt, outcome_of, point_of,
-};
-use super::matcher::{Options, Pass, match_stream};
-use super::words::FILLER_WORDS;
-use crate::config::schema::{Builtin, Button, Candidates, Integration, Provider};
-use crate::hooks::{Candidate, HookQuery, HookRun, Hooks, Lookup};
+use super::BuiltinHooks;
+use crate::click::covering;
+use crate::click::driver::{self, Mode};
+use crate::click::explain::{ClickTrace, CoveredAt, InfoTrace, PassTrace, TraceKind, VerdictAt, outcome_of, point_of};
+use crate::click::matcher::{Options, Pass, match_stream};
+use crate::click::words::FILLER_WORDS;
+use crate::config::schema::{Builtin, Button, Integration};
+use crate::hooks::{Candidate, HookQuery, HookRun, Lookup};
 use crate::hypr;
 use crate::route::resolve::judge;
 use serde_json::{Value, json};
 use std::time::Instant;
 
-pub struct BuiltinHooks {
-    tools: Tools,
-    /// `explain --window`: where each answer leaves its trace, and which window it reads. A click proper has neither.
-    explain: Option<ExplainSink>,
-    window: WindowSel,
-}
-
-impl Default for BuiltinHooks {
-    fn default() -> Self {
-        Self {
-            tools: Tools::default(),
-            explain: None,
-            window: WindowSel::Focused,
-        }
-    }
-}
-
 impl BuiltinHooks {
-    /// Hooks for `explain --window`: they read `window`, write no click-target, and record a trace of every answer.
-    pub fn tracing(window: WindowSel, sink: ExplainSink) -> Self {
-        Self {
-            explain: Some(sink),
-            window,
-            ..Self::default()
-        }
-    }
-
-    fn screen_text(&self, integration: &Integration, query: &HookQuery) -> HookRun {
+    pub(super) fn screen_text(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let mut run = HookRun::unhooked(
             integration,
             query.action,
@@ -116,21 +88,8 @@ impl BuiltinHooks {
     }
 }
 
-impl Hooks for BuiltinHooks {
-    fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
-        match integration.candidates_for(query.action) {
-            Some(Candidates::Builtin(Provider::ScreenText)) => self.screen_text(integration, query),
-            _ => HookRun::unhooked(integration, query.action, ""),
-        }
-    }
-
-    fn surface_open(&self, _integration: &Integration) -> bool {
-        false
-    }
-}
-
 /// The button the action clicks with: the one its `click_at <button>` names, else the one its name says.
-pub fn button_of(integration: &Integration, action: &str) -> Button {
+fn button_of(integration: &Integration, action: &str) -> Button {
     if let Some(Builtin::ClickAt(Some(button))) = integration.actions.get(action).and_then(|declared| declared.builtin)
     {
         return button;
@@ -145,7 +104,7 @@ pub fn button_of(integration: &Integration, action: &str) -> Button {
 
 /// Whether the spoken text holds a word that is neither filler nor ignored. Words are runs of `[a-z0-9]`, so an
 /// apostrophe splits one ("don't" is `don` and `t`), unlike in the matcher.
-pub fn has_target_word(target: &str, ignored: &[String]) -> bool {
+fn has_target_word(target: &str, ignored: &[String]) -> bool {
     target
         .to_lowercase()
         .split(|character: char| !(character.is_ascii_lowercase() || character.is_ascii_digit()))
@@ -177,11 +136,11 @@ struct Found {
 
 /// What the matcher and the covering check made of the stream: the candidates a click is offered, and, when asked, the
 /// trace of how.
-pub struct Reading {
-    pub candidates: Vec<Candidate>,
-    pub passes: Vec<PassTrace>,
-    pub used: Pass,
-    pub covered: Vec<CoveredAt>,
+struct Reading {
+    candidates: Vec<Candidate>,
+    passes: Vec<PassTrace>,
+    used: Pass,
+    covered: Vec<CoveredAt>,
 }
 
 /// The matcher's candidates over the stream: whole runs first, then, when word matching keeps none of those, the
@@ -259,7 +218,7 @@ fn matched(
     clippy::too_many_arguments,
     reason = "one reading of one capture; a struct would only rename the arguments"
 )]
-pub fn read_stream(
+fn read_stream(
     stream: &str,
     window: &Value,
     clients: &Value,
