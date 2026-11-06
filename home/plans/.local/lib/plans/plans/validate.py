@@ -121,11 +121,19 @@ def is_owned_by(doc, caller):
     return caller is not None and owner_of(doc) == caller.name and not is_name_clash(doc, caller)
 
 
-def owner_value_changes(caller=None):
-    """The owner_session_id and owner_session_pid write for `caller`, or the write that clears both."""
+def shares_a_value(doc, caller):
+    """True when the caller's session id or pid equals the stored one: the same session, or its subagent."""
+    stored = stored_owner_values(doc)
+    return caller is not None and any(value is not None and value == own for value, own in zip(stored, (caller.session_id, caller.pid)))
+
+
+def owner_value_changes(doc, caller=None):
+    """The owner_session_id and owner_session_pid write for `caller`, or the write that clears both. An empty value
+    goes only into a key the doc already has, so a doc from before the keys gets no `""` lines."""
     session_id = caller.session_id if caller else None
     pid = caller.pid if caller else None
-    return {OWNER_SESSION_ID: session_id or "", OWNER_SESSION_PID: "" if pid is None else pid}
+    values = (session_id or "", "" if pid is None else pid)
+    return {key: value for key, value in zip(OWNER_VALUE_KEYS, values) if value != "" or key in doc.keys}
 
 
 def is_session_or_none(value):

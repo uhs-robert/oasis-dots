@@ -14,7 +14,7 @@ plans next [--as S] [--skip ID]... [--all] [--json]   # ask lines, blocked lines
 plans waiting [--all] [--json]        # docs with a non-empty waiting_on
 plans questions [--all] [--json]      # the unchecked "- [ ]" items under Open questions
 plans show <id> [--section NAME] [--json]
-plans set <id> key=value... [--as S] [--force]   # e.g. plans set demo status=building depends_on=a,b
+plans set <id> key=value...           # e.g. plans set demo status=building depends_on=a,b
 plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
 plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default
@@ -28,7 +28,7 @@ On `ls`, `waiting`, `questions` and `lint`, `--all` reads every repo under the d
 
 `--as` names the session, for example `dotfiles-56`. `$PLANS_SESSION` is the fallback. `claim` and `handoff` need one of the two.
 
-Two live sessions can get the same name, so a doc also records the owner's `$CLAUDE_CODE_SESSION_ID` and `$CLAUDE_PID` in `owner_session_id` and `owner_session_pid`. A session with the owner's name owns the doc when either value matches its own. The id changes on `/clear` and the pid on `--resume`. When both stored values differ, another session holds the name: `claim`, `handoff` and `set --as` refuse the doc, and `next` skips it. Each write by the owner refreshes both values. A shell without the two variables matches by name only and leaves the values as they are.
+Two live sessions can get the same name, so a doc also records the owner's `$CLAUDE_CODE_SESSION_ID` and `$CLAUDE_PID` in `owner_session_id` and `owner_session_pid`. A session with the owner's name owns the doc when either value matches its own. The id changes on `/clear` and the pid on `--resume`. When both stored values differ, another session holds the name: `claim` and `handoff` refuse the doc, and `next` skips it. A `claim` writes the caller's values. A `set` refreshes both when either one matches the caller's. So a `/clear` and then a resume never lock the owner out while it writes in between. A shell without the two variables matches by name only and leaves the values as they are.
 
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. On `next`, `--all` does not scan other repos. It stays in the current repo and prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that and writes the caller's values. `handoff` checks every listed doc before it writes any of them. It clears both values, and the receiver's first `claim` writes its own.
