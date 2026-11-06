@@ -306,3 +306,20 @@ desertfox-config:
 docs-gen:
     python3 -B lib/docs/gen-keybinds --write
     python3 -B lib/docs/gen-ipc --write
+
+# Redump the Hyprland bind fixtures from the current keymaps, keeping each file's header. Run it only for a key you meant to change, then read the diff
+hypr-fixtures:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tests="{{ justfile_directory() }}/home/hypr/tests"
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    # The tests run from a temp dir with SHELL=/bin/zsh, because the menus name the user's shell in their commands.
+    export SHELL=/bin/zsh
+    for name in global launch stateful submap_rows; do
+      fixture="$tests/fixtures/act_${name}_binds.tsv"
+      grep '^#' "$fixture" >"$work/$name.tsv" || true
+      (cd "$work" && lua "$tests/act_$name.lua" --dump) >>"$work/$name.tsv"
+      mv "$work/$name.tsv" "$fixture"
+    done
+    git -C "{{ justfile_directory() }}" diff --stat -- "$tests/fixtures"
