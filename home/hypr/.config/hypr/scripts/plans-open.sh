@@ -6,12 +6,13 @@
 port=${PLANS_PORT:-8765}
 url=http://127.0.0.1:$port
 
-# True when the listener answers the board API with 200: another program on the port must not pass for the board.
+# True when the listener serves the board page: a 200 with the page title. Another program on the port must not pass for
+# the board. The server answers 403 to a request without a local Host header, so the probe sends one.
 port_open() (
   exec 3<>"/dev/tcp/127.0.0.1/$port" 2>/dev/null || exit 1
-  printf 'GET /api/board HTTP/1.0\r\n\r\n' >&3
-  read -r -t 1 status_line <&3
-  [[ $status_line == *" 200 "* ]]
+  printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1:%s\r\n\r\n' "$port" >&3
+  response=$(timeout 1 cat <&3)
+  [[ $response == "HTTP/1."*" 200 "* && $response == *"<title>plans</title>"* ]]
 )
 
 if ! port_open; then

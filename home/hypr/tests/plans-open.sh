@@ -5,8 +5,8 @@
 set -u
 
 command -v jq >/dev/null || {
-  echo "plans-open test needs jq" >&2
-  exit 1
+  echo "skip: plans-open test needs jq"
+  exit 0
 }
 
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -24,13 +24,14 @@ echo "systemctl $*" >>"$LOG"
 # START_BINDS=1 stands in for a service that binds the port once started.
 if [ "${START_BINDS:-}" = 1 ]; then
   python3 -I -c 'import socket,sys,time
-s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$PLANS_PORT"')); s.listen()
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); PORT='"$PLANS_PORT"'; s.bind(("127.0.0.1", PORT)); s.listen()
 end=time.time()+20
 s.settimeout(1)
 while time.time()<end:
     try: c,_=s.accept()
     except OSError: continue
-    c.recv(1024); c.sendall(b"HTTP/1.0 "+sys.argv[1].encode()+b"\r\n\r\n"); c.close()' "${REPLY_STATUS:-200 OK}" >/dev/null 2>&1 &
+    d=c.recv(2048); ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
+    c.sendall(b"HTTP/1.0 "+(sys.argv[1] if ok else "403 Forbidden").encode()+b"\r\n\r\n<title>plans</title>"); c.close()' "${REPLY_STATUS:-200 OK}" >/dev/null 2>&1 &
   echo $! >"$WORK/started.pid"
 fi
 exit 0
@@ -73,13 +74,14 @@ fail() {
 # serve <status line>: a listener on $port that answers every request with that status, as $listener.
 serve() {
   python3 -I -c 'import socket,sys,time
-s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$port"')); s.listen()
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); PORT='"$port"'; s.bind(("127.0.0.1", PORT)); s.listen()
 end=time.time()+20
 s.settimeout(1)
 while time.time()<end:
     try: c,_=s.accept()
     except OSError: continue
-    c.recv(1024); c.sendall(b"HTTP/1.0 "+sys.argv[1].encode()+b"\r\n\r\n"); c.close()' "$1" >/dev/null 2>&1 &
+    d=c.recv(2048); ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
+    c.sendall(b"HTTP/1.0 "+(sys.argv[1] if ok else "403 Forbidden").encode()+b"\r\n\r\n<title>plans</title>"); c.close()' "$1" >/dev/null 2>&1 &
   listener=$!
   sleep 0.5
 }
