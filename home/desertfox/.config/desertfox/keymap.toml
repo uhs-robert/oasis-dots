@@ -20,6 +20,7 @@ c = ["github.code"]
 t = ["github.repo.code", "reddit.sub", "youtube.channel"]
 I = ["github.repo.issues"]
 P = ["github.repo.prs"]
+m = ["github.mine.repos"]
 
 # cd/Cd, cn/Cn, ...: reopen the page in the container, or prompt in a new tab of it.
 [container_keys]
