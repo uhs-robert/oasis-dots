@@ -4,6 +4,11 @@
 # never opens sends a notification and exits non-zero. The stubs keep the owner's service, browser and desktop out of it.
 set -u
 
+command -v jq >/dev/null || {
+  echo "plans-open test needs jq" >&2
+  exit 1
+}
+
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 script=$here/../.config/hypr/scripts/plans-open.sh
 work=$(mktemp -d)
@@ -18,8 +23,14 @@ cat >"$work/bin/systemctl" <<'STUB'
 echo "systemctl $*" >>"$LOG"
 # START_BINDS=1 stands in for a service that binds the port once started.
 if [ "${START_BINDS:-}" = 1 ]; then
-  python3 -I -c 'import socket,time
-s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$PLANS_PORT"')); s.listen(); time.sleep(20)' >/dev/null 2>&1 &
+  python3 -I -c 'import socket,sys,time
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$PLANS_PORT"')); s.listen()
+end=time.time()+20
+s.settimeout(1)
+while time.time()<end:
+    try: c,_=s.accept()
+    except OSError: continue
+    c.recv(1024); c.sendall(b"HTTP/1.0 "+sys.argv[1].encode()+b"\r\n\r\n"); c.close()' "${REPLY_STATUS:-200 OK}" >/dev/null 2>&1 &
   echo $! >"$WORK/started.pid"
 fi
 exit 0
@@ -54,39 +65,58 @@ run() {
   out=$(cat "$work/log")
 }
 
-expect() { # <name> <condition result>
-  if ! eval "$2"; then
-    failures=$((failures + 1))
-    echo "FAIL $1: code=$code log='$out'" >&2
-  fi
+fail() {
+  failures=$((failures + 1))
+  echo "FAIL $1: code=$code log='$out'" >&2
+}
+
+# serve <status line>: a listener on $port that answers every request with that status, as $listener.
+serve() {
+  python3 -I -c 'import socket,sys,time
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$port"')); s.listen()
+end=time.time()+20
+s.settimeout(1)
+while time.time()<end:
+    try: c,_=s.accept()
+    except OSError: continue
+    c.recv(1024); c.sendall(b"HTTP/1.0 "+sys.argv[1].encode()+b"\r\n\r\n"); c.close()' "$1" >/dev/null 2>&1 &
+  listener=$!
+  sleep 0.5
+}
+stop_listener() {
+  kill "$listener"
+  wait "$listener" 2>/dev/null
+  listener=
 }
 
 # Port open: no start, URL opened, browser focused.
-python3 -I -c 'import socket,time
-s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1", '"$port"')); s.listen(); time.sleep(20)' &
-listener=$!
-sleep 0.5
+serve "200 OK"
 run 0
-expect "port open: no start" '[[ $out != *systemctl* ]]'
-expect "port open: opens url" '[[ $out == *"xdg-open http://127.0.0.1:$port"* ]]'
-expect "port open: focuses browser" '[[ $out == *"address:0xB"* && $code -eq 0 ]]'
-kill "$listener"
-wait "$listener" 2>/dev/null
-listener=
+[[ $out != *systemctl* ]] || fail "port open: no start"
+[[ $out == *"xdg-open http://127.0.0.1:$port"* ]] || fail "port open: opens url"
+[[ $out == *"address:0xB"* && $code -eq 0 ]] || fail "port open: focuses browser"
+stop_listener
 
 # Port closed, the start opens it.
 run 1
-expect "closed then started: start called" '[[ $out == *"systemctl --user start plans-serve"* ]]'
-expect "closed then started: opens url" '[[ $out == *"xdg-open http://127.0.0.1:$port"* && $code -eq 0 ]]'
+[[ $out == *"systemctl --user start plans-serve"* ]] || fail "closed then started: start called"
+[[ $out == *"xdg-open http://127.0.0.1:$port"* && $code -eq 0 ]] || fail "closed then started: opens url"
 kill "$(cat "$work/started.pid")" 2>/dev/null
 sleep 0.5
 
 # Port never opens.
 start=$SECONDS
 run 0
-expect "never opens: notifies" '[[ $out == *"notify"* ]]'
-expect "never opens: exits non-zero without opening" '[[ $code -ne 0 && $out != *xdg-open* ]]'
-expect "never opens: gives up in about 5 seconds" '(( SECONDS - start >= 4 && SECONDS - start <= 8 ))'
+elapsed=$((SECONDS - start))
+[[ $out == *notify* ]] || fail "never opens: notifies"
+[[ $code -ne 0 && $out != *xdg-open* ]] || fail "never opens: exits non-zero without opening"
+[[ $elapsed -ge 4 && $elapsed -le 8 ]] || fail "never opens: gives up in about 5 seconds"
 
-echo "$((7 - failures))/7 passed"
+# Another program owns the port: it does not count as the board.
+serve "404 Not Found"
+run 0
+[[ $code -ne 0 && $out != *xdg-open* ]] || fail "foreign listener: not opened"
+stop_listener
+
+echo "$((9 - failures))/9 passed"
 exit $((failures ? 1 : 0))
