@@ -84,7 +84,7 @@ The board has a column per status and a lane per repo, then per project. The hea
 
 | Key | Action |
 | --- | --- |
-| `j` `k` | the next or previous card in the column; past the first or last card, scroll to the very top or bottom |
+| `j` `k` | the next or previous card in the column; a move onto or past the first or last card scrolls to the very top or bottom |
 | `gg` `G` | the first or last card in the column, and scroll to the very top or bottom; with no card selected, the first card of the first column that has cards (a lone `g` does nothing) |
 | `h` `l` | the nearest card in the column to the left or right |
 | `H` `L` | move the card one status column; a move to blocked or done asks `y` / `n` |

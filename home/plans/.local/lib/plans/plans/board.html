@@ -452,9 +452,9 @@ function step_in_column(offset) {
   const card = selected_card();
   if (!card) return;
   const column = all_cards().filter((other) => column_index(other) === column_index(card));
-  const next = column[column.indexOf(card) + offset];
-  if (next) select_card(next.dataset.path);
-  else select_card(card.dataset.path, offset < 0 ? "top" : "bottom");
+  const target = column[column.indexOf(card) + offset] || card;
+  const at_end = target === column[offset < 0 ? 0 : column.length - 1];
+  select_card(target.dataset.path, at_end ? (offset < 0 ? "top" : "bottom") : undefined);
 }
 
 // gg and G pick the first or last card of the current column. With no selection they use the first column that has cards.
