@@ -2,7 +2,10 @@
 
 import os
 import sys
+import tempfile
 import unittest
+
+from unittest import mock
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".local", "lib", "plans"))
@@ -40,6 +43,53 @@ class ListingTest(unittest.TestCase):
     def test_questions(self):
         docs = [make("a", 10, questions="- [ ] First?\n- [x] Answered\n- [ ] Second?\n"), make("b", 5)]
         self.assertEqual([(q.doc.id, q.text) for q in query.questions(docs)], [("a", "First?"), ("a", "Second?")])
+
+
+class ReadRepoTest(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = temp.name
+        for doc_id, rank in (("good-a", 10), ("good-b", 30)):
+            self.write(doc_id, make(doc_id, rank).text.encode())
+
+    def write(self, doc_id, data):
+        path = os.path.join(self.root, ".plans", "proj", doc_id + ".md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as handle:
+            handle.write(data)
+        return path
+
+    def check_one_unreadable(self, doc_id, cause):
+        repo = query.read_repo(self.root)
+        self.assertEqual(ids(repo.docs), ["good-a", "good-b"])
+        self.assertEqual(ids(repo.unreadable), [doc_id])
+        bad = repo.unreadable[0]
+        self.assertEqual(len(bad.errors), 1)
+        self.assertIn(cause, bad.errors[0][1])
+
+    def test_a_doc_that_is_not_utf8_is_unreadable_and_the_rest_read(self):
+        self.write("bad", b"---\nid: bad\n---\n\xff\xfe\n")
+        self.check_one_unreadable("bad", "not UTF-8")
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a mode 000 file")
+    def test_a_doc_with_mode_000_is_unreadable_and_the_rest_read(self):
+        path = self.write("locked", make("locked", 20).text.encode())
+        os.chmod(path, 0)
+        self.check_one_unreadable("locked", "Permission denied")
+
+    def test_a_permission_error_is_unreadable_under_a_mock(self):
+        """Covers the permission case where the file system or the user ignores mode 000."""
+        self.write("locked", make("locked", 20).text.encode())
+        real_read = parse.read
+
+        def read(path):
+            if path.endswith("locked.md"):
+                raise PermissionError(13, "Permission denied", path)
+            return real_read(path)
+
+        with mock.patch.object(parse, "read", read):
+            self.check_one_unreadable("locked", "Permission denied")
 
 
 class NextTest(unittest.TestCase):

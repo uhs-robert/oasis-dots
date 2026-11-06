@@ -146,7 +146,8 @@ def warn_unlisted(repo, show_repo):
     if repo.old_kind:
         print(f"plans: {where}{len(repo.old_kind)} docs on the old kind {'/'.join(validate.OLD_KINDS)} scheme; {validate.MIGRATE}", file=sys.stderr)
     for doc in repo.unreadable:
-        print(f"plans: {doc.path}: outside the front matter subset; run plans lint", file=sys.stderr)
+        reason = f"cannot be read: {doc.unread_cause}" if doc.unread_cause else "outside the front matter subset; run plans lint"
+        print(f"plans: {doc.path}: {reason}", file=sys.stderr)
 
 
 def doc_line(doc, repo=None):

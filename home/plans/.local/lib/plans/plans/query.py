@@ -38,7 +38,14 @@ class Repo(NamedTuple):
 def read_repo(root):
     docs, unreadable, old_kind = [], [], []
     for path in doc_paths(root):
-        doc = parse.read(path)
+        try:
+            doc = parse.read(path)
+        except FileNotFoundError:
+            # A doc that vanished mid-read is gone, not unreadable: the board reads the repo again.
+            raise
+        except (OSError, UnicodeDecodeError) as failure:
+            # One bad file must not hide the rest of the repo.
+            doc = parse.unreadable(path, failure)
         if doc.errors:
             unreadable.append(doc)
         elif validate.is_old_kind(doc):
