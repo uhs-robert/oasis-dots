@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import gh, parse, query, roots, server, store, validate
+from . import gh, issues, parse, query, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -233,12 +233,22 @@ def run_next(args):
     warn_unlisted(repo, False)
     steps = query.next_steps(repo.docs, caller, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind},
                              skip=set(args.skip), all=args.all)
+    issue_steps = issues.issue_steps(repo.root, repo.docs)
     if args.json:
-        print(json.dumps([{"action": step.action, "id": step.doc.id, "detail": step.detail, "path": step.doc.path} for step in steps], indent=2))
+        rows = [{"action": "ask", "id": f"#{step.number}", "issue": step.number, "detail": issue_detail(step),
+                 "path": step.doc.path if step.doc else None} for step in issue_steps]
+        rows += [{"action": step.action, "id": step.doc.id, "detail": step.detail, "path": step.doc.path} for step in steps]
+        print(json.dumps(rows, indent=2))
         return
+    for step in issue_steps:
+        print("\t".join(["ask", f"#{step.number}", one_line(issue_detail(step))]))
     for step in steps:
         detail = f"blocked by {step.detail}" if step.action == "blocked" else step.detail
         print("\t".join([step.action, step.doc.id, one_line(detail)]))
+
+
+def issue_detail(step):
+    return f"rank: {step.title}" if step.reason == "rank" else f"closed: drop it from {step.doc.id}"
 
 
 def load_doc(repo_root, doc_id):
