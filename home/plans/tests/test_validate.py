@@ -67,7 +67,7 @@ class DocRulesTest(unittest.TestCase):
         self.assertEqual(rules(make(drop=("fix_rounds",))), [])
 
     def test_owner_session(self):
-        for good in ("none", "dotfiles-56", "oasisfox-5c", "my-repo-00"):
+        for good in ("none", "dotfiles-56", "desertfox-5c", "my-repo-00"):
             self.assertEqual(rules(make({"owner_session": good})), [], good)
         for bad in ("dotfiles", "Dotfiles-56", '"dotfiles 56"'):
             self.assertEqual(rules(make({"owner_session": bad})), ["owner-session"], bad)
