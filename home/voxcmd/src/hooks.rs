@@ -10,11 +10,11 @@
 //! Background children a `candidates` hook leaves behind are killed when it exits.
 use crate::click::driver::WindowSel;
 use crate::click::explain::ExplainSink;
-use crate::click::provider::BuiltinHooks;
 use crate::config::schema::{Candidates, HelpRows, Integration, Surface};
 use crate::debug::debug;
 use crate::paths;
 use crate::process;
+use crate::provider::BuiltinHooks;
 use crate::route::matcher::Arg;
 use crate::route::resolve::arg_env;
 use serde::Serialize;

@@ -1,6 +1,6 @@
-//! Click: the port of `click-match.awk` (the matcher), of `click-ocr` (capture and OCR) and of click.sh (the `screen_text`
-//! provider and the click itself). The awk's
-//! function names are kept in snake_case so the two read side by side.
+//! Click: the port of `click-match.awk` (the matcher), of `click-ocr` (capture and OCR) and of the click itself from
+//! click.sh. The `screen_text` provider that feeds it lives in `crate::provider`. The awk's function names are kept in
+//! snake_case so the two read side by side.
 pub mod act;
 pub mod capture;
 pub mod covering;
@@ -15,7 +15,6 @@ pub mod ocr_format;
 #[cfg(test)]
 mod ocr_goldens;
 pub mod pick;
-pub mod provider;
 pub mod strips;
 pub mod target_file;
 pub mod words;

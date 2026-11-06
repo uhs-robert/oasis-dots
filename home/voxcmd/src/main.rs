@@ -14,6 +14,7 @@ mod log;
 mod notify;
 mod paths;
 mod process;
+mod provider;
 mod route;
 mod session;
 mod text;
