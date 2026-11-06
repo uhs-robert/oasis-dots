@@ -255,6 +255,15 @@ function open_doc() {
   if (can_open(selected_path)) write("open", { path: selected_path });
 }
 
+// The owner badge, links and inputs keep their own double-click meaning, so they never open the editor.
+function open_on_dblclick(card, path) {
+  card.addEventListener("dblclick", (event) => {
+    if (event.target.closest("a, .owner, input")) return;
+    select_card(path);
+    open_doc();
+  });
+}
+
 // A render rebuilds every card, which would drop the owner's typing or the card under the pointer. A reload
 // asked for meanwhile waits, and release_held_reload fetches the newest board once the input or the drag ends.
 let held_reload = false;
@@ -349,6 +358,7 @@ function card_node(repo, doc) {
   card.append(meta);
   if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
   card.addEventListener("click", () => select_card(doc.path));
+  open_on_dblclick(card, doc.path);
   card.querySelector(".owner").addEventListener("click", () => { select_card(doc.path); edit_owner(); });
   card.querySelector(".owner").title = "click or e: change the owner";
   card.addEventListener("pointerdown", (event) => start_drag(event, card, doc));
@@ -360,6 +370,7 @@ function problem_node(problem) {
   card.dataset.path = problem.path;
   card.append(make("div", "id", problem.id), make("div", "error", problem.error));
   card.addEventListener("click", () => select_card(problem.path));
+  open_on_dblclick(card, problem.path);
   return card;
 }
 
