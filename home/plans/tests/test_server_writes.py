@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_server import Fixture  # noqa: E402
+from test_server import Fixture, wait_until  # noqa: E402
 
 from plans import parse, server, store  # noqa: E402
 
@@ -113,6 +113,37 @@ class WriteHeaderTest(WriteTest):
 
 
 class OwnerEditRaceTest(WriteTest):
+    def test_a_claim_the_board_read_after_the_page_refuses_the_owner_edit(self):
+        path = self.add("demo", 10, owner="me-1")
+        self.fixture.start()
+        shown = next(doc for doc in self.fixture.board_json()["repos"][0]["docs"] if doc["path"] == path)
+        self.agent_sets(path, owner_session_id="id-a", owner_session_pid=100)
+
+        def board_saw_the_claim():
+            return any(doc.get("owner_session_id") == "id-a" for doc in self.fixture.board_json()["repos"][0]["docs"])
+
+        self.assertTrue(wait_until(board_saw_the_claim))
+        basis = {key: shown[key] for key in ("owner_session", "owner_session_id", "owner_session_pid")}
+        status, _ = self.post("update", {"path": path, "basis": basis, "changes": {"owner_session": "other-2"}})
+        self.assertEqual(status, 409)
+        self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id")], ["me-1", "id-a"])
+
+    def test_an_owner_edit_on_a_doc_without_values_lands(self):
+        path = self.add("demo", 10, owner="me-1")
+        self.fixture.start()
+        basis = {"owner_session": "me-1", "owner_session_id": "", "owner_session_pid": ""}
+        status, _ = self.post("update", {"path": path, "basis": basis, "changes": {"owner_session": "other-2"}})
+        self.assertEqual(status, 200)
+        self.assertEqual(self.key(path, "owner_session"), "other-2")
+
+    def test_a_save_under_the_same_name_keeps_the_values(self):
+        path = self.add("demo", 10, owner="me-1")
+        self.agent_sets(path, owner_session_id="id-a", owner_session_pid=100)
+        self.fixture.start()
+        status, _ = self.post("update", {"path": path, "basis": {"owner_session": "me-1"}, "changes": {"owner_session": "me-1"}})
+        self.assertEqual(status, 200)
+        self.assertEqual([self.key(path, key) for key in ("owner_session_id", "owner_session_pid")], ["id-a", 100])
+
     def test_a_claim_during_an_owner_edit_refuses_the_edit(self):
         path = self.add("demo", 10, owner="me-1")
         self.fixture.start()
