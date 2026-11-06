@@ -57,6 +57,15 @@ class CliTest(unittest.TestCase):
         self.env.pop("PLANS_SESSION", None)
         self.env.pop("GITHUB_DIR", None)
 
+    def tearDown(self):
+        for dirpath, _, names in os.walk(self.temp.name):
+            for name in names:
+                try:
+                    os.chmod(os.path.join(dirpath, name), 0o600)
+                except OSError:
+                    pass
+        self.temp.cleanup()
+
     def make_repo(self, path):
         os.makedirs(path)
         subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
@@ -406,20 +415,21 @@ class CliTest(unittest.TestCase):
         self.unreadable_docs()
         result = self.plans("next")
         self.assertEqual(result.stdout, "work\tgood-a\tplanned\n")
+        self.assertIn("bad-utf.md: cannot be read: not UTF-8", result.stderr)
+
+    def test_a_dangling_symlink_doc_is_unreadable_and_the_rest_read(self):
+        self.add("good-a", 10)
+        link = os.path.join(self.repo, ".plans", "proj", "dangling.md")
+        os.symlink(os.path.join(self.temp.name, "missing.md"), link)
+        result = self.plans("next")
+        self.assertEqual(result.stdout, "work\tgood-a\tplanned\n")
+        self.assertIn("dangling.md: cannot be read", result.stderr)
+        self.assertEqual(self.plans("ls").stdout.split("\t")[0], "good-a")
 
     def test_lint_reports_the_unreadable_docs(self):
         self.unreadable_docs()
         result = self.plans("lint", code=1)
         self.assertIn("bad-utf.md:1:", result.stdout)
-
-    def tearDown(self):
-        for dirpath, _, names in os.walk(self.temp.name):
-            for name in names:
-                try:
-                    os.chmod(os.path.join(dirpath, name), 0o600)
-                except OSError:
-                    pass
-        self.temp.cleanup()
 
     def test_new_checks_the_id_again_under_the_lock(self):
         self.add("taken", 10, project="first")

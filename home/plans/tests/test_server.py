@@ -183,9 +183,10 @@ class BoardJsonTest(unittest.TestCase):
         bad = self.fixture.add(self.web, "bad-utf", 20)
         with open(bad, "wb") as handle:
             handle.write(b"---\nid: bad-utf\n---\n\xff\xfe\n")
-        locked = self.fixture.add(self.web, "locked", 40)
-        os.chmod(locked, 0)
-        self.addCleanup(os.chmod, locked, 0o600)
+        if os.geteuid() != 0:
+            locked = self.fixture.add(self.web, "locked", 40)
+            os.chmod(locked, 0)
+            self.addCleanup(os.chmod, locked, 0o600)
         self.fixture.add(self.alpha_a, "fine", 10)
         self.fixture.start()
         repos = {repo["root"]: repo for repo in self.fixture.board_json()["repos"]}
