@@ -1,6 +1,6 @@
--- Actions for the launch keys: terminals, file managers, the menus and the task manager. The performers stay in
--- lib/desktop/{cmd,menu}.lua and run on use, so a headless load needs neither Config nor the session, and a command that
--- follows Config (the file managers) reads it when it runs.
+-- Actions for the launch keys: terminals, file managers, the menus, the task manager and script launches such as the plans
+-- board. The performers stay in lib/desktop/{cmd,menu}.lua and run on use, so a headless load needs neither Config nor
+-- the session, and a command that follows Config (the file managers) reads it when it runs.
 local Act = require("lib.act") ---@class ActionLib
 local Defer = require("lib.act.defer") ---@class Defer
 local Scripts = require("lib.scripts") ---@class Scripts

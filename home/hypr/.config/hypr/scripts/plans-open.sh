@@ -6,7 +6,13 @@
 port=${PLANS_PORT:-8765}
 url=http://127.0.0.1:$port
 
-port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; }
+# True when the listener answers the board API with 200: another program on the port must not pass for the board.
+port_open() (
+  exec 3<>"/dev/tcp/127.0.0.1/$port" 2>/dev/null || exit 1
+  printf 'GET /api/board HTTP/1.0\r\n\r\n' >&3
+  read -r -t 1 status_line <&3
+  [[ $status_line == *" 200 "* ]]
+)
 
 if ! port_open; then
   systemctl --user start plans-serve
@@ -26,7 +32,7 @@ command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
 
 # The default browser names the window class to focus: its desktop entry's StartupWMClass, else the entry's name. Same
 # approach as the clock popup's open_and_focus_script.
-id=$(xdg-mime query default x-scheme-handler/https 2>/dev/null)
+id=$(xdg-mime query default x-scheme-handler/http 2>/dev/null)
 [ -n "$id" ] || exit 0
 class=
 old_ifs=$IFS
