@@ -273,7 +273,7 @@ def run_set(args):
     doc = load_doc(roots.main_checkout(), args.id)
     changes = dict(parse_pair(pair) for pair in args.pairs)
     if changes.get("owner_session", doc.keys.get("owner_session")) != doc.keys.get("owner_session"):
-        owner_values = validate.owner_value_changes(doc)
+        owner_values = validate.cleared_owner_values()
     elif validate.shares_a_value(doc, caller):
         # The skills write with a plain `set` and claim a doc once. Without this, a `/clear` and then a resume leave
         # both stored values stale, and the owner is locked out of its own doc.
@@ -337,7 +337,7 @@ def claim_values(doc, caller):
     if caller.has_values:
         return validate.owner_value_changes(doc, caller)
     if caller.name != doc.keys.get("owner_session"):
-        return validate.owner_value_changes(doc)
+        return validate.cleared_owner_values()
     return {}
 
 
@@ -361,7 +361,7 @@ def run_handoff(args):
     for doc in docs:
         try:
             # The sender does not know the receiver's values. The receiver's first claim writes them.
-            store.update(doc, {"owner_session": args.to_session, **validate.owner_value_changes(doc)})
+            store.update(doc, {"owner_session": args.to_session, **validate.cleared_owner_values()})
         except store.Conflict as error:
             print(f"plans: {error}", file=sys.stderr)
             stale.append(doc.id)
