@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Usage: desertfox-freshness.sh <desertfox checkout>
+# Prints warnings, never fails: the desertfox-config recipe runs on regardless.
+checkout="$1"
+
+# The timeout keeps an offline machine from stalling the recipe.
+if timeout 5 git -C "$checkout" fetch --quiet 2>/dev/null; then
+  behind=$(git -C "$checkout" rev-list --count 'HEAD..@{upstream}' 2>/dev/null || echo 0)
+  if ((behind > 0)); then
+    echo "desertfox-config: warning: $checkout is $behind commits behind its upstream (git pull, then 'just build' there)" >&2
+  fi
+else
+  echo "desertfox-config: fetch failed, skipped the behind-upstream check for $checkout" >&2
+fi
+
+dist="$checkout/dist/commands.json"
+if [[ ! -f $dist ]]; then
+  echo "desertfox-config: warning: dist/commands.json is missing in $checkout (run 'just build' there)" >&2
+else
+  last_commit=$(git -C "$checkout" log -1 --format=%ct 2>/dev/null || echo 0)
+  if (($(stat -c %Y "$dist") < last_commit)); then
+    echo "desertfox-config: warning: dist/commands.json is older than the last commit in $checkout (run 'just build' there)" >&2
+  fi
+fi
+exit 0

@@ -289,12 +289,13 @@ demo-beat name:
 demo-record:
     demo/showcase.sh record
 
-# Build the stowed DesertFox TOML config (~/.config/desertfox) into Firefox's managed storage file; DesertFox is found at $DESERTFOX_DIR, default repos/desertfox (set up by `just repos`), and needs `just build` run there first
+# Build the stowed DesertFox TOML config (~/.config/desertfox) into Firefox's managed storage file; DesertFox is found at $DESERTFOX_DIR, default repos/desertfox (set up by `just repos`), and needs `just build` run there first; warns when the checkout is behind its upstream or dist/ is older than its last commit
 desertfox-config:
     #!/usr/bin/env bash
     set -euo pipefail
     desertfox="${DESERTFOX_DIR:-{{ justfile_directory() }}/repos/desertfox}"
     [[ -f $desertfox/tools/build-config/cli.ts ]] || { echo "desertfox-config: no DesertFox checkout at $desertfox (set DESERTFOX_DIR)" >&2; exit 1; }
+    bash "{{ justfile_directory() }}/lib/install/desertfox-freshness" "$desertfox"
     [[ -f $desertfox/dist/commands.json ]] || { echo "desertfox-config: run 'just build' in $desertfox first" >&2; exit 1; }
     config_dir="$HOME/.config/desertfox"
     [[ -d $config_dir ]] || { echo "desertfox-config: no config at $config_dir (run 'just stow desertfox')" >&2; exit 1; }
