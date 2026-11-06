@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Usage: artcraft-update [--check] [app...]
+# Usage: artcraft-update [--check] [--if-installed] [app...]
 # Installs or updates the ArtCraft apps in packages/artcraft.ini (or the named ones) from their GitHub releases.
-# --check only lists what is behind. ArtCraft has no pacman repo or AUR package, so this is how they stay current.
+# --check only lists what is behind. --if-installed does nothing unless some ArtCraft app is installed, so topgrade
+# never installs the suite on a machine that declined it. ArtCraft has no pacman repo or AUR package, so this is how
+# they stay current.
 set -uo pipefail
 
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
@@ -11,15 +13,27 @@ releases="${ARTCRAFT_RELEASES:-https://github.com/storytold}"
 # pinned fingerprint is what makes the signature mean anything.
 fingerprint="${ARTCRAFT_FINGERPRINT:-2B76741B414AAD6CD33E631213A005C0B9D7C3ED}"
 
+read -ra as_root <<<"${ARTCRAFT_SUDO-sudo}"
+
 check_only=0
-if [[ ${1:-} == --check ]]; then
-  check_only=1
-  shift
-fi
-if (($# > 0)); then
-  apps=("$@")
-else
+if_installed=0
+apps=()
+for arg in "$@"; do
+  case $arg in
+  --check) check_only=1 ;;
+  --if-installed) if_installed=1 ;;
+  -*)
+    echo "artcraft-update: unknown option $arg" >&2
+    exit 2
+    ;;
+  *) apps+=("$arg") ;;
+  esac
+done
+if ((${#apps[@]} == 0)); then
   mapfile -t apps < <(grep -v -e '^#' -e '^\[' -e '^[[:space:]]*$' "$manifest")
+fi
+if ((if_installed)) && ! pacman -Qq 2>/dev/null | grep -q '^ai\.storyteller\.'; then
+  exit 0
 fi
 
 case $(uname -m) in
@@ -32,7 +46,13 @@ aarch64) arch=aarch64 ;;
 esac
 
 work=$(mktemp -d) || exit 1
-trap 'rm -rf "$work"' EXIT
+stage=""
+# shellcheck disable=SC2329 # run by the EXIT trap
+cleanup() {
+  rm -rf "$work"
+  [[ -z $stage ]] || "${as_root[@]}" rm -rf "$stage"
+}
+trap cleanup EXIT
 mkdir -m 700 "$work/gnupg"
 
 # The latest tag, read from where /releases/latest redirects. This needs no API token and no rate limit.
@@ -43,19 +63,25 @@ latest_version() {
   printf '%s\n' "${url##*/tag/v}"
 }
 
-# Checks SHA256SUMS.txt against the pinned key, then the package against SHA256SUMS.txt.
+# Checks SHA256SUMS.txt against the pinned key, then the package against SHA256SUMS.txt, and prints the package's sum.
 verify() {
-  local dir=$1 file=$2 primary
+  local dir=$1 file=$2 statuses primary line
   gpg --homedir "$work/gnupg" --batch --quiet --import "$dir/release-signing-key.asc" 2>/dev/null || return 1
+  statuses=$(gpg --homedir "$work/gnupg" --batch --status-fd 1 --verify "$dir/SHA256SUMS.txt.asc" "$dir/SHA256SUMS.txt" 2>/dev/null)
+  # gpg can print VALIDSIG beside an expired or revoked key or signature, so those statuses refuse it outright.
+  grep -qE '^\[GNUPG:\] (EXPSIG|EXPKEYSIG|REVKEYSIG|BADSIG|ERRSIG) ' <<<"$statuses" && return 1
+  grep -q '^\[GNUPG:\] GOODSIG ' <<<"$statuses" || return 1
   # VALIDSIG's last field is the primary key's fingerprint, even when a subkey made the signature.
-  primary=$(gpg --homedir "$work/gnupg" --batch --status-fd 1 --verify "$dir/SHA256SUMS.txt.asc" "$dir/SHA256SUMS.txt" 2>/dev/null |
-    awk '$2 == "VALIDSIG" { print $NF }')
+  primary=$(awk '$2 == "VALIDSIG" { print $NF }' <<<"$statuses")
   [[ $primary == "$fingerprint" ]] || return 1
-  (cd "$dir" && grep -E "^[0-9a-f]{64}  $file\$" SHA256SUMS.txt | sha256sum --check --quiet --status -) || return 1
+  line=$(grep -E "^[0-9a-f]{64}  $file\$" "$dir/SHA256SUMS.txt") || return 1
+  (cd "$dir" && sha256sum --check --quiet --status - <<<"$line") || return 1
+  printf '%s\n' "${line%% *}"
 }
 
 status=0
 to_install=()
+sums=()
 for app in "${apps[@]}"; do
   installed=$(pacman -Q "ai.storyteller.$app" 2>/dev/null | awk '{ print $2 }')
   installed=${installed%-*}
@@ -77,15 +103,29 @@ for app in "${apps[@]}"; do
   for name in "$file" SHA256SUMS.txt SHA256SUMS.txt.asc release-signing-key.asc; do
     curl -fsSL --max-time 600 -o "$dir/$name" "$base/$name" || break
   done
-  if ! verify "$dir" "$file"; then
+  if ! sum=$(verify "$dir" "$file"); then
     echo "artcraft-update: $app: download missing or failed its signature or checksum, skipped" >&2
     status=1
     continue
   fi
   to_install+=("$dir/$file")
+  sums+=("$sum")
 done
 
+# Another process of this user could swap a checked file in $work before pacman reads it as root. So the packages are
+# copied into a directory only root can write, and checked again there against the sums verify read.
 if ((${#to_install[@]} > 0)); then
-  ${ARTCRAFT_SUDO-sudo} pacman -U --needed "${to_install[@]}" || status=1
+  stage=$("${as_root[@]}" mktemp -d /var/tmp/artcraft-update.XXXXXX) || exit 1
+  staged=()
+  for i in "${!to_install[@]}"; do
+    target="$stage/${to_install[i]##*/}"
+    "${as_root[@]}" install -m 644 "${to_install[i]}" "$target" || exit 1
+    if ! "${as_root[@]}" sha256sum --check --quiet --status - <<<"${sums[i]}  $target"; then
+      echo "artcraft-update: ${to_install[i]##*/} changed after it was verified, nothing installed" >&2
+      exit 1
+    fi
+    staged+=("$target")
+  done
+  "${as_root[@]}" pacman -U --needed "${staged[@]}" || status=1
 fi
 exit "$status"

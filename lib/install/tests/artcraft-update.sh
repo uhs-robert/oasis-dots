@@ -72,11 +72,23 @@ EOF
 cat >"$scratch/bin/pacman" <<'EOF'
 #!/usr/bin/env bash
 case $1 in
+  -Qq) cut -d' ' -f1 "$INSTALLED" ;;
   -Q) grep "^$2 " "$INSTALLED" || exit 1 ;;
   -U) shift; printf 'pacman -U %s\n' "$*" ;;
 esac
 EOF
-chmod +x "$scratch/bin/curl" "$scratch/bin/pacman"
+# vercmp: pacman's version order. sort -V matches it for these plain versions, and a non-Arch host lacks vercmp.
+cat >"$scratch/bin/vercmp" <<'STUB'
+#!/usr/bin/env bash
+if [[ $1 == "$2" ]]; then
+  echo 0
+elif [[ $(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1) == "$1" ]]; then
+  echo -1
+else
+  echo 1
+fi
+STUB
+chmod +x "$scratch/bin/curl" "$scratch/bin/pacman" "$scratch/bin/vercmp"
 : >"$scratch/installed"
 export PATH="$scratch/bin:$PATH" WEB="$scratch/web" INSTALLED="$scratch/installed" ARTCRAFT_SUDO="" ARTCRAFT_FINGERPRINT="$fingerprint"
 printf 'photocraft\n# a comment\n\nvectorcraft\n' >"$scratch/artcraft.ini"
@@ -113,6 +125,28 @@ reject "a refused package never reaches pacman" "$out" "pacman -U"
 echo "tampered" >>"$scratch/web/photocraft/releases/download/v0.20.2/photocraft-0.20.2-linux-$arch.pkg.tar.zst"
 out=$(bash "$script" photocraft 2>&1)
 expect "a changed package fails its checksum" "$out" "failed its signature or checksum"
+
+out=$(bash "$script" vectorcraft --check 2>&1)
+expect "check works after an app name" "$out" "vectorcraft not installed -> 0.21.1"
+reject "check after an app name never installs" "$out" "pacman -U"
+
+out=$(bash "$script" --bogus 2>&1)
+expect "an unknown option is refused" "$out" "unknown option --bogus"
+
+: >"$scratch/installed"
+out=$(bash "$script" --if-installed 2>&1)
+reject "if-installed does nothing on a machine without ArtCraft" "$out" "not installed"
+echo "ai.storyteller.photocraft 0.15.1-1" >"$scratch/installed"
+out=$(bash "$script" --if-installed --check 2>&1)
+expect "if-installed still offers new apps once one is installed" "$out" "vectorcraft not installed -> 0.21.1"
+
+# An expired signing key: gpg still prints VALIDSIG for it.
+gpg --homedir "$scratch/signer" --batch --quiet --pinentry-mode loopback --passphrase '' --quick-set-expire "$fingerprint" seconds=1 2>/dev/null
+release photocraft 0.20.3
+sleep 2
+out=$(bash "$script" photocraft 2>&1)
+expect "an expired key is refused" "$out" "failed its signature or checksum"
+reject "an expired key never reaches pacman" "$out" "pacman -U"
 
 out=$(bash "$script" missingcraft 2>&1)
 expect "an unknown app is reported" "$out" "missingcraft: could not read the latest release"
