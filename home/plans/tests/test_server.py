@@ -177,6 +177,29 @@ class BoardJsonTest(unittest.TestCase):
         self.assertIn("line 4", problems["broken"]["error"])
         self.assertIn("old kind tracker", problems["old"]["error"])
 
+    def test_unreadable_docs_are_per_doc_cards_and_the_good_docs_stay(self):
+        self.fixture.add(self.web, "good-a", 10)
+        self.fixture.add(self.web, "good-b", 30)
+        bad = self.fixture.add(self.web, "bad-utf", 20)
+        with open(bad, "wb") as handle:
+            handle.write(b"---\nid: bad-utf\n---\n\xff\xfe\n")
+        locked = self.fixture.add(self.web, "locked", 40)
+        os.chmod(locked, 0)
+        self.addCleanup(os.chmod, locked, 0o600)
+        self.fixture.add(self.alpha_a, "fine", 10)
+        self.fixture.start()
+        repos = {repo["root"]: repo for repo in self.fixture.board_json()["repos"]}
+        web = repos[self.web]
+        self.assertEqual([doc["id"] for doc in web["docs"]], ["good-a", "good-b"])
+        problems = {problem["id"]: problem for problem in web["problems"]}
+        self.assertEqual(problems["bad-utf"]["path"], bad)
+        self.assertIn("not UTF-8", problems["bad-utf"]["error"])
+        if os.geteuid() != 0:
+            self.assertEqual(problems["locked"]["path"], locked)
+            self.assertIn("Permission denied", problems["locked"]["error"])
+        self.assertEqual([doc["id"] for doc in repos[self.alpha_a]["docs"]], ["fine"])
+        self.assertEqual(self.fixture.board.find_any_doc(bad).path, bad)
+
     def test_a_doc_that_is_not_utf8_is_a_problem_and_the_other_repos_still_read(self):
         bad = self.fixture.add(self.web, "bad", 10)
         with open(bad, "ab") as handle:
@@ -184,7 +207,8 @@ class BoardJsonTest(unittest.TestCase):
         self.fixture.add(self.alpha_a, "fine", 10)
         self.fixture.start()
         repos = {repo["root"]: repo for repo in self.fixture.board_json()["repos"]}
-        self.assertIn("bad.md", repos[self.web]["problems"][0]["error"])
+        self.assertEqual(repos[self.web]["problems"][0]["path"], bad)
+        self.assertIn("not UTF-8", repos[self.web]["problems"][0]["error"])
         self.assertEqual([doc["id"] for doc in repos[self.alpha_a]["docs"]], ["fine"])
 
     def test_a_depends_on_that_is_no_list_reaches_the_page_as_a_list(self):

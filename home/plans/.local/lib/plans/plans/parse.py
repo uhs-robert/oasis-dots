@@ -50,6 +50,8 @@ class Doc:
         self.keys = {}
         self.key_lines = {}
         self.errors = []
+        # Set when the file could not be read at all: the cause, as the CLI and the board print it.
+        self.unread_cause = None
         self.head_lines = []
         self.body = ""
         self.body_first_line = 1
@@ -217,6 +219,17 @@ def format_scalar(text, in_list):
 def read(path):
     with open(path, encoding="utf-8", newline="") as handle:
         return Doc(path, handle.read())
+
+
+def unreadable(path, failure):
+    """A stand-in for a file that cannot be read (no permission, not UTF-8): no keys, one error naming the cause."""
+    doc = Doc(path, "")
+    if isinstance(failure, UnicodeDecodeError):
+        doc.unread_cause = f"not UTF-8 ({failure.reason})"
+    else:
+        doc.unread_cause = failure.strerror or str(failure)
+    doc.errors = [(1, f"cannot be read: {doc.unread_cause}")]
+    return doc
 
 
 def load(path):

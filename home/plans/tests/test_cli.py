@@ -57,9 +57,6 @@ class CliTest(unittest.TestCase):
         self.env.pop("PLANS_SESSION", None)
         self.env.pop("GITHUB_DIR", None)
 
-    def tearDown(self):
-        self.temp.cleanup()
-
     def make_repo(self, path):
         os.makedirs(path)
         subprocess.run(["git", "init", "-q", "-b", "main", path], check=True)
@@ -372,6 +369,57 @@ class CliTest(unittest.TestCase):
         self.add("needs", 10, depends_on="[broken]")
         self.add("later", 20)
         self.assertEqual(self.plans("next").stdout, "blocked\tneeds\tblocked by broken (unreadable)\nwork\tlater\tplanned\n")
+
+    def unreadable_docs(self, repo=None):
+        """A mode 000 doc and a non-UTF-8 doc among good ones. Returns the ids that read as unreadable."""
+        repo = repo or self.repo
+        self.add("good-a", 10, repo=repo)
+        self.add("good-b", 30, repo=repo)
+        bad = self.write(".plans/proj/bad-utf.md", "", repo)
+        with open(bad, "wb") as handle:
+            handle.write(b"---\nid: bad-utf\n---\n\xff\xfe\n")
+        if os.geteuid() == 0:
+            return ["bad-utf"]
+        locked = self.add("locked", 20, repo=repo)
+        os.chmod(locked, 0)
+        return ["bad-utf", "locked"]
+
+    def test_ls_lists_the_good_docs_and_warns_about_unreadable_ones(self):
+        bad = self.unreadable_docs()
+        result = self.plans("ls")
+        self.assertEqual([line.split("\t")[0] for line in result.stdout.splitlines()], ["good-a", "good-b"])
+        self.assertIn("bad-utf.md: cannot be read: not UTF-8", result.stderr)
+        if "locked" in bad:
+            self.assertIn("locked.md: cannot be read: Permission denied", result.stderr)
+
+    def test_ls_all_lists_every_other_doc_and_repo(self):
+        self.unreadable_docs()
+        other = self.make_repo(os.path.join(self.temp.name, "other"))
+        self.add("elsewhere", 10, repo=other)
+        self.write(".config/plans/roots", f"{self.repo}\n{other}\n", repo=self.home)
+        result = self.plans("ls", "--all", cwd=self.temp.name)
+        self.assertEqual([line.split("\t")[:2] for line in result.stdout.splitlines()],
+                         [["repo", "good-a"], ["repo", "good-b"], ["other", "elsewhere"]])
+        self.assertIn("cannot be read", result.stderr)
+
+    def test_next_skips_the_unreadable_docs(self):
+        self.unreadable_docs()
+        result = self.plans("next")
+        self.assertEqual(result.stdout, "work\tgood-a\tplanned\n")
+
+    def test_lint_reports_the_unreadable_docs(self):
+        self.unreadable_docs()
+        result = self.plans("lint", code=1)
+        self.assertIn("bad-utf.md:1:", result.stdout)
+
+    def tearDown(self):
+        for dirpath, _, names in os.walk(self.temp.name):
+            for name in names:
+                try:
+                    os.chmod(os.path.join(dirpath, name), 0o600)
+                except OSError:
+                    pass
+        self.temp.cleanup()
 
     def test_new_checks_the_id_again_under_the_lock(self):
         self.add("taken", 10, project="first")
