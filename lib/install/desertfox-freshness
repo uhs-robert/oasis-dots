@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: desertfox-freshness.sh <desertfox checkout>
+# Usage: desertfox-freshness <desertfox checkout>
 # Prints warnings, never fails: the desertfox-config recipe runs on regardless.
 checkout="$1"
 
@@ -7,7 +7,9 @@ checkout="$1"
 if timeout 5 git -C "$checkout" fetch --quiet 2>/dev/null; then
   behind=$(git -C "$checkout" rev-list --count 'HEAD..@{upstream}' 2>/dev/null || echo 0)
   if ((behind > 0)); then
-    echo "desertfox-config: warning: $checkout is $behind commits behind its upstream (git pull, then 'just build' there)" >&2
+    plural=s
+    ((behind == 1)) && plural=
+    echo "desertfox-config: warning: $checkout is $behind commit$plural behind its upstream (git pull, then 'just build' there)" >&2
   fi
 else
   echo "desertfox-config: fetch failed, skipped the behind-upstream check for $checkout" >&2
