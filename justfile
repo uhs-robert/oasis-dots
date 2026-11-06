@@ -289,17 +289,17 @@ demo-beat name:
 demo-record:
     demo/showcase.sh record
 
-# Build the stowed OasisFox TOML config (~/.config/oasisfox) into Firefox's managed storage file; OasisFox is found at $OASISFOX_DIR, default repos/oasisfox (set up by `just repos`), and needs `just build` run there first
-oasisfox-config:
+# Build the stowed DesertFox TOML config (~/.config/desertfox) into Firefox's managed storage file; DesertFox is found at $DESERTFOX_DIR, default repos/desertfox (set up by `just repos`), and needs `just build` run there first
+desertfox-config:
     #!/usr/bin/env bash
     set -euo pipefail
-    oasisfox="${OASISFOX_DIR:-{{ justfile_directory() }}/repos/oasisfox}"
-    [[ -f $oasisfox/tools/build-config/cli.ts ]] || { echo "oasisfox-config: no OasisFox checkout at $oasisfox (set OASISFOX_DIR)" >&2; exit 1; }
-    [[ -f $oasisfox/dist/commands.json ]] || { echo "oasisfox-config: run 'just build' in $oasisfox first" >&2; exit 1; }
-    config_dir="$HOME/.config/oasisfox"
-    [[ -d $config_dir ]] || { echo "oasisfox-config: no config at $config_dir (run 'just stow oasisfox')" >&2; exit 1; }
-    cd "$oasisfox"
-    node tools/build-config/cli.ts "$config_dir" --live || { echo "oasisfox-config: build-config failed. If it says Unknown option '--live', update the OasisFox checkout at $oasisfox and run 'just build' there" >&2; exit 1; }
+    desertfox="${DESERTFOX_DIR:-{{ justfile_directory() }}/repos/desertfox}"
+    [[ -f $desertfox/tools/build-config/cli.ts ]] || { echo "desertfox-config: no DesertFox checkout at $desertfox (set DESERTFOX_DIR)" >&2; exit 1; }
+    [[ -f $desertfox/dist/commands.json ]] || { echo "desertfox-config: run 'just build' in $desertfox first" >&2; exit 1; }
+    config_dir="$HOME/.config/desertfox"
+    [[ -d $config_dir ]] || { echo "desertfox-config: no config at $config_dir (run 'just stow desertfox')" >&2; exit 1; }
+    cd "$desertfox"
+    node tools/build-config/cli.ts "$config_dir" --live || { echo "desertfox-config: build-config failed. If it says Unknown option '--live', update the DesertFox checkout at $desertfox and run 'just build' there" >&2; exit 1; }
 
 # Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md, the IPC table in the Quickshell README)
 docs-gen:

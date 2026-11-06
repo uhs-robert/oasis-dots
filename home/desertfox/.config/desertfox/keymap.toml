@@ -1,4 +1,4 @@
-# My OasisFox keymap. Keys that match the built-in defaults are left out.
+# My DesertFox keymap. Keys that match the built-in defaults are left out.
 # Private config (the client, employer and partner containers) joins through keymap.d/ from a private repo.
 
 # ss/Ss, sy/Sy, ...: search with the engine in this tab or a new tab.
