@@ -409,7 +409,7 @@ def update_doc(board, request):
     changes, basis = checked_changes(request, EDITABLE_KEYS)
     if "owner_session" in changes:
         # The owner's override: the board knows no session's values, so the next claim writes them.
-        changes = {**changes, **validate.owner_value_changes(doc)}
+        changes = {**changes, **validate.cleared_owner_values()}
     store.update(based_on(doc, basis), changes)
 
 

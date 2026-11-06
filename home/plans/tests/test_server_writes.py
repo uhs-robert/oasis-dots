@@ -112,13 +112,20 @@ class WriteHeaderTest(WriteTest):
         self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id", "owner_session_pid")], ["other-2", "", ""])
 
 
-    def test_an_owner_edit_adds_no_empty_value_keys(self):
-        path = self.add("demo", 10)
+class OwnerEditRaceTest(WriteTest):
+    def test_a_claim_during_an_owner_edit_refuses_the_edit(self):
+        path = self.add("demo", 10, owner="me-1")
         self.fixture.start()
-        status, _ = self.post("update", {"path": path, "basis": {"owner_session": "none"}, "changes": {"owner_session": "me-1"}})
-        self.assertEqual(status, 200)
-        self.assertNotIn("owner_session_id", parse.load(path).keys)
 
+        def claim_then_write(doc, changes):
+            # The owner re-claims after the board read the doc and before the board's write takes the lock.
+            AGENT_UPDATE(parse.load(path), {"owner_session_id": "id-a", "owner_session_pid": 100})
+            return AGENT_UPDATE(doc, changes)
+
+        with mock.patch.object(server.store, "update", claim_then_write):
+            status, _ = self.post("update", {"path": path, "basis": {"owner_session": "me-1"}, "changes": {"owner_session": "other-2"}})
+        self.assertEqual(status, 409)
+        self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id")], ["me-1", "id-a"])
 
 class ConflictTest(WriteTest):
     def test_an_agent_edit_after_the_page_read_refuses_the_write(self):

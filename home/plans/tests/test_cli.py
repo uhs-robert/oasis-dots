@@ -305,13 +305,23 @@ class CliTest(unittest.TestCase):
         self.plans("set", "demo", "status=building")
         self.assertEqual(self.proof(path), ("id-new", 300))
 
-    def test_an_owner_change_adds_no_empty_value_keys(self):
+    def test_a_claim_during_a_handoff_refuses_the_handoff(self):
         path = self.add("demo", 10, owner="me-1")
-        self.plans("handoff", "--to", "next-2", "demo", "--as", "me-1")
-        self.plans("set", "demo", "owner_session=other-3")
-        self.plans("claim", "demo", "--as", "me-4", "--force", env={"CLAUDE_CODE_SESSION_ID": "id-d"})
-        self.assertNotIn("owner_session_pid", self.read(path))
-        self.assertEqual(self.proof(path), ("id-d", None))
+        real_load = cli.load_doc
+        raced = []
+
+        def load_then_claim(root, doc_id):
+            doc = real_load(root, doc_id)
+            # The owner re-claims between this read and the write, which adds its values under the same name.
+            self.write(".plans/proj/demo.md", self.read(path).replace("updated:", "owner_session_id: id-a\nowner_session_pid: 100\nupdated:"))
+            raced.append(self.read(path))
+            return doc
+
+        with mock.patch.object(cli, "load_doc", load_then_claim), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            with redirect_stderr(io.StringIO()):
+                code = cli.main(["handoff", "--to", "next-2", "demo", "--as", "me-1"])
+        self.assertEqual(code, 3)
+        self.assertEqual(self.read(path), raced[0])
 
     def test_next_skips_a_doc_another_session_of_the_same_name_owns(self):
         self.add_owned("theirs", 10, "me-1", "id-a", 100)
