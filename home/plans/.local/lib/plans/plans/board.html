@@ -542,7 +542,12 @@ function render_repo_list() {
     if (is_active) input.setAttribute("aria-activedescendant", item.id);
     return item;
   });
-  if (!items.length) items.push(make("li", "none", "no repo matches"));
+  if (!items.length) {
+    const none = make("li", "none", "no repo matches");
+    none.setAttribute("role", "option");
+    none.setAttribute("aria-disabled", "true");
+    items.push(none);
+  }
   list.replaceChildren(...items);
   list.querySelector(".active")?.scrollIntoView({ block: "nearest" });
 }
@@ -555,6 +560,7 @@ function open_repo_list() {
 function close_repo_list() {
   repo_list_open = false;
   repo_query_typed = false;
+  repo_active_root = filters.repo;
   element("repo").value = repo_label_for(filters.repo);
   render_repo_list();
 }
