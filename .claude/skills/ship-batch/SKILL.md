@@ -8,7 +8,7 @@ description: The only way to merge PRs in this repo. Open and merge the PRs for 
 ## Scripts
 
 - Bring a branch up to date with `.claude/skills/ship-batch/rebase-branch.sh <branch>`, never by merging `origin/main` in or a bare force-push (both blocked or costly): it rebases, then pushes with `--force-with-lease`, and refuses `main`, a branch with no open PR or one whose remote has commits it lacks.
-- Before running it, every branch is rebased on `origin/main`, pushed and has an open PR (step 1); afterwards tick the finished items in `review.md` if one exists (step 4).
+- Before running it, every branch is rebased on `origin/main`, pushed and has an open PR (step 1); afterwards run `plans set <id> status=done` for each merged piece and delete its plan doc (step 4).
 - `.claude/skills/ship-batch/ship-batch.sh <n>...` with the PRs in merge order, as that bare command: a prefixed variable no longer matches the owner's allow rule and is blocked.
 - `--request-review` goes before the PR numbers, only for a material fix: it lets the review wait comment `@codex review` on a PR changed past the small-fix limit since its review. Without it the gate reports that as a problem.
 - `--skip-review-gate` goes before the PR numbers, only when the owner waived the reviewers or the piece's approved review tier is trivial; it skips reviewer states (no waiting, no requests), unresolved threads still block, and it applies to every PR in the run, so a piece shipped with it goes in its own run, never in a batch with other pieces. Say so in the PR.
@@ -31,4 +31,4 @@ The only way to merge PRs in this repo, never `merge-prs.sh <n>` or the `gh` mer
 
    With no PR numbers it skips the merge, pulls and runs post-merge. The last successful run's commit is kept in `post-merge-applied` next to the lock and updated only after every step succeeded; a record main no longer descends from applies everything. `tests/run.sh` covers the record and the lock, which packages get restowed, the branch check, and a whole batch against stubs (what runs inside and outside the lock, a partial batch, a failed or slow check that must stop the merge, post-merge's record, failure, locked-screen and first-run behaviour).
 3. `ship-batch.sh` ends by running `~/.claude/skills/merge-prs/status.sh`; run it again whenever the owner asks what is left, and report what it lists.
-4. Tick the finished items in `review.md` and update its handoff if one exists.
+4. For each merged piece, run `plans set <id> status=done`, then delete its plan doc and `.logs/<project>/<id>/` (see the Docs section of `AGENTS.md`).

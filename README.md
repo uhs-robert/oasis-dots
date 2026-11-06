@@ -340,6 +340,10 @@ Plugin management with `ya pkg` and a root Yazi that stays in sync with your key
 
 The optional `calendar` package ships `calendar-sync`, which copies your Google Calendar into a local cache every 5 minutes through a systemd user timer, from the calendar's private iCal address, which a password manager command prints (rbw by default), for the bar and voice commands to read. Connect it with `calendar-sync setup`; the installer offers to. See [home/calendar/README.md](home/calendar/README.md).
 
+## 🤖 Agent Workflow
+
+Claude sessions plan and ship work through plan docs, which the `plans` command edits and a local web board shows. Stow the `plans` package, then run `systemctl --user enable --now plans-serve` and open http://127.0.0.1:8765 for the board. See [docs/agent-workflow.md](docs/agent-workflow.md) and [home/plans/README.md](home/plans/README.md).
+
 ## 🛠️ Justfile
 
 Common tasks are wrapped in a `justfile` (run with [`just`](https://github.com/casey/just)). With `just`, you can just run:
