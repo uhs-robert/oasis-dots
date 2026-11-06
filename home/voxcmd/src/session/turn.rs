@@ -569,6 +569,10 @@ impl TurnRun<'_> {
     /// spoken with a strong option, as the router does before it retries a correction ("remind me to say no wait stop"
     /// is a reminder).
     fn rewrite_correction_tail(&self, text: &str, in_sequence: bool) -> Option<String> {
+        let tails = correction_tails(text);
+        if tails.is_empty() {
+            return None;
+        }
         let context = StepContext {
             in_sequence,
             in_session_turn: self.runner.rt.in_session_turn,
@@ -578,7 +582,7 @@ impl TurnRun<'_> {
         if trace.corrected.is_none() && options.iter().any(|option| !option.weak) {
             return None;
         }
-        correction_tails(text).into_iter().find_map(|tail| {
+        tails.into_iter().find_map(|tail| {
             let rewritten = mode::rewrite(self.mode, self.file, std::slice::from_ref(&tail))?.pop()?;
             (rewritten != tail).then_some(rewritten)
         })
