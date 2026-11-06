@@ -10,6 +10,17 @@ t = "translate"
 c = "gpt"
 z = "maps"
 
+# s/<letter>, S/<letter>: search the site of the current page. Lower case searches the whole site, t, I and P search this repo.
+[site_keys]
+a = ["github", "reddit", "youtube", "arch"]
+r = ["github.repos"]
+i = ["github.issues"]
+p = ["github.prs"]
+c = ["github.code"]
+t = ["github.repo.code", "reddit.sub", "youtube.channel"]
+I = ["github.repo.issues"]
+P = ["github.repo.prs"]
+
 # cd/Cd, cn/Cn, ...: reopen the page in the container, or prompt in a new tab of it.
 [container_keys]
 d = "default"

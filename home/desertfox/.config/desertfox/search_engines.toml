@@ -1,6 +1,6 @@
 # Search engines. "%s" stands for the query.
 "1337" = { url = "https://1337x.to/search/%s/1/", label = "1337x torrents" }
-arch = { url = "https://wiki.archlinux.org/index.php?search=%s", label = "Arch Linux wiki" }
+arch = { url = "https://wiki.archlinux.org/index.php?search=%s", label = "Arch Linux wiki", hosts = ["wiki.archlinux.org"] }
 amazon = { url = "https://www.amazon.com/s?k=%s", label = "Amazon" }
 brave = { url = "https://search.brave.com/search?q=%s", label = "Brave Search" }
 gpt = { url = "https://chatgpt.com/?q=%s", label = "ChatGPT" }
@@ -15,7 +15,6 @@ gmail = { url = "https://mail.google.com/mail/u/0/#search/%s", label = "Gmail" }
 flathub = { url = "https://flathub.org/apps/search?q=%s", label = "Flathub apps" }
 google = { url = "https://www.google.com/search?q=%s", label = "Google" }
 gh = { url = "https://github.com/search?q=%s&type=code", label = "GitHub code search" }
-github = { url = "https://github.com/search?q=%s", label = "GitHub" }
 greasyfork = { url = "https://greasyfork.org/en/scripts?q=%s", label = "Greasy Fork user scripts" }
 image = { url = "https://www.google.com/search?tbm=isch&q=%s", label = "Google Images" }
 lastyear = { url = "https://www.google.com/search?hl=en&tbo=1&tbs=qdr:y&q=%s", label = "Google, past year" }
@@ -31,7 +30,6 @@ imdb = { url = "https://www.imdb.com/find?s=all&q=%s", label = "IMDb" }
 mdn = { url = "https://developer.mozilla.org/en-US/search?q=%s", label = "MDN Web Docs" }
 npm = { url = "https://www.npmjs.com/search?q=%s", label = "npm packages" }
 proton = { url = "https://www.protondb.com/search?q=%s", label = "ProtonDB" }
-reddit = { url = "https://www.reddit.com/search/?q=%s", label = "Reddit" }
 redditgoogle = { url = "https://www.google.com/search?q=site:reddit.com+%s", label = "Reddit, through Google" }
 rubygems = { url = "https://rubygems.org/search?query=%s", label = "RubyGems" }
 stackoverflow = { url = "https://stackoverflow.com/search?q=%s", label = "Stack Overflow" }
@@ -41,7 +39,6 @@ translate = { url = "https://translate.google.com/?sl=auto&tl=en&text=%s", label
 urbandictionary = { url = "https://www.urbandictionary.com/define.php?term=%s", label = "Urban Dictionary" }
 wikipedia = { url = "https://www.wikipedia.org/w/index.php?search=%s", label = "Wikipedia" }
 wolframalpha = { url = "https://www.wolframalpha.com/input/?i=%s", label = "Wolfram Alpha" }
-youtube = { url = "https://www.youtube.com/results?search_query=%s", label = "YouTube" }
 claude = { url = "https://claude.ai/new?q=%s", label = "Claude" }
 gemini = { url = "https://gemini.google.com/app?q=%s", label = "Gemini (opens the app, ignores the query)" }
 grok = { url = "https://grok.com/?q=%s", label = "Grok" }
@@ -56,3 +53,38 @@ newegg = { url = "https://www.newegg.com/p/pl?d=%s", label = "Newegg" }
 walmart = { url = "https://www.walmart.com/search?q=%s", label = "Walmart" }
 marketplace = { url = "https://www.facebook.com/marketplace/search?query=%s", label = "Facebook Marketplace" }
 lens = { url = "https://lens.google.com/uploadbyurl?url=%s", label = "Google Lens, reverse image search" }
+
+[github]
+label = "GitHub"
+hosts = ["github.com", "www.github.com"]
+url = "https://github.com/search?q={scope}{query}&type={type}"
+scope = ""
+
+[github.params.type]
+default = "all"
+children = true
+values = { all = "", code = "code", issues = "issues", prs = "pullrequests", commits = "commits", discussions = "discussions", repos = "repositories", users = "users" }
+
+[github.repo]
+label = "this repo"
+scope = "repo:{repo} "
+type = { only = ["code", "issues", "prs", "commits", "discussions"] }
+
+[reddit]
+label = "Reddit"
+hosts = ["reddit.com", "www.reddit.com", "old.reddit.com"]
+url = "https://www.reddit.com/search/?q={query}"
+
+[reddit.sub]
+label = "this subreddit"
+url = "https://www.reddit.com/r/{subreddit}/search/?q={query}&restrict_sr=1"
+fallback = "reddit"
+
+[youtube]
+label = "YouTube"
+hosts = ["youtube.com", "www.youtube.com", "m.youtube.com"]
+url = "https://www.youtube.com/results?search_query={query}"
+
+[youtube.channel]
+label = "this channel"
+url = "https://www.youtube.com/{channel:raw}/search?query={query}"
