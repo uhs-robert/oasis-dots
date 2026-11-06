@@ -224,7 +224,7 @@ end
 --- @param name string    Submap name
 --- @param hint SubmapHintGroup[]
 --- @param rows table[]   The submap's bind rows as written (action ids, not yet resolved)
---- @param extras { escape: boolean, whichkey: boolean, targets?: boolean }  Which of the binds Submap.define adds itself this submap has, and its `targets`
+--- @param extras { escape: boolean, escape_label?: string, whichkey: boolean, targets?: boolean }  Which of the binds Submap.define adds itself this submap has, the Esc entry's label, and its `targets`
 --- @return table
 function SubmapHint.build(name, hint, rows, extras)
   local groups = Json.array()
@@ -246,7 +246,7 @@ function SubmapHint.build(name, hint, rows, extras)
 
   -- Kept out of the groups: the bar sets these under the submap name, where they cost no column.
   local footer = Json.array()
-  if extras.escape then footer[#footer + 1] = { "Esc", "Exit" } end
+  if extras.escape then footer[#footer + 1] = { "Esc", extras.escape_label or "Exit" } end
   if extras.whichkey then footer[#footer + 1] = { "?", "All keys" } end
 
   return { name = name, groups = groups, footer = footer, targets = extras.targets or nil }
@@ -258,7 +258,7 @@ end
 --- @param name string
 --- @param hint SubmapHintGroup[]
 --- @param rows table[]
---- @param extras { escape: boolean, whichkey: boolean, targets?: boolean }
+--- @param extras { escape: boolean, escape_label?: string, whichkey: boolean, targets?: boolean }
 function SubmapHint.register(name, hint, rows, extras)
   local ok, built = pcall(SubmapHint.build, name, hint, rows, extras)
   if ok then

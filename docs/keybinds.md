@@ -429,6 +429,11 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + M` | press | Cursor | Middle Click (Exit) | `cursor.click` |
 | `CTRL + U` | press | Cursor | Page Up | `cursor.send_key` |
 | `CTRL + D` | press | Cursor | Page Down | `cursor.send_key` |
+| `V` | press | Cursor | Drag (Grab) | `cursor.drag_start` |
+| `SHIFT + V` | press | Cursor | Drag to Find Pick | `cursor.drag_start` |
+| `CTRL + V` | press | Cursor | Drag to Tile Pick | `cursor.drag_start` |
+| `ALT + V` | press | Cursor | Drag to Split Pick | `cursor.drag_start` |
+| `RETURN` | press | Cursor | Drop | `cursor.drag_drop` |
 | `ALT + H` | press | Cursor | Arrow Left | `cursor.send_key` |
 | `ALT + J` | press | Cursor | Arrow Down | `cursor.send_key` |
 | `ALT + K` | press | Cursor | Arrow Up | `cursor.send_key` |
@@ -631,6 +636,10 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `G` | press | Quick Click | Split Click | `cursor.pointer_mode` |
 | `SHIFT + G` | press | Quick Click | Split Right Click | `cursor.pointer_mode` |
 | `CTRL + G` | press | Quick Click | Split Move | `cursor.pointer_mode` |
+| `SHIFT + V` | press | Quick Click | Drag to Find Pick | `cursor.drag_start` |
+| `CTRL + V` | press | Quick Click | Drag to Tile Pick | `cursor.drag_start` |
+| `ALT + V` | press | Quick Click | Drag to Split Pick | `cursor.drag_start` |
+| `RETURN` | press | Quick Click | Drop | `cursor.drag_drop` |
 | `ESCAPE` | press | Quick Click | Exit Quick Click |  |
 | `BackSpace` | press | Quick Click | Back |  |
 | `SHIFT + SLASH` | press | Quick Click | Toggle which-key help |  |

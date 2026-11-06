@@ -19,10 +19,12 @@ local enter_cursor = function()
   hl.config({ cursor = { inactive_timeout = 0, hide_on_key_press = false } })
 end
 
---- Restore cursor config and kill wl-kbptr. Called on submap exit.
+--- Restore cursor config, let go of any held drag and kill wl-kbptr. Called on submap exit.
 local function exit_cursor()
   hl.config({ cursor = { inactive_timeout = DEFAULTS.timeout, hide_on_key_press = DEFAULTS.hide } })
-  require("lib.desktop.cursor").hold_stop()
+  local cursor = require("lib.desktop.cursor")
+  cursor.hold_stop()
+  cursor.drag_submap_exit()
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 
@@ -37,6 +39,27 @@ local function pointer(mode, exit) return { "cursor.pointer_mode", { mode, exit 
 --- @param exit boolean|nil
 --- @return table
 local function click(button, exit) return { "cursor.click", { button, exit == true } } end
+
+--- Esc cancels a live drag and keeps the submap open; with none it leaves the submap.
+local function escape_cursor()
+  local cursor = require("lib.desktop.cursor")
+  if cursor.drag_active() then return cursor.drag_cancel() end
+  Submap.reset()
+end
+
+--- Rows that start a drag and end one, shared by both submaps. Plain V grabs and moves by hand, which needs the Cursor
+--- submap's move keys, so Quick Click has only the picking variants.
+--- @param manual boolean
+--- @return table[]
+local function drag_rows(manual)
+  local rows = {}
+  if manual then rows[#rows + 1] = { "V", { "cursor.drag_start", { "manual" } }, "Drag (Grab)" } end
+  rows[#rows + 1] = { "SHIFT + V", { "cursor.drag_start", { "find" } }, "Drag to Find Pick" }
+  rows[#rows + 1] = { "CTRL + V", { "cursor.drag_start", { "tile" } }, "Drag to Tile Pick" }
+  rows[#rows + 1] = { "ALT + V", { "cursor.drag_start", { "split" } }, "Drag to Split Pick" }
+  rows[#rows + 1] = { "RETURN", "cursor.drag_drop", "Drop" }
+  return rows
+end
 
 --- The four pointer directions as actions that move by `amount` pixels. Holding two of them moves diagonally.
 --- @param amount number
@@ -107,7 +130,8 @@ local cursor_mode = Submap.define({
   name = "Cursor",
   desc = "+Cursor",
   enter = Config.leader .. " + C",
-  escape = "reset",
+  escape = escape_cursor,
+  escape_label = "Cancel/Exit",
   catchall = "stay",
   on_enter = enter_cursor,
   on_exit = exit_cursor,
@@ -128,6 +152,14 @@ local cursor_mode = Submap.define({
       { "cursor.pointer_mode", args = { "tile_click" }, mods = "", label = "Tile" },
       { "cursor.pointer_mode", args = { "split_click" }, mods = "", label = "Split" },
       { "cursor.pointer_mode", args = { "floating_click", true }, mods = "", label = "Quick" },
+    },
+    {
+      "Drag",
+      { "cursor.drag_start", args = { "manual" }, label = "Grab" },
+      { "cursor.drag_start", args = { "find" }, label = "Find" },
+      { "cursor.drag_start", args = { "tile" }, label = "Tile" },
+      { "cursor.drag_start", args = { "split" }, label = "Split" },
+      { "cursor.drag_drop", label = "Drop" },
     },
     { "Scroll", { "cursor.scroll", label = "Scroll" } },
     {
@@ -172,6 +204,10 @@ local cursor_mode = Submap.define({
       { "CTRL + " .. page_down, { "cursor.send_key", { "next" } }, "Page Down" },
     }
     -- stylua: ignore end
+
+    for _, row in ipairs(drag_rows(true)) do
+      keys[#keys + 1] = row
+    end
 
     for _, set in ipairs(key_sets) do
       -- Arrow key movement (backup for page movement)
@@ -218,10 +254,27 @@ local quick_click = Submap.define({
   name = "Quick Click",
   desc = "+Quick Click",
   enter = SUB_QUICK,
-  escape = "reset",
+  escape = escape_cursor,
+  escape_label = "Cancel/Exit",
   catchall = "stay",
   on_enter = enter_cursor,
   on_exit = exit_cursor,
+
+  hint = {
+    {
+      "Pick",
+      { "cursor.pointer_mode", args = { "floating_click", false }, mods = "", label = "Float" },
+      { "cursor.pointer_mode", args = { "tile_click" }, mods = "", label = "Tile" },
+      { "cursor.pointer_mode", args = { "split_click" }, mods = "", label = "Split" },
+    },
+    {
+      "Drag",
+      { "cursor.drag_start", args = { "find" }, label = "Find" },
+      { "cursor.drag_start", args = { "tile" }, label = "Tile" },
+      { "cursor.drag_start", args = { "split" }, label = "Split" },
+      { "cursor.drag_drop", label = "Drop" },
+    },
+  },
 
   binds = function()
     -- stylua: ignore start
@@ -245,6 +298,10 @@ local quick_click = Submap.define({
       { "CTRL + G",           pointer("split_move"),                         "Split Move" },
     }
     -- stylua: ignore end
+
+    for _, row in ipairs(drag_rows(false)) do
+      keys[#keys + 1] = row
+    end
 
     return keys
   end,

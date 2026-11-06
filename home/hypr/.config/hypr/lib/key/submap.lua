@@ -26,6 +26,7 @@ local Submap = {
 --- @field desc?     string                                          Label shown when entering
 --- @field enter?    string|string[]                                 Key(s) that trigger entry (global)
 --- @field escape?   "reset"|"previous"|string|false|fun(ctx: SubmapContext) Exit behaviour; defaults to "reset". A submap name string switches to that submap.
+--- @field escape_label? string                                      Text for the hint bar's Esc entry instead of "Exit", for a submap whose Escape does more than leave
 --- @field catchall? "stay"|"reset"|false|fun(ctx: SubmapContext)    Unbound-key behaviour; defaults to false. "stay" swallows unbound keys. "reset" is oneshot — wraps all bound actions to auto-exit and resets on unbound keys.
 --- @field on_enter? fun(ctx: SubmapContext)                         Called after entering this submap
 --- @field on_exit?  fun(ctx: SubmapContext)                         Called before leaving this submap
@@ -425,6 +426,7 @@ function Submap.define(spec)
       if spec.hint then
         SubmapHint.register(spec.name, spec.hint, bound_rows, {
           escape = normalize_escape(spec) ~= false,
+          escape_label = spec.escape_label,
           whichkey = not binds_use_key(raw_binds, whichkey_toggle_key),
           targets = spec.targets == true,
         })

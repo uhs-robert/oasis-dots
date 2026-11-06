@@ -1,4 +1,4 @@
--- Actions for the Cursor submap: pointer movement, scrolling, clicks and wl-kbptr. Keyless; the Cursor and Quick Click
+-- Actions for the Cursor submap: pointer movement, scrolling, clicks, drag and drop and wl-kbptr. Keyless; the Cursor and Quick Click
 -- rows bind them. Held scrolling keeps its timers in lib/desktop/cursor.lua, so a release row stops what a press
 -- started whichever submap bound it.
 local Act = require("lib.act") ---@class ActionLib
@@ -27,6 +27,7 @@ local KBPTR_MODES = {
   "split_move",
   "split_r_click",
 }
+local DRAG_MODES = { "manual", "find", "tile", "split" }
 local CLICK_BUTTONS = { "left", "right", "middle" }
 
 --- @return CursorActions
@@ -115,4 +116,23 @@ Act.define("cursor.send_key", {
   intent = "Send one key (such as LEFT, prior or next) to the focused window.",
   params = { { name = "key", type = "string" } },
   run = function(key) cursor().send_key(key)() end,
+})
+
+Act.define("cursor.drag_start", {
+  label = "Drag",
+  intent = "Hold the left button at the pointer to drag. manual: move with the Cursor keys, then cursor.drag_drop or cursor.drag_cancel. find, tile and split: pick the target with the pick-only wl-kbptr mode, then drag there and drop. Needs ydotool; without it a notice shows and nothing changes.",
+  params = { { name = "mode", type = "enum", values = DRAG_MODES, default = "manual" } },
+  run = function(mode) cursor().drag_start(mode or "manual")() end,
+})
+
+Act.define("cursor.drag_drop", {
+  label = "Drop",
+  intent = "Release a held drag where the pointer is. Does nothing when no drag is held.",
+  run = function() cursor().drag_drop() end,
+})
+
+Act.define("cursor.drag_cancel", {
+  label = "Cancel Drag",
+  intent = "Cancel a held drag: the pointer returns to the grab point, Escape is sent and the button is released. Does nothing when no drag is held.",
+  run = function() cursor().drag_cancel() end,
 })
