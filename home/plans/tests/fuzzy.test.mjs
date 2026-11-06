@@ -14,8 +14,8 @@ const repo = (label, folder) => ({ label, root: `/home/me/${folder ?? label.spli
 const labels = (query, repos) => rank_repos(query, repos).map((entry) => entry.label);
 
 assert.ok(fuzzy_score("dtf", "me/dotfiles") >= 0, "subsequence matches");
-assert.equal(fuzzy_score("fdt", "me/dotfiles"), -1, "order matters");
-assert.equal(fuzzy_score("zzz", "me/dotfiles"), -1, "a missing letter fails");
+assert.equal(fuzzy_score("fdt", "me/dotfiles"), -Infinity, "order matters");
+assert.equal(fuzzy_score("zzz", "me/dotfiles"), -Infinity, "a missing letter fails");
 assert.equal(fuzzy_score("DOT", "me/dotfiles"), fuzzy_score("dot", "ME/DOTFILES"), "case-insensitive");
 
 assert.ok(fuzzy_score("dot", "me/dotfiles") > fuzzy_score("dot", "me/d-o-t-x"), "consecutive beats word-boundary scatter");
@@ -34,5 +34,11 @@ assert.deepEqual(labels("DOTTY", repos), ["b/zeta"], "folder match is case-insen
 const ties = [repo("a/aaa"), repo("b/aaa", "aaa2"), repo("c/aaa", "aaa3")];
 assert.deepEqual(labels("aaa", ties), ["a/aaa", "b/aaa", "c/aaa"], "ties keep the input order");
 assert.deepEqual(labels("qqq", repos), [], "no match gives an empty list");
+
+// A late match in a long name scores below zero from the gap and length penalties. It is still a match.
+const long_repos = [repo("me/my-long-project"), repo("me/jam")];
+assert.ok(fuzzy_score("j", "my-long-project") > -Infinity, "a negative score is still a match");
+assert.deepEqual(labels("j", [repo("me/my-long-project")]), ["me/my-long-project"], "a late short match is kept");
+assert.deepEqual(labels("j", long_repos), ["me/jam", "me/my-long-project"], "the early match still ranks first");
 
 console.log("fuzzy tests passed");
