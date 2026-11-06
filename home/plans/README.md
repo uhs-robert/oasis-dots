@@ -10,7 +10,7 @@ Run `plans` anywhere in a repo or one of its worktrees. It always reads the main
 
 ```bash
 plans ls [--owner S] [--project P] [--status a,b] [--all] [--json]   # one line per doc
-plans next [--as S] [--skip ID]... [--all] [--json]   # ask lines, blocked lines, then one work line; --all lists every free doc of this repo
+plans next [--as S] [--skip ID]... [--all] [--json]   # issue ask lines, doc ask and blocked lines, then one work line; --all lists every free doc of this repo
 plans waiting [--all] [--json]        # docs with a non-empty waiting_on
 plans questions [--all] [--json]      # the unchecked "- [ ]" items under Open questions
 plans show <id> [--section NAME] [--json]
@@ -31,6 +31,7 @@ On `ls`, `waiting`, `questions` and `lint`, `--all` reads every repo under the d
 Two live sessions can get the same name, so a doc also records the owner's `$CLAUDE_CODE_SESSION_ID` and `$CLAUDE_PID` in `owner_session_id` and `owner_session_pid`. A session with the owner's name owns the doc when either value matches its own. The id changes on `/clear` and the pid on `--resume`. When both stored values differ, another session holds the name: `claim` and `handoff` refuse the doc, and `next` skips it. A `claim` writes the caller's values. A `set` refreshes both when either one matches the caller's. So a `/clear` and then a resume never lock the owner out while it writes in between. A shell without the two variables matches by name only and leaves the values as they are.
 
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. On `next`, `--all` does not scan other repos. It stays in the current repo and prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
+- `next` first prints an `ask` line for each open GitHub issue that no doc ranks, and one for each ranked issue that is closed. See [Issue ranks](#issue-ranks).
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. A forced `claim` writes the caller's values. `handoff` checks every listed doc before it writes any of them. Every `handoff` clears both values, forced or not, and the receiver's first `claim` writes its own.
 - `set` refuses `id`, `project`, `updated`, `owner_session_id` and `owner_session_pid`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
 - `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
@@ -47,6 +48,21 @@ Two live sessions can get the same name, so a doc also records the owner's `$CLA
 ### Two writers
 
 Every write reads the doc, locks `.plans/`, reads it again and compares the keys it changes. If another writer changed one of them in between, the write stops with exit code 3 and leaves the file as it was. Writes to different keys both land. A body edit counts as a change to the key `body`. The `updated` key never conflicts, because every write sets it to today. The write edits only the changed front matter lines and keeps the body bytes as they were.
+
+## Issue ranks
+
+Every open GitHub issue of a repo needs a rank. A doc ranks an issue when its `issue` key holds the number (`12`, `#12` or the issue URL), or its `## Plan` section names it as `#12`. Other sections hold history, so `#12` there does not count, and neither does `other/repo#12`. Issues that no feature doc covers go in the repo's `follow-ups` doc, one `- #12 title` item per line, in rank order. Give that doc status `planned`, so `next` walks it at its rank.
+
+`plans next` prints the gaps before its other lines:
+
+```
+ask	#1465	rank: plain-writing lint: rare shell forms still hide or invent PR bodies
+ask	#94	closed: drop it from follow-ups
+```
+
+A `rank` line is an open issue that no doc ranks. A `closed` line names the first doc by rank that still ranks a closed issue. With `--json`, these rows carry `"issue": N`, and `path` is the doc, or null. The check only reports. It never edits a doc.
+
+The repo comes from the `origin` remote, so a repo without a GitHub origin gets no check and no network call. The answers from `gh` are cached in `$XDG_CACHE_HOME/plans/<owner>-<repo>.json` (default `~/.cache`) for 10 minutes, and a ranked number the cache does not know fetches again. Each `gh` call gets 5 seconds. When `gh` is missing or fails, `next` uses the old cache, and without one it prints no issue lines. After a failure, `next` waits a minute before it asks `gh` again, so an offline `next` pays the timeout once. Delete the file to fetch at once.
 
 ## Serve
 
@@ -136,9 +152,10 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `query.py`: a repo's docs by glob (there is no index file), and the `ls`, `next`, `waiting` and `questions` queries.
 - `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
 - `gh.py`: the `lint --gh` checks.
+- `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
 - `cli.py`: argument parsing and output only.
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
 
-`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_store.py` races forked writers on one doc. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts.
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts.

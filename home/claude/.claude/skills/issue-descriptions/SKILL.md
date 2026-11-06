@@ -32,6 +32,10 @@ Plain paragraphs:
 - Do not name files to edit or functions to add unless the problem is in them. Describe behavior.
 - No attribution lines.
 
+## Ranking a new issue
+
+When the repo has plan docs (a `.plans/` folder read by the `plans` CLI), every new issue gets a rank on the day it is filed. In the same turn as `gh issue create`, propose where the issue goes in the order and ask the owner. Then add `- #N title` at that place in the `## Plan` list of the repo's `follow-ups` doc, or name the issue in the Plan of the doc whose piece covers it. With no `follow-ups` doc yet, make one with `plans new <project> follow-ups --kind chore`, then `plans set follow-ups status=planned`. `plans next` reports every open issue that no doc ranks.
+
 ## Tracking issues
 
 When work splits into several PRs, one issue states the overall problem and outcome, and each PR says `Part of #N` until the last one, which says `Closes #N`. Only break the outcome into a list when the parts can land independently, and phrase each item as an outcome, not a task.
