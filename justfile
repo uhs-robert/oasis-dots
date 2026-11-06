@@ -307,6 +307,13 @@ docs-gen:
     python3 -B lib/docs/gen-keybinds --write
     python3 -B lib/docs/gen-ipc --write
 
+# Point git at lib/git-hooks, whose pre-commit runs docs-gen and stages the tables. Keeps a core.hooksPath set elsewhere
+git-hooks:
+    #!/usr/bin/env bash
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    setup_git_hooks
+
 # Redump the Hyprland bind fixtures from the current keymaps, keeping each file's header. Run it only for a key you meant to change, then read the diff
 hypr-fixtures:
     #!/usr/bin/env bash

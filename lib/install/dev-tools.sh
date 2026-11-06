@@ -126,6 +126,18 @@ setup_git_identity() {
   success "Wrote git identity to $file"
 }
 
+# Points this repo's git at lib/git-hooks. An existing core.hooksPath belongs to someone else's setup, so it is kept.
+setup_git_hooks() {
+  local current
+  current=$(git -C "$DOTFILES_DIR" config --get core.hooksPath || true)
+  if [[ -n $current && $current != lib/git-hooks ]]; then
+    warn "core.hooksPath is already $current, left alone (lib/git-hooks keeps the doc tables current)"
+    return 1
+  fi
+  git -C "$DOTFILES_DIR" config core.hooksPath lib/git-hooks
+  success "Git hooks set to lib/git-hooks"
+}
+
 # Set NVIM_CONFIG_REPO to owner/name or a git URL to use a different config; an existing ~/.config/nvim is kept.
 install_nvim_config() {
   local spec="${NVIM_CONFIG_REPO:-$GITHUB_ORG/neovim}"
