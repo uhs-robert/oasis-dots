@@ -65,7 +65,7 @@ def update(doc, changes, date=None):
             fresh = parse.load(doc.path)
         except FileNotFoundError:
             raise Vanished(doc.path) from None
-        conflicting = [key for key in changes if key != UPDATED and fresh.value(key) != doc.value(key)]
+        conflicting = [key for key in changes if key != UPDATED and not same_value(fresh.value(key), doc.value(key))]
         if conflicting:
             raise Conflict(doc.path, conflicting)
         updated = parse.Doc(doc.path, fresh.render({**changes, UPDATED: date or today()}))
@@ -74,6 +74,12 @@ def update(doc, changes, date=None):
             raise parse.ParseError(doc.path, updated.errors)
         replace_atomically(doc.path, updated.text)
     return updated
+
+
+def same_value(on_disk, as_read):
+    """A missing key and `""` hold the same nothing. The board sends `""` for a key the doc lacks, and a cleared key
+    is written as `""`, so neither counts as a change."""
+    return on_disk == as_read or (on_disk in (None, "") and as_read in (None, ""))
 
 
 def create(path, text, check_under_lock=None):

@@ -223,6 +223,8 @@ def view_json(view, label):
 
 def doc_json(doc):
     data = {key: doc.keys.get(key, parse.DEFAULTS.get(key)) for key in parse.KEY_ORDER}
+    # The page sends these back in the basis of an owner edit, so a claim since the page loaded refuses the edit.
+    data.update({key: doc.keys.get(key, "") for key in validate.OWNER_VALUE_KEYS})
     data["id"] = doc.id
     data["path"] = doc.path
     # Lint flags a depends_on that is no list, but the page iterates it, so it always gets one.
@@ -380,7 +382,7 @@ def board_doc(board, request):
 def based_on(doc, basis):
     """`doc` with the values the page showed for the keys in `basis`. The board's copy can be newer than the page,
     and store.update must compare the disk against what the owner saw, or it would miss an edit made in between."""
-    if not isinstance(basis, dict) or any(key not in parse.KEY_ORDER for key in basis):
+    if not isinstance(basis, dict) or any(key not in parse.KEY_ORDER + validate.OWNER_VALUE_KEYS for key in basis):
         raise Refused(400, "basis must map front matter keys to the values the page showed")
     if any(isinstance(value, bool) or not isinstance(value, (str, int)) for value in basis.values()):
         raise Refused(400, "a basis value must be a string or a whole number")
@@ -407,8 +409,9 @@ def update_doc(board, request):
     Request: {path, basis: {key: shown value}, changes: {key: new value}}."""
     _, doc = board_doc(board, request)
     changes, basis = checked_changes(request, EDITABLE_KEYS)
-    if "owner_session" in changes:
-        # The owner's override: the board knows no session's values, so the next claim writes them.
+    if "owner_session" in changes and changes["owner_session"] != basis["owner_session"]:
+        # The owner's override: the board knows no session's values, so the next claim writes them. A save under the
+        # same name keeps them, or another session of that name could then claim the doc without --force.
         changes = {**changes, **validate.cleared_owner_values()}
     store.update(based_on(doc, basis), changes)
 

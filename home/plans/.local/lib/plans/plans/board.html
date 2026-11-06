@@ -236,7 +236,9 @@ function edit_owner() {
   input.select();
   input.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && input.value.trim() !== doc.owner_session) {
-      write("update", { path: doc.path, basis: { owner_session: doc.owner_session }, changes: { owner_session: input.value.trim() } });
+      // The shown session values go in the basis too, so a claim since the page loaded refuses the edit.
+      const basis = { owner_session: doc.owner_session, owner_session_id: doc.owner_session_id, owner_session_pid: doc.owner_session_pid };
+      write("update", { path: doc.path, basis, changes: { owner_session: input.value.trim() } });
     }
     if (event.key === "Enter" || event.key === "Escape") { event.stopPropagation(); close_input(); }
   });
