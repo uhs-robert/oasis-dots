@@ -110,7 +110,7 @@ CASES = [
     ("packages/snapper.ini", " install"),
     # The agent launcher shares the install scope.
     ("home/agents/.local/bin/agent-run", " install"),
-    ("home/agents/.local/share/agent-shims/bin/claude", " install"),
+    ("home/agents/.local/bin/agent-shims", " install"),
     ("home/agents/tests/agent_run.sh", " install"),
     # So does the plans CLI. Its README, like all Markdown, reaches none.
     ("home/plans/.local/lib/plans/plans/store.py", " install"),

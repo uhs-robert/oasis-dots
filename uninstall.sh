@@ -55,6 +55,8 @@ unstow_packages() {
     if [[ ! -d "home/$pkg" ]]; then
       continue
     fi
+    # The agent shims are written by agent-shims, not stowed, so stow -D leaves them behind.
+    [[ "$pkg" == agents ]] && home/agents/.local/bin/agent-shims --remove
     if stow -D "$pkg" 2>/dev/null; then
       success "Unstowed $pkg"
     else
