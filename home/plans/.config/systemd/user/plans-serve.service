@@ -7,8 +7,10 @@ PartOf=graphical-session.target
 # units it wants, so that would be a cycle.
 After=graphical-session-pre.target
 
-# Off unless asked for: `systemctl --user enable --now plans-serve` starts it now and at every login. Nothing enables
-# it on install.
+# Off unless asked for: `systemctl --user enable --now plans-serve` starts it now and with every graphical session.
+# Nothing enables it on install.
+# The service does not see a GITHUB_DIR exported only in the shell. Without ~/.config/plans/roots it uses the default
+# roots and can miss repos that `plans ls --all` finds. That file replaces the defaults, so list every root in it.
 [Service]
 Type=simple
 ExecStart=/usr/bin/python3 -I %h/.local/bin/plans serve

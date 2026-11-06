@@ -50,11 +50,15 @@ Every write reads the doc, locks `.plans/`, reads it again and compares the keys
 
 `plans serve` runs a web board over the docs of every repo under the roots, the same repos as `--all`. Open http://127.0.0.1:8765 in a browser. It needs nothing beyond Python 3.
 
-To run it in the background at every login, enable the user service. `just stow plans` installs it, but nothing enables it:
+To run it in the background with every graphical session, enable the user service. `just stow plans` installs it, but nothing enables it:
 
 ```bash
 systemctl --user enable --now plans-serve
 ```
+
+The service is wanted by `graphical-session.target`, so it starts and stops with that target. A text-only or SSH login does not start it.
+
+The service does not see a `GITHUB_DIR` that only the shell exports. Without the roots file (`~/.config/plans/roots`, one directory per line) it uses the default roots and can miss repos that `plans ls --all` finds. The file replaces the defaults, so list every root in it, including the dotfiles checkout.
 
 The board has a column per status and a lane per repo, then per project. The header holds a repo switcher and filters for the id, owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
 
@@ -73,7 +77,7 @@ A drag moves a card within its lane, to another status, another place or both. A
 
 Each write goes through the same safe write path as `plans set`, and the board compares against the values it showed. If an agent changed one of those keys since the board last loaded, the write is refused. The card snaps back and a message names the keys. A renumber skips a doc that an agent re-ranked meanwhile, keeps the agent's rank and says which doc it skipped. Status and owner follow the rules of `plans set`. The other keys are read-only on the board.
 
-`o` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; set it with `systemctl --user set-environment EDITOR=...` if it should differ.
+`o` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; if it should differ, run `systemctl --user set-environment EDITOR=...`, then `systemctl --user restart plans-serve`, because the setting reaches only processes that start later. `VISUAL` wins over `EDITOR`, so set `VISUAL` instead if the manager already has one.
 
 The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port. A write also needs the board's own request header, so a page on another site cannot write.
 
