@@ -19,11 +19,14 @@ launcher="${AGENT_RUN:-$HOME/.local/bin/agent-run}"
 
 if [[ "${1:-}" == --remove ]]; then
   [[ -d "$shim_dir" ]] || exit 0
+  status=0
   for name in "${agents[@]}"; do
-    [[ -L "$shim_dir/$name" ]] && rm -f "$shim_dir/$name"
+    if [[ -L "$shim_dir/$name" ]]; then
+      rm -f "$shim_dir/$name" || status=1
+    fi
   done
-  rmdir "$shim_dir" 2>/dev/null
-  exit 0
+  rmdir "$shim_dir" || status=1
+  exit $status
 fi
 
 # The same search as agent-run's: a $name on PATH that is not a shim.

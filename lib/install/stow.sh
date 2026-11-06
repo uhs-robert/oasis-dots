@@ -15,13 +15,18 @@ stow_packages() {
   for pkg in "$@"; do
     args=(-d "$DOTFILES_DIR/home" -t "$HOME" "$mode")
     [[ " ${NO_FOLD_PACKAGES[*]} " == *" $pkg "* ]] && args+=(--no-folding)
-    if [[ "$pkg" == agents && "$mode" == -D ]]; then
-      "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" --remove || status=1
+    if ! stow "${args[@]}" "$pkg"; then
+      status=1
+      continue
     fi
-    stow "${args[@]}" "$pkg" || status=1
-    # The shims are not stowed: agent-shims writes one per agent installed on this machine.
-    if [[ "$pkg" == agents && "$mode" != -D ]]; then
-      "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" || status=1
+    # The shims are not stowed: agent-shims writes one per agent installed on this machine. It runs only after stow
+    # succeeded, so a failed stow never leaves shims without agent-run, nor a failed unstow agents uncapped.
+    if [[ "$pkg" == agents ]]; then
+      if [[ "$mode" == -D ]]; then
+        "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" --remove || status=1
+      else
+        "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" || status=1
+      fi
     fi
   done
   return $status
