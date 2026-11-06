@@ -372,16 +372,16 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `D` | press | Applications | Discord | `apps.open` |
 | `E` | press | Applications | Editor | `terminal.editor` |
 | `F` | press | Applications | Firefox | `apps.open` |
-| `G` | press | Applications | Gimp | `apps.open` |
-| `I` | press | Applications | Inkscape | `apps.open` |
+| `G` | press | Applications | Games (Steam) | `apps.focus` |
+| `I` | press | Applications | Image (Gimp) | `apps.open` |
 | `K` | press | Applications | Kanban Plans | `plans.board` |
 | `M` | press | Applications | Mail | `apps.focus` |
 | `P` | press | Applications | ProtonPlus | `apps.focus` |
 | `Q` | press | Applications | QuteBrowser | `apps.open` |
 | `R` | press | Applications | Radio (cliamp) | `apps.focus` |
 | `S` | press | Applications | Slack | `apps.focus` |
-| `SHIFT + S` | press | Applications | Steam | `apps.focus` |
 | `T` | press | Applications | Torrent | `apps.open` |
+| `V` | press | Applications | Vector (Inkscape) | `apps.open` |
 | `W` | press | Applications | LibreOffice Writer | `apps.open` |
 | `X` | press | Applications | LibreOffice Calc | `apps.open` |
 | `ESCAPE` | press | Applications | Exit Applications |  |
@@ -504,11 +504,11 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `A` | press | Go | Agent Sessions Picker | `picker.agents` |
 | `B` | press | Go | Browser | `apps.focus` |
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
+| `G` | press | Go | Games (Steam) | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
 | `P` | press | Go | Projects | `menu.tmux` |
 | `Q` | press | Go | QuteBrowser | `apps.focus` |
 | `S` | press | Go | Slack | `apps.focus` |
-| `SHIFT + S` | press | Go | Steam | `apps.focus` |
 | `T` | press | Go | Terminal | `apps.focus` |
 | `V` | press | Go | Editor | `terminal.editor` |
 | `W` | press | Go | Search Windows | `picker.windows` |
