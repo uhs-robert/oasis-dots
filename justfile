@@ -302,6 +302,10 @@ desertfox-config:
     cd "$desertfox"
     node tools/build-config/cli.ts "$config_dir" --live || { echo "desertfox-config: build-config failed. If it says Unknown option '--live', update the DesertFox checkout at $desertfox and run 'just build' there" >&2; exit 1; }
 
+# Install or update the ArtCraft apps in packages/artcraft.ini from their signed GitHub releases (--check only lists what is behind)
+artcraft-update *args:
+    bash "{{ justfile_directory() }}/lib/install/artcraft-update" {{ args }}
+
 # Regenerate the generated sections of the docs (the keybind table in docs/keybinds.md, the IPC table in the Quickshell README)
 docs-gen:
     python3 -B lib/docs/gen-keybinds --write

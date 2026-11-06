@@ -314,6 +314,7 @@ SHELL_GROUPS = {
         "lib/install/*.sh",
         "lib/install/desertfox-freshness",
         "lib/git-hooks/pre-commit",
+        "lib/install/artcraft-update",
         "lib/install/tests/*.sh",
         "demo/*.sh",
         "home/hypr/.config/hypr/scripts/state-write",

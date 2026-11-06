@@ -8,5 +8,6 @@ These `.ini` files are the single list of what gets installed; adding a package 
 - `snapper.ini`: snapper and snap-pac, read by `setup_snapper` after its prompt and only on a btrfs `/`.
 - `stow.ini`: dotfile packages (`[CORE]` stowed automatically, `[OPTIONAL]` picked with fzf, `[SERVER]` instead of `[CORE]` under `--server`).
 - `repos.ini`: git repositories to clone into `repos/`.
+- `artcraft.ini`: ArtCraft apps, one `storytold/<name>` GitHub repo each. `lib/install/artcraft-update` installs and updates them from their releases, because ArtCraft has no pacman repo or AUR package. Add a name here to get that app.
 
 The `packages` check step (`lib/check/steps/packages.sh`) fails on a name listed in two manifests (`stow.ini` and `repos.ini` excepted, since they name directories and repos), on a `stow.ini` entry with no `home/` folder, and on a tracked `home/` folder that `stow.ini` does not list.
