@@ -15,7 +15,7 @@ use crate::paths;
 use crate::route::runner::Runner;
 use crate::route::sequence;
 use crate::text::normalize::{Replacements, apply_replacements, normalize};
-use crate::text::wake_word::{WAKE_WORD, WakeWords};
+use crate::text::wake_word::{WAKE_WORD, WakeWords, correction_tails};
 use crate::voice::{listen, secs_setting, settle};
 use regex::Regex;
 use serde_json::json;
@@ -529,9 +529,7 @@ impl TurnRun<'_> {
         } else {
             let text = replaced(&split.steps[0]);
             let rewritten = if self.mode.has_rewrite {
-                mode::rewrite(self.mode, self.file, &[text])
-                    .and_then(|mut rewritten| rewritten.pop())
-                    .unwrap_or_default()
+                self.rewrite_with_corrections(text)
             } else {
                 text
             };
@@ -551,6 +549,27 @@ impl TurnRun<'_> {
             }
         }
         outcome
+    }
+
+    /// The mode's rewrite of one step. A step it leaves as spoken gets the rewrite of each correction tail too, because
+    /// routing shortens "um stop" to "stop" and the mode must see that "stop" as it would a bare one.
+    fn rewrite_with_corrections(&self, text: String) -> String {
+        let rewrite_one = |text: &str| {
+            mode::rewrite(self.mode, self.file, &[text.to_string()])
+                .and_then(|mut rewritten| rewritten.pop())
+                .unwrap_or_default()
+        };
+        let rewritten = rewrite_one(&text);
+        if rewritten != text {
+            return rewritten;
+        }
+        for tail in correction_tails(&text) {
+            let rewritten_tail = rewrite_one(&tail);
+            if rewritten_tail != tail {
+                return rewritten_tail;
+            }
+        }
+        rewritten
     }
 
     /// What each step routes as in the mode: rewritten by its `session_rewrite`, or unchanged when it has none or leaves

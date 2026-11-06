@@ -712,7 +712,15 @@ fn the_shipped_rapid_toml_answers_a_leave_word_with_the_hint_and_an_exit_phrase_
         "{state}"
     );
     // One leave word, or voxtype's repeats of it, is a missed turn with the hint; none of them pauses the music.
-    for words in ["stop", "stop stop stop", "im done", "done with rapid mode"] {
+    // A filler or a correction before it changes nothing: routing shortens "um stop" to "stop" and the hint still shows.
+    for words in [
+        "stop",
+        "stop stop stop",
+        "im done",
+        "done with rapid mode",
+        "um stop",
+        "no wait stop",
+    ] {
         let before = rig.calls().matches("say cortana done to leave").count();
         rig.hear("rapid", json!({}), words);
         assert!(rig.session().is_some(), "{words}");
