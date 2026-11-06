@@ -30,9 +30,21 @@ for arg in "$@"; do
   esac
 done
 if ((${#apps[@]} == 0)); then
+  if [[ ! -r $manifest ]]; then
+    echo "artcraft-update: cannot read $manifest" >&2
+    exit 1
+  fi
   mapfile -t apps < <(grep -v -e '^#' -e '^\[' -e '^[[:space:]]*$' "$manifest")
 fi
-if ((if_installed)) && ! pacman -Qq 2>/dev/null | grep -q '^ai\.storyteller\.'; then
+# Names reach paths, URLs and pacman, so anything but a plain package name is refused.
+for app in "${apps[@]}"; do
+  if [[ ! $app =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "artcraft-update: not an app name: $app" >&2
+    exit 2
+  fi
+done
+# grep reads the whole list: with -q it stops early, pacman dies of SIGPIPE, and pipefail reads that as no ArtCraft.
+if ((if_installed)) && ! pacman -Qq 2>/dev/null | grep '^ai\.storyteller\.' >/dev/null; then
   exit 0
 fi
 
@@ -74,7 +86,8 @@ verify() {
   # VALIDSIG's last field is the primary key's fingerprint, even when a subkey made the signature.
   primary=$(awk '$2 == "VALIDSIG" { print $NF }' <<<"$statuses")
   [[ $primary == "$fingerprint" ]] || return 1
-  line=$(grep -E "^[0-9a-f]{64}  $file\$" "$dir/SHA256SUMS.txt") || return 1
+  line=$(awk -v file="$file" '$2 == file && $1 ~ /^[0-9a-f]{64}$/ { print; exit }' "$dir/SHA256SUMS.txt")
+  [[ -n $line ]] || return 1
   (cd "$dir" && sha256sum --check --quiet --status - <<<"$line") || return 1
   printf '%s\n' "${line%% *}"
 }

@@ -148,6 +148,25 @@ out=$(bash "$script" photocraft 2>&1)
 expect "an expired key is refused" "$out" "failed its signature or checksum"
 reject "an expired key never reaches pacman" "$out" "pacman -U"
 
+out=$(bash "$script" '../photocraft' 2>&1)
+expect "a name with a path in it is refused" "$out" "not an app name: ../photocraft"
+
+out=$(ARTCRAFT_MANIFEST="$scratch/absent.ini" bash "$script" 2>&1)
+status=$?
+expect "a missing manifest is reported" "$out" "cannot read"
+((status != 0)) || {
+  echo "FAIL a missing manifest exits nonzero" >&2
+  failures=$((failures + 1))
+}
+
+# A long package list: grep must read all of it, or pacman dies of SIGPIPE and the run skips every app.
+{
+  echo "ai.storyteller.photocraft 0.15.1-1"
+  for i in $(seq 20000); do echo "filler-package-$i 1.0-1"; done
+} >"$scratch/installed"
+out=$(bash "$script" --if-installed --check 2>&1)
+expect "if-installed sees ArtCraft at the top of a long list" "$out" "vectorcraft not installed -> 0.21.1"
+
 out=$(bash "$script" missingcraft 2>&1)
 expect "an unknown app is reported" "$out" "missingcraft: could not read the latest release"
 
