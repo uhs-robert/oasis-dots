@@ -367,13 +367,14 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + SHIFT + M` | press | global | +Move |  |
 | `SPACE` | press | Applications | Search Windows | `picker.windows` |
 | `SLASH` | press | Applications | Search Applications | `menu.drun` |
+| `A` | press | Applications | Audio (SoundCraft) | `apps.open` |
 | `B` | press | Applications | Bottles | `apps.open` |
 | `C` | press | Applications | Calculator | `apps.open` |
 | `D` | press | Applications | Discord | `apps.open` |
 | `E` | press | Applications | Editor | `terminal.editor` |
 | `F` | press | Applications | Firefox | `apps.open` |
 | `G` | press | Applications | Games (Steam) | `apps.focus` |
-| `I` | press | Applications | Image (Gimp) | `apps.open` |
+| `I` | press | Applications | Image (PhotoCraft) | `apps.open` |
 | `K` | press | Applications | Kanban Plans | `plans.board` |
 | `M` | press | Applications | Mail | `apps.focus` |
 | `P` | press | Applications | ProtonPlus | `apps.focus` |
@@ -381,9 +382,9 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `R` | press | Applications | Radio (cliamp) | `apps.focus` |
 | `S` | press | Applications | Slack | `apps.focus` |
 | `T` | press | Applications | Torrent | `apps.open` |
-| `V` | press | Applications | Vector (Inkscape) | `apps.open` |
-| `W` | press | Applications | LibreOffice Writer | `apps.open` |
-| `X` | press | Applications | LibreOffice Calc | `apps.open` |
+| `V` | press | Applications | Vector (VectorCraft) | `apps.open` |
+| `W` | press | Applications | Writer (WordCraft) | `apps.open` |
+| `X` | press | Applications | Sheets (GridCraft) | `apps.open` |
 | `ESCAPE` | press | Applications | Exit Applications |  |
 | `BackSpace` | press | Applications | Back |  |
 | `SHIFT + SLASH` | press | Applications | Toggle which-key help |  |
