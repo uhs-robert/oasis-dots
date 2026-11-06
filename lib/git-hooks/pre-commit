@@ -1,33 +1,51 @@
 #!/usr/bin/env bash
-# Rebuilds the generated doc tables (`just docs-gen`) and stages them, so a keymap or IPC change never lands with a
-# stale table. `just git-hooks` installs it. Skip it once with `git commit --no-verify`.
+# Rebuilds the generated doc tables (`just docs-gen`) from the staged files and stages any that changed, so a keymap
+# or IPC change never lands with a stale table. `just git-hooks` installs it. Skip it once with `git commit --no-verify`.
 set -u
 
 repo=$(git rev-parse --show-toplevel) || exit 1
 cd "$repo" || exit 1
 [[ -d lib/docs ]] || exit 0
 if ! command -v python3 >/dev/null || ! command -v lua >/dev/null; then
-  echo "pre-commit: python3 or lua missing, skipped the doc tables" >&2
-  exit 0
-fi
-
-generated=(docs/keybinds.md home/quickshell/.config/quickshell/README.md)
-# The generators read the working tree, not the index. A table rebuilt beside unstaged source edits would describe
-# code this commit leaves out, so in that case the hook only reports.
-sources=(home/hypr home/quickshell lib/docs)
-
-regenerate() {
-  python3 -B lib/docs/gen-keybinds "$1" >/dev/null && python3 -B lib/docs/gen-ipc "$1" >/dev/null
-}
-
-if ! git diff --quiet -- "${generated[@]}" || ! git diff --quiet -- "${sources[@]}"; then
-  regenerate --check && exit 0
-  echo "pre-commit: the doc tables are stale, and the tables or their sources have unstaged edits." >&2
-  echo "pre-commit: run \`just docs-gen\`, stage what belongs in this commit, or commit with --no-verify." >&2
+  echo "pre-commit: the doc tables need python3 and lua; install them or commit with --no-verify" >&2
   exit 1
 fi
 
-regenerate --write || exit 1
-git diff --quiet -- "${generated[@]}" && exit 0
-git add -- "${generated[@]}"
-echo "pre-commit: regenerated and staged the doc tables" >&2
+generated=(docs/keybinds.md home/quickshell/.config/quickshell/README.md)
+
+# The generators run on a copy of the index, so unstaged edits and untracked files never reach a table.
+staged=$(mktemp -d) || exit 1
+trap 'rm -rf "$staged"' EXIT
+git checkout-index -a --prefix="$staged/" || exit 1
+# git sets GIT_INDEX_FILE and friends for the hook. In the copy they would point gen-ipc's `git ls-files` back at
+# this repo's index, so the copy runs without them. It needs a repo of its own for that listing.
+(
+  unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
+  git -C "$staged" init -q &&
+    python3 -B "$staged/lib/docs/gen-keybinds" --write >/dev/null &&
+    python3 -B "$staged/lib/docs/gen-ipc" --write >/dev/null
+) || exit 1
+
+status=0
+for file in "${generated[@]}"; do
+  cmp -s "$staged/$file" <(git show ":$file") && continue
+  # `git commit <paths>` commits from a temporary index (next-index-*.lock). A table staged there lands in the commit,
+  # but the real index keeps the old one and shows it as a staged revert, so the hook only reports.
+  if [[ ${GIT_INDEX_FILE##*/} == next-index-* ]]; then
+    echo "pre-commit: $file is stale in this commit; stage it with the change (\`just docs-gen\`) and commit without paths" >&2
+    status=1
+    continue
+  fi
+  # Unstaged edits block the copy, unless they already are the table this commit needs (a `just docs-gen` left unstaged).
+  if ! git diff --quiet -- "$file" && ! cmp -s "$staged/$file" "$file"; then
+    echo "pre-commit: $file is stale in this commit and has unstaged edits; run \`just docs-gen\` and stage it, or commit with --no-verify" >&2
+    status=1
+    continue
+  fi
+  if cp "$staged/$file" "$file" && git add -- "$file"; then
+    echo "pre-commit: regenerated and staged $file" >&2
+  else
+    status=1
+  fi
+done
+exit "$status"
