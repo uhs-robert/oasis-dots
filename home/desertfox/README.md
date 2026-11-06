@@ -1,6 +1,6 @@
 # DesertFox config
 
-My DesertFox keymap, search engines and settings. `just stow desertfox` links this directory to `~/.config/desertfox/`. `just desertfox-config` merges it into Firefox's managed storage file, and `qr` in the browser reloads the extension.
+My DesertFox keymap, search engines and settings. `just stow desertfox` links this directory to `~/.config/desertfox/`. `just desertfox-config` merges it into Firefox's managed storage file. It first warns, and still runs, when the DesertFox checkout is behind its upstream or `dist/commands.json` is older than the checkout's last commit. `qr` in the browser reloads the extension.
 
 Run `just build` in the DesertFox checkout first. The recipe finds that checkout at `$DESERTFOX_DIR`, or at `repos/desertfox` when unset. `just repos` sets that checkout up.
 
