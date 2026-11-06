@@ -21,8 +21,27 @@ local function exists(path)
   return true
 end
 
---- The agent shims (when the agents package is stowed), Config.path_prepend and the config's own dirs, ahead of the
---- inherited PATH, without duplicates.
+--- The bin dir of npm's global prefix: $NPM_CONFIG_PREFIX, else the last prefix= line of ~/.npmrc. Nil without
+--- either, since npm's default prefix (/usr) is already on PATH.
+--- @return string|nil
+local function npm_global_bin()
+  local prefix = os.getenv("NPM_CONFIG_PREFIX")
+  if not prefix or prefix == "" then
+    local npmrc = io.open(HOME .. "/.npmrc", "r")
+    if not npmrc then return nil end
+    for line in npmrc:lines() do
+      local value = line:match("^%s*prefix%s*=%s*(.-)%s*$")
+      if value then prefix = value end
+    end
+    npmrc:close()
+  end
+  if not prefix or prefix == "" then return nil end
+  prefix = prefix:gsub("^~", HOME):gsub("%${HOME}", HOME)
+  return prefix .. "/bin"
+end
+
+--- The agent shims (when the agents package is stowed), Config.path_prepend, npm's global bin and the config's own
+--- dirs, ahead of the inherited PATH, without duplicates.
 --- @return string
 local function build_path()
   local dirs = {}
@@ -32,6 +51,9 @@ local function build_path()
   for _, dir in ipairs(Config.path_prepend or {}) do
     dirs[#dirs + 1] = dir
   end
+  -- Without it agent-shims, run by topgrade from the desktop, misses npm-installed agents (codex) and drops their shims.
+  local npm_bin = npm_global_bin()
+  if npm_bin then dirs[#dirs + 1] = npm_bin end
   for _, dir in ipairs({
     require("lib.state")() .. "/bin",
     HOME .. "/.local/bin",
