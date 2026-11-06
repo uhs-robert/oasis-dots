@@ -3,9 +3,9 @@
 
 # systemd ignores drop-in (.d) and .wants directories that are symlinks, and `systemctl enable` writes into them.
 # Stow folds a directory missing from ~ into one symlink, so these packages are stowed with --no-folding.
-# oasisfox is here for another reason: its private keymap.d/ files are copied into ~/.config/oasisfox, and a folded link would write them into the repo.
+# desertfox is here for another reason: its private keymap.d/ files are copied into ~/.config/desertfox, and a folded link would write them into the repo.
 # plans is the only package with ~/.local/lib, and a folded one would send other programs' files (pip --user) into the repo.
-NO_FOLD_PACKAGES=(systemd calendar oasisfox agents plans)
+NO_FOLD_PACKAGES=(systemd calendar desertfox agents plans)
 
 # Runs `stow <mode>` (-S, -D or -R) on each package, unfolding the NO_FOLD_PACKAGES.
 stow_packages() {
