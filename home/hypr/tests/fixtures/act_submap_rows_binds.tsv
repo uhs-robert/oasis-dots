@@ -8,6 +8,7 @@
 # Leader T for the Firefox tabs picker, Leader SHIFT + S for the tray, and the tray labelled System Tray.
 # Applications K for the plans board (Kanban Plans).
 # Columns: config, submap, key, which-key label, flags, what the key does.
+default	Applications	A	Audio (SoundCraft)	-	exec_cmd(soundcraft);submap(reset)
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
 default	Applications	B	Bottles	-	exec_cmd(bottles);submap(reset)
@@ -20,7 +21,7 @@ default	Applications	E	Editor	-	exec_cmd(kitty --single-instance -e nvim);submap
 default	Applications	ESCAPE	Exit Applications	-	submap(reset)
 default	Applications	F	Firefox	-	exec_cmd(firefox);submap(reset)
 default	Applications	G	Games (Steam)	-	exec_cmd(steam);submap(reset)
-default	Applications	I	Image (Gimp)	-	exec_cmd(gimp);submap(reset)
+default	Applications	I	Image (PhotoCraft)	-	exec_cmd(photocraft);submap(reset)
 default	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	K	Kanban Plans	-	exec_cmd(~/.config/hypr/scripts/plans-open.sh);submap(reset)
@@ -38,9 +39,9 @@ default	Applications	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Super_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Super_R	-	ignore_mods=true,transparent=true	no_op
 default	Applications	T	Torrent	-	exec_cmd(deluge);submap(reset)
-default	Applications	V	Vector (Inkscape)	-	exec_cmd(inkscape);submap(reset)
-default	Applications	W	LibreOffice Writer	-	exec_cmd(libreoffice --writer);submap(reset)
-default	Applications	X	LibreOffice Calc	-	exec_cmd(libreoffice --calc);submap(reset)
+default	Applications	V	Vector (VectorCraft)	-	exec_cmd(vectorcraft);submap(reset)
+default	Applications	W	Writer (WordCraft)	-	exec_cmd(wordcraft);submap(reset)
+default	Applications	X	Sheets (GridCraft)	-	exec_cmd(gridcraft);submap(reset)
 default	Applications	catchall	-	ignore_mods=true,release=true	submap(reset)
 default	Applications	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
@@ -241,6 +242,7 @@ default	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=true
 default	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 default	System	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+no-leader	Applications	A	Audio (SoundCraft)	-	exec_cmd(soundcraft);submap(reset)
 no-leader	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	B	Bottles	-	exec_cmd(bottles);submap(reset)
@@ -253,7 +255,7 @@ no-leader	Applications	E	Editor	-	exec_cmd(kitty --single-instance -e nvim);subm
 no-leader	Applications	ESCAPE	Exit Applications	-	submap(reset)
 no-leader	Applications	F	Firefox	-	exec_cmd(firefox);submap(reset)
 no-leader	Applications	G	Games (Steam)	-	exec_cmd(steam);submap(reset)
-no-leader	Applications	I	Image (Gimp)	-	exec_cmd(gimp);submap(reset)
+no-leader	Applications	I	Image (PhotoCraft)	-	exec_cmd(photocraft);submap(reset)
 no-leader	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	K	Kanban Plans	-	exec_cmd(~/.config/hypr/scripts/plans-open.sh);submap(reset)
@@ -271,9 +273,9 @@ no-leader	Applications	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	Super_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	Super_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	T	Torrent	-	exec_cmd(deluge);submap(reset)
-no-leader	Applications	V	Vector (Inkscape)	-	exec_cmd(inkscape);submap(reset)
-no-leader	Applications	W	LibreOffice Writer	-	exec_cmd(libreoffice --writer);submap(reset)
-no-leader	Applications	X	LibreOffice Calc	-	exec_cmd(libreoffice --calc);submap(reset)
+no-leader	Applications	V	Vector (VectorCraft)	-	exec_cmd(vectorcraft);submap(reset)
+no-leader	Applications	W	Writer (WordCraft)	-	exec_cmd(wordcraft);submap(reset)
+no-leader	Applications	X	Sheets (GridCraft)	-	exec_cmd(gridcraft);submap(reset)
 no-leader	Applications	catchall	-	ignore_mods=true,release=true	submap(reset)
 no-leader	Applications	mouse:272	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	Applications	mouse:273	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
