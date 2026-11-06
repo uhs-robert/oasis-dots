@@ -374,6 +374,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `F` | press | Applications | Firefox | `apps.open` |
 | `G` | press | Applications | Gimp | `apps.open` |
 | `I` | press | Applications | Inkscape | `apps.open` |
+| `K` | press | Applications | Kanban Plans | `plans.board` |
 | `M` | press | Applications | Mail | `apps.focus` |
 | `P` | press | Applications | ProtonPlus | `apps.focus` |
 | `Q` | press | Applications | QuteBrowser | `apps.open` |

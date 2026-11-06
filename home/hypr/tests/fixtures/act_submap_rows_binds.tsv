@@ -6,6 +6,7 @@
 # Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
 # Leader SHIFT + T for the Firefox tabs picker (it was Go SHIFT + B).
 # Leader T for the Firefox tabs picker, Leader SHIFT + S for the tray, and the tray labelled System Tray.
+# Applications K for the plans board (Kanban Plans).
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
 default	Applications	Alt_R	-	ignore_mods=true,transparent=true	no_op
@@ -21,6 +22,7 @@ default	Applications	G	Gimp	-	exec_cmd(gimp);submap(reset)
 default	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
 default	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 default	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
+default	Applications	K	Kanban Plans	-	exec_cmd(~/.config/hypr/scripts/plans-open.sh);submap(reset)
 default	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
 default	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 default	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)
@@ -253,6 +255,7 @@ no-leader	Applications	G	Gimp	-	exec_cmd(gimp);submap(reset)
 no-leader	Applications	I	Inkscape	-	exec_cmd(inkscape);submap(reset)
 no-leader	Applications	ISO_Level3_Shift	-	ignore_mods=true,transparent=true	no_op
 no-leader	Applications	ISO_Level5_Shift	-	ignore_mods=true,transparent=true	no_op
+no-leader	Applications	K	Kanban Plans	-	exec_cmd(~/.config/hypr/scripts/plans-open.sh);submap(reset)
 no-leader	Applications	M	Mail	-	exec_cmd(betterbird);submap(reset)
 no-leader	Applications	P	ProtonPlus	-	exec_cmd(protonplus);submap(reset)
 no-leader	Applications	Q	QuteBrowser	-	exec_cmd(qutebrowser);submap(reset)

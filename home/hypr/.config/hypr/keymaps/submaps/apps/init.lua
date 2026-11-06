@@ -31,6 +31,7 @@ Submap.define({
     { "F",         open_app("firefox"),                   "Firefox" },
     { "G",         open_app("gimp"),                      "Gimp" },
     { "I",         open_app("inkscape"),                  "Inkscape" },
+    { "K",         "plans.board" },
     { "M",         focus_app("betterbird"),               "Mail" },
     { "P",         focus_app("protonplus"),               "ProtonPlus" },
     { "Q",         open_app("qutebrowser"),               "QuteBrowser" },
