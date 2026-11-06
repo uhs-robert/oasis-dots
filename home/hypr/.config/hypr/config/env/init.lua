@@ -21,22 +21,46 @@ local function exists(path)
   return true
 end
 
---- The bin dir of npm's global prefix: $NPM_CONFIG_PREFIX, else the last prefix= line of ~/.npmrc. Nil without
---- either, since npm's default prefix (/usr) is already on PATH.
+--- An .npmrc value as npm's ini parser reads it: surrounding quotes removed, else cut at a ; or # comment.
+--- @param raw string
+--- @return string
+local function npmrc_value(raw)
+  local quoted = raw:match('^"(.*)"$') or raw:match("^'(.*)'$")
+  if quoted then return quoted end
+  return (raw:gsub("%s*[;#].*$", ""))
+end
+
+--- Expands ${VAR} and a leading ~ as npm does. Nil when a variable is unset, where npm refuses the config too.
+--- @param value string
+--- @return string|nil
+local function npm_expand(value)
+  local unset = false
+  value = value:gsub("%${([%w_]+)}", function(name)
+    local got = os.getenv(name)
+    if not got then unset = true end
+    return got or ""
+  end)
+  if unset then return nil end
+  return (value:gsub("^~/", HOME .. "/"))
+end
+
+--- The bin dir of npm's global prefix: $NPM_CONFIG_PREFIX (either case), else the last prefix= line of ~/.npmrc.
+--- Nil without either, since npm's default prefix (/usr) is already on PATH.
 --- @return string|nil
 local function npm_global_bin()
-  local prefix = os.getenv("NPM_CONFIG_PREFIX")
+  local prefix = os.getenv("npm_config_prefix") or os.getenv("NPM_CONFIG_PREFIX")
   if not prefix or prefix == "" then
     local npmrc = io.open(HOME .. "/.npmrc", "r")
     if not npmrc then return nil end
     for line in npmrc:lines() do
-      local value = line:match("^%s*prefix%s*=%s*(.-)%s*$")
-      if value then prefix = value end
+      local raw = line:match("^%s*prefix%s*=%s*(.-)%s*$")
+      if raw then prefix = npmrc_value(raw) end
     end
     npmrc:close()
   end
   if not prefix or prefix == "" then return nil end
-  prefix = prefix:gsub("^~", HOME):gsub("%${HOME}", HOME)
+  prefix = npm_expand(prefix)
+  if not prefix or prefix == "" then return nil end
   return prefix .. "/bin"
 end
 
