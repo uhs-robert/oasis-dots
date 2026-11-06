@@ -30,7 +30,12 @@ s.settimeout(1)
 while time.time()<end:
     try: c,_=s.accept()
     except OSError: continue
-    d=c.recv(2048); ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
+    d=b""
+    while b"\r\n\r\n" not in d:
+        m=c.recv(2048)
+        if not m: break
+        d+=m
+    ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
     c.sendall(b"HTTP/1.0 "+(sys.argv[1] if ok else "403 Forbidden").encode()+b"\r\n\r\n<title>plans</title>"); c.close()' "${REPLY_STATUS:-200 OK}" >/dev/null 2>&1 &
   echo $! >"$WORK/started.pid"
 fi
@@ -80,7 +85,12 @@ s.settimeout(1)
 while time.time()<end:
     try: c,_=s.accept()
     except OSError: continue
-    d=c.recv(2048); ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
+    d=b""
+    while b"\r\n\r\n" not in d:
+        m=c.recv(2048)
+        if not m: break
+        d+=m
+    ok=b"\r\nHost: 127.0.0.1:"+str(PORT).encode()+b"\r\n" in d
     c.sendall(b"HTTP/1.0 "+(sys.argv[1] if ok else "403 Forbidden").encode()+b"\r\n\r\n<title>plans</title>"); c.close()' "$1" >/dev/null 2>&1 &
   listener=$!
   sleep 0.5

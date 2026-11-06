@@ -10,7 +10,9 @@ url=http://127.0.0.1:$port
 # the board. The server answers 403 to a request without a local Host header, so the probe sends one.
 port_open() (
   exec 3<>"/dev/tcp/127.0.0.1/$port" 2>/dev/null || exit 1
-  printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1:%s\r\n\r\n' "$port" >&3
+  # One write: the server may read the request in a single recv.
+  request=$(printf 'GET / HTTP/1.0\r\nHost: 127.0.0.1:%s\r\n\r\n.' "$port")
+  printf '%s' "${request%.}" >&3
   response=$(timeout 1 cat <&3)
   [[ $response == "HTTP/1."*" 200 "* && $response == *"<title>plans</title>"* ]]
 )
