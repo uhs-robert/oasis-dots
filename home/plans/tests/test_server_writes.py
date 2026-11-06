@@ -112,6 +112,14 @@ class WriteHeaderTest(WriteTest):
         self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id", "owner_session_pid")], ["other-2", "", ""])
 
 
+    def test_an_owner_edit_adds_no_empty_value_keys(self):
+        path = self.add("demo", 10)
+        self.fixture.start()
+        status, _ = self.post("update", {"path": path, "basis": {"owner_session": "none"}, "changes": {"owner_session": "me-1"}})
+        self.assertEqual(status, 200)
+        self.assertNotIn("owner_session_id", parse.load(path).keys)
+
+
 class ConflictTest(WriteTest):
     def test_an_agent_edit_after_the_page_read_refuses_the_write(self):
         path = self.add("demo", 10)

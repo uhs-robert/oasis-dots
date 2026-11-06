@@ -272,7 +272,7 @@ class CliTest(unittest.TestCase):
     def test_another_session_of_the_same_name_is_refused(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", 100)
         before = self.read(path)
-        for args in (("claim", "demo"), ("handoff", "--to", "next-2", "demo"), ("set", "demo", "status=building")):
+        for args in (("claim", "demo"), ("handoff", "--to", "next-2", "demo")):
             with self.subTest(args=args):
                 stderr = self.plans(*args, "--as", "me-1", env=SESSION_B, code=1).stderr
                 self.assertIn("demo is owned by another session also named me-1", stderr)
@@ -287,9 +287,31 @@ class CliTest(unittest.TestCase):
         self.plans("claim", "demo", "--as", "me-1", env=cleared)
         self.assertEqual(self.proof(path), ("id-new", 100))
         resumed = {"CLAUDE_CODE_SESSION_ID": "id-new", "CLAUDE_PID": "300"}
-        self.plans("set", "demo", "status=building", "--as", "me-1", env=resumed)
+        self.plans("set", "demo", "status=building", env=resumed)
         self.assertEqual(self.proof(path), ("id-new", 300))
         self.assertEqual(self.plans("next", "--as", "me-1", env=resumed).stdout, "work\tdemo\tbuilding\n")
+
+    def test_a_plain_set_keeps_the_values_current_across_a_clear_and_a_resume(self):
+        path = self.add("demo", 10)
+        self.plans("claim", "demo", "--as", "me-1", env=SESSION_A)
+        cleared = {"CLAUDE_CODE_SESSION_ID": "id-new", "CLAUDE_PID": "100"}
+        self.plans("set", "demo", "status=building", env=cleared)
+        self.assertEqual(self.proof(path), ("id-new", 100))
+        resumed = {"CLAUDE_CODE_SESSION_ID": "id-new", "CLAUDE_PID": "300"}
+        self.assertEqual(self.plans("next", "--as", "me-1", env=resumed).stdout, "work\tdemo\tbuilding\n")
+        self.plans("claim", "demo", "--as", "me-1", env=resumed)
+        # A plain set from another session leaves the values alone, and so does one from a human shell.
+        self.plans("set", "demo", "status=approved", env=SESSION_B)
+        self.plans("set", "demo", "status=building")
+        self.assertEqual(self.proof(path), ("id-new", 300))
+
+    def test_an_owner_change_adds_no_empty_value_keys(self):
+        path = self.add("demo", 10, owner="me-1")
+        self.plans("handoff", "--to", "next-2", "demo", "--as", "me-1")
+        self.plans("set", "demo", "owner_session=other-3")
+        self.plans("claim", "demo", "--as", "me-4", "--force", env={"CLAUDE_CODE_SESSION_ID": "id-d"})
+        self.assertNotIn("owner_session_pid", self.read(path))
+        self.assertEqual(self.proof(path), ("id-d", None))
 
     def test_next_skips_a_doc_another_session_of_the_same_name_owns(self):
         self.add_owned("theirs", 10, "me-1", "id-a", 100)
@@ -300,7 +322,7 @@ class CliTest(unittest.TestCase):
     def test_a_human_shell_matches_by_name_and_keeps_the_values_unless_the_owner_changes(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", 100)
         self.plans("claim", "demo", "--as", "me-1")
-        self.plans("set", "demo", "status=building", "--as", "me-1")
+        self.plans("set", "demo", "status=building")
         self.assertEqual(self.plans("next", "--as", "me-1").stdout, "work\tdemo\tbuilding\n")
         self.assertEqual(self.proof(path), ("id-a", 100))
         # The values belong to the old owner, so a new name drops them.

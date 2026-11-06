@@ -80,8 +80,6 @@ def build_parser():
     set_ = commands.add_parser("set", help="set front matter keys: plans set <id> key=value...")
     set_.add_argument("id")
     set_.add_argument("pairs", nargs="+", metavar="key=value")
-    add_session_option(set_)
-    set_.add_argument("--force", action="store_true", help="set keys on a doc another session of this name owns")
     set_.set_defaults(run=run_set)
 
     claim = commands.add_parser("claim", help="set owner_session to this session")
@@ -147,11 +145,14 @@ def session_of(args, required):
 def caller_of(args, required):
     """The session running the command, with its unique values from the environment, or None when it has no name."""
     name = session_of(args, required)
-    if name is None:
-        return None
+    return None if name is None else unnamed_caller()._replace(name=name)
+
+
+def unnamed_caller():
+    """The values of the session running the command, without a name. `set` takes no --as, so it has only these."""
     raw_pid = os.environ.get(SESSION_PID_ENV, "")
     pid = int(raw_pid) if parse.INTEGER.fullmatch(raw_pid) else None
-    return validate.Caller(name, os.environ.get(SESSION_ID_ENV) or None, pid)
+    return validate.Caller(None, os.environ.get(SESSION_ID_ENV) or None, pid)
 
 
 def warn_unlisted(repo, show_repo):
@@ -268,14 +269,18 @@ def run_show(args):
 
 
 def run_set(args):
-    caller = caller_of(args, required=False)
+    caller = unnamed_caller()
     doc = load_doc(roots.main_checkout(), args.id)
     changes = dict(parse_pair(pair) for pair in args.pairs)
-    # Unlike claim, set may edit a doc another name owns: the orchestrator sets status on its builders' docs.
-    if not args.force:
-        refuse_name_clash(doc, caller, "set")
-    new_owner = changes.get("owner_session", doc.keys.get("owner_session"))
-    store.update(doc, {**changes, **owner_values_beside(doc, caller, new_owner)})
+    if changes.get("owner_session", doc.keys.get("owner_session")) != doc.keys.get("owner_session"):
+        owner_values = validate.owner_value_changes(doc)
+    elif validate.shares_a_value(doc, caller):
+        # The skills write with a plain `set` and claim a doc once. Without this, a `/clear` and then a resume leave
+        # both stored values stale, and the owner is locked out of its own doc.
+        owner_values = validate.owner_value_changes(doc, caller)
+    else:
+        owner_values = {}
+    store.update(doc, {**changes, **owner_values})
 
 
 def parse_pair(pair):
@@ -325,14 +330,14 @@ def refuse_other_owner(doc, caller, force, verb):
         raise Refused(f"{doc.id} is owned by {owner}; {verb} it with --force")
 
 
-def owner_values_beside(doc, caller, new_owner):
-    """The owner_session_id and owner_session_pid to write beside `new_owner`. A caller that is the owner refreshes
-    them, so a `/clear` (new id) or a resume (new pid) heals on its next write. A new name drops the old owner's values.
-    A caller without values (a human shell) keeps them under the same name."""
-    if caller is not None and caller.has_values and new_owner == caller.name:
-        return validate.owner_value_changes(caller)
-    if new_owner != doc.keys.get("owner_session"):
-        return validate.owner_value_changes(None)
+def claim_values(doc, caller):
+    """The owner_session_id and owner_session_pid a claim writes. A caller with values writes its own, so a `/clear`
+    (new id) or a resume (new pid) heals on the next claim. A caller without values (a human shell) keeps them under
+    the same name and drops the old owner's under a new one."""
+    if caller.has_values:
+        return validate.owner_value_changes(doc, caller)
+    if caller.name != doc.keys.get("owner_session"):
+        return validate.owner_value_changes(doc)
     return {}
 
 
@@ -340,7 +345,7 @@ def run_claim(args):
     caller = caller_of(args, required=True)
     doc = load_doc(roots.main_checkout(), args.id)
     refuse_other_owner(doc, caller, args.force, "claim")
-    store.update(doc, {"owner_session": caller.name, **owner_values_beside(doc, caller, caller.name)})
+    store.update(doc, {"owner_session": caller.name, **claim_values(doc, caller)})
 
 
 def run_handoff(args):
@@ -356,7 +361,7 @@ def run_handoff(args):
     for doc in docs:
         try:
             # The sender does not know the receiver's values. The receiver's first claim writes them.
-            store.update(doc, {"owner_session": args.to_session, **validate.owner_value_changes(None)})
+            store.update(doc, {"owner_session": args.to_session, **validate.owner_value_changes(doc)})
         except store.Conflict as error:
             print(f"plans: {error}", file=sys.stderr)
             stale.append(doc.id)
