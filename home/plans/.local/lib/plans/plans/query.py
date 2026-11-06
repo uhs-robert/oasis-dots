@@ -40,9 +40,12 @@ def read_repo(root):
     for path in doc_paths(root):
         try:
             doc = parse.read(path)
-        except FileNotFoundError:
-            # A doc that vanished mid-read is gone, not unreadable: the board reads the repo again.
-            raise
+        except FileNotFoundError as failure:
+            # A doc that vanished mid-read is gone, not unreadable: the board reads the repo again. A dangling symlink
+            # stays missing on every read, so it is unreadable.
+            if not (os.path.islink(path) and not os.path.exists(path)):
+                raise
+            doc = parse.unreadable(path, failure)
         except (OSError, UnicodeDecodeError) as failure:
             # One bad file must not hide the rest of the repo.
             doc = parse.unreadable(path, failure)

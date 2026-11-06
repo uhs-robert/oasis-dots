@@ -213,6 +213,7 @@ def run_questions(args):
 def run_next(args):
     session = session_of(args, required=False)
     repo = current_repo()
+    warn_unlisted(repo, False)
     steps = query.next_steps(repo.docs, session, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind},
                              skip=set(args.skip), all=args.all)
     if args.json:

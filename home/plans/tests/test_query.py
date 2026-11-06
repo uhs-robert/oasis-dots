@@ -78,6 +78,26 @@ class ReadRepoTest(unittest.TestCase):
         os.chmod(path, 0)
         self.check_one_unreadable("locked", "Permission denied")
 
+    def test_a_dangling_symlink_is_unreadable_and_the_rest_read(self):
+        path = os.path.join(self.root, ".plans", "proj", "dangling.md")
+        os.symlink(os.path.join(self.root, "missing.md"), path)
+        repo = query.read_repo(self.root)
+        self.assertEqual(ids(repo.docs), ["good-a", "good-b"])
+        self.assertEqual(ids(repo.unreadable), ["dangling"])
+
+    def test_a_doc_that_vanishes_mid_read_still_raises(self):
+        self.write("gone", make("gone", 20).text.encode())
+        real_read = parse.read
+
+        def read(path):
+            if path.endswith("gone.md"):
+                os.unlink(path)
+            return real_read(path)
+
+        with mock.patch.object(parse, "read", read):
+            with self.assertRaises(FileNotFoundError):
+                query.read_repo(self.root)
+
     def test_a_permission_error_is_unreadable_under_a_mock(self):
         """Covers the permission case where the file system or the user ignores mode 000."""
         self.write("locked", make("locked", 20).text.encode())
