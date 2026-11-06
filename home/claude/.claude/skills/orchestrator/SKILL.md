@@ -4,7 +4,6 @@ description: Orchestrate a task from issue to review-ready PR by delegating to s
 argument-hint: "[issue-pr-or-repo]"
 arguments:
   - target
-disable-model-invocation: true
 ---
 
 # Orchestrator

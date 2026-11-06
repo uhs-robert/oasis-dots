@@ -5,6 +5,7 @@
 - Comments follow the `hierarchical-documentation` skill: carry meaning in names first; comment only what a cold reader would wonder about and names can't express (why this approach, a deliberately skipped obvious option, a footgun). Keep comments close to the code they describe. Reasoning about the change itself (what was tried, what broke along the way) goes in the commit message, not the source.
 - Write every commit message with the `commit-messages` skill.
 - Write every PR with the `pr-descriptions` skill and every issue with the `issue-descriptions` skill.
+- Create every plan doc under `.plans/` with `plans new <project> <id> --kind <kind>`, never by hand. The tool writes the front matter that `plans lint` and the board read.
 - Write all prose (replies, commit messages, PRs, issues, docs, comments) by the `plain-writing` skill.
 
 ## How to talk to me
