@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests lib/install/desertfox-freshness against a scratch clone whose upstream is a local bare repo, so nothing touches the network.
 set -u
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 helper="$repo_dir/lib/install/desertfox-freshness"
 scratch=$(mktemp -d) || exit 1
@@ -54,5 +55,12 @@ expect "missing dist" "$(run)" "dist/commands.json is missing"
 new_case
 mv "$scratch/up.git" "$scratch/gone.git"
 expect "offline" "$(run)" "fetch failed, skipped the behind-upstream check"
+
+# A git hook running the recipe exports GIT_DIR for its own repo; the warning must still describe the checkout.
+new_case
+git clone -q "$scratch/up.git" "$scratch/other" 2>/dev/null
+git -C "$scratch/other" commit -q --allow-empty -m two
+git -C "$scratch/other" push -q origin main 2>/dev/null
+expect "inherited GIT_DIR" "$(GIT_DIR="$scratch/other/.git" run)" "behind its upstream"
 
 exit $((failures > 0))

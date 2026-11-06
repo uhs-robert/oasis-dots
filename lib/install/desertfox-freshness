@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Usage: desertfox-freshness <desertfox checkout>
 # Prints warnings, never fails: the desertfox-config recipe runs on regardless.
+# A calling git hook exports these, and they would aim `git -C` at the hook's repo.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 checkout="$1"
 
 # The timeout keeps an offline machine from stalling the recipe.
