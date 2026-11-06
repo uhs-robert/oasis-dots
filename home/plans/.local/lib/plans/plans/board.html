@@ -74,7 +74,7 @@
   <select id="status" title="status"></select>
   <select id="kind" title="kind"></select>
   <label><input id="waiting" type="checkbox"> waiting on owner</label>
-  <span id="keys">j k cards, h l columns, H L status, J K rank, e owner, o open, / filter, r repo</span>
+  <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, e owner, o open, / filter, r repo</span>
 </header>
 <div id="board"></div>
 <div id="message"></div>
@@ -429,11 +429,16 @@ function render() {
 function all_cards() { return [...document.querySelectorAll("#board .card")]; }
 function selected_card() { return all_cards().find((card) => card.dataset.path === selected_path) || null; }
 
-function select_card(path) {
+// edge is "top" or "bottom" to scroll the window fully, past the sticky bars and the repo and lane titles that
+// "nearest" leaves hidden.
+function select_card(path, edge) {
   selected_path = path;
   mark_selected();
   const card = selected_card();
-  if (card) card.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!card) return;
+  if (edge === "top") window.scrollTo({ top: 0 });
+  else if (edge === "bottom") window.scrollTo({ top: document.documentElement.scrollHeight });
+  else card.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
 function mark_selected() {
@@ -449,6 +454,16 @@ function step_in_column(offset) {
   const column = all_cards().filter((other) => column_index(other) === column_index(card));
   const next = column[column.indexOf(card) + offset];
   if (next) select_card(next.dataset.path);
+  else select_card(card.dataset.path, offset < 0 ? "top" : "bottom");
+}
+
+// gg and G pick the first or last card of the current column. With no selection they use the first column that has cards.
+function jump_in_column(last) {
+  const cards = all_cards();
+  const card = selected_card() || cards[0];
+  if (!card) return;
+  const column = cards.filter((other) => column_index(other) === column_index(card));
+  select_card(column[last ? column.length - 1 : 0].dataset.path, last ? "bottom" : "top");
 }
 
 // h and l go to the nearest column that has cards, and there to the card closest in height to the current one.
@@ -701,7 +716,12 @@ function typing_in_field(event) {
   return ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName);
 }
 
+// A first g arms the chord for a moment. Any other key disarms it and then acts as usual, so a lone g swallows nothing.
+const CHORD_MS = 700;
+let g_armed_until = 0;
+
 const KEYS = {
+  G: () => jump_in_column(true),
   j: () => step_in_column(1),
   k: () => step_in_column(-1),
   h: () => step_column(-1),
@@ -728,6 +748,14 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (typing_in_field(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+  const chord_armed = Date.now() < g_armed_until;
+  g_armed_until = 0;
+  if (event.key === "g") {
+    event.preventDefault();
+    if (chord_armed) jump_in_column(false);
+    else g_armed_until = Date.now() + CHORD_MS;
+    return;
+  }
   const action = KEYS[event.key];
   if (!action) return;
   event.preventDefault();
