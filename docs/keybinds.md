@@ -221,7 +221,7 @@ Everything in `custom/` except its README is gitignored, so updates never touch 
 
 ## Every shipped bind
 
-The table below lists every bind the shipped keymaps register, with the default leader (`SUPER`) and no machine settings. Binds from `custom/` and per-machine settings are not reflected. It is generated: run `just docs-gen` after changing a keymap, and the `docs-generated` check fails while it is stale.
+The table below lists every bind the shipped keymaps register, with the default leader (`SUPER`) and no machine settings. Binds from `custom/` and per-machine settings are not reflected. It is generated: run `just docs-gen` after changing a keymap, and the `docs-generated` check fails while it is stale. After `just git-hooks`, every commit rebuilds and stages it for you.
 
 The table is read with no monitors connected. The `Go` submap gains one row per connected monitor (keys `1`, `2`, and so on, in monitor order) that is not listed. An empty Id means the bind runs no registered action (a mouse bind, a catch-all, a leader key, an `XF86` key). The same key can appear twice in a submap: `On` tells a press from a release. The no-op binds on `SLASH`, `Shift_L` and `Shift_R` that keep the which-key chord from ending a submap are not listed.
 

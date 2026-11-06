@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Rebuilds the generated doc tables (`just docs-gen`) and stages them, so a keymap or IPC change never lands with a
+# stale table. `just git-hooks` installs it. Skip it once with `git commit --no-verify`.
+set -u
+
+repo=$(git rev-parse --show-toplevel) || exit 1
+cd "$repo" || exit 1
+[[ -d lib/docs ]] || exit 0
+if ! command -v python3 >/dev/null || ! command -v lua >/dev/null; then
+  echo "pre-commit: python3 or lua missing, skipped the doc tables" >&2
+  exit 0
+fi
+
+generated=(docs/keybinds.md home/quickshell/.config/quickshell/README.md)
+# The generators read the working tree, not the index. A table rebuilt beside unstaged source edits would describe
+# code this commit leaves out, so in that case the hook only reports.
+sources=(home/hypr home/quickshell lib/docs)
+
+regenerate() {
+  python3 -B lib/docs/gen-keybinds "$1" >/dev/null && python3 -B lib/docs/gen-ipc "$1" >/dev/null
+}
+
+if ! git diff --quiet -- "${generated[@]}" || ! git diff --quiet -- "${sources[@]}"; then
+  regenerate --check && exit 0
+  echo "pre-commit: the doc tables are stale, and the tables or their sources have unstaged edits." >&2
+  echo "pre-commit: run \`just docs-gen\`, stage what belongs in this commit, or commit with --no-verify." >&2
+  exit 1
+fi
+
+regenerate --write || exit 1
+git diff --quiet -- "${generated[@]}" && exit 0
+git add -- "${generated[@]}"
+echo "pre-commit: regenerated and staged the doc tables" >&2
