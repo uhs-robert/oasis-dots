@@ -47,12 +47,13 @@ local OPENED_APPS = {
   deluge = "deluge",
   discord = "discord",
   firefox = "firefox",
-  gimp = "gimp",
-  inkscape = "inkscape",
-  libreoffice_calc = "libreoffice --calc",
-  libreoffice_writer = "libreoffice --writer",
+  gridcraft = "gridcraft",
+  photocraft = "photocraft",
   qalculate = "qalculate-gtk",
   qutebrowser = "qutebrowser",
+  soundcraft = "soundcraft",
+  vectorcraft = "vectorcraft",
+  wordcraft = "wordcraft",
 }
 
 Act.define("apps.open", {
