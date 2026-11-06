@@ -100,6 +100,18 @@ class WriteHeaderTest(WriteTest):
         self.assertEqual(self.key(path, "owner_session"), "none")
 
 
+    def test_an_owner_edit_clears_the_session_values(self):
+        path = self.add("demo", 10, owner="me-1")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("updated:", "owner_session_id: id-a\nowner_session_pid: 100\nupdated:"))
+        self.fixture.start()
+        status, _ = self.post("update", {"path": path, "basis": {"owner_session": "me-1"}, "changes": {"owner_session": "other-2"}})
+        self.assertEqual(status, 200)
+        self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id", "owner_session_pid")], ["other-2", "", ""])
+
+
 class ConflictTest(WriteTest):
     def test_an_agent_edit_after_the_page_read_refuses_the_write(self):
         path = self.add("demo", 10)

@@ -9,7 +9,7 @@ from unittest import mock
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".local", "lib", "plans"))
-from plans import parse, query  # noqa: E402
+from plans import parse, query, validate  # noqa: E402
 
 
 def make(doc_id, rank, status="planned", owner="none", waiting_on='""', depends_on="[]", project="proj", questions=""):
@@ -134,6 +134,26 @@ class NextTest(unittest.TestCase):
         docs = [make("theirs", 10, owner="other-1"), make("mine", 20, owner="me-1"), make("free", 30)]
         self.assertEqual(lines(query.next_steps(docs, "me-1")), [("work", "mine", "planned")])
         self.assertEqual(lines(query.next_steps(docs, None)), [("work", "free", "planned")])
+
+    def test_skips_a_doc_another_session_of_the_same_name_owns(self):
+        def owned(session_id, pid):
+            doc = make("owned", 10, owner="me-1")
+            return parse.Doc(doc.path, doc.text.replace("---\n#", f"owner_session_id: {session_id}\nowner_session_pid: {pid}\n---\n#"))
+
+        def next_ids(doc, caller):
+            return [step.doc.id for step in query.next_steps([doc, make("free", 20)], caller)]
+
+        clash = owned("id-a", 100)
+        self.assertEqual(next_ids(clash, validate.Caller("me-1", "id-b", 200)), ["free"])
+        # After a `/clear` (same pid) or a resume (same id) the owner still matches.
+        self.assertEqual(next_ids(clash, validate.Caller("me-1", "id-new", 100)), ["owned"])
+        self.assertEqual(next_ids(clash, validate.Caller("me-1", "id-a", 300)), ["owned"])
+        # A human shell has no values and matches by name.
+        self.assertEqual(next_ids(clash, validate.Caller("me-1")), ["owned"])
+        self.assertEqual(next_ids(clash, "me-1"), ["owned"])
+        # One empty value proves nothing, so it is no clash.
+        self.assertEqual(next_ids(owned("id-a", '""'), validate.Caller("me-1", "id-b", 200)), ["owned"])
+        self.assertEqual(next_ids(owned('""', 100), validate.Caller("me-1", "id-b", 200)), ["owned"])
 
     def test_finished_dependencies(self):
         docs = [make("needs", 10, depends_on="[done-dep, gone-dep]"), make("done-dep", 50, status="done")]

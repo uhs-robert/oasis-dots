@@ -14,7 +14,7 @@ plans next [--as S] [--skip ID]... [--all] [--json]   # ask lines, blocked lines
 plans waiting [--all] [--json]        # docs with a non-empty waiting_on
 plans questions [--all] [--json]      # the unchecked "- [ ]" items under Open questions
 plans show <id> [--section NAME] [--json]
-plans set <id> key=value...           # e.g. plans set demo status=building depends_on=a,b
+plans set <id> key=value... [--as S] [--force]   # e.g. plans set demo status=building depends_on=a,b
 plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
 plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default
@@ -28,9 +28,11 @@ On `ls`, `waiting`, `questions` and `lint`, `--all` reads every repo under the d
 
 `--as` names the session, for example `dotfiles-56`. `$PLANS_SESSION` is the fallback. `claim` and `handoff` need one of the two.
 
+Two live sessions can get the same name, so a doc also records the owner's `$CLAUDE_CODE_SESSION_ID` and `$CLAUDE_PID` in `owner_session_id` and `owner_session_pid`. A session with the owner's name owns the doc when either value matches its own. The id changes on `/clear` and the pid on `--resume`. When both stored values differ, another session holds the name: `claim`, `handoff` and `set --as` refuse the doc, and `next` skips it. Each write by the owner refreshes both values. A shell without the two variables matches by name only and leaves the values as they are.
+
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. On `next`, `--all` does not scan other repos. It stays in the current repo and prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
-- `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. `handoff` checks every listed doc before it writes any of them.
-- `set` refuses `id`, `project` and `updated`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
+- `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that and writes the caller's values. `handoff` checks every listed doc before it writes any of them. It clears both values, and the receiver's first `claim` writes its own.
+- `set` refuses `id`, `project`, `updated`, `owner_session_id` and `owner_session_pid`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
 - `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
 - `lint` checks every rule below and prints `path:line: rule: message`. `lint --gh` also asks GitHub, through the `gh` CLI, for a merged or closed `pr`, a closed `issue` and a `branch` the remote no longer has.
 - `ls` and `lint` name each old layout and say "migrate this repo". The old layouts are `.planning/roadmap.md`, `.plans/roadmap.md`, `.plans/projects/` and root `.md` files that `info/exclude` hides. A doc with the old `kind: plan`, `tracker` or `handoff` counts too, and `ls` skips it.
@@ -110,6 +112,7 @@ updated: "2026-11-05"
 | `kind` | feature, bug, refactor, docs, chore, research or design |
 | `status` | idea, planned, approved, building, review, blocked, parked or done |
 | `owner_session` | a session name, or `none` (an empty or missing value counts as `none`, and lint flags it) |
+| `owner_session_id`, `owner_session_pid` | the owner's session id and pid, `""` when unknown; optional, and a new owner name clears them |
 | `rank` | one order per repo, lowest first, in steps of 10 |
 | `depends_on` | the ids that must be finished first |
 | `waiting_on` | what the doc waits on the owner for, else `""` |

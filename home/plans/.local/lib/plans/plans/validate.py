@@ -16,6 +16,11 @@ OLD_KINDS = ("plan", "tracker", "handoff")
 STATUSES = ("idea", "planned", "approved", "building", "review", "blocked", "parked", "done")
 SESSION = re.compile(r"[a-z0-9][a-z0-9.]*(-[a-z0-9.]+)*-[a-z0-9]+")
 NO_SESSION = "none"
+# Two sessions can share a derived name, so a doc also records the owner's unique values. The id changes on `/clear`
+# and the pid changes on `--resume`, so the owner matches when either one does. A doc may leave both out.
+OWNER_SESSION_ID = "owner_session_id"
+OWNER_SESSION_PID = "owner_session_pid"
+OWNER_VALUE_KEYS = (OWNER_SESSION_ID, OWNER_SESSION_PID)
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 CHECKLIST_ITEM = re.compile(r"- \[[ xX]\] .*")
 # The keys whose value a write must take from a closed set.
@@ -69,6 +74,10 @@ def key_findings(doc):
             flag(key, key.replace("_", "-"), f"{key} {keys[key]!r} is no integer")
     if "owner_session" in keys and not is_session_or_none(keys["owner_session"]):
         flag("owner_session", "owner-session", f"owner_session {keys['owner_session']!r} is no session name (like dotfiles-56) or none")
+    if OWNER_SESSION_ID in keys and not isinstance(keys[OWNER_SESSION_ID], str):
+        flag(OWNER_SESSION_ID, "owner-session-id", f'{OWNER_SESSION_ID} must be a string, "" when unknown')
+    if OWNER_SESSION_PID in keys and keys[OWNER_SESSION_PID] != "" and not isinstance(keys[OWNER_SESSION_PID], int):
+        flag(OWNER_SESSION_PID, "owner-session-pid", f'{OWNER_SESSION_PID} must be a whole number, "" when unknown')
     if "waiting_on" in keys and not isinstance(keys["waiting_on"], str):
         flag("waiting_on", "waiting-on", 'waiting_on must be a string, "" when the doc waits on nothing')
     for key in parse.LIST_KEYS:
@@ -81,6 +90,42 @@ def owner_of(doc):
     """The session that owns the doc, or None. An empty or missing owner_session counts as none, and lint flags it."""
     owner = doc.keys.get("owner_session")
     return None if owner in (None, "", NO_SESSION) else owner
+
+
+class Caller(NamedTuple):
+    """Who runs a command: the session name, and the unique values Claude Code gives the session, None when unset."""
+    name: str
+    session_id: str = None
+    pid: int = None
+
+    @property
+    def has_values(self):
+        return self.session_id is not None or self.pid is not None
+
+
+def stored_owner_values(doc):
+    """The doc's owner_session_id and owner_session_pid, None for a missing or empty value."""
+    return tuple(None if doc.keys.get(key) in (None, "") else doc.keys[key] for key in OWNER_VALUE_KEYS)
+
+
+def is_name_clash(doc, caller):
+    """True when the caller has the owner's name but is another session. It takes both stored values to differ: one
+    empty value proves nothing, and a caller without values (a human shell) matches by name, as before the values."""
+    if caller is None or not caller.has_values or owner_of(doc) != caller.name:
+        return False
+    stored_id, stored_pid = stored_owner_values(doc)
+    return stored_id is not None and stored_pid is not None and stored_id != caller.session_id and stored_pid != caller.pid
+
+
+def is_owned_by(doc, caller):
+    return caller is not None and owner_of(doc) == caller.name and not is_name_clash(doc, caller)
+
+
+def owner_value_changes(caller=None):
+    """The owner_session_id and owner_session_pid write for `caller`, or the write that clears both."""
+    session_id = caller.session_id if caller else None
+    pid = caller.pid if caller else None
+    return {OWNER_SESSION_ID: session_id or "", OWNER_SESSION_PID: "" if pid is None else pid}
 
 
 def is_session_or_none(value):

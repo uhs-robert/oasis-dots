@@ -48,13 +48,19 @@ def doc_text(doc_id, rank, project="proj", status="planned", owner="none", waiti
             f"branch: {branch}\nupdated: \"2026-11-01\"\n---\n# {doc_id}\n" + SECTIONS.format(questions=questions))
 
 
+# Two live sessions that Claude Code gave the same name.
+SESSION_A = {"CLAUDE_CODE_SESSION_ID": "id-a", "CLAUDE_PID": "100"}
+SESSION_B = {"CLAUDE_CODE_SESSION_ID": "id-b", "CLAUDE_PID": "200"}
+
+
 class CliTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.home = os.path.join(self.temp.name, "home")
         self.repo = self.make_repo(os.path.join(self.temp.name, "repo"))
         self.env = {**os.environ, "HOME": self.home, "XDG_CONFIG_HOME": os.path.join(self.home, ".config")}
-        self.env.pop("PLANS_SESSION", None)
+        for name in ("PLANS_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID"):
+            self.env.pop(name, None)
         self.env.pop("GITHUB_DIR", None)
 
     def tearDown(self):
@@ -244,6 +250,98 @@ class CliTest(unittest.TestCase):
         self.assertEqual([parse.load(p).keys["owner_session"] for p in (mine, free)], ["next-2", "next-2"])
         self.plans("handoff", "--to", "next-2", "theirs", "--as", "me-1", "--force")
         self.assertEqual(parse.load(theirs).keys["owner_session"], "next-2")
+
+    def add_owned(self, doc_id, rank, owner, session_id, pid):
+        path = self.add(doc_id, rank, owner=owner)
+        self.write(path, self.read(path).replace("updated:", f"owner_session_id: {session_id}\nowner_session_pid: {pid}\nupdated:"))
+        return path
+
+    def proof(self, path):
+        keys = parse.load(path).keys
+        return keys.get("owner_session_id"), keys.get("owner_session_pid")
+
+    def test_claim_writes_the_session_values(self):
+        free, named = self.add("free", 10), self.add("named", 20, owner="me-1")
+        self.plans("claim", "free", "--as", "me-1", env=SESSION_A)
+        self.assertEqual(self.proof(free), ("id-a", 100))
+        # A doc from before the values matches by name, and the claim adds them.
+        self.plans("claim", "named", "--as", "me-1", env=SESSION_A)
+        self.assertEqual(self.proof(named), ("id-a", 100))
+        self.assertEqual(self.plans("lint").stdout, "")
+
+    def test_another_session_of_the_same_name_is_refused(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", 100)
+        before = self.read(path)
+        for args in (("claim", "demo"), ("handoff", "--to", "next-2", "demo"), ("set", "demo", "status=building")):
+            with self.subTest(args=args):
+                stderr = self.plans(*args, "--as", "me-1", env=SESSION_B, code=1).stderr
+                self.assertIn("demo is owned by another session also named me-1", stderr)
+                self.assertIn("with --force", stderr)
+        self.assertEqual(self.read(path), before)
+        self.plans("claim", "demo", "--as", "me-1", "--force", env=SESSION_B)
+        self.assertEqual(self.proof(path), ("id-b", 200))
+
+    def test_a_clear_or_a_resume_still_matches_and_refreshes_the_values(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", 100)
+        cleared = {"CLAUDE_CODE_SESSION_ID": "id-new", "CLAUDE_PID": "100"}
+        self.plans("claim", "demo", "--as", "me-1", env=cleared)
+        self.assertEqual(self.proof(path), ("id-new", 100))
+        resumed = {"CLAUDE_CODE_SESSION_ID": "id-new", "CLAUDE_PID": "300"}
+        self.plans("set", "demo", "status=building", "--as", "me-1", env=resumed)
+        self.assertEqual(self.proof(path), ("id-new", 300))
+        self.assertEqual(self.plans("next", "--as", "me-1", env=resumed).stdout, "work\tdemo\tbuilding\n")
+
+    def test_next_skips_a_doc_another_session_of_the_same_name_owns(self):
+        self.add_owned("theirs", 10, "me-1", "id-a", 100)
+        self.add("free", 20)
+        self.assertEqual(self.plans("next", "--as", "me-1", env=SESSION_B).stdout, "work\tfree\tplanned\n")
+        self.assertEqual(self.plans("next", "--as", "me-1", env=SESSION_A).stdout, "work\ttheirs\tplanned\n")
+
+    def test_a_human_shell_matches_by_name_and_keeps_the_values_unless_the_owner_changes(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", 100)
+        self.plans("claim", "demo", "--as", "me-1")
+        self.plans("set", "demo", "status=building", "--as", "me-1")
+        self.assertEqual(self.plans("next", "--as", "me-1").stdout, "work\tdemo\tbuilding\n")
+        self.assertEqual(self.proof(path), ("id-a", 100))
+        # The values belong to the old owner, so a new name drops them.
+        self.plans("set", "demo", "owner_session=other-2")
+        self.assertEqual(self.proof(path), ("", ""))
+
+    def test_handoff_clears_the_values_and_the_receiver_claim_writes_its_own(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", 100)
+        self.plans("handoff", "--to", "next-2", "demo", "--as", "me-1", env=SESSION_A)
+        self.assertEqual(parse.load(path).keys["owner_session"], "next-2")
+        self.assertEqual(self.proof(path), ("", ""))
+        self.plans("claim", "demo", "--as", "next-2", env=SESSION_B)
+        self.assertEqual(self.proof(path), ("id-b", 200))
+
+    def test_the_session_values_are_not_settable(self):
+        path = self.add("demo", 10)
+        for pair in ("owner_session_id=x", "owner_session_pid=1"):
+            with self.subTest(pair=pair):
+                self.assertIn("cannot be set", self.plans("set", "demo", pair, code=2).stderr)
+        self.assertNotIn("owner_session_id", self.read(path))
+
+    def test_a_claim_after_a_stale_read_of_the_values_leaves_the_file(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", 100)
+        real_load = cli.load_doc
+        raced = []
+
+        def load_then_race(root, doc_id):
+            doc = real_load(root, doc_id)
+            # The owner refreshes its values between this read and the write.
+            self.write(".plans/proj/demo.md", self.read(path).replace("owner_session_id: id-a", "owner_session_id: id-c"))
+            raced.append(self.read(path))
+            return doc
+
+        with mock.patch.object(cli, "load_doc", load_then_race), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo), \
+                mock.patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "id-a", "CLAUDE_PID": "300"}):
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                code = cli.main(["claim", "demo", "--as", "me-1"])
+        self.assertEqual(code, 3)
+        self.assertIn("changed since it was read: owner_session_id", stderr.getvalue())
+        self.assertEqual(self.read(path), raced[0])
 
     def test_new(self):
         self.add("old", 40)

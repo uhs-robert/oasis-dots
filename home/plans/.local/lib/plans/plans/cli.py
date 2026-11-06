@@ -9,8 +9,12 @@ from . import gh, parse, query, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
-# `set` leaves these alone. The id and the project come from the doc's path, and every write sets `updated` itself.
-UNSETTABLE = ("id", "project", store.UPDATED)
+# Claude Code sets both in every Bash call, subagents included. A human shell has neither.
+SESSION_ID_ENV = "CLAUDE_CODE_SESSION_ID"
+SESSION_PID_ENV = "CLAUDE_PID"
+# `set` leaves these alone. The id and the project come from the doc's path, every write sets `updated` itself, and
+# the owner's values come from the environment.
+UNSETTABLE = ("id", "project", store.UPDATED, *validate.OWNER_VALUE_KEYS)
 NEW_RANK_GAP = 10
 
 
@@ -76,6 +80,8 @@ def build_parser():
     set_ = commands.add_parser("set", help="set front matter keys: plans set <id> key=value...")
     set_.add_argument("id")
     set_.add_argument("pairs", nargs="+", metavar="key=value")
+    add_session_option(set_)
+    set_.add_argument("--force", action="store_true", help="set keys on a doc another session of this name owns")
     set_.set_defaults(run=run_set)
 
     claim = commands.add_parser("claim", help="set owner_session to this session")
@@ -136,6 +142,16 @@ def session_of(args, required):
     if not validate.SESSION.fullmatch(session):
         raise UsageError(f"{session!r} is no session name (like dotfiles-56)")
     return session
+
+
+def caller_of(args, required):
+    """The session running the command, with its unique values from the environment, or None when it has no name."""
+    name = session_of(args, required)
+    if name is None:
+        return None
+    raw_pid = os.environ.get(SESSION_PID_ENV, "")
+    pid = int(raw_pid) if parse.INTEGER.fullmatch(raw_pid) else None
+    return validate.Caller(name, os.environ.get(SESSION_ID_ENV) or None, pid)
 
 
 def warn_unlisted(repo, show_repo):
@@ -211,10 +227,10 @@ def run_questions(args):
 
 
 def run_next(args):
-    session = session_of(args, required=False)
+    caller = caller_of(args, required=False)
     repo = current_repo()
     warn_unlisted(repo, False)
-    steps = query.next_steps(repo.docs, session, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind},
+    steps = query.next_steps(repo.docs, caller, unreadable_ids={doc.id for doc in repo.unreadable + repo.old_kind},
                              skip=set(args.skip), all=args.all)
     if args.json:
         print(json.dumps([{"action": step.action, "id": step.doc.id, "detail": step.detail, "path": step.doc.path} for step in steps], indent=2))
@@ -252,9 +268,14 @@ def run_show(args):
 
 
 def run_set(args):
+    caller = caller_of(args, required=False)
     doc = load_doc(roots.main_checkout(), args.id)
     changes = dict(parse_pair(pair) for pair in args.pairs)
-    store.update(doc, changes)
+    # Unlike claim, set may edit a doc another name owns: the orchestrator sets status on its builders' docs.
+    if not args.force:
+        refuse_name_clash(doc, caller, "set")
+    new_owner = changes.get("owner_session", doc.keys.get("owner_session"))
+    store.update(doc, {**changes, **owner_values_beside(doc, caller, new_owner)})
 
 
 def parse_pair(pair):
@@ -287,32 +308,55 @@ def coerce(key, raw):
     return raw
 
 
-def refuse_other_owner(doc, session, force, verb):
+def refuse_name_clash(doc, caller, verb):
+    if validate.is_name_clash(doc, caller):
+        stored_id, stored_pid = validate.stored_owner_values(doc)
+        raise Refused(f"{doc.id} is owned by another session also named {caller.name} (owner_session_id {stored_id}, "
+                      f"owner_session_pid {stored_pid}; this session is {caller.session_id}, pid {caller.pid}); "
+                      f"{verb} it with --force")
+
+
+def refuse_other_owner(doc, caller, force, verb):
+    if force:
+        return
+    refuse_name_clash(doc, caller, verb)
     owner = validate.owner_of(doc)
-    if not force and owner not in (None, session):
+    if owner not in (None, caller.name):
         raise Refused(f"{doc.id} is owned by {owner}; {verb} it with --force")
 
 
+def owner_values_beside(doc, caller, new_owner):
+    """The owner_session_id and owner_session_pid to write beside `new_owner`. A caller that is the owner refreshes
+    them, so a `/clear` (new id) or a resume (new pid) heals on its next write. A new name drops the old owner's values.
+    A caller without values (a human shell) keeps them under the same name."""
+    if caller is not None and caller.has_values and new_owner == caller.name:
+        return validate.owner_value_changes(caller)
+    if new_owner != doc.keys.get("owner_session"):
+        return validate.owner_value_changes(None)
+    return {}
+
+
 def run_claim(args):
-    session = session_of(args, required=True)
+    caller = caller_of(args, required=True)
     doc = load_doc(roots.main_checkout(), args.id)
-    refuse_other_owner(doc, session, args.force, "claim")
-    store.update(doc, {"owner_session": session})
+    refuse_other_owner(doc, caller, args.force, "claim")
+    store.update(doc, {"owner_session": caller.name, **owner_values_beside(doc, caller, caller.name)})
 
 
 def run_handoff(args):
-    session = session_of(args, required=True)
+    caller = caller_of(args, required=True)
     if not validate.is_session_or_none(args.to_session):
         raise UsageError(f"{args.to_session!r} is no session name (like dotfiles-56) or none")
     root = roots.main_checkout()
     # Every doc is checked before any is written, so a refusal leaves all of them as they were.
     docs = [load_doc(root, doc_id) for doc_id in args.ids]
     for doc in docs:
-        refuse_other_owner(doc, session, args.force, "hand")
+        refuse_other_owner(doc, caller, args.force, "hand")
     stale = []
     for doc in docs:
         try:
-            store.update(doc, {"owner_session": args.to_session})
+            # The sender does not know the receiver's values. The receiver's first claim writes them.
+            store.update(doc, {"owner_session": args.to_session, **validate.owner_value_changes(None)})
         except store.Conflict as error:
             print(f"plans: {error}", file=sys.stderr)
             stale.append(doc.id)

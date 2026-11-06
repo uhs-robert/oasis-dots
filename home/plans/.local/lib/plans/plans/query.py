@@ -116,8 +116,9 @@ class Step(NamedTuple):
     detail: str
 
 
-def next_steps(docs, session=None, unreadable_ids=(), skip=(), all=False):
-    """What to do next, per the `next` rule: walk the active docs by rank and skip those another session owns. Each doc
+def next_steps(docs, caller=None, unreadable_ids=(), skip=(), all=False):
+    """What to do next, per the `next` rule: walk the active docs by rank and skip those another session owns, including
+    one that shares the caller's name (validate.is_name_clash). `caller` is a validate.Caller, a bare name or None. Each doc
     above the first free one gives an `ask` line when it waits on the owner, else a `blocked` line naming its first
     unfinished dependency. A dependency in `unreadable_ids` exists but cannot be read, so it blocks too. The first free
     doc gives the `work` line, and the walk ends there unless `all` is set, which gives a `work` line for every free doc.
@@ -127,7 +128,7 @@ def next_steps(docs, session=None, unreadable_ids=(), skip=(), all=False):
     by_id = {doc.id: doc for doc in docs}
     steps = []
     for doc in sorted(docs, key=rank_order):
-        if doc.id in skip or doc.keys.get("status") not in ACTIVE_STATUSES or owned_by_other(doc, session):
+        if doc.id in skip or doc.keys.get("status") not in ACTIVE_STATUSES or owned_by_other(doc, caller):
             continue
         waiting_on = doc.keys.get("waiting_on")
         if waiting_on:
@@ -143,9 +144,10 @@ def next_steps(docs, session=None, unreadable_ids=(), skip=(), all=False):
     return steps
 
 
-def owned_by_other(doc, session):
-    owner = validate.owner_of(doc)
-    return owner is not None and owner != session
+def owned_by_other(doc, caller):
+    if isinstance(caller, str):
+        caller = validate.Caller(caller)
+    return validate.owner_of(doc) is not None and not validate.is_owned_by(doc, caller)
 
 
 def first_unfinished_dependency(doc, by_id, unreadable_ids=()):
