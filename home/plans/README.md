@@ -90,6 +90,7 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `J` `K` | move the card one place down or up in its cell (its rank) |
 | `e` | edit the owner: a session name or `none` |
 | `o`, Enter | open the doc in `$EDITOR` in a new terminal |
+| double-click a card | the same as `o` (not on the owner badge or a link) |
 | `/` | the id filter; Esc goes back to the board |
 | `r` `R` | the next or previous repo in the switcher |
 
