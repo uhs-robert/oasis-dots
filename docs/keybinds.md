@@ -368,7 +368,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SPACE` | press | Applications | Search Windows | `picker.windows` |
 | `SLASH` | press | Applications | Search Applications | `menu.drun` |
 | `B` | press | Applications | Bottles | `apps.open` |
-| `SHIFT + C` | press | Applications | Calculator | `apps.open` |
+| `C` | press | Applications | Calculator | `apps.open` |
 | `D` | press | Applications | Discord | `apps.open` |
 | `E` | press | Applications | Editor | `terminal.editor` |
 | `F` | press | Applications | Firefox | `apps.open` |

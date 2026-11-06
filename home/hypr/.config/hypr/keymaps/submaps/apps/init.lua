@@ -25,7 +25,7 @@ Submap.define({
     { "SPACE",     "picker.windows" },
     { "SLASH",     "menu.drun",                           "Search Applications" },
     { "B",         open_app("bottles"),                   "Bottles" },
-    { "SHIFT + C", open_app("qalculate"),                 "Calculator" },
+    { "C",         open_app("qalculate"),                 "Calculator" },
     { "D",         open_app("discord"),                   "Discord" },
     { "E",         "terminal.editor" },
     { "F",         open_app("firefox"),                   "Firefox" },
