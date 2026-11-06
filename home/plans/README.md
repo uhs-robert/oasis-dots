@@ -62,7 +62,7 @@ ask	#94	closed: drop it from follow-ups
 
 A `rank` line is an open issue that no doc ranks. A `closed` line names the first doc by rank that still ranks a closed issue. With `--json`, these rows carry `"issue": N`, and `path` is the doc, or null. The check only reports. It never edits a doc.
 
-The repo comes from the `origin` remote, so a repo without a GitHub origin gets no check and no network call. The answers from `gh` are cached in `$XDG_CACHE_HOME/plans/<owner>-<repo>.json` (default `~/.cache`) for 10 minutes, and a ranked number the cache does not know fetches again. Each `gh` call gets 5 seconds. When `gh` is missing or fails, `next` uses the old cache, and without one it prints no issue lines. After a failure, `next` waits a minute before it asks `gh` again, so an offline `next` pays the timeout once. Delete the file to fetch at once.
+The repo comes from the `origin` remote, so a repo without a GitHub origin gets no check and no network call. The answers from `gh` are cached in `$XDG_CACHE_HOME/plans/<owner>/<repo>.json` (default `~/.cache`, readable by you only) for 10 minutes, and a ranked number the cache does not know fetches again. Each `gh` call gets 5 seconds. When `gh` is missing or fails, `next` uses the old cache, and without one it prints no issue lines. After a failure, `next` waits a minute before it asks `gh` again, so an offline `next` pays the timeout once. Delete the file to fetch at once.
 
 ## Serve
 
