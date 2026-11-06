@@ -19,14 +19,14 @@ The `status` key of a plan doc follows this path:
 
 1. `idea`: `plans new <project> <id>` writes the doc. The orchestrator runs it.
 2. `planned`: the plan is drafted and awaits the owner. The interview skill or the orchestrator sets it.
-3. `approved`: the owner approved the plan. The orchestrator sets it.
+3. `approved`: the owner approved the plan. The orchestrator or the interview skill sets it.
 4. `building`: an agent works on it. The orchestrator sets it at dispatch.
 5. `review`: the PR is open. The orchestrator sets it. Reviewers check it, and fix rounds follow (`fix_rounds` counts them, 2 at most without the owner).
-6. `done`: the PR is merged. The ship-batch skill sets it with `plans set <id> status=done`, and the doc is deleted right after.
+6. `done`: no session sets it in practice. After the merge, an agent drops the id from every `depends_on`, then deletes the doc and its `.logs` folder.
 
 A piece can also be `blocked` or `parked`, on the owner's word. While a question waits for the owner, `waiting_on` holds `owner: <question>`, and the orchestrator clears it after the answer.
 
-When the PR merges, the orchestrator deletes the doc and `.logs/<project>/<id>/`. Before that, the PR moves anything lasting into the repo: a decision's reason into a comment or a folder README, a status into a README or an issue. The doc is for active work only. GitHub issues stay the backlog of problems.
+The doc is for active work only, and GitHub issues stay the backlog of problems. Before the doc is deleted, the PR moves anything lasting into the repo. The rule is in the Docs section of [`AGENTS.md`](../AGENTS.md).
 
 `.logs/<project>/<id>/` holds the evidence of a piece: check output, review notes and PR bodies. Agent reports stay short and point to files there.
 
@@ -68,7 +68,6 @@ These choices from the design stay in force:
 - The `plans` CLI is Python 3 with the standard library only. It is a small library plus a thin command layer, and the board reuses the library.
 - `plans lint` stays offline. `plans lint --gh` also asks GitHub, for example for a merged PR whose doc remains.
 - The file `~/.config/plans/roots` lists the repo roots to scan, so `--all` works across repos.
-- A lesson goes to one place: a hook if the rule can be enforced, else the `AGENTS.md` of the repo, else `~/.claude/CLAUDE.md` for global rules, else the README of the folder where it matters.
 - `guard-git-stash.sh` blocks `git stash` for subagents. All worktrees of a repo share one stash stack, and a subagent once dropped the stash of another worktree. The hook message names the safe options: `git show <commit>:<path>` to test old code, a commit before a merge, and a temporary worktree for throwaway work.
 
 ## Code

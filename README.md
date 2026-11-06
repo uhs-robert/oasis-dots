@@ -342,7 +342,7 @@ The optional `calendar` package ships `calendar-sync`, which copies your Google 
 
 ## 🤖 Agent Workflow
 
-Claude sessions plan and ship work through plan docs, which the `plans` command edits and a local web board shows. Stow the `plans` package, then run `systemctl --user enable --now plans-serve` and open http://127.0.0.1:8765 for the board. See [docs/agent-workflow.md](docs/agent-workflow.md) and [home/plans/README.md](home/plans/README.md).
+Claude sessions plan and ship work through plan docs, which the `plans` command edits and a local web board shows. Run `systemctl --user enable --now plans-serve` and open http://127.0.0.1:8765 for the board. See [docs/agent-workflow.md](docs/agent-workflow.md) and [home/plans/README.md](home/plans/README.md).
 
 ## 🛠️ Justfile
 
