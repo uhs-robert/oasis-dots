@@ -149,7 +149,8 @@ class Board:
     def as_json(self):
         with self.changed:
             version, views = self.version, list(self.views.values())
-        labels = repo_labels([view.root for view in views])
+        labels = repo_labels(views)
+        views.sort(key=lambda view: (labels[view.root].casefold(), view.root))
         return {
             "version": version,
             "statuses": validate.STATUSES,
@@ -184,13 +185,16 @@ def first_undecodable_doc(root):
     return None
 
 
-def repo_labels(repo_roots):
-    """The folder name of each repo, with its parent folder in front when two repos share the name."""
-    names = [os.path.basename(root) for root in repo_roots]
+def repo_labels(views):
+    """The GitHub owner/name of each repo. Without one it is the folder name, with its parent in front on a clash."""
+    names = [os.path.basename(view.root) for view in views]
     labels = {}
-    for root, name in zip(repo_roots, names):
-        shared = names.count(name) > 1
-        labels[root] = f"{os.path.basename(os.path.dirname(root))}/{name}" if shared else name
+    for view, name in zip(views, names):
+        if view.web_url:
+            labels[view.root] = view.web_url.removeprefix("https://github.com/")
+        else:
+            shared = names.count(name) > 1
+            labels[view.root] = f"{os.path.basename(os.path.dirname(view.root))}/{name}" if shared else name
     return labels
 
 

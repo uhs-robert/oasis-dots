@@ -154,10 +154,23 @@ class BoardJsonTest(unittest.TestCase):
         self.assertEqual(web["docs"][1]["pr"], 12)
         self.assertEqual(web["web_url"], "https://github.com/someone/web")
 
-    def test_repos_with_one_folder_name_show_the_parent(self):
+    def test_a_repo_without_a_github_remote_keeps_its_folder_label_and_the_parent_on_a_clash(self):
         self.fixture.start()
         labels = {repo["root"]: repo["label"] for repo in self.fixture.board_json()["repos"]}
-        self.assertEqual(labels, {self.web: "web", self.alpha_a: "a/alpha", self.alpha_b: "b/alpha"})
+        self.assertEqual(labels, {self.web: "someone/web", self.alpha_a: "a/alpha", self.alpha_b: "b/alpha"})
+
+    def test_a_repo_with_a_github_remote_is_labelled_owner_slash_name(self):
+        subprocess.run(["git", "-C", self.alpha_a, "remote", "add", "origin", "https://github.com/Zoe/renamed.git"], check=True)
+        self.fixture.start()
+        labels = {repo["root"]: repo["label"] for repo in self.fixture.board_json()["repos"]}
+        self.assertEqual(labels[self.alpha_a], "Zoe/renamed")
+        self.assertEqual(labels[self.alpha_b], "b/alpha")
+
+    def test_repos_are_listed_by_label_ignoring_case(self):
+        subprocess.run(["git", "-C", self.alpha_a, "remote", "add", "origin", "git@github.com:Zoe/alpha.git"], check=True)
+        self.fixture.start()
+        labels = [repo["label"] for repo in self.fixture.board_json()["repos"]]
+        self.assertEqual(labels, ["b/alpha", "someone/web", "Zoe/alpha"])
 
     def test_unreadable_and_old_kind_docs_are_problems(self):
         broken = os.path.join(self.web, ".plans", "proj", "broken.md")
