@@ -467,7 +467,7 @@ function step_column(offset) {
 }
 
 // fuzzy:start
-// Subsequence match, case-insensitive. Higher is better, -1 is no match. A consecutive run and a hit at a word start
+// Subsequence match, case-insensitive. Higher is better, -Infinity is no match. A late hit in a long name can score below zero and still match. A consecutive run and a hit at a word start
 // score extra, a gap costs a little, and a shorter text wins a tie.
 function fuzzy_score(query, text) {
   query = query.toLowerCase();
@@ -477,7 +477,7 @@ function fuzzy_score(query, text) {
   let run = 0;
   for (const character of query) {
     const found = text.indexOf(character, at);
-    if (found < 0) return -1;
+    if (found < 0) return -Infinity;
     run = found === at ? run + 1 : 0;
     const at_boundary = found === 0 || "/-_. ".includes(text[found - 1]);
     score += 1 + run * 2 + (at_boundary ? 3 : 0) - (found - at) * 0.1;
@@ -494,8 +494,8 @@ function rank_repos(query, repos) {
   for (const repo of repos) {
     const folder = repo.root.split("/").filter(Boolean).pop() || "";
     const folder_score = fuzzy_score(query, folder);
-    const best = Math.max(fuzzy_score(query, repo.label), folder_score < 0 ? -1 : folder_score + 2);
-    if (best >= 0) scored.push({ repo, best });
+    const best = Math.max(fuzzy_score(query, repo.label), folder_score + 2);
+    if (best > -Infinity) scored.push({ repo, best });
   }
   return scored.map((entry, index) => ({ ...entry, index }))
     .sort((a, b) => b.best - a.best || a.index - b.index)
