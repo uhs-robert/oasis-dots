@@ -75,11 +75,14 @@ def github_slug(repo):
 
 
 def cache_path(slug):
+    """One folder per owner: a hyphen can join both an owner and a repo name, so `a-b/c` and `a/b-c` must not share a file."""
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    return os.path.join(base, "plans", slug.replace("/", "-") + ".json")
+    owner, name = slug.split("/", 1)
+    return os.path.join(base, "plans", owner, name + ".json")
 
 
 def read_cache(path):
+    """The cache, or None when it is missing or not in this version's shape. A bad cache must not stop `next`."""
     try:
         with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
@@ -87,19 +90,33 @@ def read_cache(path):
         return None
     if not isinstance(data, dict) or data.get("version") != CACHE_VERSION:
         return None
+    number = (int, float)
+    if not isinstance(data.get("failed_at", 0), number) or isinstance(data.get("failed_at"), bool):
+        return None
+    if "open" in data:
+        if not isinstance(data.get("fetched_at"), number) or isinstance(data.get("fetched_at"), bool):
+            return None
+        for key in ("open", "states"):
+            table = data.get(key)
+            if not isinstance(table, dict) or not all(k.isdigit() and isinstance(v, str) for k, v in table.items()):
+                return None
     return data
 
 
 def write_cache(path, data):
-    # Write then rename, so a parallel `next` never reads half a file.
+    """Owner-only, because the titles of a private repo's issues are private. Written then renamed, so a parallel `next`
+    never reads half a file."""
+    temp = f"{path}.{os.getpid()}.tmp"
     try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        temp = f"{path}.{os.getpid()}.tmp"
-        with open(temp, "w", encoding="utf-8") as handle:
+        os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+        with os.fdopen(os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as handle:
             json.dump(data, handle)
         os.replace(temp, path)
     except OSError:
-        pass
+        try:
+            os.unlink(temp)
+        except OSError:
+            pass
 
 
 def gh(*args):

@@ -132,7 +132,7 @@ class NextTest(unittest.TestCase):
             return len(handle.read().splitlines())
 
     def age_cache(self):
-        path = os.path.join(self.cache, "plans", "own-repo.json")
+        path = os.path.join(self.cache, "plans", "own", "repo.json")
         with open(path) as handle:
             data = json.load(handle)
         data["fetched_at"] -= issues.CACHE_SECONDS + 1
@@ -183,12 +183,26 @@ class NextTest(unittest.TestCase):
         calls = self.gh_calls()
         self.assertEqual(self.plans(), "work\twork\tplanned\n")
         self.assertEqual(self.gh_calls(), calls)
-        path = os.path.join(self.cache, "plans", "own-repo.json")
+        path = os.path.join(self.cache, "plans", "own", "repo.json")
         with open(path) as handle:
             data = json.load(handle)
         data["failed_at"] -= issues.RETRY_SECONDS + 1
         self.write(path, json.dumps(data))
         self.assertEqual(self.plans(), self.EXPECTED)
+
+    def test_a_bad_cache_is_a_miss(self):
+        path = os.path.join(self.cache, "plans", "own", "repo.json")
+        for bad in ({"version": 1, "failed_at": "bad"}, {"version": 1, "fetched_at": 1e12, "open": [], "states": {}},
+                    {"version": 1, "fetched_at": 1e12, "open": {"x": "t"}, "states": {}}, ["not a dict"]):
+            self.write(path, json.dumps(bad))
+            self.assertEqual(self.plans(), self.EXPECTED, bad)
+
+    def test_the_cache_is_owner_only_and_keyed_by_owner_and_repo(self):
+        self.plans()
+        path = os.path.join(self.cache, "plans", "own", "repo.json")
+        self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+        self.assertEqual(os.stat(os.path.dirname(path)).st_mode & 0o777, 0o700)
+        self.assertNotEqual(issues.cache_path("a-b/c"), issues.cache_path("a/b-c"))
 
     def test_gh_hanging_times_out(self):
         self.assertEqual(self.plans(mode="hang"), "work\twork\tplanned\n")
