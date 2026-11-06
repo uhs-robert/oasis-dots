@@ -313,6 +313,7 @@ SHELL_GROUPS = {
         "lib/common/*.sh",
         "lib/install/*.sh",
         "lib/install/desertfox-freshness",
+        "lib/git-hooks/pre-commit",
         "lib/install/tests/*.sh",
         "demo/*.sh",
         "home/hypr/.config/hypr/scripts/state-write",
