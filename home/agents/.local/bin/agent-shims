@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Keeps one shim per installed agent in the shim folder: adds the shim of an agent found on PATH and removes the shim
+# of one that is gone. Stowing the package runs it, and so does every topgrade run, so an agent installed later is
+# capped from the next run on. A shim for a missing agent would put a dead command on PATH that tools like topgrade
+# then try to run.
+#
+#   agent-shims           sync the shims with the agents on PATH
+#   agent-shims --remove  remove every shim and the folder (unstowing the package)
+#
+# Environment, for tests:
+#   AGENT_SHIMS_DIR  the shim folder (default ~/.local/share/agent-shims/bin)
+#   AGENT_RUN        the launcher each shim links to (default ~/.local/bin/agent-run)
+
+# Ollama has no shim on purpose (see the README).
+agents=(claude codex gemini qwen aider opencode)
+
+shim_dir="${AGENT_SHIMS_DIR:-$HOME/.local/share/agent-shims/bin}"
+launcher="${AGENT_RUN:-$HOME/.local/bin/agent-run}"
+
+if [[ "${1:-}" == --remove ]]; then
+  [[ -d "$shim_dir" ]] || exit 0
+  for name in "${agents[@]}"; do
+    [[ -L "$shim_dir/$name" ]] && rm -f "$shim_dir/$name"
+  done
+  rmdir "$shim_dir" 2>/dev/null
+  exit 0
+fi
+
+# The same search as agent-run's: a $name on PATH that is not a shim.
+installed() {
+  local name="$1" dir candidate
+  local -a path_dirs
+  IFS=: read -r -a path_dirs <<<"$PATH"
+  for dir in "${path_dirs[@]}"; do
+    [[ -n "$dir" ]] || dir=.
+    [[ -d "$shim_dir" && "$dir" -ef "$shim_dir" ]] && continue
+    candidate="$dir/$name"
+    [[ -f "$candidate" && -x "$candidate" ]] || continue
+    [[ "$candidate" -ef "$launcher" ]] && continue
+    return 0
+  done
+  return 1
+}
+
+mkdir -p "$shim_dir" || exit 1
+status=0
+for name in "${agents[@]}"; do
+  shim="$shim_dir/$name"
+  if installed "$name"; then
+    [[ -L "$shim" && "$(readlink "$shim")" == "$launcher" ]] && continue
+    if ln -sfn "$launcher" "$shim"; then echo "agent-shims: added $name"; else status=1; fi
+  elif [[ -e "$shim" || -L "$shim" ]]; then
+    if rm -f "$shim"; then echo "agent-shims: removed $name (not installed)"; else status=1; fi
+  fi
+done
+exit $status

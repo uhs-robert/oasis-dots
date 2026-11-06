@@ -6,7 +6,8 @@ Stow it with `just stow agents` (it is an optional package, under `# ai` in `pac
 
 ## What it does
 
-- `~/.local/share/agent-shims/bin` holds one symlink per agent, named after it. Your shell and Hyprland put this folder first on `PATH`, so `claude` runs the shim.
+- `~/.local/share/agent-shims/bin` holds one symlink per installed agent, named after it. Your shell and Hyprland put this folder first on `PATH`, so `claude` runs the shim.
+- `agent-shims` writes that folder. It adds a shim for each agent it finds on `PATH` and removes the shim of an agent that is gone. Stowing the package runs it, and topgrade runs it first on every run. An agent you install later is capped from the next topgrade run, or at once after `agent-shims`.
 - The shim runs `agent-run`, which finds the real `claude` further down `PATH` and starts it in a scope of its own under `agents.slice`. A scope keeps the agent in your terminal: the working directory, environment, input and exit code are unchanged.
 - Each session is its own scope with `OOMPolicy=continue`. An out-of-memory kill takes the one process that grew, never the whole session.
 - An agent started by another agent (Claude starting Codex) is already in the slice and runs directly, with no second scope.
@@ -41,7 +42,7 @@ The memory and CPU keys apply at once. Sessions started before you stowed this p
 
 ## Add or remove an agent
 
-The shim folder is the list. To add an agent, add a symlink to `../../../bin/agent-run` in `home/agents/.local/share/agent-shims/bin/`, named after the agent's command. Then run `just restow agents`. To leave one out, delete its symlink.
+The `agents` list in `.local/bin/agent-shims` names the agents. To add one, add its command to the list, then run `agent-shims`. To leave one out, remove it from the list and delete its shim. Only installed agents get a shim, because a shim for a missing one puts a dead command on `PATH`: topgrade then runs that agent's update step and fails.
 
 Ollama has no shim on purpose: it runs as the system service `ollama.service`, so a shim on the client caps nothing. Cap it with a drop-in for that service (`sudo systemctl edit ollama.service`, with `MemoryMax=` and `CPUWeight=`).
 
@@ -53,12 +54,12 @@ Ollama has no shim on purpose: it runs as the system service `ollama.service`, s
 
 ## Opt out
 
-Run `just unstow agents` and open a new shell. Agents then run in your terminal's cgroup again. Running sessions keep their scope until they exit.
+Run `just unstow agents` and open a new shell. It removes the shims too. Agents then run in your terminal's cgroup again. Running sessions keep their scope until they exit.
 
 ## Code
 
 - `.local/bin/agent-run`: the launcher. `AGENT_RUN_SLICE` and `AGENT_RUN_CGROUP_FILE` override the slice and the cgroup file, for tests and one-off runs.
-- `.local/share/agent-shims/bin/`: the shims, relative symlinks to `agent-run`.
+- `.local/bin/agent-shims`: writes the shims, symlinks to `~/.local/bin/agent-run`. `AGENT_SHIMS_DIR` and `AGENT_RUN` override the folder and the launcher, for tests. `stow_packages` in `lib/install/stow.sh` runs it on stow and runs `--remove` on unstow, and `uninstall.sh` runs `--remove`. The topgrade pre-command is in `home/topgrade/.config/topgrade.toml`.
 - `.config/systemd/user/agents.slice`: the slice and its default limits. The package is in `NO_FOLD_PACKAGES` (see [the installer](../../lib/install/README.md#stowing)).
 - The `PATH` entries: the end of `home/zsh/.zshrc` and `home/bash/.bashrc`, and `build_path` in `home/hypr/.config/hypr/config/env/init.lua`.
-- `tests/agent_run.sh`: the launcher against a stub `systemd-run`, run by the `agent-run` check step.
+- `tests/agent_run.sh`: the launcher against a stub `systemd-run`, run by the `agent-run` check step. `tests/agent_shims.sh`: `agent-shims` against stub agents.

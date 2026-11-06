@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests .local/bin/agent-run through the package's own shims, against a stub systemd-run and stub agents on a PATH
+# Tests .local/bin/agent-run through shims like the ones agent-shims writes, against a stub systemd-run and stub agents on a PATH
 # with no system folders, so the real systemd-run and any installed agent stay out of it. A fake cgroup file and a
 # fake runtime dir stand in for /proc/self/cgroup and the user manager's socket.
 set -u
@@ -7,9 +7,9 @@ set -u
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 package=$here/..
 launcher=$package/.local/bin/agent-run
-shims=$package/.local/share/agent-shims/bin
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
+shims=$work/shims
 failures=0
 
 fail() {
@@ -45,6 +45,10 @@ printf 'arg %s\n' "$@"
 exit "${AGENT_EXIT:-0}"
 STUB
 chmod +x "$work/stubs/systemd-run" "$work/agents/claude"
+# aider has a shim but no real program, as after an uninstall that agent-shims has not caught up with yet.
+mkdir "$shims"
+ln -s "$launcher" "$shims/claude"
+ln -s "$launcher" "$shims/aider"
 python3 -c 'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$work/runtime/systemd/private"
 
 echo '0::/user.slice/user-1000.slice/user@1000.service/tmux-spawn-1.scope' >"$work/outside"
@@ -129,15 +133,6 @@ run "$work/outside" "$work/runtime" "$full_path" "$shims/aider"
 # By its own name it refuses, since it would not know which agent to run.
 run "$work/outside" "$work/runtime" "$full_path" "$launcher"
 [[ $status == 2 ]] || fail "own name: exit $status, want 2"
-
-# The shim folder is the list of agents: every entry must be a symlink that resolves to agent-run.
-count=0
-for shim in "$shims"/* "$shims"/.[!.]*; do
-  [[ -e $shim || -L $shim ]] || continue
-  count=$((count + 1))
-  [[ -L $shim && $shim -ef $launcher ]] || fail "shim ${shim##*/} is not a symlink to agent-run"
-done
-[[ $count -gt 0 ]] || fail "no shims in $shims"
 
 if [[ $failures -gt 0 ]]; then
   echo "agent-run: $failures failed" >&2

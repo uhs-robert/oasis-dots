@@ -320,6 +320,7 @@ SHELL_GROUPS = {
         "home/hypr/.local/bin/hypr-act",
         "home/hypr/tests/*.sh",
         "home/agents/.local/bin/agent-run",
+        "home/agents/.local/bin/agent-shims",
         "home/agents/tests/*.sh",
         "home/voxcmd/tests/*.sh",
         "lib/check/*.sh",

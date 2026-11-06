@@ -15,7 +15,14 @@ stow_packages() {
   for pkg in "$@"; do
     args=(-d "$DOTFILES_DIR/home" -t "$HOME" "$mode")
     [[ " ${NO_FOLD_PACKAGES[*]} " == *" $pkg "* ]] && args+=(--no-folding)
+    if [[ "$pkg" == agents && "$mode" == -D ]]; then
+      "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" --remove || status=1
+    fi
     stow "${args[@]}" "$pkg" || status=1
+    # The shims are not stowed: agent-shims writes one per agent installed on this machine.
+    if [[ "$pkg" == agents && "$mode" != -D ]]; then
+      "$DOTFILES_DIR/home/agents/.local/bin/agent-shims" || status=1
+    fi
   done
   return $status
 }
