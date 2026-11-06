@@ -436,9 +436,17 @@ function select_card(path, edge) {
   mark_selected();
   const card = selected_card();
   if (!card) return;
-  if (edge === "top") window.scrollTo({ top: 0 });
-  else if (edge === "bottom") window.scrollTo({ top: document.documentElement.scrollHeight });
-  else card.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!edge) {
+    card.scrollIntoView({ block: "nearest", inline: "nearest" });
+    return;
+  }
+  window.scrollTo({ top: edge === "top" ? 0 : document.documentElement.scrollHeight });
+  // The column's end card can sit in a lane far from the page end. Keep it in view rather than lose the selection.
+  const rect = card.getBoundingClientRect();
+  const sticky_bottom = document.querySelector(".column-head").getBoundingClientRect().bottom;
+  const view_bottom = document.documentElement.clientHeight;
+  if (rect.top >= sticky_bottom && rect.bottom <= view_bottom) return;
+  window.scrollBy({ top: edge === "top" ? rect.top - sticky_bottom : rect.bottom - view_bottom });
 }
 
 function mark_selected() {
@@ -748,6 +756,11 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (typing_in_field(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+  // Holding g auto-repeats within the chord window and must not count as a second press.
+  if (event.key === "g" && event.repeat) {
+    event.preventDefault();
+    return;
+  }
   const chord_armed = Date.now() < g_armed_until;
   g_armed_until = 0;
   if (event.key === "g") {
