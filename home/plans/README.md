@@ -80,7 +80,7 @@ The service is wanted by `graphical-session.target`, so it starts and stops with
 
 The service does not see a `GITHUB_DIR` that only the shell exports. Without the roots file (`~/.config/plans/roots`, one directory per line) it uses the default roots and can miss repos that `plans ls --all` finds. The file replaces the defaults, so list every root in it, including the dotfiles checkout.
 
-The board has a column per status and a lane per repo, then per project. The header holds a repo switcher and filters for the id, owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
+The board has a column per status and a lane per repo, then per project. The header holds a repo search box and filters for the id, owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
 
 | Key | Action |
 | --- | --- |
@@ -92,7 +92,9 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `o`, Enter | open the doc in `$EDITOR` in a new terminal |
 | double-click a card | the same as `o` (not on the owner badge or a link) |
 | `/` | the id filter; Esc goes back to the board |
-| `r` `R` | the next or previous repo in the switcher |
+| `r` | the repo search box |
+
+The repo search box lists the repos that have plan docs, with all repos first. Typing keeps the repos whose `owner/name` label or folder name holds the letters in order, best match first, and a hit at a word start or in a run ranks higher. Arrow keys move the highlight, Enter or a click picks, Esc closes the list, and Tab leaves without a pick. Pick all repos, or empty the box and press Esc, to clear the filter. The pick does not survive a page reload. The matcher has a node test: `node home/plans/tests/fuzzy.test.mjs`. The `plans` check step does not run it.
 
 A drag moves a card within its lane, to another status, another place or both. A drop takes the midpoint of the ranks around it. When there is no gap, the board renumbers the repo in steps of 10.
 

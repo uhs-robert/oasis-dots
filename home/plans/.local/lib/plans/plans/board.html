@@ -16,6 +16,16 @@
   header select, header input { background: var(--card); color: var(--text); border: 1px solid var(--line);
                                 border-radius: 4px; padding: 3px 6px; font: inherit; }
   header input[type=text] { width: 14em; }
+  #repo-picker { position: relative; }
+  #repo { width: 16em; }
+  #repo-list { position: absolute; top: 100%; left: 0; z-index: 8; display: none; min-width: 100%; max-height: 50vh;
+               overflow-y: auto; margin: 2px 0 0; padding: 2px 0; list-style: none; background: var(--card);
+               border: 1px solid var(--line); border-radius: 4px; }
+  #repo-list.open { display: block; }
+  #repo-list li { padding: 3px 8px; white-space: nowrap; cursor: pointer; }
+  #repo-list li.active { background: var(--line); color: var(--accent); }
+  #repo-list li.chosen { font-weight: 600; }
+  #repo-list li.none { color: var(--dim); cursor: default; }
   header label { color: var(--dim); }
   #keys { margin-left: auto; color: var(--dim); font-size: 12px; }
   #message { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: none;
@@ -53,7 +63,11 @@
 <body>
 <header>
   <h1>plans</h1>
-  <select id="repo" title="repo (r / R)"></select>
+  <div id="repo-picker">
+    <input id="repo" type="text" role="combobox" aria-expanded="false" aria-controls="repo-list"
+           aria-autocomplete="list" autocomplete="off" placeholder="all repos" title="repo (r)">
+    <ul id="repo-list" role="listbox"></ul>
+  </div>
   <input id="text" type="text" placeholder="/ filter id" autocomplete="off">
   <select id="owner" title="owner"></select>
   <select id="project" title="project"></select>
@@ -303,11 +317,7 @@ function fill_select(id, label, values) {
 function fill_filter_choices() {
   const docs = board.repos.flatMap((repo) => repo.docs);
   const distinct = (key) => [...new Set(docs.map((doc) => String(doc[key])))].sort();
-  const repo_select = element("repo");
-  const current = repo_select.value;
-  repo_select.replaceChildren(new Option("all repos", ALL), ...board.repos.map((repo) => new Option(repo.label, repo.root)));
-  repo_select.value = board.repos.some((repo) => repo.root === current) ? current : ALL;
-  filters.repo = repo_select.value;
+  refresh_repo_choices();
   fill_select("owner", "any owner", distinct("owner_session"));
   fill_select("project", "any project", distinct("project"));
   fill_select("status", "any status", board.statuses.slice());
@@ -456,12 +466,163 @@ function step_column(offset) {
   }
 }
 
-function step_repo(offset) {
-  const select = element("repo");
-  select.selectedIndex = (select.selectedIndex + offset + select.options.length) % select.options.length;
-  filters.repo = select.value;
+// fuzzy:start
+// Subsequence match, case-insensitive. Higher is better, -1 is no match. A consecutive run and a hit at a word start
+// score extra, a gap costs a little, and a shorter text wins a tie.
+function fuzzy_score(query, text) {
+  query = query.toLowerCase();
+  text = text.toLowerCase();
+  let score = 0;
+  let at = 0;
+  let run = 0;
+  for (const character of query) {
+    const found = text.indexOf(character, at);
+    if (found < 0) return -1;
+    run = found === at ? run + 1 : 0;
+    const at_boundary = found === 0 || "/-_. ".includes(text[found - 1]);
+    score += 1 + run * 2 + (at_boundary ? 3 : 0) - (found - at) * 0.1;
+    at = found + 1;
+  }
+  return score - text.length * 0.01;
+}
+
+// A repo matches on its owner/name label or its folder name. The folder gets a small bonus so a typed folder name
+// finds its repo first. The result keeps the input order among equal scores, so a sorted input stays A to Z.
+function rank_repos(query, repos) {
+  if (!query) return repos.slice();
+  const scored = [];
+  for (const repo of repos) {
+    const folder = repo.root.split("/").filter(Boolean).pop() || "";
+    const folder_score = fuzzy_score(query, folder);
+    const best = Math.max(fuzzy_score(query, repo.label), folder_score < 0 ? -1 : folder_score + 2);
+    if (best >= 0) scored.push({ repo, best });
+  }
+  return scored.map((entry, index) => ({ ...entry, index }))
+    .sort((a, b) => b.best - a.best || a.index - b.index)
+    .map((entry) => entry.repo);
+}
+// fuzzy:end
+
+// The repo picker is a combobox. A repo with no plan docs and no unreadable docs has nothing to show, so it is
+// not listed. The row with root ALL stands for all repos.
+let repo_choices = [];
+let repo_list_open = false;
+let repo_query_typed = false;
+let repo_active_root = null;
+
+function repo_label_for(root) {
+  const repo = repo_choices.find((choice) => choice.root === root);
+  return repo ? repo.label : "";
+}
+
+function repo_rows() {
+  const query = repo_query_typed ? element("repo").value.trim() : "";
+  const matches = rank_repos(query, repo_choices);
+  return query ? matches : [{ root: ALL, label: "all repos" }, ...matches];
+}
+
+function render_repo_list() {
+  const list = element("repo-list");
+  const input = element("repo");
+  const rows = repo_rows();
+  if (!rows.some((row) => row.root === repo_active_root)) repo_active_root = rows.length ? rows[0].root : null;
+  list.classList.toggle("open", repo_list_open);
+  input.setAttribute("aria-expanded", String(repo_list_open));
+  input.removeAttribute("aria-activedescendant");
+  if (!repo_list_open) return;
+  const items = rows.map((row, index) => {
+    const item = make("li", "", row.label);
+    item.id = `repo-option-${index}`;
+    item.setAttribute("role", "option");
+    item.dataset.root = row.root;
+    const is_active = row.root === repo_active_root;
+    item.setAttribute("aria-selected", String(is_active));
+    item.classList.toggle("active", is_active);
+    item.classList.toggle("chosen", row.root === filters.repo);
+    if (is_active) input.setAttribute("aria-activedescendant", item.id);
+    return item;
+  });
+  if (!items.length) items.push(make("li", "none", "no repo matches"));
+  list.replaceChildren(...items);
+  list.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+}
+
+function open_repo_list() {
+  repo_list_open = true;
+  render_repo_list();
+}
+
+function close_repo_list() {
+  repo_list_open = false;
+  repo_query_typed = false;
+  element("repo").value = repo_label_for(filters.repo);
+  render_repo_list();
+}
+
+function pick_repo(root) {
+  filters.repo = root;
+  close_repo_list();
+  element("repo").blur();
   render();
 }
+
+// Runs on every board load. It never writes the box text while the box has focus, so a reload does not wipe what
+// the owner is typing, close the list or move the highlight. A pick whose repo lost its docs falls back to all
+// repos.
+function refresh_repo_choices() {
+  repo_choices = board.repos.filter((repo) => repo.docs.length || repo.problems.length);
+  if (filters.repo !== ALL && !repo_choices.some((repo) => repo.root === filters.repo)) filters.repo = ALL;
+  if (document.activeElement !== element("repo")) element("repo").value = repo_label_for(filters.repo);
+  render_repo_list();
+}
+
+function move_repo_highlight(offset) {
+  const rows = repo_rows();
+  if (!rows.length) return;
+  const current = rows.findIndex((row) => row.root === repo_active_root);
+  repo_active_root = rows[(current + offset + rows.length) % rows.length].root;
+  render_repo_list();
+}
+
+const REPO_KEYS = {
+  ArrowDown: () => { if (!repo_list_open) open_repo_list(); else move_repo_highlight(1); },
+  ArrowUp: () => { if (!repo_list_open) open_repo_list(); else move_repo_highlight(-1); },
+  Enter: () => {
+    if (!repo_list_open) return open_repo_list();
+    if (repo_rows().some((row) => row.root === repo_active_root)) pick_repo(repo_active_root);
+  },
+  Escape: (event) => {
+    if (element("repo").value === "") return pick_repo(ALL);
+    if (!repo_list_open) return;
+    event.stopPropagation();
+    close_repo_list();
+  },
+};
+
+element("repo").addEventListener("keydown", (event) => {
+  const action = REPO_KEYS[event.key];
+  if (!action || event.ctrlKey || event.metaKey || event.altKey) return;
+  event.preventDefault();
+  action(event);
+});
+element("repo").addEventListener("focus", (event) => {
+  event.target.select();
+  repo_active_root = filters.repo;
+  open_repo_list();
+});
+element("repo").addEventListener("click", () => { if (!repo_list_open) open_repo_list(); });
+element("repo").addEventListener("input", () => {
+  repo_query_typed = true;
+  repo_active_root = null;
+  open_repo_list();
+});
+element("repo").addEventListener("blur", close_repo_list);
+// mousedown rather than click: the blur that a click causes would close the list before the click lands.
+element("repo-list").addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  const item = event.target.closest("li[data-root]");
+  if (item) pick_repo(item.dataset.root);
+});
 
 // Drag by pointer events rather than HTML drag and drop: the card can only land in its own lane, and the marker
 // shows the slot the drop takes.
@@ -539,8 +700,7 @@ const KEYS = {
   k: () => step_in_column(-1),
   h: () => step_column(-1),
   l: () => step_column(1),
-  r: () => step_repo(1),
-  R: () => step_repo(-1),
+  r: () => element("repo").focus(),
   "/": () => element("text").focus(),
   H: () => shift_status(-1),
   L: () => shift_status(1),
@@ -570,7 +730,7 @@ document.addEventListener("keydown", (event) => {
 
 // A select or checkbox gives focus back after a pick, so the vim keys work again at once. The text filter keeps its
 // focus until Enter or Escape.
-for (const id of ["repo", "owner", "project", "status", "kind"]) {
+for (const id of ["owner", "project", "status", "kind"]) {
   element(id).addEventListener("change", () => { filters[id] = element(id).value; element(id).blur(); render(); });
 }
 element("text").addEventListener("input", () => { filters.text = element("text").value; render(); });
