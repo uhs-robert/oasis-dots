@@ -223,7 +223,7 @@ repos *ARGS:
     clone_repos
     install_nvim_config
 
-# Pull repos/ checkouts cloned for this machine; linked dev checkouts are skipped
+# Pull repos/ checkouts cloned for this machine; linked dev checkouts are skipped. Relinks keeptabs so new commands land in ~/.local/bin
 update-repos:
     #!/usr/bin/env bash
     for dir in repos/*/; do
@@ -235,6 +235,9 @@ update-repos:
         echo "skip: not on a branch (pinned to $(git -C "$dir" describe --tags --always))"
       fi
     done
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    link_keeptabs
 
 # Stage the Quickshell greeter (lock skins, theme, fonts, your lock style) and print its sudo install commands; --install runs them, --from DIR stages from that Quickshell config dir
 [positional-arguments]
