@@ -6,7 +6,7 @@ argument-hint: "[successor-session-name | end-of-day]"
 
 # Orchestrator handoff
 
-Moves the orchestrator role to a fresh session so its context starts empty. The successor gets no chat history, only the plan docs and the baton message, so anything in neither is lost. Every `--as` below takes your session name from `ListAgents`.
+Moves the orchestrator role to a fresh session so its context starts empty. The successor gets no chat history, only the plan docs and the baton message, so anything in neither is lost. Every `--as` below takes your session name from `ListAgents`. Two live sessions can share a name, so `plans` also stores the owner's session id and pid (`owner_session_id`, `owner_session_pid`) and refuses a doc whose name matches but whose values both differ. A `--force` claim is the only way past that refusal, so use it only once the owner confirms the other session is gone.
 
 The role moves piece by piece, so the successor starts work at once instead of waiting for everything in flight. A piece is one plan doc (a PR being built, a plan awaiting the owner). Every piece has exactly one owning session at any time, and its `owner_session` says which; a session never touches another's pieces: their agents, worktrees, branches or PRs. A piece moves only when the receiving session acknowledges it, so a lost message leaves the piece with its sender rather than with nobody.
 

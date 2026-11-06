@@ -403,9 +403,13 @@ def checked_changes(request, allowed_keys):
 
 
 def update_doc(board, request):
-    """Set status or owner_session. Request: {path, basis: {key: shown value}, changes: {key: new value}}."""
+    """Set status or owner_session. A new owner_session also clears owner_session_id and owner_session_pid.
+    Request: {path, basis: {key: shown value}, changes: {key: new value}}."""
     _, doc = board_doc(board, request)
     changes, basis = checked_changes(request, EDITABLE_KEYS)
+    if "owner_session" in changes:
+        # The owner's override: the board knows no session's values, so the next claim writes them.
+        changes = {**changes, **validate.owner_value_changes(None)}
     store.update(based_on(doc, basis), changes)
 
 
