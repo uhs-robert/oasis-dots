@@ -18,6 +18,8 @@ plans set <id> key=value...           # e.g. plans set demo status=building depe
 plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
 plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default
+plans close <id> [--as S] [--force] [--dry-run]    # delete the doc and its log folder, drop it from depends_on
+plans cancel <id> [--as S] [--force] [--dry-run]   # close, plus the PR, the issue and a clean worktree
 plans lint [--gh] [--all]
 plans serve [--port N]                # the web board, see below
 ```
@@ -33,6 +35,9 @@ Two live sessions can get the same name, so a doc also records the owner's `$CLA
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. On `next`, `--all` does not scan other repos. It stays in the current repo and prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
 - `next` first prints an `ask` line for each open GitHub issue that no doc ranks, and one for each ranked issue that is closed. See [Issue ranks](#issue-ranks).
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. A forced `claim` writes the caller's values. `handoff` checks every listed doc before it writes any of them. Every `handoff` clears both values, forced or not, and the receiver's first `claim` writes its own.
+- `close` is the cleanup after a merge. It drops the id from every other doc's `depends_on`, deletes `.logs/<project>/<id>/`, then deletes the doc. The doc goes last, so a failed step leaves it for a retry. It makes no GitHub or git change. Nothing archives the doc: git ignores it, and the issue keeps the record.
+- `cancel` drops a card you no longer want. In order, it closes the doc's PR unmerged with a comment (only if open), closes the issue as not planned (only if open, and not when another doc names the same issue), removes the worktree that has the doc's branch checked out (only if it has no uncommitted changes, and never the main checkout), then runs the `close` cleanup. The branch stays, local and remote, so the PR can be reopened. A step that fails stops the run. The doc stays, and the output says what is `done`, `skipped`, `failed` and `not run`. A dirty worktree is `skipped`, and the run goes on.
+- `close` and `cancel` refuse a doc that another session owns, as `claim` does, and a caller without a session name owns nothing. `--force` overrides that. `--dry-run` prints each `would:` line and changes nothing. They delete only the doc file and its own log folder, and refuse an id or project that is not a plain name. A `pr` or `issue` value that is no number or GitHub URL, and a branch that is no branch name, are refused.
 - `set` refuses `id`, `project`, `updated`, `owner_session_id` and `owner_session_pid`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
 - `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
 - `lint` checks every rule below and prints `path:line: rule: message`. `lint --gh` also asks GitHub, through the `gh` CLI, for a merged or closed `pr`, a closed `issue` and a `branch` the remote no longer has.
@@ -90,6 +95,7 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `H` `L` | move the card one status column; a move to blocked or done asks `y` / `n` |
 | `J` `K` | move the card one place down or up in its cell (its rank) |
 | `e` | edit the owner: a session name or `none` |
+| `x` | cancel the card: the prompt lists every change (PR, issue, worktree, files) and `y` runs it. A card that a session owns is refused: set the owner to none with `e` first. There is no board key for `close` |
 | `o`, Enter | open the doc in `$EDITOR` in a new terminal |
 | double-click a card | the same as `o` (not on the owner badge or a link) |
 | `/` | the id filter; Esc goes back to the board |
@@ -155,11 +161,12 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `validate.py`: the lint rules and the old-layout detection.
 - `query.py`: a repo's docs by glob (there is no index file), and the `ls`, `next`, `waiting` and `questions` queries.
 - `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
-- `gh.py`: the `lint --gh` checks.
+- `gh.py`: the `lint --gh` checks, and the `gh` runner.
+- `retire.py`: `close` and `cancel`: the step list (the dry run and the board's prompt) and the ordered apply.
 - `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
 - `cli.py`: argument parsing and output only.
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
 
-`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts.
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.

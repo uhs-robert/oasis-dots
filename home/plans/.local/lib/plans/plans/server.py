@@ -17,7 +17,7 @@ import time
 
 from typing import NamedTuple
 
-from . import parse, query, roots, store, validate
+from . import parse, query, retire, roots, store, validate
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -279,7 +279,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
         if not self.write_is_from_board():
             return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
-        actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc}
+        actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc, "/api/cancel": cancel_doc}
         action = actions.get(self.path)
         if action is None:
             return self.send_json(404, {"error": f"no action {self.path}"})
@@ -501,6 +501,32 @@ def renumber(order, moved, moved_basis, status):
             # As in run_action: the new rank may have landed, so this doc is neither renumbered nor skipped.
             uncertain.append({"path": doc.path, "id": doc.id, "error": str(error)})
     return {"renumbered": renumbered, "skipped": skipped, "uncertain": uncertain}
+
+
+def cancel_doc(board, request):
+    """Preview or apply `plans cancel` for one card. Request: {path, basis: {status, owner_session, pr, issue, branch},
+    apply: true to run it}. Without `apply: true` nothing changes and the answer lists the changes. A doc that a session
+    owns is refused, as `plans cancel` refuses it without --force: set the owner to none with `e` first."""
+    view, doc = board_doc(board, request)
+    basis = request.get("basis")
+    if not isinstance(basis, dict) or set(basis) != set(retire.GUARDED_KEYS):
+        raise Refused(400, f"basis must hold the shown {', '.join(retire.GUARDED_KEYS)}")
+    shown = based_on(doc, basis)
+    owner = validate.owner_of(shown)
+    if owner is not None:
+        raise Refused(403, f"{shown.id} is owned by {owner}; set the owner to none first")
+    try:
+        plan = retire.plan(view.root, shown, cancel=True)
+    except retire.Refused as error:
+        raise Refused(400, str(error)) from None
+    answer = {"changes": [step.text for step in plan.steps], "notes": plan.notes}
+    if request.get("apply") is not True:
+        return answer
+    outcome = retire.apply(shown, plan.steps)
+    lines = [f"{state}: {text}" for state, text in outcome.lines]
+    if outcome.failed:
+        raise Refused(502, f"cancel {shown.id} stopped and kept the doc. {'; '.join(lines)}", results=lines)
+    return {**answer, "results": lines}
 
 
 def open_doc(board, request):

@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import gh, issues, parse, query, roots, server, store, validate
+from . import gh, issues, parse, query, retire, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -34,7 +34,7 @@ def main(argv=None):
         return fail(f"{error}; read it again and retry", STALE)
     except store.Vanished as error:
         return fail(str(error), FINDINGS)
-    except Refused as error:
+    except (Refused, retire.Refused) as error:
         return fail(str(error), FINDINGS)
     except (UsageError, roots.NotInRepo, parse.ParseError, gh.GhMissing) as error:
         return fail(str(error), USAGE)
@@ -100,6 +100,15 @@ def build_parser():
     new.add_argument("id")
     new.add_argument("--kind", default="feature", choices=validate.KINDS)
     new.set_defaults(run=run_new)
+
+    for name, help_text in (("close", "delete the doc and its log folder, and drop it from depends_on; run it after a merge"),
+                            ("cancel", "close, plus the open PR (unmerged), the issue (not planned) and a clean worktree")):
+        retire_command = commands.add_parser(name, help=help_text)
+        retire_command.add_argument("id")
+        add_session_option(retire_command)
+        retire_command.add_argument("--force", action="store_true", help="act on a doc another session owns")
+        retire_command.add_argument("--dry-run", action="store_true", help="print the changes without making them")
+        retire_command.set_defaults(run=run_cancel if name == "cancel" else run_close)
 
     lint = commands.add_parser("lint", help="check every doc against the rules")
     lint.add_argument("--gh", action="store_true", help="also check PRs, branches and issues on GitHub")
@@ -378,6 +387,37 @@ def run_handoff(args):
     if stale:
         return fail(f"not handed off: {', '.join(stale)}; read them again and retry", STALE)
     return OK
+
+
+def run_close(args):
+    return retire_doc(args, cancel=False)
+
+
+def run_cancel(args):
+    return retire_doc(args, cancel=True)
+
+
+def retire_doc(args, cancel):
+    verb = "cancel" if cancel else "close"
+    # Without a session name the caller owns nothing, so a doc with an owner needs --force.
+    caller = caller_of(args, required=False) or unnamed_caller()
+    root = roots.main_checkout()
+    doc = load_doc(root, args.id)
+    refuse_other_owner(doc, caller, args.force, verb)
+    plan = retire.plan(root, doc, cancel)
+    if args.dry_run:
+        for step in plan.steps:
+            print(f"would: {step.text}")
+        for note in plan.notes:
+            print(f"keep: {note}")
+        return OK
+    outcome = retire.apply(doc, plan.steps)
+    for state, text in outcome.lines:
+        print(f"{state}: {text}")
+    for note in plan.notes:
+        print(f"keep: {note}")
+    if outcome.failed:
+        return fail(f"{verb} {doc.id} stopped; the doc is kept. Fix the failed step and run it again", FINDINGS)
 
 
 def run_new(args):

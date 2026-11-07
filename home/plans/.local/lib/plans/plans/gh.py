@@ -19,7 +19,7 @@ def gh(repo, *args):
     try:
         return subprocess.run(["gh", *args], cwd=repo, capture_output=True, text=True, timeout=TIMEOUT_SECONDS)
     except FileNotFoundError as error:
-        raise GhMissing("lint --gh needs the gh CLI") from error
+        raise GhMissing("this needs the gh CLI") from error
     except subprocess.TimeoutExpired:
         # A failed call, so each check reports it as a gh-error finding.
         return subprocess.CompletedProcess(["gh", *args], 1, "", f"gh timed out after {TIMEOUT_SECONDS} s")

@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import sys
 import tempfile
+import threading
 import unittest
 
 from unittest import mock
@@ -93,6 +94,43 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(caught.exception.keys, ["status"])
         self.assertEqual(self.contents(), before)
         self.assertEqual(self.leftovers(), [])
+
+    def test_delete_removes_only_the_doc_under_the_lock(self):
+        sibling = os.path.join(os.path.dirname(self.path), "other.md")
+        with open(sibling, "w", encoding="utf-8") as handle:
+            handle.write(ORIGINAL)
+        store.delete(parse.load(self.path))
+        self.assertFalse(os.path.exists(self.path))
+        self.assertTrue(os.path.exists(sibling))
+        self.assertEqual(self.leftovers(), [])
+
+    def test_delete_of_a_vanished_doc_raises_vanished(self):
+        doc = parse.load(self.path)
+        os.unlink(self.path)
+        with self.assertRaises(store.Vanished):
+            store.delete(doc)
+
+    def test_delete_refuses_a_doc_changed_in_a_guarded_key_and_keeps_the_file(self):
+        stale, fresh = parse.load(self.path), parse.load(self.path)
+        store.update(fresh, {"status": "building"}, "2026-11-04")
+        with self.assertRaises(store.Conflict) as caught:
+            store.delete(stale, ("status", "pr"))
+        self.assertEqual(caught.exception.keys, ["status"])
+        self.assertTrue(os.path.exists(self.path))
+        store.delete(stale, ("pr",))
+        self.assertFalse(os.path.exists(self.path))
+
+    def test_delete_waits_for_the_lock(self):
+        doc = parse.load(self.path)
+        finished = threading.Event()
+        with store.locked(store.plans_dir_of(self.path)):
+            thread = threading.Thread(target=lambda: (store.delete(doc), finished.set()))
+            thread.start()
+            self.assertFalse(finished.wait(0.3))
+            self.assertTrue(os.path.exists(self.path))
+        thread.join(5)
+        self.assertTrue(finished.is_set())
+        self.assertFalse(os.path.exists(self.path))
 
     def test_stale_body_edit_is_refused(self):
         stale, fresh = parse.load(self.path), parse.load(self.path)

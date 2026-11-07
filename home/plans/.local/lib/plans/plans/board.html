@@ -56,7 +56,7 @@
                  border: 1px solid var(--accent); border-radius: 3px; font: inherit; }
   #confirm { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
              background: rgba(0, 0, 0, 0.5); }
-  #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; max-width: 70ch; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -134,6 +134,8 @@ async function write(action, body) {
     const notes = [];
     if (answer.skipped && answer.skipped.length) notes.push(`these changed meanwhile and kept their rank: ${ids(answer.skipped)}`);
     if (answer.uncertain && answer.uncertain.length) notes.push(`these failed to write and may have the new rank: ${ids(answer.uncertain)}`);
+    const kept = (answer.results || []).filter((line) => line.startsWith("skipped:"));
+    if (kept.length) show_message(`Cancelled ${doc_name(body.path)}, but ${kept.join("; ")}`);
     if (notes.length) show_message(`Renumbered, but ${notes.join("; ")}`);
   }
   if (action !== "open") await load_board();
@@ -263,6 +265,24 @@ function edit_owner() {
 function can_open(path) {
   return Boolean(doc_by_path(path))
     || board.repos.some((repo) => repo.problems.some((problem) => problem.path === path && path !== repo.root));
+}
+
+// The prompt lists every change from the server's preview. The apply request carries the same shown values, so a card
+// that changed since the board loaded is refused.
+async function cancel_card() {
+  const doc = doc_by_path(selected_path);
+  if (!doc) return;
+  const basis = Object.fromEntries(["status", "owner_session", "pr", "issue", "branch"].map((key) => [key, doc[key]]));
+  let answer;
+  try {
+    const response = await fetch("/api/cancel", { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify({ path: doc.path, basis, apply: false }) });
+    answer = await response.json();
+    if (!response.ok) return show_message(`Refused: ${answer.error}`);
+  } catch {
+    return show_message("Could not read what cancel would change.");
+  }
+  const lines = [...answer.changes, ...answer.notes.map((note) => `(${note})`)];
+  ask(`Cancel ${doc.id}? It will: ${lines.join("; ")}.`, () => write("cancel", { path: doc.path, basis, apply: true }));
 }
 
 function open_doc() {
@@ -746,6 +766,7 @@ const KEYS = {
   J: () => shift_rank(1),
   K: () => shift_rank(-1),
   e: () => edit_owner(),
+  x: () => cancel_card(),
   o: () => open_doc(),
   Enter: () => open_doc(),
 };
