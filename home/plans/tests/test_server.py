@@ -3,6 +3,7 @@
 import http.client
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -56,7 +57,8 @@ class Fixture:
         self.httpd = None
         test.addCleanup(self.temp.cleanup)
         # Pid 100 runs Claude, pid 400 another program.
-        patcher = mock.patch.object(liveness, "PROC_ROOT", fake_proc(os.path.join(self.temp.name, "proc"), [100], [400]))
+        self.proc = fake_proc(os.path.join(self.temp.name, "proc"), [100], [400])
+        patcher = mock.patch.object(liveness, "PROC_ROOT", self.proc)
         patcher.start()
         test.addCleanup(patcher.stop)
 
@@ -171,6 +173,34 @@ class BoardJsonTest(unittest.TestCase):
         web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
         self.assertEqual([doc["owner_session"] for doc in web["docs"]], ["none", "other-1"])
         self.assertEqual([parse.load(path).keys["owner_session"] for path in (dead, live)], ["none", "other-1"])
+
+    def test_an_owner_that_dies_without_a_file_change_is_freed_at_the_next_poll(self):
+        path = self.fixture.add(self.web, "demo", 10, owner="other-1")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("updated:", "owner_session_id: id-a\nowner_session_pid: 100\nupdated:"))
+        self.fixture.start(watch=False)
+        self.fixture.board.poll()
+        self.assertEqual(parse.load(path).keys["owner_session"], "other-1")
+        shutil.rmtree(os.path.join(self.fixture.proc, "100"))
+        self.fixture.board.poll()
+        web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
+        self.assertEqual(web["docs"][0]["owner_session"], "none")
+        self.assertEqual(parse.load(path).keys["owner_session"], "none")
+
+    def test_a_dead_owner_that_cannot_be_freed_does_not_bump_the_version(self):
+        path = self.fixture.add(self.web, "demo", 10, owner="other-1")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("updated:", "owner_session_id: id-a\nowner_session_pid: 400\nupdated:"))
+        with mock.patch.object(liveness.store, "replace_atomically", side_effect=PermissionError(13, "denied")):
+            self.fixture.start(watch=False)
+            version = self.fixture.board.version
+            self.fixture.board.poll()
+            self.assertEqual(self.fixture.board.version, version)
+        self.assertEqual(parse.load(path).keys["owner_session"], "other-1")
 
     def test_a_repo_without_a_github_remote_keeps_its_folder_label_and_the_parent_on_a_clash(self):
         self.fixture.start()

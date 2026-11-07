@@ -363,6 +363,16 @@ class CliTest(unittest.TestCase):
         self.assertEqual(parse.load(path).keys["owner_session"], "me-1")
         self.assertEqual(self.proof(path), ("id-b", 200))
 
+    def test_show_set_handoff_and_lint_free_a_dead_owner_too(self):
+        for args, code in ((("show", "dead"), 0), (("set", "dead", "status=building"), 0),
+                           (("handoff", "--to", "next-2", "dead", "--as", "me-1"), 0), (("lint",), 0)):
+            with self.subTest(args=args):
+                path = self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)
+                stderr = self.plans(*args, code=code).stderr
+                self.assertIn(f"plans: {path}: freed, owner gone-1 is dead", stderr)
+                owner = "next-2" if args[0] == "handoff" else "none"
+                self.assertEqual((parse.load(path).keys["owner_session"], *self.proof(path)), (owner, "", ""))
+
     def test_a_release_that_loses_a_race_stays_quiet(self):
         dead = self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)
         gone = self.add_owned("gone", 20, "gone-1", "id-x", DEAD_PID)
