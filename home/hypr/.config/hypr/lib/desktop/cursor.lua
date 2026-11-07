@@ -791,9 +791,9 @@ if hl.on then
   -- Focus moving off the dragged-from window means the drag has lost its target, and a held button on a window the
   -- user did not choose is worse than a lost drag.
   hl.on("window.active", function()
-    if drag.armed and (drag.phase == "manual" or drag.phase == "gliding") then
-      drag_end("abort", "Drag released: focus changed")
-    end
+    -- Not while gliding: the glide's own motion can move focus (follow_mouse), and it drops at the target in
+    -- about half a second anyway.
+    if drag.armed and drag.phase == "manual" then drag_end("abort", "Drag released: focus changed") end
   end)
   -- A reload drops this state while an earlier load's daemon may still hold the button; let go of whatever it left.
   hl.on("config.reloaded", function()

@@ -7,6 +7,9 @@ local Submap = require("lib.key.submap") ---@class Submap
 
 -- The actions the rows name.
 require("lib.act.defs.cursor")
+-- Loaded now, not on the first key: its config.reloaded handler lets go of a drag the previous config load left held, so
+-- it must be registered before that event fires.
+require("lib.desktop.cursor")
 
 --- Saved cursor config, populated on_enter and restored on_exit.
 --- @type { hide: boolean, timeout: number }

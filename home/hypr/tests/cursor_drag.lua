@@ -220,7 +220,15 @@ local function pid_file()
 	end
 end
 
-local Cursor, Submap, binds_by
+local Cursor, Submap, binds_by, reload_handler
+
+--- Fire config.reloaded as Hyprland does after a config load.
+local function reload()
+	check(reload_handler ~= nil, "reload: the config load registers the drag cleanup")
+	if reload_handler then
+		reload_handler()
+	end
+end
 
 -- A leftover of a manual ydotool run at ydotool's default path, as on the owner's machine.
 local stale_default_socket = run_dir .. "/.ydotool_socket"
@@ -257,6 +265,9 @@ local function fresh(mode, keep_session)
 	pointer_reads = math.huge
 	current_submap = "Cursor"
 	Stubs.load({ name = "default", leader = "SUPER", monitors = {} }, { "keymaps.submaps.cursor" })
+	-- Taken before this file requires the module itself: Hyprland fires config.reloaded right after the config loads,
+	-- so only a handler the config load registers runs.
+	reload_handler = handlers["config.reloaded"]
 	Cursor = require("lib.desktop.cursor")
 	Submap = require("lib.key.submap")
 	binds_by = {}
@@ -643,7 +654,7 @@ press("V")
 ready()
 fresh("", true) -- a new Lua state with the old session script still running
 write_file(stub .. "/log", "")
-handlers["config.reloaded"]()
+reload()
 check(
 	settle(function()
 		return count("ydotool click 0x80") == 1
@@ -770,7 +781,7 @@ local bystander = io.popen("sleep 60 >/dev/null 2>&1 & echo $!"):read("n")
 -- An earlier load's instance directory, as the reload cleanup finds it.
 os.execute("mkdir -p " .. shell_quote(run_dir .. "/hypr-cursor-drag/old-load-1"))
 write_file(run_dir .. "/hypr-cursor-drag/old-load-1/pid", bystander .. "\n")
-handlers["config.reloaded"]()
+reload()
 sleep(0.5)
 check(os.execute("kill -0 " .. bystander) == true, "stale pid: an unrelated process is not killed")
 os.execute("kill " .. bystander)
@@ -1109,7 +1120,7 @@ for _, line in ipairs(pumped) do
 	end
 end
 fresh("", true)
-handlers["config.reloaded"]()
+reload()
 check(
 	settle(function()
 		return not daemons_running()
@@ -1252,6 +1263,58 @@ check(
 	"other mouse: the drop releases"
 )
 assert_clean("other mouse")
+
+--- 44. A reload in the middle of a manual drag and of a glide: the new config load lets go of the button and stops the
+--- old load's daemon.
+for _, case in ipairs({ { name = "manual", mode = "", key = "V" }, { name = "glide", mode = 'PICK="400 300"', key = "SHIFT + V" } }) do
+	fresh(case.mode)
+	press(case.key)
+	check(
+		settle(function()
+			return count("ydotool click 0x40") == 1
+		end),
+		"reload mid-drag (" .. case.name .. "): pressed"
+	)
+	fresh("", true)
+	reload()
+	check(
+		settle(function()
+			return count("ydotool click 0x80") == 1
+		end),
+		"reload mid-drag (" .. case.name .. "): the button is released"
+	)
+	check(
+		settle(function()
+			return not daemons_running()
+		end, 3),
+		"reload mid-drag (" .. case.name .. "): the old daemon stops"
+	)
+	assert_clean("reload mid-drag " .. case.name)
+end
+
+--- 45. Focus changes during a glide do not end it: the glide's own motion moves focus under follow_mouse.
+fresh('PICK="400 300"')
+press("SHIFT + V")
+settle_timed(function()
+	return count("wlrctl pointer move 8 0") == 1
+end)
+-- A focus change at every step of the glide, armed or not.
+for _ = 1, 60 do
+	advance(10)
+	handlers["window.active"]()
+	sleep(0.005)
+end
+check(not log():find("focus changed", 1, true), "glide focus: a focus change does not release")
+advance(200)
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"glide focus: the glide still drops"
+)
+local fx, fy = pointer()
+check(fx == 400 and fy == 300, "glide focus: the drop lands on the target")
+assert_clean("glide focus")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)
