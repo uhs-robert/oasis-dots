@@ -49,7 +49,7 @@ local DRAG = {
   GLIDE_STEP_MS = 25, -- 12 steps: about 300 ms to the target
   SETTLE_MS = 60, -- lets the last async glide step land before the exact warp
   ARM_MS = 400, -- focus changes this soon after the press come from the press itself
-  WATCHDOG_MS = 30000,
+  WATCHDOG_TICKS = 30, -- seconds without a move
   RELEASE_BACKSTOP_MS = 3000,
 }
 local drag = { phase = "idle", session = 0, timers = {} }
@@ -346,6 +346,8 @@ local function drag_end(how, why)
   elseif phase == "starting" then
     -- The press has not happened, or it is on its way: drag_ready sees `abort` and ends the session.
     drag.abort = how
+    -- If both of the script's callbacks are lost, nothing else would end this phase.
+    drag_after(DRAG.RELEASE_BACKSTOP_MS, function() drag.phase = "idle" end)
     if sock then
       run_shell(
         string.format([[pidf=%s.pid; %s; [ -f "$pidf" ] && stop_daemon "$(cat "$pidf")"]], sh_quote(sock), STOP_DAEMON)
@@ -363,17 +365,26 @@ local function drag_end(how, why)
   return true
 end
 
---- Re-arm the 30 s watchdog; a drag that is moving is not stuck.
-local function arm_watchdog()
-  if drag.watchdog then drag.watchdog:set_enabled(false) end
-  drag.watchdog = hl.timer(
-    function() drag_end("cancel", "Drag cancelled after 30 s") end,
-    { timeout = DRAG.WATCHDOG_MS, type = "oneshot" }
-  )
+--- Start the watchdog: one timer for the whole drag that ticks every second and ends the drag after WATCHDOG_TICKS
+--- ticks with no move. Not a timer re-created per move: Hyprland 0.57 keeps a disabled timer, and a held key moves
+--- about 25 times a second.
+local function start_watchdog()
+  drag.idle_ticks = 0
+  drag.watchdog = hl.timer(function()
+    drag.idle_ticks = drag.idle_ticks + 1
+    if drag.idle_ticks >= DRAG.WATCHDOG_TICKS then drag_end("cancel", "Drag cancelled after 30 s") end
+  end, { timeout = 1000, type = "repeat" })
 end
 
-drag_touch = function()
-  if drag.phase == "manual" or drag.phase == "gliding" then arm_watchdog() end
+--- A drag that is moving is not stuck.
+drag_touch = function() drag.idle_ticks = 0 end
+
+--- A full click would let go of the button the app sees held, so clicks wait for the drag to end.
+--- @return boolean blocked
+Cursor.drag_blocks_click = function()
+  if drag.phase == "idle" then return false end
+  Cursor.drag_notice("Drop or cancel the drag first")
+  return true
 end
 
 --- @return boolean
@@ -393,7 +404,7 @@ local function drag_press(after)
   drag.after = after
   drag.abort = nil
   drag.sock = sock
-  arm_watchdog()
+  start_watchdog()
   run_shell(session_script(drag.session, sock))
   return true
 end
@@ -521,7 +532,7 @@ end
 Cursor.drag_cancel = function() drag_end("cancel") end
 
 --- The submap is being left (any route): a held button must not outlive it.
-Cursor.drag_submap_exit = function() drag_end("cancel", drag.phase ~= "idle" and "Drag cancelled" or nil) end
+Cursor.drag_submap_exit = function() drag_end("cancel", Cursor.drag_active() and "Drag cancelled" or nil) end
 
 if hl.on then
   -- Focus moving off the dragged-from window means the drag has lost its target, and a held button on a window the
