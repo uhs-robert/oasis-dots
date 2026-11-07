@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests that install_system_files ships the uinput udev rule (ydotool access without the input group) and applies it to the
-# running system, with sudo stubbed.
+# running system, and that uninstall.sh's remove_system_files takes it back off, with sudo stubbed.
 set -u
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 scratch=$(mktemp -d) || exit 1
@@ -40,6 +40,20 @@ fi
 grep -qxF '  if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then install_system_files; fi' "$repo_dir/install.sh" || fail 'install.sh does not gate install_system_files on --no-system-files'
 if grep -q 'udevadm' "$repo_dir/install.sh"; then fail 'install.sh runs udevadm outside install_system_files'; fi
 if grep -q 'usermod' "$scratch/sudo.log"; then fail 'install_system_files touches groups'; fi
+
+# uninstall.sh runs main when sourced, so only its remove_system_files is loaded.
+eval "$(awk '/^remove_system_files\(\) \{/,/^}/' "$repo_dir/uninstall.sh")"
+confirm() { return 0; }
+: >"$scratch/sudo.log"
+OPT_SYSTEM_FILES=0 remove_system_files >/dev/null 2>&1
+if grep -q 'udevadm' "$scratch/sudo.log"; then fail 'uninstall --no-system-files touches udev'; fi
+OPT_SYSTEM_FILES=1 remove_system_files >/dev/null 2>&1
+removed=$(line_of "rm -f $dest")
+reloaded=$(line_of 'udevadm control --reload')
+triggered=$(line_of 'udevadm trigger --name-match=uinput')
+if [[ -z $reloaded || -z $triggered ]]; then fail 'uninstall does not reload udev and re-trigger /dev/uinput'; fi
+if [[ -n $reloaded && -n $triggered ]] && ! ((reloaded < triggered)); then fail 'uninstall triggers before it reloads'; fi
+if [[ -n $removed && -n $reloaded ]] && ! ((removed < reloaded)); then fail 'uninstall reloads udev before it removes the rule'; fi
 if grep -q 'usermod.*input' "$repo_dir/install.sh"; then fail 'install.sh adds the user to input'; fi
 
 exit $((failures > 0))
