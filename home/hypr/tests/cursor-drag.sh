@@ -12,7 +12,7 @@ trap 'pkill -f "$work" 2>/dev/null; rm -rf "$work"' EXIT
 stub="$work/stub"
 mkdir -p "$stub/bin" "$work/run" "$work/home/.config/hypr/scripts"
 # The only real tools the stubs and generated scripts use.
-for tool in sh sleep rm cat env python3 mkdir touch basename grep jq; do
+for tool in sh sleep rm mv cat env python3 mkdir touch basename grep jq; do
   ln -s "$(command -v "$tool")" "$stub/bin/$tool" || exit 1
 done
 
