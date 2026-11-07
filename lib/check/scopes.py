@@ -165,6 +165,7 @@ PATH_SCOPES = [
     ("packages/snapper.ini", "install"),
     ("packages/devtools.ini", "install"),
     ("system/etc/makepkg.conf.d/*", "install"),
+    ("system/etc/udev/rules.d/70-dotfiles-uinput.rules", "install"),
     ("system/usr/local/bin/qs-greeter", "install"),
     ("home/calendar/*", "install"),
     ("home/agents/*", "install"),
@@ -183,7 +184,7 @@ PATH_SCOPES = [
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
     # shell linters for the shell files among them.
     ("lib/*", ""),
-    ("install.sh", ""),
+    ("install.sh", "install"),
     ("uninstall.sh", ""),
     ("demo/*", ""),
     ("packages/*", ""),

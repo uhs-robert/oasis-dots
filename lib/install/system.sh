@@ -8,6 +8,9 @@ install_system_files() {
   sudo install -Dm644 system/etc/keyd/default.conf /etc/keyd/default.conf
   # ydotool (Cursor submap drag and drop) writes /dev/uinput; the rule gives the seat user that device only, not the input group.
   sudo install -Dm644 system/etc/udev/rules.d/70-dotfiles-uinput.rules /etc/udev/rules.d/70-dotfiles-uinput.rules
+  # A copied rule reaches the existing /dev/uinput node only once udev reloads its rules and replays the node's add event.
+  sudo udevadm control --reload
+  sudo udevadm trigger --name-match=uinput
   sudo install -Dm644 system/etc/pacman.d/hooks/voxtype-gpu-setup.hook /etc/pacman.d/hooks/voxtype-gpu-setup.hook
   sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
   sudo install -Dm644 system/etc/pacman.d/hooks/betterbird-autoconfig.hook /etc/pacman.d/hooks/betterbird-autoconfig.hook

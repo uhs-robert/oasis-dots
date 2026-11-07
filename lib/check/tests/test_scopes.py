@@ -108,6 +108,9 @@ CASES = [
     ("lib/common/output.sh", " install"),
     ("lib/common/greeter-files.sh", " quickshell install skills"),
     ("packages/snapper.ini", " install"),
+    # The uinput rule test reads the rule and install.sh.
+    ("system/etc/udev/rules.d/70-dotfiles-uinput.rules", " install"),
+    ("install.sh", " install"),
     # The agent launcher shares the install scope.
     ("home/agents/.local/bin/agent-run", " install"),
     ("home/agents/.local/bin/agent-shims", " install"),
@@ -125,7 +128,6 @@ CASES = [
     # Only the steps that always run look at these.
     ("extras/other/file", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
-    ("install.sh", ""),
     ("demo/showcase.sh", ""),
     ("packages/stow.ini", ""),
     ("LICENSE", ""),
