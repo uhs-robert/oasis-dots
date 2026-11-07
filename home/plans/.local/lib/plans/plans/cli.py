@@ -511,7 +511,7 @@ def run_reclaim(args):
         pid = liveness.own_claude_pid()
         if not isinstance(session_id, str) or not session_id or pid is None:
             return OK
-        for root in roots.all_repos():
+        for root in reclaim_repos():
             try:
                 liveness.take_back(query.read_repo(root).docs, session_id, pid)
             except Exception:  # noqa: BLE001, S112 - one unreadable repo must not stop the others
@@ -519,6 +519,16 @@ def run_reclaim(args):
     except Exception:  # noqa: BLE001, S110 - see the docstring
         pass
     return OK
+
+
+def reclaim_repos():
+    """The repos under the roots, and the current checkout when the hook runs in a repo the roots miss."""
+    repo_roots = roots.all_repos()
+    try:
+        current = os.path.realpath(roots.main_checkout())
+    except (roots.NotInRepo, OSError):
+        return repo_roots
+    return repo_roots if current in repo_roots else [*repo_roots, current]
 
 
 def run_serve(args):

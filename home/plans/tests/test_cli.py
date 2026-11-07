@@ -373,11 +373,11 @@ class CliTest(unittest.TestCase):
                 owner = "next-2" if args[0] == "handoff" else "none"
                 self.assertEqual((parse.load(path).keys["owner_session"], *self.proof(path)), (owner, "", ""))
 
-    def reclaim(self, session_id, pid):
+    def reclaim(self, session_id, pid, roots=None, cwd=None):
         """The SessionStart hook's call, from a session that Claude Code gave `session_id` and now runs at `pid`."""
-        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        self.write(".config/plans/roots", f"{roots or self.repo}\n", repo=self.home)
         result = self.plans("reclaim", input=json.dumps({"session_id": session_id, "source": "resume"}),
-                            env={"CLAUDE_PID": str(pid)})
+                            env={"CLAUDE_PID": str(pid)}, cwd=cwd)
         self.assertEqual((result.stdout, result.stderr), ("", ""))
 
     def owner_state(self, path):
@@ -409,6 +409,23 @@ class CliTest(unittest.TestCase):
         self.assertEqual(self.owner_state(path), ("other-2", "id-b", 200, "", ""))
         self.reclaim("id-a", 300)
         self.assertEqual(self.owner_state(path), ("other-2", "id-b", 200, "", ""))
+
+    def test_a_cleared_session_moves_its_docs_to_the_new_id(self):
+        # A `/clear` starts a new session id in the same process, so the stored pid still names this session.
+        mine = self.add_owned("mine", 10, "me-1", "id-a", 300)
+        theirs = self.add_owned("theirs", 20, "other-2", "id-b", 200)
+        self.reclaim("id-new", 300)
+        self.assertEqual(self.owner_state(mine), ("me-1", "id-new", 300, None, None))
+        self.assertEqual(self.owner_state(theirs), ("other-2", "id-b", 200, None, None))
+
+    def test_reclaim_reads_the_current_checkout_and_the_roots(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
+        elsewhere = os.path.join(self.temp.name, "elsewhere")
+        os.makedirs(elsewhere)
+        self.reclaim("id-a", 300, roots=elsewhere)
+        self.assertEqual(self.owner_state(path)[2], 300)
+        self.reclaim("id-a", 100, cwd=elsewhere)
+        self.assertEqual(self.owner_state(path)[2], 100)
 
     def test_reclaim_is_silent_and_ok_on_bad_input(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
