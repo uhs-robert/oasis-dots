@@ -33,14 +33,18 @@ cat >"$stub/hyprctl" <<'STUB'
 #!/bin/sh
 case $1 in
   eval) echo "$2" >>"$STUB_DIR/cb.queue" ;;
-  # The virtual mouse is listed once the test creates the device file, unless the scenario never shows it. Hyprland
-  # lists names lowercased with dashes, as here.
+  # The daemon's mouse is listed once its device file exists. As on Hyprland, its keyboard takes the plain name and its
+  # mouse gets a -N suffix that changes with each start. PREEXISTING_MOUSE adds another daemon's mouse, listed throughout.
   devices)
+    . "$STUB_DIR/mode" 2>/dev/null
+    mice='{"address":"0x1","name":"keyd-virtual-pointer"},{"address":"0x3","name":null}'
+    keyboards=''
+    [ -n "$PREEXISTING_MOUSE" ] && mice="$mice"',{"address":"0x4","name":"ydotoold-virtual-device-90"}'
     if [ -f "$STUB_DIR/device" ]; then
-      echo '{"mice":[{"address":"0x1","name":"keyd-virtual-pointer"},{"address":"0x2","name":"ydotoold-virtual-device"}],"keyboards":[]}'
-    else
-      echo '{"mice":[{"address":"0x1","name":"keyd-virtual-pointer"}],"keyboards":[]}'
-    fi ;;
+      mice="$mice"',{"address":"0x2","name":"ydotoold-virtual-device-'"$(cat "$STUB_DIR/device")"'"}'
+      keyboards='{"address":"0x5","name":"ydotoold-virtual-device"}'
+    fi
+    echo "{\"mice\":[$mice],\"keyboards\":[$keyboards]}" ;;
   *) echo "hyprctl $*" >>"$STUB_DIR/log" ;;
 esac
 STUB
@@ -56,7 +60,8 @@ case $DAEMON in
     while :; do sleep 0.05; done ;;
 esac
 # The virtual mouse shows up in `hyprctl devices` some time after the socket, or never (NO_DEVICE).
-[ -z "$NO_DEVICE" ] && (sleep "${DEVICE_DELAY:-0}"; kill -0 $$ 2>/dev/null && touch "$STUB_DIR/device") &
+serial=$(( $(cat "$STUB_DIR/serial" 2>/dev/null || echo 0) + 1 )); echo $serial >"$STUB_DIR/serial"
+[ -z "$NO_DEVICE" ] && (sleep "${DEVICE_DELAY:-0}"; kill -0 $$ 2>/dev/null && echo $serial >"$STUB_DIR/device") &
 exec "$STUB_DIR/py/ydotoold" -I -c '
 import os, signal, socket, sys
 s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])
