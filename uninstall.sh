@@ -124,6 +124,10 @@ remove_system_files() {
       warn "$f not found, skipping"
     fi
   done
+  # The removed uinput rule stays loaded in udev, and its ACL stays on /dev/uinput, until udev reloads and replays the
+  # node's add event (the mirror of install_system_files).
+  sudo udevadm control --reload
+  sudo udevadm trigger --name-match=uinput
   sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
   if [[ -f /etc/greetd/hyprland.lua.bak ]]; then
     sudo mv /etc/greetd/hyprland.lua.bak /etc/greetd/hyprland.lua && success "Restored /etc/greetd/hyprland.lua from its pre-install backup"
