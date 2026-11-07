@@ -66,6 +66,8 @@ class CliTest(unittest.TestCase):
     def tearDown(self):
         for dirpath, _, names in os.walk(self.temp.name):
             for name in names:
+                if os.path.islink(os.path.join(dirpath, name)):
+                    continue
                 try:
                     os.chmod(os.path.join(dirpath, name), 0o600)
                 except OSError:

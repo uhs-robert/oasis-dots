@@ -231,7 +231,7 @@ class VanishedTest(RetireTest):
         path = self.add("gone", 10)
         doc = parse.load(path)
         plan = retire.plan(self.repo, doc, cancel=False)
-        with mock.patch.object(retire.store, "check_unchanged", lambda *_: os.unlink(path)):
+        with mock.patch.object(retire.store, "check_unchanged", lambda *_: os.path.exists(path) and os.unlink(path)):
             outcome = retire.apply(doc, plan.steps)
         self.assertFalse(outcome.failed)
         self.assertEqual(outcome.lines[-1], ("skipped", "delete .plans/proj/gone.md: the doc was already deleted"))
@@ -278,6 +278,32 @@ class MidRunChangeTest(RetireTest):
         self.assertFalse(outcome.failed)
         self.assertEqual(self.depends_on(later), ["x"])
         self.assertFalse(os.path.exists(path))
+
+
+    def test_a_claim_during_the_dependency_step_stops_before_the_logs_are_deleted(self):
+        path = self.add("mine", 10, owner="dotfiles-1")
+        logs = self.add_logs("mine")
+        doc = parse.load(path)
+        plan = retire.plan(self.repo, doc, cancel=False)
+
+        def claim_meanwhile(*_):
+            store.update(parse.load(path), {"owner_session_id": "id-b", "owner_session_pid": 200})
+
+        with mock.patch.object(retire, "drop_dependencies", claim_meanwhile):
+            outcome = retire.apply(doc, plan.steps)
+        self.assertTrue(outcome.failed)
+        self.assertTrue(os.path.exists(os.path.join(logs, "report.md")))
+        self.assertTrue(os.path.exists(path))
+
+
+class GitEnvironmentTest(RetireTest):
+    def test_git_variables_from_a_hook_do_not_redirect_the_git_calls(self):
+        subprocess.run(["git", "-C", self.repo, "remote", "add", "origin", "git@github.com:o/r.git"], check=True)
+        elsewhere = os.path.join(self.temp.name, "elsewhere")
+        os.makedirs(elsewhere)
+        with mock.patch.dict(os.environ, {"GIT_DIR": elsewhere, "GIT_WORK_TREE": elsewhere}):
+            self.assertEqual(retire.current_repo_slug(self.repo), "o/r")
+            self.assertEqual(retire.git(self.repo, "worktree", "list", "--porcelain").returncode, 0)
 
 
 class CancelTest(RetireTest):

@@ -423,6 +423,12 @@ class CancelEndpointTest(WriteTest):
         with mock.patch.dict(os.environ, environment):
             return self.post("cancel", body, headers)
 
+    def test_the_page_sends_an_empty_string_for_a_key_the_card_lacks(self):
+        # The board JSON holds null for a missing pr, issue or branch, and the server refuses a null basis value.
+        # The page is plain JavaScript with no runner here, so this checks its source.
+        page = open(server.PAGE, encoding="utf-8").read()
+        self.assertIn('.map((key) => [key, doc[key] ?? ""])', page)
+
     def test_a_preview_lists_the_changes_and_changes_nothing(self):
         for body in (self.body(), self.body(apply=False)):
             status, data = self.post_with(body)

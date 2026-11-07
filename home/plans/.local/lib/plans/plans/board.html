@@ -272,7 +272,7 @@ function can_open(path) {
 async function cancel_card() {
   const doc = doc_by_path(selected_path);
   if (!doc) return;
-  const basis = Object.fromEntries(["status", "owner_session", "owner_session_id", "owner_session_pid", "pr", "issue", "branch"].map((key) => [key, doc[key]]));
+  const basis = Object.fromEntries(["status", "owner_session", "owner_session_id", "owner_session_pid", "pr", "issue", "branch"].map((key) => [key, doc[key] ?? ""]));
   let answer;
   try {
     const response = await fetch("/api/cancel", { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify({ path: doc.path, basis, apply: false }) });
