@@ -90,9 +90,9 @@ def add_worktree(repo, branch, path):
 
 class RetireTest(unittest.TestCase):
     # The helpers of CliTest without its tests, so they do not run twice.
-    make_repo, write, add, plans, read, tearDown = (
-        test_cli.CliTest.make_repo, test_cli.CliTest.write, test_cli.CliTest.add, test_cli.CliTest.plans,
-        test_cli.CliTest.read, test_cli.CliTest.tearDown)
+    make_repo, write, add, add_owned, plans, read, tearDown = (
+        test_cli.CliTest.make_repo, test_cli.CliTest.write, test_cli.CliTest.add, test_cli.CliTest.add_owned,
+        test_cli.CliTest.plans, test_cli.CliTest.read, test_cli.CliTest.tearDown)
 
     def setUp(self):
         test_cli.CliTest.setUp(self)
@@ -208,6 +208,12 @@ class CloseTest(RetireTest):
             self.assertIn("owned by dotfiles-1", result.stderr)
         self.assertTrue(os.path.exists(path))
         self.plans("close", "owned", "--as", "dotfiles-2", "--force", env=self.tools.env())
+        self.assertFalse(os.path.exists(path))
+
+    def test_a_dead_owners_doc_is_freed_and_closed_without_force(self):
+        path = self.add_owned("orphan", 10, "gone-1", "id-x", test_cli.DEAD_PID)
+        result = self.plans("close", "orphan", "--as", "dotfiles-2", env=self.tools.env())
+        self.assertIn("freed, owner gone-1 is dead", result.stderr)
         self.assertFalse(os.path.exists(path))
 
     def test_the_owner_and_a_same_name_session_check(self):
