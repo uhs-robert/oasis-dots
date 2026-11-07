@@ -49,9 +49,11 @@ ING_NOT_VERB = {"during", "including", "according", "nothing", "something", "any
 # `gh` must start a shell word: at the start, after a blank, `(`, `=`, an operator or a backtick.
 GH_BODY_COMMAND = re.compile(r"(?<![^\s(=;&|`])gh(?:\s|\\\n)+(?P<kind>pr|issue)(?:\s|\\\n)+(?:create|edit)\b")
 GIT_COMMIT_COMMAND = re.compile(r"(?<![^\s(=;&|`])git(?:(?:\s|\\\n)+-[Cc](?:\s|\\\n)+\S+)*(?:\s|\\\n)+commit\b")
-# Short options of git commit that take a value, attached (`-mText`) or in the next word. `-S` and `-u`
-# take only an attached value, so they are not listed.
+# Short options of git commit that take a value, attached (`-mText`) or in the next word.
 COMMIT_VALUE_OPTIONS = "mFCct"
+# `-S` and `-u` take only an attached value, so the rest of the word is that value, not more option letters.
+# A GPG key id in `-S1F2C` holds an `F` and a `C`.
+ATTACHED_ONLY_OPTIONS = "Su"
 # `<<<` is a here-string, not a heredoc.
 HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
@@ -470,6 +472,8 @@ def commit_source(words, heredocs):
             option, value, value_index = word[2], word.split("=", 1)[1], index
         elif word.startswith("-") and not word.startswith("--"):
             for position, letter in enumerate(word[1:], 1):
+                if letter in ATTACHED_ONLY_OPTIONS:
+                    break
                 if letter in COMMIT_VALUE_OPTIONS:
                     option = letter
                     if position + 1 < len(word):
