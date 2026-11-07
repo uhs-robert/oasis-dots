@@ -12,7 +12,9 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from test_server import Fixture, wait_until  # noqa: E402
 
-from plans import parse, server, store  # noqa: E402
+from test_retire import FakeTools  # noqa: E402
+
+from plans import parse, retire, server, store  # noqa: E402
 
 WRITE = {"Content-Type": "application/json", server.WRITE_HEADER: "1"}
 # Agent edits go through this, so a test that wraps store.update to step in mid-write does not see them.
@@ -394,6 +396,89 @@ class OpenTest(WriteTest):
         self.assertEqual(status, 501)
         self.assertIn("TERMINAL", data["error"])
         popen.assert_not_called()
+
+
+class CancelEndpointTest(WriteTest):
+    BASIS_KEYS = ("status", "owner_session", "pr", "issue", "branch")
+
+    def setUp(self):
+        super().setUp()
+        self.tools = FakeTools(self.fixture.temp.name)
+        self.path = self.add("demo", 10, pr="6")
+        self.rewrite(issue="8", branch="feat/x")
+        self.fixture.start()
+
+    def rewrite(self, **keys):
+        self.agent_sets(self.path, **keys)
+
+    def body(self, apply=None, **overrides):
+        basis = {key: parse.load(self.path).keys.get(key) for key in self.BASIS_KEYS}
+        body = {"path": self.path, "basis": {**basis, **overrides}}
+        if apply is not None:
+            body["apply"] = apply
+        return body
+
+    def post_with(self, body, headers=None, **fake):
+        environment = self.tools.env(states=fake.pop("states", "pr:6=OPEN,issue:8=OPEN"), **fake)
+        with mock.patch.dict(os.environ, environment):
+            return self.post("cancel", body, headers)
+
+    def test_a_preview_lists_the_changes_and_changes_nothing(self):
+        for body in (self.body(), self.body(apply=False)):
+            status, data = self.post_with(body)
+            self.assertEqual(status, 200)
+            self.assertIn("close PR 6 unmerged, with a comment (if it is still open)", data["changes"])
+            self.assertIn("delete .plans/proj/demo.md", data["changes"])
+            self.assertTrue(any("branch feat/x" in note for note in data["notes"]))
+        self.assertTrue(os.path.exists(self.path))
+        self.assertEqual(self.tools.calls(), [])
+
+    def test_apply_cancels_and_the_board_drops_the_card(self):
+        status, data = self.post_with(self.body(apply=True))
+        self.assertEqual(status, 200, data)
+        self.assertFalse(os.path.exists(self.path))
+        self.assertEqual(self.tools.writes(), ["gh pr close 6 --comment " + retire.PR_COMMENT,
+                                               "gh issue close 8 --reason not planned"])
+        self.assertEqual(self.fixture.board_json()["repos"][0]["docs"], [])
+
+    def test_a_write_without_the_board_header_or_from_another_origin_is_refused(self):
+        for headers in ({server.WRITE_HEADER: ""}, {"Content-Type": "text/plain"}, {"Origin": "http://evil.example"},
+                        {"Host": "evil.example"}):
+            status, _ = self.post_with(self.body(apply=True), headers)
+            self.assertEqual(status, 403, headers)
+        self.assertTrue(os.path.exists(self.path))
+        self.assertEqual(self.tools.calls(), [])
+
+    def test_a_stale_shown_value_is_refused_before_any_step(self):
+        self.rewrite(status="building")
+        status, data = self.post_with(self.body(apply=True, status="planned"))
+        self.assertEqual(status, 409)
+        self.assertEqual(data["keys"], ["status"])
+        self.assertTrue(os.path.exists(self.path))
+        self.assertEqual(self.tools.calls(), [])
+
+    def test_a_doc_a_session_owns_is_refused(self):
+        self.rewrite(owner_session="dotfiles-3")
+        for apply in (False, True):
+            status, data = self.post_with(self.body(apply=apply))
+            self.assertEqual(status, 403)
+            self.assertIn("dotfiles-3", data["error"])
+        self.assertTrue(os.path.exists(self.path))
+        self.assertEqual(self.tools.calls(), [])
+
+    def test_a_basis_without_the_guarded_keys_or_for_an_unknown_path_is_refused(self):
+        body = self.body(apply=True)
+        del body["basis"]["pr"]
+        self.assertEqual(self.post_with(body)[0], 400)
+        self.assertEqual(self.post_with({**self.body(apply=True), "path": "/etc/passwd"})[0], 404)
+        self.assertTrue(os.path.exists(self.path))
+
+    def test_a_failed_step_answers_502_and_keeps_the_doc(self):
+        status, data = self.post_with(self.body(apply=True), gh_fail="issue close")
+        self.assertEqual(status, 502)
+        self.assertIn("kept the doc", data["error"])
+        self.assertTrue(any(line.startswith("failed: close issue 8") for line in data["results"]))
+        self.assertTrue(os.path.exists(self.path))
 
 
 if __name__ == "__main__":

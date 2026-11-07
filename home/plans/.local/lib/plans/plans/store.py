@@ -61,19 +61,46 @@ def update(doc, changes, date=None):
     copy the caller read and based its changes on. Raises Conflict (file untouched) when a changed key differs on disk
     from `doc`, and parse.ParseError when the file on disk left the subset."""
     with locked(plans_dir_of(doc.path)):
-        try:
-            fresh = parse.load(doc.path)
-        except FileNotFoundError:
-            raise Vanished(doc.path) from None
-        conflicting = [key for key in changes if key != UPDATED and not same_value(fresh.value(key), doc.value(key))]
-        if conflicting:
-            raise Conflict(doc.path, conflicting)
+        fresh = load_fresh(doc)
+        refuse_changed(fresh, doc, changes)
         updated = parse.Doc(doc.path, fresh.render({**changes, UPDATED: date or today()}))
         # A value with a line break renders as broken front matter, so the check runs on the result, for every caller.
         if updated.errors:
             raise parse.ParseError(doc.path, updated.errors)
         replace_atomically(doc.path, updated.text)
     return updated
+
+
+def refuse_changed(fresh, doc, keys):
+    """Raise Conflict when a key in `keys` holds another value on disk (`fresh`) than in `doc`, the copy the caller read."""
+    conflicting = [key for key in keys if key != UPDATED and not same_value(fresh.value(key), doc.value(key))]
+    if conflicting:
+        raise Conflict(doc.path, conflicting)
+
+
+def check_unchanged(doc, keys):
+    """Raise Conflict or Vanished unless the doc on disk still holds `doc`'s value for each of `keys`."""
+    with locked(plans_dir_of(doc.path)):
+        refuse_changed(load_fresh(doc), doc, keys)
+
+
+def delete(doc, keys=()):
+    """Remove the doc file under the lock. Raises Vanished when it is already gone, and Conflict (file kept) when a key
+    in `keys` changed since `doc` was read. Only the file goes: the caller owns anything else that belongs to the doc."""
+    with locked(plans_dir_of(doc.path)):
+        refuse_changed(load_fresh(doc), doc, keys)
+        try:
+            os.unlink(doc.path)
+        except FileNotFoundError:
+            raise Vanished(doc.path) from None
+        fsync_dir(os.path.dirname(doc.path))
+
+
+def load_fresh(doc):
+    try:
+        return parse.load(doc.path)
+    except FileNotFoundError:
+        raise Vanished(doc.path) from None
 
 
 def same_value(on_disk, as_read):
