@@ -12,7 +12,7 @@ trap 'pkill -f "$work" 2>/dev/null; rm -rf "$work"' EXIT
 stub="$work/stub"
 mkdir -p "$stub/bin" "$work/run" "$work/home/.config/hypr/scripts"
 # The only real tools the stubs and generated scripts use.
-for tool in sh sleep rm cat env python3 mkdir touch basename grep; do
+for tool in sh sleep rm cat env python3 mkdir touch basename grep jq; do
   ln -s "$(command -v "$tool")" "$stub/bin/$tool" || exit 1
 done
 
@@ -23,6 +23,8 @@ for tool in ydotool wlrctl notify-send; do
 #!/bin/sh
 . "$STUB_DIR/mode" 2>/dev/null
 echo "$(basename "$0") $*" >>"$STUB_DIR/log"
+# ydotool's default socket ($XDG_RUNTIME_DIR/.ydotool_socket) may be a stale one from a manual run; no call may use it.
+case $(basename "$0"):$YDOTOOL_SOCKET in ydotool:*/hypr-cursor-drag/*/sock) ;; ydotool:*) echo "ydotool default socket" >>"$STUB_DIR/log" ;; esac
 [ "$(basename "$0")" = ydotool ] && [ "$1" = click ] && [ "$2" = 0x40 ] && [ -n "$FAIL_PRESS" ] && exit 1
 exit 0
 STUB
@@ -31,8 +33,14 @@ cat >"$stub/hyprctl" <<'STUB'
 #!/bin/sh
 case $1 in
   eval) echo "$2" >>"$STUB_DIR/cb.queue" ;;
-  # The virtual mouse is listed once the test creates the device file, unless the scenario never shows it.
-  devices) [ -f "$STUB_DIR/device" ] && echo '{"mice":[{"name":"ydotoold virtual device"}]}' ;;
+  # The virtual mouse is listed once the test creates the device file, unless the scenario never shows it. Hyprland
+  # lists names lowercased with dashes, as here.
+  devices)
+    if [ -f "$STUB_DIR/device" ]; then
+      echo '{"mice":[{"address":"0x1","name":"keyd-virtual-pointer"},{"address":"0x2","name":"ydotoold-virtual-device"}],"keyboards":[]}'
+    else
+      echo '{"mice":[{"address":"0x1","name":"keyd-virtual-pointer"}],"keyboards":[]}'
+    fi ;;
   *) echo "hyprctl $*" >>"$STUB_DIR/log" ;;
 esac
 STUB

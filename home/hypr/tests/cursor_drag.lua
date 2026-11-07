@@ -8,7 +8,6 @@ local Stubs = dofile(here .. "/act_stubs.lua")
 local work = assert(os.getenv("DRAG_TEST_DIR"), "run through cursor-drag.sh")
 local stub = work .. "/stub"
 local run_dir = os.getenv("XDG_RUNTIME_DIR")
-local pidfile = run_dir .. "/hypr-cursor-drag.sock.pid"
 
 local failures = 0
 local function check(ok, what)
@@ -163,9 +162,11 @@ local function advance(ms)
 end
 
 --- Run the hyprctl eval callbacks the scripts queued (what Hyprland would run).
+local pumped = {}
 pump = function()
 	os.rename(stub .. "/cb.queue", stub .. "/cb.work")
 	for line in read_file(stub .. "/cb.work"):gmatch("[^\n]+") do
+		pumped[#pumped + 1] = line
 		local fn, err = load(line)
 		check(fn, "callback loads: " .. line .. " " .. tostring(err))
 		if fn then
@@ -189,11 +190,41 @@ local function settle(cond, secs)
 	return cond()
 end
 
+--- Matches every daemon and daemon script, whatever the instance: their command lines hold the socket path.
 local function daemons_running()
-	return os.execute("pgrep -f '" .. run_dir .. "/hypr-cursor-drag[.]sock' >/dev/null 2>&1") == true
+	return os.execute("pgrep -f '" .. run_dir .. "/hypr-cursor-dra[g]' >/dev/null 2>&1") == true
+end
+
+local function daemon_count()
+	return tonumber(io.popen("pgrep -fc '" .. stub .. "/py/ydotool[d] -I' 2>/dev/null"):read("a")) or 0
+end
+
+--- Every socket and pid file of any daemon instance.
+local function instance_files()
+	local files = {}
+	local find = io.popen(
+		"find " .. shell_quote(run_dir) .. " -mindepth 1 \\( -type f -o -type s \\) -path '*hypr-cursor-drag*' 2>/dev/null"
+	)
+	for line in find:read("a"):gmatch("[^\n]+") do
+		files[#files + 1] = line
+	end
+	find:close()
+	return files
+end
+
+local function pid_file()
+	for _, path in ipairs(instance_files()) do
+		if path:find("pid$") then
+			return path
+		end
+	end
 end
 
 local Cursor, Submap, binds_by
+
+-- A leftover of a manual ydotool run at ydotool's default path, as on the owner's machine.
+local stale_default_socket = run_dir .. "/.ydotool_socket"
+write_file(stale_default_socket, "stale\n")
 
 local function device_listed()
 	return os.execute("test -f " .. stub .. "/device") == true
@@ -217,8 +248,10 @@ local function fresh(mode, keep_session)
 	if not keep_session then
 		write_file(stub .. "/log", "")
 		os.remove(stub .. "/cb.queue")
-		os.remove(pidfile)
-		os.remove(run_dir .. "/hypr-cursor-drag.sock")
+		os.execute("rm -rf " .. shell_quote(run_dir) .. "/*")
+		for index in pairs(pumped) do
+			pumped[index] = nil
+		end
 		set_pointer(100, 100)
 	end
 	pointer_reads = math.huge
@@ -268,13 +301,18 @@ local function assert_clean(name)
 		end, 3),
 		name .. ": no daemon process left"
 	)
-	check(read_file(pidfile) == "", name .. ": no pid file left")
+	check(#instance_files() == 0, name .. ": no socket or pid file left")
 	check(
 		count("ydotool click 0x40") <= count("ydotool click 0x80")
 			or count("ydotoold stop") >= 1
 			or count("ydotool click 0x40") == 0,
 		name .. ": a press has a release or the daemon's end"
 	)
+	check(count("ydotool default socket") == 0, name .. ": no ydotool call used the default socket")
+	check(read_file(stale_default_socket) == "stale\n", name .. ": the stale default socket is untouched")
+	-- A failed scenario must not leave its daemon to the next one.
+	os.execute("pkill -f '" .. run_dir .. "/hypr-cursor-dra[g]' 2>/dev/null")
+	os.execute("rm -rf " .. shell_quote(run_dir) .. "/*")
 end
 
 --- Like settle, but the virtual clock moves on at each poll, for what waits on the module's timers.
@@ -554,7 +592,7 @@ assert_clean("glide cancel")
 fresh()
 press("V")
 ready()
-os.execute('kill "$(cat ' .. shell_quote(pidfile) .. ')"')
+os.execute('kill "$(cat ' .. shell_quote(pid_file() or "/nonexistent") .. ')"')
 check(
 	settle(function()
 		return not Cursor.drag_active()
@@ -729,12 +767,15 @@ settle(function()
 	return not daemons_running()
 end)
 local bystander = io.popen("sleep 60 >/dev/null 2>&1 & echo $!"):read("n")
-write_file(pidfile, bystander .. "\n")
+-- An earlier load's instance directory, as the reload cleanup finds it.
+os.execute("mkdir -p " .. shell_quote(run_dir .. "/hypr-cursor-drag/old-load-1"))
+write_file(run_dir .. "/hypr-cursor-drag/old-load-1/pid", bystander .. "\n")
 handlers["config.reloaded"]()
 sleep(0.5)
 check(os.execute("kill -0 " .. bystander) == true, "stale pid: an unrelated process is not killed")
 os.execute("kill " .. bystander)
-os.remove(pidfile)
+check(#instance_files() == 0, "stale pid: the stale instance's files are removed")
+os.execute("rm -rf " .. shell_quote(run_dir) .. "/*")
 
 --- 24. The Esc bind says what Esc does in each submap.
 fresh()
@@ -909,7 +950,7 @@ assert_clean("picked exit click")
 --- 32. The daemon starts when the submap is entered, before any drag, and the entry shows no notice.
 fresh()
 check(count("ydotoold start") == 1 and count("ydotool ") == 0, "warm: entering the submap starts the daemon")
-check(read_file(pidfile) ~= "", "warm: the daemon has a pid file")
+check(pid_file() ~= nil, "warm: the daemon has a pid file")
 check(log():find("notify-send", 1, true) == nil, "warm: no notice on entry")
 assert_clean("warm")
 check(count("ydotoold stop") == 1, "warm: leaving stops it")
@@ -1021,6 +1062,173 @@ settle(function()
 end)
 check(count("ydotoold stop") == 0, "pick: the drop keeps the daemon")
 assert_clean("pick pause")
+
+--- 37. Leave while the daemon waits for its device, re-enter and V within 5 s: the old script's cleanup must not touch
+--- the new daemon's files, or the drop sends no button-up and the new daemon can no longer be stopped.
+fresh("DEVICE_DELAY=1")
+sleep(0.2)
+pump()
+Submap.reset()
+sleep(0.3)
+pump()
+advance(3100) -- past the stop backstop
+Submap.enter("Cursor")
+press("V")
+check(
+	settle(function()
+		return count("ydotool click 0x40") == 1
+	end, 4),
+	"fast re-entry: the new daemon presses"
+)
+check(ready(), "fast re-entry: the drag proceeds")
+sleep(5) -- past the old script's 5 s device wait
+pump()
+check(pid_file() ~= nil, "fast re-entry: the new daemon keeps its pid file")
+check(daemon_count() == 1, "fast re-entry: one daemon")
+press("SPACE")
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"fast re-entry: the drop releases"
+)
+assert_clean("fast re-entry")
+
+--- 38. Callbacks from before a reload arrive after a new drag has started: they name the old instance and are ignored.
+fresh()
+press("V")
+ready()
+local old_callbacks = {}
+for _, line in ipairs(pumped) do
+	if line:find("daemon_ready", 1, true) then
+		old_callbacks[#old_callbacks + 1] = (line:gsub("daemon_ready", "daemon_gone"))
+		old_callbacks[#old_callbacks + 1] = (line:gsub("daemon_ready", "daemon_failed"):gsub("%)$", ", 'old')"))
+	elseif line:find("drag_ready", 1, true) then
+		old_callbacks[#old_callbacks + 1] = (line:gsub("drag_ready", "drag_failed"))
+		old_callbacks[#old_callbacks + 1] = (line:gsub("drag_ready", "drag_released"))
+	end
+end
+fresh("", true)
+handlers["config.reloaded"]()
+check(
+	settle(function()
+		return not daemons_running()
+	end, 3),
+	"late callbacks: the reload stops the old daemon"
+)
+sleep(0.2)
+os.remove(stub .. "/cb.queue") -- the old script's own late callbacks are replayed below with the rest
+Submap.enter("Cursor")
+warm()
+press("V")
+check(ready(), "late callbacks: the new drag presses")
+local releases = count("ydotool click 0x80")
+write_file(stub .. "/cb.queue", table.concat(old_callbacks, "\n") .. "\n")
+pump()
+check(#old_callbacks == 4, "late callbacks: the old instance's callbacks were captured")
+check(Cursor.drag_active(), "late callbacks: the new drag is still held")
+check(daemon_count() == 1, "late callbacks: the new daemon still runs")
+check(not log():find("ydotoold exited", 1, true) and not log():find("could not press", 1, true), "late callbacks: no notice")
+press("SPACE")
+check(
+	settle(function()
+		return count("ydotool click 0x80") > releases
+	end),
+	"late callbacks: the drop releases"
+)
+assert_clean("late callbacks")
+
+--- 39. V while the daemon warms up, then the exit drop: nothing is pressed yet, so the submap leaves at once, and the
+--- leave is not kept for a later drag.
+fresh("DEVICE_DELAY=1")
+press("V")
+check(Cursor.drag_active() and count("ydotool click 0x40") == 0, "warm-up exit drop: the drag waits for the daemon")
+press("CTRL + SPACE")
+check(submap_calls[#submap_calls] == "reset" and not Cursor.drag_busy(), "warm-up exit drop: the submap leaves at once")
+settle(function()
+	return not daemons_running()
+end)
+Submap.enter("Cursor")
+warm()
+submap_calls = {}
+press("V")
+check(ready(), "warm-up exit drop: a later drag presses")
+press("ESCAPE")
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"warm-up exit drop: Esc releases the later drag"
+)
+sleep(0.3)
+pump()
+check(#submap_calls == 0, "warm-up exit drop: a later Esc cancels without leaving")
+assert_clean("warm-up exit drop")
+
+--- 40. A drag action outside the Cursor submaps (hypr-act, the bar, voice) is refused: no exit hook would end it.
+fresh()
+Submap.reset()
+settle(function()
+	return not daemons_running()
+end)
+current_submap = "reset"
+local starts = count("ydotoold start")
+Cursor.drag_start("manual")()
+Cursor.drag_start("find")()
+check(not Cursor.drag_busy(), "outside the submap: no drag starts")
+check(Cursor.drag_drop() == false, "outside the submap: drop does nothing")
+Cursor.drag_cancel()
+sleep(0.3)
+pump()
+check(count("ydotoold start") == starts and not daemons_running(), "outside the submap: no daemon")
+check(count("kbptr") == 0, "outside the submap: no picker")
+check(log():find("Cursor submap", 1, true) ~= nil, "outside the submap: notice")
+assert_clean("outside the submap")
+current_submap = "Cursor"
+
+--- 41. Entering an unrelated submap mid-drag cancels the drag and stops the daemon.
+fresh()
+press("V")
+ready()
+Submap.registry["Other"] = Submap.registry["Other"] or { name = "Other" }
+Submap.enter("Other")
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"unrelated submap: releases"
+)
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"unrelated submap: stops the daemon"
+)
+check(log():find("Drag cancelled", 1, true) ~= nil, "unrelated submap: notice")
+assert_clean("unrelated submap")
+
+--- 42. Leave and re-enter at once with a ready daemon: the old one stops, then exactly one new one starts.
+fresh()
+Submap.reset()
+Submap.enter("Cursor")
+check(
+	settle(function()
+		return count("ydotoold stop") == 1 and count("ydotoold start") == 2
+	end),
+	"enter-leave-enter: one stop, then one new daemon"
+)
+warm()
+press("V")
+check(ready(), "enter-leave-enter: the new daemon presses")
+check(daemon_count() == 1, "enter-leave-enter: one daemon")
+press("SPACE")
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"enter-leave-enter: the drop releases"
+)
+assert_clean("enter-leave-enter")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

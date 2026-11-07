@@ -128,19 +128,19 @@ Act.define("cursor.send_key", {
 
 Act.define("cursor.drag_start", {
   label = "Drag",
-  intent = "Hold the left button at the pointer to drag. manual: move with the Cursor keys, then cursor.drag_drop or cursor.drag_cancel. find, tile and split: pick the target with the pick-only wl-kbptr mode, then drag there and drop. Needs ydotool; without it a notice shows and nothing changes.",
+  intent = "Hold the left button at the pointer to drag. manual: move with the Cursor keys, then cursor.drag_drop or cursor.drag_cancel. find, tile and split: pick the target with the pick-only wl-kbptr mode, then drag there and drop. Works only in the Cursor submap or Quick Click, whose exit lets go of the button. Needs ydotool. Elsewhere or without ydotool a notice shows and nothing changes.",
   params = { { name = "mode", type = "enum", values = DRAG_MODES, default = "manual" } },
   run = function(mode) cursor().drag_start(mode or "manual")() end,
 })
 
 Act.define("cursor.drag_drop", {
   label = "Drop",
-  intent = "Release a held drag where the pointer is. Does nothing when no drag is held. The left-click action drops the same way during a drag.",
+  intent = "Release a held drag where the pointer is. Does nothing when no drag is held, and outside the Cursor submap or Quick Click it only shows a notice. The left-click action drops the same way during a drag.",
   run = function() cursor().drag_drop() end,
 })
 
 Act.define("cursor.drag_cancel", {
   label = "Cancel Drag",
-  intent = "Cancel a held drag: the pointer returns to the grab point and the button is released. Does nothing when no drag is held.",
+  intent = "Cancel a held drag: the pointer returns to the grab point and the button is released. Does nothing when no drag is held, and outside the Cursor submap or Quick Click it only shows a notice.",
   run = function() cursor().drag_cancel() end,
 })
