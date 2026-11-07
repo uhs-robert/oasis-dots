@@ -79,33 +79,37 @@ Popup {
     onSearch_select: index => root.selected = index
 
     readonly property bool blocked: has_adapter && adapter.state === QsBt.BluetoothAdapterState.Blocked
-    property bool power_on_after_unblock: false
+    // The adapter waiting to power on once its block clears, so a different default adapter is never powered instead.
+    property var unblock_target: null
+    onAdapterChanged: root.unblock_target = null
 
     function toggle_power() {
         ThemeAudio.play("confirm");
         if (!root.has_adapter) return;
         // BlueZ cannot power a radio that rfkill soft-blocks, so lift the block first and power on once it clears.
         if (root.blocked) {
-            root.power_on_after_unblock = true;
+            root.unblock_target = root.adapter;
             unblock_timeout.restart();
-            Quickshell.execDetached(["rfkill", "unblock", "bluetooth"]);
+            // Unblock only this adapter's rfkill switch. Fall back to every Bluetooth radio when sysfs has no index for it.
+            Quickshell.execDetached(["sh", "-c", 'i=$(cat /sys/class/bluetooth/"$1"/rfkill*/index 2>/dev/null | head -n 1); exec rfkill unblock "${i:-bluetooth}"', "sh", root.adapter.adapterId]);
             return;
         }
         root.adapter.enabled = !root.adapter.enabled;
     }
 
     onBlockedChanged: {
-        if (root.blocked || !root.power_on_after_unblock) return;
-        root.power_on_after_unblock = false;
+        const target = root.unblock_target;
+        if (root.blocked || !target || target !== root.adapter) return;
+        root.unblock_target = null;
         unblock_timeout.stop();
-        root.adapter.enabled = true;
+        target.enabled = true;
     }
 
     // A hard block (a hardware switch) never clears, so stop waiting rather than power on much later.
     Timer {
         id: unblock_timeout
         interval: 5000
-        onTriggered: root.power_on_after_unblock = false
+        onTriggered: root.unblock_target = null
     }
 
     function toggle_scan() {
