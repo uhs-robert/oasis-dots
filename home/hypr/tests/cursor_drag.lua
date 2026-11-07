@@ -506,7 +506,7 @@ fresh("PICK=dismiss")
 press("SHIFT + V")
 check(
 	settle(function()
-		return line_of('hl.dsp.submap("Cursor")') ~= nil or log():find("hl.dsp.submap", 1, true) ~= nil
+		return line_of('hl.dsp.submap("Cursor")') ~= nil
 	end),
 	"dismissed picker: submap restored"
 )
