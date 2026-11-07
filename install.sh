@@ -137,6 +137,8 @@ main() {
   setup_git_hooks || true
   if [[ $OPT_SERVER -eq 0 ]]; then install_artcraft || warn "ArtCraft was not fully installed; fix the error above, then run: just artcraft-update"; fi
   if [[ $OPT_SERVER -eq 0 ]]; then install_voxcmd || warn "voxcmd was not built; fix the error above, then run: just voxcmd-build"; fi
+  # Not under the services gate: the Cursor submap's drag and drop works without voxtype.
+  if [[ $OPT_SERVER -eq 0 ]] && command -v ydotool &>/dev/null; then ensure_input_group; fi
   install_nvim_config
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi
   bootstrap_neovim

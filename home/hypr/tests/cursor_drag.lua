@@ -701,5 +701,116 @@ os.remove(pidfile)
 fresh()
 check(binds_by["Cursor|ESCAPE"].opts.desc:find("Cancel", 1, true), "esc label: Cursor says it cancels a drag")
 
+--- 25. A held key makes many move ticks but only one watchdog timer.
+fresh()
+press("V")
+ready()
+Cursor.move_press("left", 1)
+advance(10000)
+local watchdogs = 0
+for _, timer in ipairs(timers) do
+	if timer.opts.timeout == 1000 and timer.opts.type == "repeat" then
+		watchdogs = watchdogs + 1
+	end
+end
+check(watchdogs == 1, "watchdog: one timer however many moves (" .. watchdogs .. ")")
+Cursor.move_release("left")
+press("RETURN")
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+assert_clean("one watchdog")
+
+--- 26. Click actions wait for the drag to end: a full click would let go of the button the app sees held.
+fresh()
+press("V")
+ready()
+press("SPACE")
+press("CTRL + SPACE")
+advance(100)
+sleep(0.2)
+check(count("wlrctl pointer click") == 0, "click: blocked during a drag")
+check(log():find("Drop or cancel the drag first", 1, true) ~= nil, "click: notice")
+check(#submap_calls == 0, "click: the exit variant does not leave the submap either")
+press("RETURN")
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+settle(function()
+	press("SPACE") -- ignored until the release has finished
+	advance(100)
+	return count("wlrctl pointer click left") >= 1
+end)
+check(count("wlrctl pointer click left") >= 1, "click: works again after the drag")
+assert_clean("click guard")
+
+--- 27. A lost `gone` callback: the 3 s backstop frees the next drag.
+fresh()
+press("V")
+ready()
+press("RETURN")
+settle(function()
+	return count("ydotoold stop") == 1
+end)
+sleep(0.3)
+os.remove(stub .. "/cb.queue") -- the `gone` callback never arrives
+pump()
+press("V")
+check(count("ydotoold start") == 1, "lost gone: still busy before the backstop")
+advance(3100)
+press("V")
+check(
+	settle(function()
+		return count("ydotoold start") == 2 and count("wlrctl pointer move 8 0") == 2
+	end),
+	"lost gone: the backstop frees the next drag"
+)
+press("RETURN")
+settle(function()
+	return count("ydotool click 0x80") == 2
+end)
+assert_clean("lost gone")
+
+--- 28. Both callbacks lost while starting (after an abort): the backstop ends the phase.
+fresh()
+press("V")
+settle(function()
+	return count("ydotoold start") == 1 and read_file(pidfile) ~= ""
+end)
+press("RETURN") -- before `ready`: the abort kills the daemon
+settle(function()
+	return count("ydotoold stop") == 1
+end)
+sleep(0.3)
+os.remove(stub .. "/cb.queue") -- neither `ready` nor `gone` arrives
+pump()
+advance(3100)
+press("V")
+check(
+	settle(function()
+		return count("ydotoold start") == 2
+	end),
+	"lost ready: the backstop frees the next drag"
+)
+settle(function()
+	return count("wlrctl pointer move 8 0") >= 1
+end)
+press("RETURN")
+settle(function()
+	return count("ydotoold stop") == 2
+end)
+assert_clean("lost ready")
+
+--- 29. Enter then Esc while the release finishes: no false cancel notice.
+fresh()
+press("V")
+ready()
+press("RETURN")
+press("ESCAPE")
+sleep(0.3)
+pump()
+check(log():find("Drag cancelled", 1, true) == nil, "esc after drop: no cancel notice")
+assert_clean("esc after drop")
+
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

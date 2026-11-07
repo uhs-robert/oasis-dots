@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon and root's symlinks.
+# System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon, the input group and root's symlinks.
 
 install_system_files() {
   info "Installing system config files..."
@@ -31,6 +31,14 @@ set_default_shell() {
   info "Setting default shell to zsh..."
   sudo usermod -s "$zsh_path" "$USER"
   success "Default shell set to zsh (takes effect on next login)"
+}
+
+# Tools that write to /dev/uinput (voxtype, ydotool for keyboard drag and drop) need the `input` group. Root-owned udev
+# rules give that group the device; the membership takes effect on the next login.
+ensure_input_group() {
+  if groups | grep -q '\binput\b'; then return 0; fi
+  sudo usermod -aG input "$USER"
+  warn "Added $USER to input group, takes effect on next login"
 }
 
 enable_keyd() {

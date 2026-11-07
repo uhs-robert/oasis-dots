@@ -95,6 +95,7 @@ Act.define("cursor.click", {
     { name = "exit", type = "bool", default = false },
   },
   run = function(button, exit)
+    if cursor().drag_blocks_click() then return end
     cursor()["click_" .. button]()()
     if exit then require("lib.key.submap").reset() end
   end,
