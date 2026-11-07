@@ -311,7 +311,7 @@ before=$(hyprctl devices -j 2>/dev/null | jq -c "$mice_before" 2>/dev/null)
 [ -n "$before" ] || before='[]'
 ydotoold --socket-path="$sock" --socket-perm=0600 >/dev/null 2>&1 &
 dpid=$!
-echo $dpid >"$pidf"
+echo $dpid >"$pidf.new" && mv "$pidf.new" "$pidf"
 alive() { kill -0 $dpid 2>/dev/null; }
 n=0; until [ -S "$sock" ] || ! alive || [ $n -ge 40 ]; do sleep 0.05; n=$((n+1)); done
 if [ ! -S "$sock" ]; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'ydotoold did not start. It needs write access to /dev/uinput: install.sh installs the udev rule 70-dotfiles-uinput.rules and applies it'; fi
@@ -348,11 +348,19 @@ end
 --- @return string
 local STOP_LINE = [[[ -f "$pidf" ] && stop_daemon "$(cat "$pidf")"]]
 
---- The script that stops one instance's daemon. Its own script removes the files once the daemon is gone.
+--- The script that stops one instance's daemon. Its own script removes the files once the daemon is gone. A stop right
+--- after the start (leaving the submap at once) can run before the daemon script has written the pid file, so it waits
+--- for the file a moment; without it the daemon would outlive the visit. The
+--- daemon script writes the file whole (a rename), so the wait never reads it empty.
 --- @param dir string
 --- @return string
 local function stop_script(dir)
-  return string.format([[pidf=%s; %s; %s]], sh_quote(dir .. "/pid"), STOP_DAEMON, STOP_LINE)
+  return string.format(
+    [[pidf=%s; %s; n=0; until [ -f "$pidf" ] || [ $n -ge 40 ]; do sleep 0.05; n=$((n+1)); done; %s]],
+    sh_quote(dir .. "/pid"),
+    STOP_DAEMON,
+    STOP_LINE
+  )
 end
 
 --- The script a reload runs: for every instance directory of an earlier load, let go of the button its daemon may hold,
