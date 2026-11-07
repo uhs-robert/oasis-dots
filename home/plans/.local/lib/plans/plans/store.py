@@ -12,7 +12,7 @@ import fcntl
 import os
 import tempfile
 
-from . import parse
+from . import parse, validate
 
 # The key every write sets, so it never counts as a conflict.
 UPDATED = "updated"
@@ -66,7 +66,7 @@ def update(doc, changes, date=None, check_under_lock=None):
         refuse_changed(fresh, doc, changes)
         if check_under_lock:
             check_under_lock(fresh)
-        updated = parse.Doc(doc.path, fresh.render({**changes, UPDATED: date or today()}))
+        updated = parse.Doc(doc.path, fresh.render({**forgotten_last_owner(fresh, changes), **changes, UPDATED: date or today()}))
         # A value with a line break renders as broken front matter, so the check runs on the result, for every caller.
         if updated.errors:
             raise parse.ParseError(doc.path, updated.errors)
@@ -104,6 +104,14 @@ def load_fresh(doc):
         return parse.load(doc.path)
     except FileNotFoundError:
         raise Vanished(doc.path) from None
+
+
+def forgotten_last_owner(fresh, changes):
+    """Any write of owner_session (a claim, a handoff, a board edit) ends the last owner's right to take the doc back.
+    The rule sits here so that no writer can miss it."""
+    if "owner_session" not in changes:
+        return {}
+    return {key: "" for key in validate.LAST_OWNER_KEYS if fresh.keys.get(key) not in (None, "")}
 
 
 def same_value(on_disk, as_read):

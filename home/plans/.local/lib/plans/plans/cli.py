@@ -115,6 +115,9 @@ def build_parser():
     lint.add_argument("--all", action="store_true", help="every repo under ~/.config/plans/roots")
     lint.set_defaults(run=run_lint)
 
+    reclaim = commands.add_parser("reclaim", help="for a SessionStart hook: take back this session's docs, from the hook input on stdin")
+    reclaim.set_defaults(run=run_reclaim)
+
     serve = commands.add_parser("serve", help=f"a web board over every repo's docs, on {server.HOST}")
     serve.add_argument("--port", type=int, default=server.DEFAULT_PORT)
     serve.set_defaults(run=run_serve)
@@ -498,6 +501,24 @@ def repo_lint_lines(repo, args):
         findings += gh.check(repo.root, repo.docs)
     findings.sort(key=lambda finding: (finding.path, finding.line))
     return lines + [f"{where(f.path)}:{f.line}: {f.rule}: {f.message}" for f in findings]
+
+
+def run_reclaim(args):
+    """Silent and always OK: a hook's stdout reaches the model, and a failure would show at every session start."""
+    try:
+        hook_input = json.load(sys.stdin)
+        session_id = hook_input.get("session_id") if isinstance(hook_input, dict) else None
+        pid = liveness.own_claude_pid()
+        if not isinstance(session_id, str) or not session_id or pid is None:
+            return OK
+        for root in roots.all_repos():
+            try:
+                liveness.take_back(query.read_repo(root).docs, session_id, pid)
+            except Exception:  # noqa: BLE001, S112 - one unreadable repo must not stop the others
+                continue
+    except Exception:  # noqa: BLE001, S110 - see the docstring
+        pass
+    return OK
 
 
 def run_serve(args):

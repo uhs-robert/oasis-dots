@@ -78,6 +78,12 @@ class DocRulesTest(unittest.TestCase):
         self.assertEqual(rules(make({"owner_session_id": "[a]"})), ["owner-session-id"])
         self.assertEqual(rules(make({"owner_session_pid": "abc"})), ["owner-session-pid"])
 
+    def test_last_owner_values(self):
+        for good in ({"last_owner_session": "dotfiles-56", "last_owner_session_id": "47d3359c"}, {"last_owner_session": '""', "last_owner_session_id": '""'}):
+            self.assertEqual(rules(make(good)), [], good)
+        self.assertEqual(rules(make({"last_owner_session": "Bad Name"})), ["last-owner-session"])
+        self.assertEqual(rules(make({"last_owner_session_id": "[a]"})), ["last-owner-session-id"])
+
     def test_depends_on_is_a_list(self):
         self.assertEqual(rules(make({"depends_on": "other"})), ["list"])
 
