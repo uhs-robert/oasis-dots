@@ -1,0 +1,2 @@
+# Gives the user logged in at the seat write access to /dev/uinput only (the rule Steam ships), so ydotool needs no input group.
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
