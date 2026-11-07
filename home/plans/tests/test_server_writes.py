@@ -399,7 +399,7 @@ class OpenTest(WriteTest):
 
 
 class CancelEndpointTest(WriteTest):
-    BASIS_KEYS = ("status", "owner_session", "pr", "issue", "branch")
+    BASIS_KEYS = retire.GUARDED_KEYS
 
     def setUp(self):
         super().setUp()
@@ -412,7 +412,7 @@ class CancelEndpointTest(WriteTest):
         self.agent_sets(self.path, **keys)
 
     def body(self, apply=None, **overrides):
-        basis = {key: parse.load(self.path).keys.get(key) for key in self.BASIS_KEYS}
+        basis = {key: parse.load(self.path).keys.get(key, "") for key in self.BASIS_KEYS}
         body = {"path": self.path, "basis": {**basis, **overrides}}
         if apply is not None:
             body["apply"] = apply
