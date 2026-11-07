@@ -18,6 +18,8 @@ export HOME="$work/home"
 export XDG_STATE_HOME="$HOME/.local/state"
 mkdir -p "$XDG_STATE_HOME/hypr"
 echo oasis_moonlight >"$XDG_STATE_HOME/hypr/theme"
+# Without a runtime dir the Cursor submaps start and stop no ydotoold daemon, so the recorded effects hold no machine path.
+unset XDG_RUNTIME_DIR
 # Compared with the state before, not with empty: a checkout being edited is not clean, and a check run's is.
 before=$(git -C "$repo" status --porcelain)
 status=0

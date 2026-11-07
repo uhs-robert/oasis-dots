@@ -35,14 +35,18 @@ local CLICK_DELAY_MS = 20
 local move_timers = {}
 
 --- Keyboard drag and drop. The button is held with ydotool, because wlrctl has no button down or up. ydotoold is a user
---- daemon on a socket under XDG_RUNTIME_DIR that lives from the grab to the release, and its uinput device going away
---- releases the button even when the button-up is lost. wl-kbptr cancels a drag when it takes keyboard focus (tested by
---- hand), so a pick never overlaps a held button: the picker runs with the button up, then the button goes down at the
---- item and glides to the picked spot.
+--- daemon on a socket under XDG_RUNTIME_DIR that lives for a visit to the Cursor or Quick Click submap: it starts on
+--- entry and stops on every exit, so a drag never pays for its start. It is warm because Hyprland registers the uinput
+--- virtual mouse some time after the daemon's socket appears, and a press sent before that is lost; the first press
+--- waits until `hyprctl devices` lists it. The daemon's device going away releases the button even when the button-up is
+--- lost. wl-kbptr cancels a drag when it takes keyboard focus (tested by hand), so a pick never overlaps a held button:
+--- the picker runs with the button up, then the button goes down at the item and glides to the picked spot.
 ---
---- phase: idle | picking (picker open, button up) | starting (daemon coming up) | manual | gliding | releasing (button
---- up, the session script still cleaning up: a new drag would share its socket and pid file, so it waits).
---- Callbacks from shell scripts carry the session id, so one that arrives after its session ended is ignored.
+--- daemon.state: down | starting (not yet in `hyprctl devices`) | ready | stopping (its script still cleaning up: a new
+--- daemon would share its socket and pid file, so it waits).
+--- drag.phase: idle | picking (picker open, button up) | starting (waiting for the daemon, or the press is on its way) |
+--- manual | gliding | releasing (button-up on its way: a new drag waits).
+--- Callbacks from shell scripts carry an id, so one that arrives after its daemon or drag ended is ignored.
 local DRAG = {
   THRESHOLD_PX = 8, -- the nudge after the press that gets past a toolkit's drag threshold
   GLIDE_STEPS = 12,
@@ -51,8 +55,10 @@ local DRAG = {
   ARM_MS = 400, -- focus changes this soon after the press come from the press itself
   WATCHDOG_TICKS = 30, -- seconds without a move
   RELEASE_BACKSTOP_MS = 3000,
+  PRESS_PAUSE_MS = 100, -- the app sees the press before any motion
 }
 local drag = { phase = "idle", session = 0, timers = {} }
+local daemon = { state = "down", gen = 0 }
 
 --- Cursor.drag_touch, defined with the rest of the drag code; moves call it.
 local drag_touch = function() end
@@ -262,50 +268,84 @@ end
 --- died, the pid went to another program) must not get an unrelated process killed.
 local STOP_DAEMON = [[stop_daemon() { [ "$(cat "/proc/$1/comm" 2>/dev/null)" = ydotoold ] && kill "$1"; }]]
 
---- The script that owns one session's daemon: start it, press, report ready, then wait for it to exit and say so.
---- @param id integer
+--- The script that owns the daemon for a submap visit: start it, wait until Hyprland lists its virtual mouse, report
+--- ready, then wait for it to exit and say so. A failure reports its reason through `daemon_failed`.
+--- @param gen integer
 --- @param sock string
 --- @return string
-local function session_script(id, sock)
+local function daemon_script(gen, sock)
   return string.format(
     [[sock=%s; pidf="$sock.pid"
-fail() { rm -f "$sock" "$pidf"; notify-send 'Cursor drag' "$1"; %s; exit 1; }
+fail() { rm -f "$sock" "$pidf"; hyprctl eval "require('lib.desktop.cursor').daemon_failed(%d, '$1')" >/dev/null; exit 1; }
+seen() { hyprctl devices -j 2>/dev/null | grep -q 'ydotoold virtual device'; }
 command -v ydotool >/dev/null 2>&1 && command -v ydotoold >/dev/null 2>&1 || fail 'Drag needs ydotool'
 rm -f "$sock"
 ydotoold --socket-path="$sock" --socket-perm=0600 >/dev/null 2>&1 &
 dpid=$!
 echo $dpid >"$pidf"
 n=0; until [ -S "$sock" ] || [ $n -ge 40 ]; do sleep 0.05; n=$((n+1)); done
-if [ ! -S "$sock" ]; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'ydotoold did not start (it needs write access to /dev/uinput: the udev rule 70-dotfiles-uinput.rules, then log in again or reboot)'; fi
-if ! YDOTOOL_SOCKET="$sock" ydotool click 0x40 >/dev/null 2>&1; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'Drag could not press the button'; fi
+if [ ! -S "$sock" ]; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'ydotoold did not start. It needs write access to /dev/uinput, see the udev rule 70-dotfiles-uinput.rules, then log in again or reboot'; fi
+n=0; until seen || [ $n -ge 100 ]; do sleep 0.05; n=$((n+1)); done
+if ! seen; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'Hyprland did not list the ydotoold virtual mouse'; fi
 %s
 wait $dpid
 rm -f "$sock" "$pidf"
 %s]],
     sh_quote(sock),
-    callback("drag_failed", id),
-    callback("drag_ready", id),
-    callback("drag_gone", id)
+    gen,
+    callback("daemon_ready", gen),
+    callback("daemon_gone", gen)
   )
 end
 
---- The script that ends a session: a 1 px wiggle onto the drop spot (drop only), then button up, then the daemon goes.
---- No pid file means no daemon, so nothing is held. Cancel sends no Escape key: ydotoold's keyboard goes through
---- Hyprland's binds, so the Cursor submap's own Esc bind would catch it and leave the submap.
+--- The script that presses the button at the pointer once the daemon is ready.
+--- @param id integer
+--- @param sock string
+--- @return string
+local function press_script(id, sock)
+  return string.format(
+    [[if YDOTOOL_SOCKET=%s ydotool click 0x40 >/dev/null 2>&1; then %s; else %s; fi]],
+    sh_quote(sock),
+    callback("drag_ready", id),
+    callback("drag_failed", id)
+  )
+end
+
+--- The shell line that stops the daemon a pid file names. No pid file means no daemon.
+--- @return string
+local STOP_LINE = [[[ -f "$pidf" ] && stop_daemon "$(cat "$pidf")"]]
+
+--- The script that stops the daemon.
+--- @param sock string
+--- @return string
+local function stop_script(sock)
+  return string.format([[sock=%s; pidf="$sock.pid"; %s; %s]], sh_quote(sock), STOP_DAEMON, STOP_LINE)
+end
+
+--- The script that ends a drag: a 1 px wiggle onto the drop spot (drop only), then button up, then `drag_released`. With
+--- `stop`, the daemon goes after the button-up. No pid file means no daemon, so nothing is held. Cancel sends no Escape
+--- key: ydotoold's keyboard goes through Hyprland's binds, so the Cursor submap's own Esc bind would catch it and leave
+--- the submap.
 --- @param sock string
 --- @param how "drop"|"cancel"|"abort"
+--- @param id integer
+--- @param stop? boolean
 --- @return string
-local function release_script(sock, how)
+local function release_script(sock, how, id, stop)
   local before = how == "drop" and "wlrctl pointer move 1 0; wlrctl pointer move -1 0; sleep 0.05; " or ""
   return string.format(
     [[sock=%s; pidf="$sock.pid"; export YDOTOOL_SOCKET="$sock"
 %s
-[ -f "$pidf" ] || exit 0
+if [ -f "$pidf" ]; then
 %sydotool click 0x80; sleep 0.05
-stop_daemon "$(cat "$pidf")"]],
+%s
+fi
+%s]],
     sh_quote(sock),
     STOP_DAEMON,
-    before
+    before,
+    stop and STOP_LINE or "",
+    callback("drag_released", id)
   )
 end
 
@@ -316,6 +356,36 @@ local function drag_stop_timers()
   drag.timers = {}
   if drag.watchdog then drag.watchdog:set_enabled(false) end
   drag.watchdog = nil
+end
+
+--- Start the daemon for this submap visit, or note that one is wanted once the old one has finished stopping. Does
+--- nothing while one is starting or ready.
+local function daemon_start()
+  if daemon.state == "stopping" then
+    daemon.want = true
+    return
+  end
+  if daemon.state ~= "down" then return end
+  local sock = drag_socket()
+  if not sock then return end
+  daemon.gen = daemon.gen + 1
+  daemon.state = "starting"
+  run_shell(daemon_script(daemon.gen, sock))
+end
+
+--- Stop the daemon by pid with a /proc check. `with_release` is true when a release script already carries the stop.
+--- @param with_release? boolean
+local function daemon_stop(with_release)
+  daemon.want = false
+  if daemon.state == "down" or daemon.state == "stopping" then return end
+  local sock = drag_socket()
+  daemon.state = "stopping"
+  -- If the script's `gone` callback is lost, nothing else would end this state.
+  local gen = daemon.gen
+  hl.timer(function()
+    if daemon.gen == gen and daemon.state == "stopping" then daemon.state = "down" end
+  end, { timeout = DRAG.RELEASE_BACKSTOP_MS, type = "oneshot" })
+  if sock and not with_release then run_shell(stop_script(sock)) end
 end
 
 --- @return { x: integer, y: integer }|nil
@@ -343,29 +413,35 @@ end
 --- first) or "abort" (a plain button-up, for focus loss).
 --- @param how "drop"|"cancel"|"abort"
 --- @param why? string  Shown in a notice when the user did not ask for the end
+--- @param stop? boolean  The submap visit is over: the daemon stops after the button-up
 --- @return boolean ended
-local function drag_end(how, why)
+local function drag_end(how, why, stop)
   local phase = drag.phase
-  if phase == "idle" or phase == "releasing" then return false end
+  if phase == "idle" or phase == "releasing" then
+    if stop then daemon_stop() end
+    return false
+  end
   local sock = drag.sock
   drag_stop_timers()
-  if phase == "picking" then
+  if phase == "picking" or (phase == "starting" and not drag.pressing) then
+    -- Nothing is pressed.
     drag.phase = "idle"
+    if stop then daemon_stop() end
   elseif phase == "starting" then
-    -- The press has not happened, or it is on its way: drag_ready sees `abort` and ends the session.
+    -- The press is on its way: drag_ready sees `abort` and releases.
     drag.abort = how
-    -- If both of the script's callbacks are lost, nothing else would end this phase.
-    drag_after(DRAG.RELEASE_BACKSTOP_MS, drag_idle)
-    if sock then
-      run_shell(
-        string.format([[pidf=%s.pid; %s; [ -f "$pidf" ] && stop_daemon "$(cat "$pidf")"]], sh_quote(sock), STOP_DAEMON)
-      )
-    end
+    -- If both of the press script's callbacks are lost, nothing else would end this phase.
+    drag_after(DRAG.RELEASE_BACKSTOP_MS, function()
+      if sock then run_shell(release_script(sock, "abort", drag.session)) end
+      drag_idle()
+    end)
+    if stop then daemon_stop() end
   else
     if how == "cancel" and drag.origin then warp_to(drag.origin) end
-    run_shell(release_script(sock, how))
-    -- Busy until the session script's `gone` callback: its cleanup removes the socket and pid file, which a drag
-    -- started now would be using. The timer is a backstop for a lost callback.
+    if sock then run_shell(release_script(sock, how, drag.session, stop)) end
+    if stop then daemon_stop(true) end
+    -- Busy until the script's `drag_released` callback, so a drag started now cannot press before the button-up. The
+    -- timer is a backstop for a lost callback.
     drag.phase = "releasing"
     drag_after(DRAG.RELEASE_BACKSTOP_MS, drag_idle)
   end
@@ -403,7 +479,14 @@ Cursor.drag_busy = function() return drag.phase ~= "idle" end
 --- @return boolean
 Cursor.drag_active = function() return drag.phase ~= "idle" and drag.phase ~= "releasing" end
 
---- Bring a session's daemon up and press at the pointer. `after` says what drag_ready does next.
+--- Send the press once the daemon is ready.
+local function drag_send_press()
+  drag.pressing = true
+  run_shell(press_script(drag.session, drag.sock))
+end
+
+--- Press at the pointer, or wait for the daemon to be ready first (starting it if the visit has none). `after` says what
+--- drag_ready does next.
 --- @param after "manual"|"glide"
 --- @return boolean started
 local function drag_press(after)
@@ -417,26 +500,80 @@ local function drag_press(after)
   drag.after = after
   drag.abort = nil
   drag.sock = sock
+  drag.pressing = false
   start_watchdog()
-  run_shell(session_script(drag.session, sock))
+  if daemon.state == "ready" then
+    drag_send_press()
+  else
+    daemon_start()
+  end
   return true
 end
 
---- Callback: the daemon is up and the button is down.
+--- Callback: the daemon is up and Hyprland lists its virtual mouse.
+--- @param gen integer
+Cursor.daemon_ready = function(gen)
+  if gen ~= daemon.gen or daemon.state ~= "starting" then return end
+  daemon.state = "ready"
+  if drag.phase == "starting" and not drag.pressing then drag_send_press() end
+end
+
+--- Callback: the daemon could not start. The script already removed its files.
+--- @param gen integer
+--- @param why string
+Cursor.daemon_failed = function(gen, why)
+  if gen ~= daemon.gen then return end
+  daemon.state = "down"
+  -- Entering the submap starts the daemon without a drag asking, so only a waiting drag is told.
+  if drag.phase == "starting" and not drag.pressing then
+    drag_stop_timers()
+    drag.phase = "idle"
+    Cursor.drag_notice(why)
+  end
+end
+
+--- Callback: the daemon exited and its script has cleaned up. Its device is gone, so the button is up.
+--- @param gen integer
+Cursor.daemon_gone = function(gen)
+  if gen ~= daemon.gen then return end
+  local was = daemon.state
+  daemon.state = "down"
+  if was ~= "stopping" and drag.phase ~= "idle" then
+    local released = drag.phase == "releasing" or drag.abort ~= nil
+    drag_stop_timers()
+    if not released then Cursor.drag_notice("Drag ended: ydotoold exited") end
+    drag_idle()
+  end
+  if daemon.want then
+    daemon.want = false
+    daemon_start()
+  end
+end
+
+--- Callback: the button is up.
+--- @param id integer
+Cursor.drag_released = function(id)
+  if id ~= drag.session or drag.phase ~= "releasing" then return end
+  drag_stop_timers()
+  drag_idle()
+end
+
+--- Callback: the press is done, the button is down.
 --- @param id integer
 Cursor.drag_ready = function(id)
   if id ~= drag.session or drag.phase ~= "starting" then return end
   if drag.abort then
     local how = drag.abort
+    drag.abort = nil
     drag.phase = "manual"
     drag_end(how)
     return
   end
-  move_by(DRAG.THRESHOLD_PX, 0)()
   drag_after(DRAG.ARM_MS, function() drag.armed = true end)
   drag.armed = false
   if drag.after == "manual" then
     drag.phase = "manual"
+    drag_after(DRAG.PRESS_PAUSE_MS, function() move_by(DRAG.THRESHOLD_PX, 0)() end)
     return
   end
 
@@ -446,39 +583,32 @@ Cursor.drag_ready = function(id)
   local dy = to.y - from.y
   local step, done = 0, { x = 0, y = 0 }
   local timer
-  timer = hl.timer(function()
-    step = step + 1
-    local want_x = math.floor(dx * step / DRAG.GLIDE_STEPS + 0.5)
-    local want_y = math.floor(dy * step / DRAG.GLIDE_STEPS + 0.5)
-    if want_x ~= done.x or want_y ~= done.y then move_by(want_x - done.x, want_y - done.y)() end
-    done.x, done.y = want_x, want_y
-    if step < DRAG.GLIDE_STEPS then return end
-    timer:set_enabled(false)
-    drag_after(DRAG.SETTLE_MS, function()
-      warp_to(to)
-      drag_end("drop")
-    end)
-  end, { timeout = DRAG.GLIDE_STEP_MS, type = "repeat" })
-  drag.timers[#drag.timers + 1] = timer
+  drag_after(DRAG.PRESS_PAUSE_MS, function()
+    move_by(DRAG.THRESHOLD_PX, 0)()
+    timer = hl.timer(function()
+      step = step + 1
+      local want_x = math.floor(dx * step / DRAG.GLIDE_STEPS + 0.5)
+      local want_y = math.floor(dy * step / DRAG.GLIDE_STEPS + 0.5)
+      if want_x ~= done.x or want_y ~= done.y then move_by(want_x - done.x, want_y - done.y)() end
+      done.x, done.y = want_x, want_y
+      if step < DRAG.GLIDE_STEPS then return end
+      timer:set_enabled(false)
+      drag_after(DRAG.SETTLE_MS, function()
+        warp_to(to)
+        drag_end("drop")
+      end)
+    end, { timeout = DRAG.GLIDE_STEP_MS, type = "repeat" })
+    drag.timers[#drag.timers + 1] = timer
+  end)
 end
 
---- Callback: the session could not start. The script already showed the notice and removed its files.
+--- Callback: the press failed (the daemon is most likely gone).
 --- @param id integer
 Cursor.drag_failed = function(id)
   if id ~= drag.session or drag.phase == "idle" then return end
   drag_stop_timers()
   drag_idle()
-end
-
---- Callback: the daemon exited and the session script has cleaned up. Its device is gone, so the button is up; only
---- the state is left to clear.
---- @param id integer
-Cursor.drag_gone = function(id)
-  if id ~= drag.session or drag.phase == "idle" then return end
-  local ended_by_us = drag.phase == "releasing" or drag.abort ~= nil
-  drag_stop_timers()
-  if not ended_by_us then Cursor.drag_notice("Drag ended: ydotoold exited") end
-  drag_idle()
+  Cursor.drag_notice("Drag could not press the button")
 end
 
 --- Callback: the pick-only wl-kbptr run printed a spot (it warped the pointer there). Warp back to the item and press.
@@ -551,8 +681,16 @@ end
 --- Cancel (Esc): pointer back to the grab point, then release. Also cancels a glide.
 Cursor.drag_cancel = function() drag_end("cancel") end
 
---- The submap is being left (any route): a held button must not outlive it.
-Cursor.drag_submap_exit = function() drag_end("cancel", Cursor.drag_active() and "Drag cancelled" or nil) end
+--- A submap is being left (any route): a held button must not outlive it. The daemon stays only when the next submap
+--- is the other Cursor-family one.
+--- @param to? string  The submap being entered
+Cursor.drag_submap_exit = function(to)
+  local keep = to == "Cursor" or to == "Quick Click"
+  drag_end("cancel", Cursor.drag_active() and "Drag cancelled" or nil, not keep)
+end
+
+--- A Cursor-family submap was entered: start the daemon if the visit has none.
+Cursor.daemon_start = daemon_start
 
 if hl.on then
   -- Focus moving off the dragged-from window means the drag has lost its target, and a held button on a window the
@@ -565,7 +703,7 @@ if hl.on then
   -- A reload drops this state while a session script may still hold the button; let go of whatever it left.
   hl.on("config.reloaded", function()
     local sock = drag_socket()
-    if drag.phase == "idle" and sock then run_shell(release_script(sock, "abort")) end
+    if drag.phase == "idle" and sock then run_shell(release_script(sock, "abort", 0, true)) end
   end)
 end
 
