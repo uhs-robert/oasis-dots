@@ -15,11 +15,13 @@ from . import gh, parse, query, store, validate
 
 PR_COMMENT = "Closed unmerged: the plan for this PR was cancelled. The branch stays, so the PR can be reopened."
 # A number, `#number`, or a GitHub PR or issue URL. Anything else is refused, so a value can never pass for a gh flag.
-REFERENCE = re.compile(r"#?(\d+)|https://github\.com/[\w.-]+/[\w.-]+/(?:pull|issues)/(\d+)")
+REFERENCE = re.compile(r"#?(\d+)|https://github\.com/([\w.-]+/[\w.-]+)/(?:pull|issues)/(\d+)")
+GITHUB_REMOTE_PREFIXES = ("git@github.com:", "https://github.com/", "ssh://git@github.com/")
 BRANCH = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 UNSET = gh.UNSET
 # What the caller read and the plan depends on. The doc must still hold these when the first step runs and at the delete.
-GUARDED_KEYS = ("status", "owner_session", "pr", "issue", "branch")
+# The owner's id and pid are in it, so a same-named session that claims meanwhile stops the delete.
+GUARDED_KEYS = ("status", "owner_session", "pr", "issue", "branch", *validate.OWNER_VALUE_KEYS)
 DEPENDS_RETRIES = 3
 GIT_TIMEOUT_SECONDS = 60
 
@@ -70,7 +72,15 @@ def names_of(root, doc):
         raise Refused(f"{doc.path}: the id and the project must be lowercase letters, digits and dashes")
     if os.path.abspath(doc.path) != os.path.join(os.path.abspath(root), ".plans", project, doc.id + ".md"):
         raise Refused(f"{doc.path} is not .plans/{project}/{doc.id}.md under {root}")
+    if not stays_inside(root, ".plans", project):
+        raise Refused(f".plans/{project} leads outside {root}")
     return project
+
+
+def stays_inside(root, top, project):
+    """True when `<root>/<top>/<project>` is a real folder under `<root>/<top>`, not a link that leads elsewhere. A
+    delete through such a link would remove files outside the repo."""
+    return os.path.realpath(os.path.join(root, top, project)) == os.path.join(os.path.realpath(os.path.join(root, top)), project)
 
 
 def reference(doc, key):
@@ -85,9 +95,21 @@ def reference(doc, key):
     return found.group(1) or text
 
 
-def number_of(reference_text):
+def identity_of(reference_text, current_repo):
+    """(repo slug, number) of a PR or issue reference. A bare number belongs to `current_repo`, None when unknown."""
     found = REFERENCE.fullmatch(reference_text)
-    return found.group(1) or found.group(2)
+    if found.group(1):
+        return current_repo, found.group(1)
+    return found.group(2).lower(), found.group(3)
+
+
+def current_repo_slug(root):
+    """owner/name of the origin remote, lowercase, or None off GitHub."""
+    remote = subprocess.run(["git", "-C", root, "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
+    for prefix in GITHUB_REMOTE_PREFIXES:
+        if remote.startswith(prefix):
+            return remote[len(prefix):].removesuffix("/").removesuffix(".git").lower()
+    return None
 
 
 def github_steps(root, doc, others, notes):
@@ -97,7 +119,9 @@ def github_steps(root, doc, others, notes):
         steps.append(Step(f"close PR {pr} unmerged, with a comment (if it is still open)", lambda: close_pr(root, pr)))
     issue = reference(doc, "issue")
     if issue:
-        sharing = [other.id for other in others if shares_issue(other, number_of(issue))]
+        current_repo = current_repo_slug(root)
+        mine = identity_of(issue, current_repo)
+        sharing = [other.id for other in others if shares_issue(other, mine, current_repo)]
         if sharing:
             notes.append(f"keep issue {issue} open: {', '.join(sharing)} also names it")
         else:
@@ -105,10 +129,14 @@ def github_steps(root, doc, others, notes):
     return steps
 
 
-def shares_issue(other, number):
+def shares_issue(other, mine, current_repo):
+    """True when `other` names the same issue. A repo that is unknown on either side counts as the same, so the issue
+    stays open rather than closing under a doc that may need it."""
     value = other.keys.get("issue")
-    found = None if value in UNSET else REFERENCE.fullmatch(str(value))
-    return bool(found) and (found.group(1) or found.group(2)) == number
+    if value in UNSET or not REFERENCE.fullmatch(str(value)):
+        return False
+    slug, number = identity_of(str(value), current_repo)
+    return number == mine[1] and (slug is None or mine[0] is None or slug == mine[0])
 
 
 def close_pr(root, pr):
@@ -183,12 +211,17 @@ def remove_worktree(root, branch):
 
 def local_steps(root, doc, project, others):
     """The dependents' edits, the log folder, then the doc itself last."""
-    steps = [Step(f"drop {doc.id} from depends_on of {other.id}", lambda other=other: drop_dependency(root, doc.id, other))
-             for other in others if doc.id in depends_of(other)]
+    listing = [other.id for other in others if doc.id in depends_of(other)]
+    # The step reads the dependents again when it runs: the PR and worktree steps before it are slow, and a doc may
+    # have gained the dependency meanwhile.
+    text = f"drop {doc.id} from depends_on of {', '.join(listing)}" if listing else f"drop {doc.id} from every depends_on (none lists it now)"
+    steps = [Step(text, lambda: drop_dependencies(root, doc))]
     logs = os.path.join(root, ".logs", project, doc.id)
+    if not stays_inside(root, ".logs", project):
+        raise Refused(f".logs/{project} leads outside {root}")
     if os.path.lexists(logs):
-        steps.append(Step(f"delete .logs/{project}/{doc.id}/", lambda: delete_logs(logs)))
-    steps.append(Step(f"delete .plans/{project}/{doc.id}.md", lambda: delete_doc(doc)))
+        steps.append(Step(f"delete .logs/{project}/{doc.id}/", lambda: delete_logs(root, project, logs)))
+    steps.append(Step(f"delete .plans/{project}/{doc.id}.md", lambda: delete_doc(root, project, doc)))
     return steps
 
 
@@ -197,7 +230,15 @@ def depends_of(doc):
     return value if isinstance(value, list) else []
 
 
-def drop_dependency(root, doc_id, other):
+def drop_dependencies(root, doc):
+    dependents = [other for other in query.read_repo(root).docs if other.path != doc.path and doc.id in depends_of(other)]
+    for other in dependents:
+        drop_dependency(doc.id, other)
+    if not dependents:
+        return f"no doc lists {doc.id}"
+
+
+def drop_dependency(doc_id, other):
     for _ in range(DEPENDS_RETRIES):
         try:
             current = parse.load(other.path)
@@ -215,7 +256,9 @@ def drop_dependency(root, doc_id, other):
     raise StepFailed(f"{other.id} kept changing depends_on; run the command again")
 
 
-def delete_logs(logs):
+def delete_logs(root, project, logs):
+    if not stays_inside(root, ".logs", project):
+        raise StepFailed(f".logs/{project} leads outside {root}")
     if os.path.islink(logs):
         os.unlink(logs)
     elif os.path.isdir(logs):
@@ -224,7 +267,9 @@ def delete_logs(logs):
         return "no log folder"
 
 
-def delete_doc(doc):
+def delete_doc(root, project, doc):
+    if not stays_inside(root, ".plans", project):
+        raise StepFailed(f".plans/{project} leads outside {root}")
     try:
         store.delete(doc, GUARDED_KEYS)
     except store.Vanished:

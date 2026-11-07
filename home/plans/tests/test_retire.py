@@ -174,6 +174,29 @@ class CloseTest(RetireTest):
         self.assertFalse(os.path.lexists(os.path.join(self.logs, "done-piece")))
         self.assertTrue(os.path.exists(os.path.join(target, "keep.txt")))
 
+    def test_a_symlinked_project_folder_is_refused_and_nothing_outside_is_deleted(self):
+        outside = os.path.join(self.temp.name, "outside")
+        os.makedirs(outside)
+        victim = os.path.join(outside, "evil-doc.md")
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write(test_cli.doc_text("evil-doc", 10, project="evil"))
+        os.makedirs(os.path.join(self.repo, ".plans"), exist_ok=True)
+        os.symlink(outside, os.path.join(self.repo, ".plans", "evil"))
+        self.plans("close", "evil-doc", code=1, env=self.tools.env())
+        self.assertTrue(os.path.exists(victim))
+
+    def test_a_symlinked_log_project_folder_is_refused_and_nothing_outside_is_deleted(self):
+        path = self.add("piece", 10)
+        outside = os.path.join(self.temp.name, "outside-logs")
+        os.makedirs(os.path.join(outside, "piece"))
+        report = os.path.join(outside, "piece", "report.md")
+        open(report, "w").close()
+        os.makedirs(os.path.join(self.repo, ".logs"))
+        os.symlink(outside, os.path.join(self.repo, ".logs", "proj"))
+        self.plans("close", "piece", code=1, env=self.tools.env())
+        self.assertTrue(os.path.exists(report))
+        self.assertTrue(os.path.exists(path))
+
     def test_another_sessions_doc_is_refused_until_forced(self):
         path = self.add("owned", 10, owner="dotfiles-1")
         for args in (["--as", "dotfiles-2"], []):
@@ -233,6 +256,28 @@ class VanishedTest(RetireTest):
             retire.apply(doc, plan.steps)
         self.assertTrue(os.path.exists(path))
         self.assertEqual(self.tools.calls(), [])
+
+
+class MidRunChangeTest(RetireTest):
+    def test_a_claim_by_a_same_named_session_during_the_run_refuses_the_delete(self):
+        path = self.add("mine", 10, owner="dotfiles-1")
+        doc = parse.load(path)
+        plan = retire.plan(self.repo, doc, cancel=False)
+        store.update(parse.load(path), {"owner_session_id": "id-b", "owner_session_pid": 200})
+        with self.assertRaises(store.Conflict):
+            retire.apply(doc, plan.steps)
+        self.assertTrue(os.path.exists(path))
+
+    def test_a_dependency_added_after_the_plan_is_dropped_too(self):
+        path = self.add("done-piece", 10)
+        later = self.add("later", 20)
+        doc = parse.load(path)
+        plan = retire.plan(self.repo, doc, cancel=False)
+        store.update(parse.load(later), {"depends_on": ["done-piece", "x"]})
+        outcome = retire.apply(doc, plan.steps)
+        self.assertFalse(outcome.failed)
+        self.assertEqual(self.depends_on(later), ["x"])
+        self.assertFalse(os.path.exists(path))
 
 
 class CancelTest(RetireTest):
@@ -306,6 +351,21 @@ class CancelTest(RetireTest):
                                                    f"git worktree remove {os.path.realpath(self.worktree)}"])
         self.assertNotIn("issue close", " ".join(self.tools.calls()))
         self.assertIn("keep: keep issue 8 open: sibling also names it", result.stdout)
+
+    def test_an_issue_in_another_repo_with_the_same_number_does_not_count_as_shared(self):
+        self.piece()
+        subprocess.run(["git", "-C", self.repo, "remote", "add", "origin", "git@github.com:o/r.git"], check=True)
+        self.add("sibling", 20, issue="https://github.com/other/repo/issues/8")
+        self.cancel("piece", states=self.STATES)
+        self.assertIn("gh issue close 8 --reason not planned", self.tools.calls())
+
+    def test_the_same_issue_by_url_in_this_repo_counts_as_shared(self):
+        self.piece()
+        subprocess.run(["git", "-C", self.repo, "remote", "add", "origin", "https://github.com/o/r.git"], check=True)
+        self.add("sibling", 20, issue="https://github.com/o/r/issues/8")
+        result = self.cancel("piece", states=self.STATES)
+        self.assertNotIn("issue close", " ".join(self.tools.calls()))
+        self.assertIn("sibling also names it", result.stdout)
 
     def test_a_dirty_worktree_stays_and_the_rest_of_the_cancel_goes_on(self):
         path = self.piece()

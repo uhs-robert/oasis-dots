@@ -504,7 +504,7 @@ def renumber(order, moved, moved_basis, status):
 
 
 def cancel_doc(board, request):
-    """Preview or apply `plans cancel` for one card. Request: {path, basis: {status, owner_session, pr, issue, branch},
+    """Preview or apply `plans cancel` for one card. Request: {path, basis: {each of retire.GUARDED_KEYS},
     apply: true to run it}. Without `apply: true` nothing changes and the answer lists the changes. A doc that a session
     owns is refused, as `plans cancel` refuses it without --force: set the owner to none with `e` first."""
     view, doc = board_doc(board, request)
