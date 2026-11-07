@@ -1,6 +1,7 @@
 """Owner liveness: the Claude-process test on real spawned processes and on a fake /proc, and the release write with
 its races."""
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -119,6 +120,21 @@ class FakeProcTest(ProcCase):
                     handle.write(os.path.basename(arguments[0]) + "\n")
                 with open(os.path.join(self.proc, str(DEAD_PID), "cmdline"), "wb") as handle:
                     handle.write("\0".join(arguments).encode() + b"\0")
+                self.assertEqual(liveness.pid_runs_claude(DEAD_PID), expected)
+
+    def test_a_native_claude_under_another_name_counts_by_its_executable(self):
+        entry = os.path.join(self.proc, str(DEAD_PID))
+        with open(os.path.join(entry, "comm"), "w", encoding="utf-8") as handle:
+            handle.write("2.1.0\n")
+        with open(os.path.join(entry, "cmdline"), "wb") as handle:
+            handle.write(b"/home/u/.local/share/claude/versions/2.1.0\0--resume\0")
+        self.assertFalse(liveness.pid_runs_claude(DEAD_PID))
+        for executable, expected in (("/home/u/.local/share/claude/versions/2.1.0", True), ("/usr/bin/claudette", False),
+                                     ("/home/u/notclaude/bin/2.1.0", False)):
+            with self.subTest(executable=executable):
+                with contextlib.suppress(FileNotFoundError):
+                    os.unlink(os.path.join(entry, "exe"))
+                os.symlink(executable, os.path.join(entry, "exe"))
                 self.assertEqual(liveness.pid_runs_claude(DEAD_PID), expected)
 
     def test_a_missing_proc_counts_as_alive(self):
@@ -259,7 +275,8 @@ class TakeBackTest(ProcCase):
         with open(self.path, "w", encoding="utf-8") as handle:
             handle.write(DOC.format(pid=LIVE_PID))
         doc = parse.load(self.path)
-        self.assertEqual(len(liveness.take_back([doc], "id-new", LIVE_PID)), 1)
+        self.assertEqual(liveness.take_back([doc], "id-new", LIVE_PID), [])
+        self.assertEqual(len(liveness.take_back([doc], "id-new", LIVE_PID, cleared=True)), 1)
         self.assertEqual(parse.load(self.path).keys["owner_session_id"], "id-new")
         with open(self.path, "w", encoding="utf-8") as handle:
             handle.write(DOC.format(pid=LIVE_PID))
@@ -271,7 +288,7 @@ class TakeBackTest(ProcCase):
             return real_update(read, changes, **kwargs)
 
         with mock.patch.object(store, "update", resume_elsewhere_first):
-            self.assertEqual(liveness.take_back([doc], "id-new", LIVE_PID), [])
+            self.assertEqual(liveness.take_back([doc], "id-new", LIVE_PID, cleared=True), [])
         self.assertEqual(parse.load(self.path).keys["owner_session_id"], "id-a")
 
     def test_a_new_pid_goes_in_only_while_the_id_still_names_this_session(self):
