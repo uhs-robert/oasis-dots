@@ -106,6 +106,7 @@ remove_system_files() {
     /usr/local/bin/tuigreet-oasis
     /etc/vtrgb-oasis
     /etc/keyd/default.conf
+    /etc/udev/rules.d/70-dotfiles-uinput.rules
     /etc/pacman.d/hooks/voxtype-gpu-setup.hook
     /usr/local/bin/voxtype-gpu-setup
     /etc/pacman.d/hooks/betterbird-autoconfig.hook
