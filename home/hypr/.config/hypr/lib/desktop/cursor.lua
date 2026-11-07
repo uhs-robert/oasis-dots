@@ -285,9 +285,13 @@ end
 --- died, the pid went to another program) must not get an unrelated process killed.
 local STOP_DAEMON = [[stop_daemon() { [ "$(cat "/proc/$1/comm" 2>/dev/null)" = ydotoold ] && kill "$1"; }]]
 
---- jq filter: whether `hyprctl devices -j` lists ydotoold's virtual mouse. Hyprland lists device names lowercased with
---- dashes ("ydotoold-virtual-device"), unlike the name ydotoold gives the device, so both forms match.
-local MOUSE_LISTED = [[[.mice[]?.name | ascii_downcase | gsub("[ _]"; "-")] | index("ydotoold-virtual-device") != null]]
+--- jq filters over `hyprctl devices -j`. Hyprland renames devices to keep names unique: the keyboard of ydotoold is
+--- "ydotoold-virtual-device" and its mouse "ydotoold-virtual-device-1", with a suffix that varies. So the wait does not
+--- look for a name. It looks for a ydotoold mouse missing from the list taken before the start, which also keeps another
+--- daemon's mouse (a ydotool service, a daemon still going away) from counting as this one. `strings` drops a null name.
+local MICE_BEFORE = [=[[.mice[]?.name | strings]]=]
+local NEW_YDOTOOLD_MOUSE =
+  [=[[.mice[]?.name | strings | select(ascii_downcase | startswith("ydotoold")) | select(IN($before[]) | not)] | length > 0]=]
 
 --- The script that owns one daemon instance: start it, wait until Hyprland lists its virtual mouse, report ready, then
 --- wait for it to exit, remove the instance's directory and say so. A failure reports its reason through
@@ -297,12 +301,14 @@ local MOUSE_LISTED = [[[.mice[]?.name | ascii_downcase | gsub("[ _]"; "-")] | in
 --- @return string
 local function daemon_script(id, dir)
   return string.format(
-    [[dir=%s; sock="$dir/sock"; pidf="$dir/pid"; listed=%s
+    [[dir=%s; sock="$dir/sock"; pidf="$dir/pid"; mice_before=%s; new_mouse=%s
 fail() { rm -rf "$dir"; hyprctl eval "require('lib.desktop.cursor').daemon_failed('%s', '$1')" >/dev/null; exit 1; }
-seen() { hyprctl devices -j 2>/dev/null | jq -e "$listed" >/dev/null 2>&1; }
+seen() { hyprctl devices -j 2>/dev/null | jq -e --argjson before "$before" "$new_mouse" >/dev/null 2>&1; }
 command -v ydotool >/dev/null 2>&1 && command -v ydotoold >/dev/null 2>&1 || fail 'Drag needs ydotool'
 command -v jq >/dev/null 2>&1 || fail 'Drag needs jq'
 mkdir -p -m 700 "$dir" || fail 'Drag could not create its runtime directory'
+before=$(hyprctl devices -j 2>/dev/null | jq -c "$mice_before" 2>/dev/null)
+[ -n "$before" ] || before='[]'
 ydotoold --socket-path="$sock" --socket-perm=0600 >/dev/null 2>&1 &
 dpid=$!
 echo $dpid >"$pidf"
@@ -317,7 +323,8 @@ wait $dpid
 rm -rf "$dir"
 %s]],
     sh_quote(dir),
-    sh_quote(MOUSE_LISTED),
+    sh_quote(MICE_BEFORE),
+    sh_quote(NEW_YDOTOOLD_MOUSE),
     id,
     callback("daemon_ready", id),
     callback("daemon_gone", id)

@@ -1230,5 +1230,28 @@ check(
 )
 assert_clean("enter-leave-enter")
 
+--- 43. Another ydotoold mouse is already listed (a ydotool service, or a daemon still going away): the press still waits
+--- for this daemon's own mouse.
+fresh("PREEXISTING_MOUSE=1 DEVICE_DELAY=1")
+press("V")
+sleep(0.5)
+pump()
+check(count("ydotool click 0x40") == 0, "other mouse: no press before this daemon's mouse is listed")
+check(
+	settle(function()
+		return count("ydotool click 0x40") == 1
+	end, 6),
+	"other mouse: the press follows this daemon's mouse"
+)
+check(ready(), "other mouse: the drag proceeds")
+press("SPACE")
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"other mouse: the drop releases"
+)
+assert_clean("other mouse")
+
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)
