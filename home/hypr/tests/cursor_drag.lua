@@ -195,6 +195,18 @@ end
 
 local Cursor, Submap, binds_by
 
+local function device_listed()
+	return os.execute("test -f " .. stub .. "/device") == true
+end
+
+--- Wait until the daemon the submap entry started is ready (the module's `daemon_ready` callback has run).
+local function warm()
+	local listed = settle(device_listed)
+	sleep(0.2)
+	pump()
+	return listed
+end
+
 --- Load the keymaps fresh: a new Cursor module, state idle, binds registered.
 local function fresh(mode, keep_session)
 	for _, timer in ipairs(timers) do
@@ -218,7 +230,17 @@ local function fresh(mode, keep_session)
 	for _, entry in ipairs(Stubs.binds) do
 		binds_by[entry.submap .. "|" .. entry.key] = entry
 	end
-	Submap.current = "Cursor"
+	Submap.current = "reset"
+	os.remove(stub .. "/device")
+	-- Entering the submap starts the daemon, as in the real config. A reload (keep_session) does not enter one.
+	if keep_session then
+		return
+	end
+	Submap.enter("Cursor")
+	submap_calls = {}
+	if not (mode and (mode:find("DAEMON=", 1, true) or mode:find("NO_DEVICE", 1, true) or mode:find("DEVICE_DELAY", 1, true))) then
+		warm()
+	end
 end
 
 local function press(key, submap)
@@ -233,6 +255,7 @@ end
 
 --- After a scenario: nothing may be left, in Lua or on the machine.
 local function assert_clean(name)
+	Submap.reset() -- leaving the submap stops the daemon
 	check(
 		settle(function()
 			return not Cursor.drag_active()
@@ -254,16 +277,34 @@ local function assert_clean(name)
 	)
 end
 
-local function ready()
+--- Like settle, but the virtual clock moves on at each poll, for what waits on the module's timers.
+local function settle_timed(cond, secs)
 	return settle(function()
-		return count("ydotool click 0x40") >= 1 and count("wlrctl pointer move 8 0") >= 1
+		advance(30)
+		return cond()
+	end, secs)
+end
+
+local function ready()
+	local pressed = settle(function()
+		return count("ydotool click 0x40") >= 1
 	end)
+	sleep(0.1)
+	pump() -- the press script's `drag_ready` callback arms the pause
+	advance(150) -- the pause between the press and the nudge
+	return pressed
+		and settle(function()
+			return count("wlrctl pointer move 8 0") >= 1
+		end)
 end
 
 --- 1. ydotool missing: a notice and nothing else.
-fresh()
 local ydotool_stub = read_file(stub .. "/ydotool")
 os.remove(stub .. "/ydotool")
+fresh("NO_DEVICE=1") -- the entry's quiet start fails; no drag is waiting, so no notice yet
+sleep(0.3)
+pump()
+check(not log():find("Drag needs ydotool", 1, true), "missing ydotool: entering the submap shows no notice")
 press("V")
 settle(function()
 	return count("notify") >= 1
@@ -277,7 +318,8 @@ os.execute("chmod +x " .. stub .. "/ydotool")
 --- 2. Manual drag: V grabs, the left-click key drops.
 fresh()
 press("V")
-check(ready(), "manual: grab presses and nudges")
+local okr = ready()
+check(okr, "manual: grab presses and nudges")
 check(Cursor.drag_active(), "manual: active after grab")
 press("V")
 press("SHIFT + V")
@@ -289,12 +331,7 @@ check(
 	end),
 	"manual: left click releases the button"
 )
-check(
-	settle(function()
-		return count("ydotoold stop") == 1
-	end),
-	"manual: left click stops the daemon"
-)
+check(count("ydotoold stop") == 0, "manual: the drop keeps the daemon warm")
 check(count("wlrctl pointer move 1 0") == 1, "manual: drop wiggles onto the spot")
 check(line_of("ydotool click 0x40") < line_of("ydotool click 0x80"), "manual: press before release")
 check(count("ydotool key") == 0, "manual: a drop sends no Escape")
@@ -303,8 +340,14 @@ assert_clean("manual")
 --- 3. Esc with no drag, and Enter never drops (it is unbound, so the Cursor catchall swallows it).
 fresh()
 press("ESCAPE")
-check(count("ydotool ") == 0 and count("ydotoold") == 0, "no drag: Esc touches nothing")
+check(count("ydotool ") == 0 and count("ydotoold stop") == 0, "no drag: Esc presses nothing")
 check(submap_calls[#submap_calls] == "reset", "no drag: Esc leaves the submap")
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"no drag: leaving the submap stops the daemon"
+)
 assert_clean("no drag")
 
 --- 4. Cancel: back to the grab point, then release; no Escape key (the submap's own Esc bind would catch it) and the
@@ -325,12 +368,9 @@ local px, py = pointer()
 check(px == 100 and py == 100, "cancel: pointer back at the grab point")
 check(count("ydotool key") == 0, "cancel: no Escape key is sent")
 check(#submap_calls == 0, "cancel: submap stays open")
-check(
-	settle(function()
-		return count("ydotoold stop") == 1
-	end),
-	"cancel: daemon stopped"
-)
+sleep(0.3)
+pump()
+check(count("ydotoold stop") == 0, "cancel: the daemon stays warm")
 assert_clean("cancel")
 
 --- 5. Daemon fails to start.
@@ -367,12 +407,7 @@ check(
 	end),
 	"press fails: notice"
 )
-check(
-	settle(function()
-		return count("ydotoold stop") == 1
-	end),
-	"press fails: daemon killed"
-)
+check(count("ydotoold stop") == 0, "press fails: the daemon is left to the submap exit")
 assert_clean("press fails")
 
 --- 8. Watchdog, and a move resetting it.
@@ -439,7 +474,7 @@ check(
 )
 sleep(0.2)
 pump()
-check(count("ydotool ") == 0 and count("ydotoold start") == 0, "dismissed picker: no press, no daemon")
+check(count("ydotool ") == 0, "dismissed picker: no press")
 check(count("kbptr %-o modes=floating") == 1, "dismissed picker: find mode ran")
 assert_clean("dismissed picker")
 
@@ -454,7 +489,7 @@ check(
 )
 check(count("kbptr %-o modes=tile") == 1, "pick: tile mode ran")
 check(
-	settle(function()
+	settle_timed(function()
 		return count("wlrctl pointer move 8 0") == 1
 	end),
 	"pick: threshold nudge"
@@ -494,7 +529,7 @@ assert_clean("no position")
 --- 14. Glide interrupted by Esc (and the left click ignored while gliding).
 fresh('PICK="400 300"')
 press("SHIFT + V")
-settle(function()
+settle_timed(function()
 	return count("wlrctl pointer move 8 0") == 1
 end)
 advance(80)
@@ -535,7 +570,12 @@ check(
 advance(40000)
 check(count("ydotool click 0x80") == 0, "external kill: the watchdog is gone")
 press("V")
-check(ready() and Cursor.drag_active(), "external kill: a new drag starts")
+check(
+	settle(function()
+		return count("ydotoold start") == 2 and count("ydotool click 0x40") == 2
+	end) and Cursor.drag_active(),
+	"external kill: the next V restarts the daemon and presses"
+)
 press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
@@ -633,27 +673,23 @@ check(
 )
 os.getenv = real_getenv
 check(count("ydotool ") == 0, "no runtime dir: no press")
+assert_clean("no runtime dir")
 
---- 21. A new drag right after a drop waits for the old session's cleanup, so it cannot share its socket and pid file.
+--- 21. A new drag right after a drop waits for the button-up, then reuses the warm daemon.
 fresh()
 press("V")
 ready()
 press("SPACE")
 press("V")
-check(count("ydotoold start") == 1, "fast regrab: ignored while the old session cleans up")
+check(count("ydotool click 0x40") == 1, "fast regrab: ignored while the button-up is on its way")
 check(
 	settle(function()
-		return count("ydotoold stop") == 1
+		press("V") -- ignored until `drag_released` ends the release
+		return count("ydotool click 0x40") == 2
 	end),
-	"fast regrab: old daemon stopped"
+	"fast regrab: allowed once the button is up"
 )
-check(
-	settle(function()
-		press("V") -- ignored until the `gone` callback ends the release
-		return count("ydotoold start") == 2
-	end),
-	"fast regrab: allowed once cleanup is done"
-)
+check(count("ydotoold start") == 1 and count("ydotoold stop") == 0, "fast regrab: the same daemon serves both")
 ready()
 press("SPACE")
 settle(function()
@@ -669,7 +705,7 @@ settle(function()
 end)
 press("SPACE")
 check(
-	settle(function()
+	settle_timed(function()
 		return count("wlrctl pointer move 8 0") == 1
 	end),
 	"picked drag: left click while starting is ignored"
@@ -688,6 +724,10 @@ assert_clean("picked drag left click")
 
 --- 23. A stale pid file must not get an unrelated process killed (the pid was reused).
 fresh()
+Submap.reset() -- no daemon of its own: the pid file below names a bystander
+settle(function()
+	return not daemons_running()
+end)
 local bystander = io.popen("sleep 60 >/dev/null 2>&1 & echo $!"):read("n")
 write_file(pidfile, bystander .. "\n")
 handlers["config.reloaded"]()
@@ -699,6 +739,7 @@ os.remove(pidfile)
 --- 24. The Esc bind says what Esc does in each submap.
 fresh()
 check(binds_by["Cursor|ESCAPE"].opts.desc:find("Cancel", 1, true), "esc label: Cursor says it cancels a drag")
+assert_clean("esc label")
 
 --- 25. A held key makes many move ticks but only one watchdog timer.
 fresh()
@@ -747,60 +788,61 @@ end)
 check(count("wlrctl pointer click left") >= 1, "click: works again after the drag")
 assert_clean("click guard")
 
---- 27. A lost `gone` callback: the 3 s backstop frees the next drag.
+--- 27. A lost `drag_released` callback: the 3 s backstop frees the next drag.
 fresh()
 press("V")
 ready()
 press("SPACE")
 settle(function()
-	return count("ydotoold stop") == 1
+	return count("ydotool click 0x80") == 1
 end)
 sleep(0.3)
-os.remove(stub .. "/cb.queue") -- the `gone` callback never arrives
+os.remove(stub .. "/cb.queue") -- the `drag_released` callback never arrives
 pump()
 press("V")
-check(count("ydotoold start") == 1, "lost gone: still busy before the backstop")
+check(count("ydotool click 0x40") == 1, "lost release: still busy before the backstop")
 advance(3100)
 press("V")
 check(
 	settle(function()
-		return count("ydotoold start") == 2 and count("wlrctl pointer move 8 0") == 2
+		return count("ydotool click 0x40") == 2
 	end),
-	"lost gone: the backstop frees the next drag"
+	"lost release: the backstop frees the next drag"
 )
+ready()
 press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 2
 end)
-assert_clean("lost gone")
+assert_clean("lost release")
 
---- 28. Both callbacks lost while starting (after an abort): the backstop ends the phase.
+--- 28. The press's `drag_ready` callback is lost after an abort: the backstop lets go of the button and ends the phase.
 fresh()
 press("V")
-settle(function()
-	return count("ydotoold start") == 1 and read_file(pidfile) ~= ""
-end)
-press("SPACE") -- before `ready`: the abort kills the daemon
-settle(function()
-	return count("ydotoold stop") == 1
-end)
+press("SPACE") -- the press is on its way: the abort waits for `drag_ready`
 sleep(0.3)
-os.remove(stub .. "/cb.queue") -- neither `ready` nor `gone` arrives
+check(count("ydotool click 0x40") == 1, "lost ready: the press went out")
+os.remove(stub .. "/cb.queue") -- `drag_ready` never arrives
 pump()
+check(count("ydotool click 0x80") == 0, "lost ready: nothing released before the backstop")
 advance(3100)
+check(
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end),
+	"lost ready: the backstop sends the button-up"
+)
 press("V")
 check(
 	settle(function()
-		return count("ydotoold start") == 2
+		return count("ydotool click 0x40") == 2
 	end),
 	"lost ready: the backstop frees the next drag"
 )
-settle(function()
-	return count("wlrctl pointer move 8 0") >= 1
-end)
+ready()
 press("SPACE")
 settle(function()
-	return count("ydotoold stop") == 2
+	return count("ydotool click 0x80") == 2
 end)
 assert_clean("lost ready")
 
@@ -842,7 +884,7 @@ end)
 local calls_before = #submap_calls -- the picker itself leaves the submap
 press("CTRL + SPACE")
 check(
-	settle(function()
+	settle_timed(function()
 		return count("wlrctl pointer move 8 0") == 1
 	end),
 	"picked drag: exit click while starting is ignored"
@@ -863,6 +905,122 @@ for index = calls_before + 1, #submap_calls do
 end
 check(reset_calls == 0, "picked drag: the ignored exit click never left the submap")
 assert_clean("picked exit click")
+
+--- 32. The daemon starts when the submap is entered, before any drag, and the entry shows no notice.
+fresh()
+check(count("ydotoold start") == 1 and count("ydotool ") == 0, "warm: entering the submap starts the daemon")
+check(read_file(pidfile) ~= "", "warm: the daemon has a pid file")
+check(log():find("notify-send", 1, true) == nil, "warm: no notice on entry")
+assert_clean("warm")
+check(count("ydotoold stop") == 1, "warm: leaving stops it")
+
+--- 33. Cursor and Quick Click share one daemon; leaving both stops it, and every exit route does.
+fresh()
+Submap.enter("Quick Click")
+Submap.enter("Cursor")
+Submap.enter("Quick Click")
+sleep(0.3)
+pump()
+check(count("ydotoold start") == 1 and count("ydotoold stop") == 0, "shared: switching keeps one daemon")
+Submap.reset()
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"shared: leaving Quick Click stops it"
+)
+fresh()
+Submap.exit(Submap.registry["Cursor"])
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"exit: the submap's own exit stops it"
+)
+fresh()
+press("ESCAPE")
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"exit: Esc stops it"
+)
+assert_clean("shared")
+
+--- 34. The first press waits until Hyprland lists the virtual mouse.
+fresh("DEVICE_DELAY=1")
+press("V")
+sleep(0.4)
+pump()
+check(count("ydotool click 0x40") == 0, "device wait: no press before the device is listed")
+check(Cursor.drag_active(), "device wait: the drag is waiting")
+check(
+	settle(function()
+		return count("ydotool click 0x40") == 1
+	end, 6),
+	"device wait: the press follows once it is listed"
+)
+check(ready(), "device wait: the drag proceeds")
+press("SPACE")
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+check(
+	settle(function()
+		press("V") -- ignored until the release is over
+		return count("ydotool click 0x40") == 2
+	end),
+	"device wait: a later drag presses at once"
+)
+press("SPACE")
+settle(function()
+	return count("ydotool click 0x80") == 2
+end)
+assert_clean("device wait")
+
+--- 35. The device never appears: a notice and no press.
+fresh("NO_DEVICE=1")
+press("V")
+check(
+	settle(function()
+		return log():find("did not list the ydotoold virtual mouse", 1, true) ~= nil
+	end, 8),
+	"no device: notice after the wait"
+)
+check(count("ydotool click") == 0, "no device: no press")
+check(not Cursor.drag_active(), "no device: back to idle")
+assert_clean("no device")
+
+--- 36. A picked drag presses, pauses, then nudges: the app sees the press before any motion.
+fresh('PICK="400 300"')
+press("SHIFT + V")
+check(
+	settle(function()
+		return count("ydotool click 0x40") == 1
+	end),
+	"pick: the press is sent on the warm daemon"
+)
+sleep(0.1)
+pump()
+check(count("wlrctl pointer move 8 0") == 0, "pick: no nudge before the pause")
+advance(150)
+check(
+	settle(function()
+		return count("wlrctl pointer move 8 0") == 1
+	end),
+	"pick: the nudge follows the pause"
+)
+check(count("ydotoold start") == 1, "pick: the drag started no daemon of its own")
+for _ = 1, 20 do
+	advance(30)
+	sleep(0.01)
+end
+advance(100)
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+check(count("ydotoold stop") == 0, "pick: the drop keeps the daemon")
+assert_clean("pick pause")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

@@ -12,19 +12,22 @@ require("lib.act.defs.cursor")
 --- @type { hide: boolean, timeout: number }
 local DEFAULTS = {}
 
---- Save cursor config and disable hide/timeout. Called on submap enter.
+--- Save cursor config, disable hide/timeout and warm up the ydotoold daemon for drags. Called on submap enter.
 local enter_cursor = function()
+  require("lib.desktop.cursor").daemon_start()
   DEFAULTS.hide = hl.get_config("cursor.hide_on_key_press")
   DEFAULTS.timeout = hl.get_config("cursor.inactive_timeout")
   hl.config({ cursor = { inactive_timeout = 0, hide_on_key_press = false } })
 end
 
---- Restore cursor config, let go of any held drag and kill wl-kbptr. Called on submap exit.
-local function exit_cursor()
+--- Restore cursor config, let go of any held drag, stop the ydotoold daemon unless the next submap is the other Cursor
+--- one, and kill wl-kbptr. Called on submap exit.
+--- @param ctx SubmapContext
+local function exit_cursor(ctx)
   hl.config({ cursor = { inactive_timeout = DEFAULTS.timeout, hide_on_key_press = DEFAULTS.hide } })
   local cursor = require("lib.desktop.cursor")
   cursor.hold_stop()
-  cursor.drag_submap_exit()
+  cursor.drag_submap_exit(ctx and ctx.to)
   hl.dispatch(hl.dsp.exec_cmd("pkill wl-kbptr"))
 end
 

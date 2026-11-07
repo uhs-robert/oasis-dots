@@ -12,7 +12,7 @@ trap 'pkill -f "$work" 2>/dev/null; rm -rf "$work"' EXIT
 stub="$work/stub"
 mkdir -p "$stub/bin" "$work/run" "$work/home/.config/hypr/scripts"
 # The only real tools the stubs and generated scripts use.
-for tool in sh sleep rm cat env python3 mkdir touch basename; do
+for tool in sh sleep rm cat env python3 mkdir touch basename grep; do
   ln -s "$(command -v "$tool")" "$stub/bin/$tool" || exit 1
 done
 
@@ -31,6 +31,8 @@ cat >"$stub/hyprctl" <<'STUB'
 #!/bin/sh
 case $1 in
   eval) echo "$2" >>"$STUB_DIR/cb.queue" ;;
+  # The virtual mouse is listed once the test creates the device file, unless the scenario never shows it.
+  devices) [ -f "$STUB_DIR/device" ] && echo '{"mice":[{"name":"ydotoold virtual device"}]}' ;;
   *) echo "hyprctl $*" >>"$STUB_DIR/log" ;;
 esac
 STUB
@@ -45,11 +47,16 @@ case $DAEMON in
     trap 'echo "ydotoold stop" >>"$STUB_DIR/log"; exit 0' TERM
     while :; do sleep 0.05; done ;;
 esac
+# The virtual mouse shows up in `hyprctl devices` some time after the socket, or never (NO_DEVICE).
+[ -z "$NO_DEVICE" ] && (sleep "${DEVICE_DELAY:-0}"; kill -0 $$ 2>/dev/null && touch "$STUB_DIR/device") &
 exec "$STUB_DIR/py/ydotoold" -I -c '
-import signal, socket, sys
+import os, signal, socket, sys
 s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])
 def stop(*_):
-    open(sys.argv[2], "a").write("ydotoold stop\n"); sys.exit(0)
+    open(sys.argv[2], "a").write("ydotoold stop\n")
+    try: os.remove(os.path.join(os.path.dirname(sys.argv[2]), "device"))
+    except OSError: pass
+    sys.exit(0)
 signal.signal(signal.SIGTERM, stop); signal.pause()' "$sock" "$STUB_DIR/log"
 STUB
 cat >"$work/home/.config/hypr/scripts/kbptr.sh" <<'STUB'
