@@ -24,6 +24,9 @@ UNSET = gh.UNSET
 GUARDED_KEYS = ("status", "owner_session", "pr", "issue", "branch", *validate.OWNER_VALUE_KEYS)
 DEPENDS_RETRIES = 3
 GIT_TIMEOUT_SECONDS = 60
+# Git sets these in hooks and they point every git call at that other repo.
+INHERITED_GIT_VARIABLES = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
+                           "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX")
 
 
 class Refused(Exception):
@@ -105,7 +108,8 @@ def identity_of(reference_text, current_repo):
 
 def current_repo_slug(root):
     """owner/name of the origin remote, lowercase, or None off GitHub."""
-    remote = subprocess.run(["git", "-C", root, "remote", "get-url", "origin"], capture_output=True, text=True).stdout.strip()
+    remote = subprocess.run(["git", "-C", root, "remote", "get-url", "origin"], capture_output=True, text=True,
+                            env=git_environment()).stdout.strip()
     for prefix in GITHUB_REMOTE_PREFIXES:
         if remote.startswith(prefix):
             return remote[len(prefix):].removesuffix("/").removesuffix(".git").lower()
@@ -168,13 +172,18 @@ def worktree_steps(root, doc, notes):
     if not BRANCH.fullmatch(str(branch)) or ".." in str(branch):
         raise Refused(f"{doc.id}: branch {branch!r} is no branch name")
     notes.append(f"keep branch {branch}, local and remote, so the PR can be reopened")
-    return [Step(f"remove the worktree on branch {branch} (only if it has no uncommitted changes)",
+    return [Step(f"remove the worktree on branch {branch} (only if it has no uncommitted changes; its ignored files go with it)",
                  lambda: remove_worktree(root, str(branch)))]
+
+
+def git_environment():
+    return {name: value for name, value in os.environ.items() if name not in INHERITED_GIT_VARIABLES}
 
 
 def git(root, *args):
     try:
-        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=GIT_TIMEOUT_SECONDS)
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, timeout=GIT_TIMEOUT_SECONDS,
+                              env=git_environment())
     except subprocess.TimeoutExpired:
         raise StepFailed(f"git {' '.join(args)} timed out") from None
 
@@ -220,7 +229,7 @@ def local_steps(root, doc, project, others):
     if not stays_inside(root, ".logs", project):
         raise Refused(f".logs/{project} leads outside {root}")
     if os.path.lexists(logs):
-        steps.append(Step(f"delete .logs/{project}/{doc.id}/", lambda: delete_logs(root, project, logs)))
+        steps.append(Step(f"delete .logs/{project}/{doc.id}/", lambda: delete_logs(root, project, logs, doc)))
     steps.append(Step(f"delete .plans/{project}/{doc.id}.md", lambda: delete_doc(root, project, doc)))
     return steps
 
@@ -231,6 +240,7 @@ def depends_of(doc):
 
 
 def drop_dependencies(root, doc):
+    store.check_unchanged(doc, GUARDED_KEYS)
     dependents = [other for other in query.read_repo(root).docs if other.path != doc.path and doc.id in depends_of(other)]
     for other in dependents:
         drop_dependency(doc.id, other)
@@ -256,7 +266,9 @@ def drop_dependency(doc_id, other):
     raise StepFailed(f"{other.id} kept changing depends_on; run the command again")
 
 
-def delete_logs(root, project, logs):
+def delete_logs(root, project, logs, doc):
+    # The doc delete rechecks under the lock, but the logs would already be gone by then.
+    store.check_unchanged(doc, GUARDED_KEYS)
     if not stays_inside(root, ".logs", project):
         raise StepFailed(f".logs/{project} leads outside {root}")
     if os.path.islink(logs):

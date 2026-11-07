@@ -22,7 +22,7 @@ The `status` key of a plan doc follows this path:
 3. `approved`: the owner approved the plan. The orchestrator or the interview skill sets it.
 4. `building`: an agent works on it. The orchestrator sets it at dispatch.
 5. `review`: the PR is open. The orchestrator sets it. Reviewers check it, and fix rounds follow (`fix_rounds` counts them, 2 at most without the owner).
-6. `done`: no session sets it in practice. After the merge, an agent runs `plans close <id>`, which drops the id from every `depends_on` and deletes the doc and its `.logs` folder.
+6. `done`: no session sets it in practice. After the merge, an agent runs `plans close <id> --as <orchestrator session>`, which drops the id from every `depends_on` and deletes the doc and its `.logs` folder.
 
 A piece can also be `blocked` or `parked`, on the owner's word. While a question waits for the owner, `waiting_on` holds `owner: <question>`, and the orchestrator clears it after the answer.
 

@@ -31,4 +31,4 @@ The only way to merge PRs in this repo, never `merge-prs.sh <n>` or the `gh` mer
 
    With no PR numbers it skips the merge, pulls and runs post-merge. The last successful run's commit is kept in `post-merge-applied` next to the lock and updated only after every step succeeded; a record main no longer descends from applies everything. `tests/run.sh` covers the record and the lock, which packages get restowed, the branch check, and a whole batch against stubs (what runs inside and outside the lock, a partial batch, a failed or slow check that must stop the merge, post-merge's record, failure, locked-screen and first-run behaviour).
 3. `ship-batch.sh` ends by running `~/.claude/skills/merge-prs/status.sh`; run it again whenever the owner asks what is left, and report what it lists.
-4. Clean up each merged piece as the orchestrator skill says: run `plans close <id>`.
+4. Clean up each merged piece as the orchestrator skill says: run `plans close <id> --as <your session>`.
