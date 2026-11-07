@@ -163,6 +163,11 @@
             "type": "command",
             "command": "~/.claude/hooks/guard-git-stash.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 -I ~/.claude/hooks/plain_writing_lint.py",
+            "timeout": 10
           }
         ]
       }
