@@ -15,13 +15,19 @@ from unittest import mock
 sys.dont_write_bytecode = True
 PACKAGE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PACKAGE, ".local", "lib", "plans"))
-from plans import cli, parse, query  # noqa: E402
+from plans import cli, liveness, parse, query  # noqa: E402
+from test_liveness import fake_proc  # noqa: E402
 
 # Git sets these in hooks, where the check can run. Inherited, they point every git call here at that other repo.
 for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
              "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX"):
     os.environ.pop(name, None)
 ENTRY = os.path.join(PACKAGE, ".local", "bin", "plans")
+LIBRARY = os.path.join(PACKAGE, ".local", "lib", "plans")
+# Runs the entry point with liveness.PROC_ROOT on the test's fake /proc, so no test judges a real pid.
+WITH_FAKE_PROC = ("import runpy, sys; library, proc, entry = sys.argv[1:4]; sys.path.insert(0, library); "
+                  "from plans import liveness; liveness.PROC_ROOT = proc; sys.argv = [entry, *sys.argv[4:]]; "
+                  "runpy.run_path(entry, run_name='__main__')")
 TODAY = datetime.date.today().isoformat()
 SECTIONS = "\n## Goal\n\n## Decisions\n\n## Plan\n\n## Open questions\n\n{questions}\n## Owner checks\n"
 FAKE_GH = """#!/usr/bin/env python3
@@ -51,6 +57,9 @@ def doc_text(doc_id, rank, project="proj", status="planned", owner="none", waiti
 # Two live sessions that Claude Code gave the same name.
 SESSION_A = {"CLAUDE_CODE_SESSION_ID": "id-a", "CLAUDE_PID": "100"}
 SESSION_B = {"CLAUDE_CODE_SESSION_ID": "id-b", "CLAUDE_PID": "200"}
+# The fake /proc runs Claude at the session pids above and at the resumed pid 300. DEAD_PID runs another program.
+LIVE_PIDS = (100, 200, 300)
+DEAD_PID = 400
 
 
 class CliTest(unittest.TestCase):
@@ -62,6 +71,10 @@ class CliTest(unittest.TestCase):
         for name in ("PLANS_SESSION", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID"):
             self.env.pop(name, None)
         self.env.pop("GITHUB_DIR", None)
+        self.proc = fake_proc(os.path.join(self.temp.name, "proc"), claude_pids=LIVE_PIDS, other_pids=[DEAD_PID])
+        patcher = mock.patch.object(liveness, "PROC_ROOT", self.proc)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def tearDown(self):
         for dirpath, _, names in os.walk(self.temp.name):
@@ -91,8 +104,8 @@ class CliTest(unittest.TestCase):
         return self.write(f".plans/{project}/{doc_id}.md", doc_text(doc_id, rank, **keys), repo)
 
     def plans(self, *args, cwd=None, env=None, code=0):
-        result = subprocess.run([sys.executable, ENTRY, *args], cwd=cwd or self.repo, env={**self.env, **(env or {})},
-                                capture_output=True, text=True)
+        result = subprocess.run([sys.executable, "-B", "-c", WITH_FAKE_PROC, LIBRARY, self.proc, ENTRY, *args],
+                                cwd=cwd or self.repo, env={**self.env, **(env or {})}, capture_output=True, text=True)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return result
 
@@ -330,6 +343,46 @@ class CliTest(unittest.TestCase):
         self.add("free", 20)
         self.assertEqual(self.plans("next", "--as", "me-1", env=SESSION_B).stdout, "work\tfree\tplanned\n")
         self.assertEqual(self.plans("next", "--as", "me-1", env=SESSION_A).stdout, "work\ttheirs\tplanned\n")
+
+    def test_a_dead_owner_is_freed_on_read_and_a_live_one_kept(self):
+        dead = self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)
+        live = self.add_owned("live", 20, "other-1", "id-a", 100)
+        older = self.add("older", 30, owner="older-1")
+        result = self.plans("ls")
+        self.assertEqual(result.stdout.splitlines()[0], "dead\tplanned\tnone\t10\t")
+        self.assertEqual(result.stderr, f"plans: {dead}: freed, owner gone-1 is dead (pid {DEAD_PID} runs no Claude)\n")
+        self.assertEqual(self.proof(dead), ("", ""))
+        self.assertEqual([parse.load(path).keys["owner_session"] for path in (live, older)], ["other-1", "older-1"])
+        self.assertEqual(self.plans("ls").stderr, "")
+
+    def test_next_offers_and_claim_takes_a_doc_whose_owner_died(self):
+        self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)
+        self.assertEqual(self.plans("next", "--as", "me-1", env=SESSION_B).stdout, "work\tdead\tplanned\n")
+        path = self.add_owned("dead2", 20, "gone-1", "id-x", DEAD_PID)
+        self.plans("claim", "dead2", "--as", "me-1", env=SESSION_B)
+        self.assertEqual(parse.load(path).keys["owner_session"], "me-1")
+        self.assertEqual(self.proof(path), ("id-b", 200))
+
+    def test_a_release_that_loses_a_race_stays_quiet(self):
+        dead = self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)
+        gone = self.add_owned("gone", 20, "gone-1", "id-x", DEAD_PID)
+        real_check = liveness.owner_is_alive
+
+        def check_then_race(doc):
+            alive = real_check(doc)
+            if doc.path == dead and os.path.exists(gone):
+                # The owner comes back under a new pid on one doc, and the other doc is deleted.
+                self.write(dead, self.read(dead).replace(f"owner_session_pid: {DEAD_PID}", "owner_session_pid: 300"))
+                os.unlink(gone)
+            return alive
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(liveness, "owner_is_alive", check_then_race), \
+                mock.patch.object(cli.roots, "main_checkout", return_value=self.repo), redirect_stdout(stdout), redirect_stderr(stderr):
+            code = cli.main(["ls"])
+        self.assertEqual((code, stderr.getvalue()), (0, ""))
+        self.assertEqual([line.split("\t")[2] for line in stdout.getvalue().splitlines()], ["gone-1", "gone-1"])
+        self.assertEqual(self.proof(dead), ("id-x", 300))
 
     def test_a_human_shell_matches_by_name_and_keeps_the_values_unless_the_owner_changes(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", 100)

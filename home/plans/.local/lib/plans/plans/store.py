@@ -56,13 +56,16 @@ def locked(directory):
         os.close(fd)
 
 
-def update(doc, changes, date=None):
+def update(doc, changes, date=None, check_under_lock=None):
     """Apply `changes` (key -> value, parse.BODY for the body) to the doc on disk and return the new Doc. `doc` is the
     copy the caller read and based its changes on. Raises Conflict (file untouched) when a changed key differs on disk
-    from `doc`, and parse.ParseError when the file on disk left the subset."""
+    from `doc`, and parse.ParseError when the file on disk left the subset. `check_under_lock` gets the doc as on disk
+    while the lock is held, and raises to refuse the write."""
     with locked(plans_dir_of(doc.path)):
         fresh = load_fresh(doc)
         refuse_changed(fresh, doc, changes)
+        if check_under_lock:
+            check_under_lock(fresh)
         updated = parse.Doc(doc.path, fresh.render({**changes, UPDATED: date or today()}))
         # A value with a line break renders as broken front matter, so the check runs on the result, for every caller.
         if updated.errors:
