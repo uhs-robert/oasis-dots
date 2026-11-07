@@ -43,6 +43,7 @@ if grep -q 'usermod' "$scratch/sudo.log"; then fail 'install_system_files touche
 
 # uninstall.sh runs main when sourced, so only its remove_system_files is loaded.
 eval "$(awk '/^remove_system_files\(\) \{/,/^}/' "$repo_dir/uninstall.sh")"
+# shellcheck disable=SC2329
 confirm() { return 0; }
 : >"$scratch/sudo.log"
 OPT_SYSTEM_FILES=0 remove_system_files >/dev/null 2>&1
