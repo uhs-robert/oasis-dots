@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
-"""PostToolUse hook: an advisory lint for the mechanical rules of the plain-writing skill.
+"""PreToolUse and PostToolUse hook: a lint for the mechanical rules of the plain-writing skill.
 
-It checks three kinds of new prose and reports the hits to the agent as added context:
-- A commit that a Bash call just made: the message of HEAD.
+Before a Bash call (PreToolUse) it checks the text the call is about to publish:
+- The message of `git commit`: from `-m` (one or more), `-F <path>`, or a heredoc for `-F -`. The subject
+  line is not linted.
 - The body of `gh pr|issue create|edit`: from `--body`, `--body-file <path>`, or a heredoc for `--body-file -`.
+
+A text with hits denies the call once ("deny once, allow retry"). The hook stores a hash of the denied text,
+so the identical text sent again goes through, which lets the agent overrule a false positive. Any changed
+text is linted fresh.
+
+After a tool call (PostToolUse) it reports hits to the agent as added context, and never blocks:
 - A Write, Edit or MultiEdit on a Markdown file: only the paragraphs that hold an added line, so old text
   in a long-lived file does not flood the report.
+- A message or body file that the same Bash call wrote before the commit or gh command read it, as in
+  `cat > msg <<EOF ... EOF && git commit -F msg`. Before the call, that file holds old text or nothing.
 
-It never blocks and always exits 0. Judgment rules (lead with the point, gloss a coined term) stay with the
-skill's self-check, because a linter cannot see them.
+On any error of its own the hook allows the call and exits 0. Judgment rules (lead with the point, gloss a
+coined term) stay with the skill's self-check, because a linter cannot see them.
 """
 import fnmatch
+import hashlib
 import json
 import os
 import pathlib
@@ -21,9 +31,8 @@ import time
 
 MAX_REPORTED_HITS = 15
 MAX_SENTENCE_WORDS = 25
-# A commit older than this was not made by the Bash call that fired the hook (the commit failed, or the
-# command only mentioned git commit), so its message is not linted.
-FRESH_COMMIT_SECONDS = 120
+# How long a denied text stays allowed for its retry.
+DENIED_TEXT_SECONDS = 24 * 3600
 
 CONTRACTION = re.compile(r"\b\w+n['’]t\b|\b\w+['’](re|ll|ve|d)\b|\b(it|that|there|what|here|who|let|he|she)['’]s\b", re.I)
 HEDGING_MODAL = re.compile(r"\b(should|would|may|might|could)\b", re.I)
@@ -39,7 +48,10 @@ ING_NOT_VERB = {"during", "including", "according", "nothing", "something", "any
 
 # `gh` must start a shell word: at the start, after a blank, `(`, `=`, an operator or a backtick.
 GH_BODY_COMMAND = re.compile(r"(?<![^\s(=;&|`])gh(?:\s|\\\n)+(?P<kind>pr|issue)(?:\s|\\\n)+(?:create|edit)\b")
-GIT_COMMIT_COMMAND = re.compile(r"\bgit\b(?:\s+-C\s+\S+)?[^|;&\n]*?\bcommit\b")
+GIT_COMMIT_COMMAND = re.compile(r"(?<![^\s(=;&|`])git(?:(?:\s|\\\n)+-[Cc](?:\s|\\\n)+\S+)*(?:\s|\\\n)+commit\b")
+# Short options of git commit that take a value, attached (`-mText`) or in the next word. `-S` and `-u`
+# take only an attached value, so they are not listed.
+COMMIT_VALUE_OPTIONS = "mFCct"
 # `<<<` is a here-string, not a heredoc.
 HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
@@ -216,15 +228,42 @@ def lint_text(text, filler, keep_lines=None):
     return hits
 
 
-def report(target, hits, how_to_fix):
-    lines = [f"plain-writing lint (advisory): {target} has {len(hits)} hit(s)."]
+def hit_lines(target, hits):
+    lines = [f"plain-writing lint: {target} has {len(hits)} hit(s)."]
     for line, category, excerpt in hits[:MAX_REPORTED_HITS]:
         where = f"line {line}, " if line else ""
         lines.append(f"  {where}{category}: {excerpt}")
     if len(hits) > MAX_REPORTED_HITS:
         lines.append(f"  and {len(hits) - MAX_REPORTED_HITS} more.")
+    return lines
+
+
+def report(target, hits, how_to_fix):
+    """An advisory report, for text the tool call already wrote or published."""
+    lines = hit_lines(target, hits)
     lines.append("Fix each hit that breaks the plain-writing skill. Quoted text, code and names are exempt. " + how_to_fix)
     return "\n".join(lines)
+
+
+DENY_FOOTER = (
+    "The hook blocked this call. Fix each hit and run the call again. Quoted text, code and names are exempt. "
+    "If a hit is a false positive, resubmit the identical text unchanged and the hook lets it through."
+)
+TARGET_NAMES = {"commit": "the commit message", "pr": "the PR body", "issue": "the issue body"}
+FIX_AFTER_POST = {
+    "commit": "Amend the commit with the corrected message.",
+    "pr": "Edit the PR body with `gh pr edit --body-file`.",
+    "issue": "Edit the issue body with `gh issue edit --body-file`.",
+}
+
+
+def message_hits(kind, text, filler):
+    if kind != "commit":
+        return lint_text(text, filler)
+    # The subject names commands and scopes without backticks ("add just post-merge"), so only the body counts.
+    # Line numbers stay those of the whole message.
+    body = text.split("\n", 1)[1] if "\n" in text else ""
+    return [(line + 1, category, excerpt) for line, category, excerpt in lint_text(body, filler)]
 
 
 def run_git(cwd, *args):
@@ -242,20 +281,6 @@ def command_directory(command, cwd):
     if dash_c:
         directory = os.path.join(directory, os.path.expanduser(dash_c.group(1).strip("'\"")))
     return directory
-
-
-def commit_message_hits(command, cwd, filler):
-    directory = command_directory(command, cwd)
-    stamp = run_git(directory, "log", "-1", "--format=%ct")
-    if not stamp or time.time() - int(stamp.strip()) > FRESH_COMMIT_SECONDS:
-        return None
-    # The subject names commands and scopes without backticks ("add just post-merge"), so only the body counts.
-    body = run_git(directory, "log", "-1", "--format=%b") or ""
-    # %b starts after the subject and its blank line, so body line 1 is line 3 of the message.
-    hits = [(line + 2, category, excerpt) for line, category, excerpt in lint_text(body, filler)]
-    if not hits:
-        return None
-    return report("the commit message", hits, "Amend the commit with the corrected message.")
 
 
 def heredoc_bodies(command, newline, openers, bodies_end_by_line):
@@ -292,7 +317,7 @@ def heredoc_bodies(command, newline, openers, bodies_end_by_line):
     return bodies, position
 
 
-def read_gh_command(command, start, bodies_end_by_line):
+def read_command_words(command, start, bodies_end_by_line):
     """Read the shell words of the command at `start`, up to the first unquoted operator, newline or closing
     `)`. Returns (words, heredocs, end). `heredocs` maps a word index to the body of a heredoc
     opened inside that word, as in `--body "$(cat <<'EOF'`, and None to the command's own stdin heredoc.
@@ -392,21 +417,80 @@ def read_gh_command(command, start, bodies_end_by_line):
     return words, heredocs, index
 
 
-def gh_command_body(words, heredocs, cwd):
-    """The body that `--body`, `-b`, `--body-file` or `-F` gives, or None."""
+def text_source(heredocs, index, value):
+    """("text", the text) of an inline value. A `$(...)` without a heredoc in it is left out, because only
+    the shell knows what it prints."""
+    if index in heredocs:
+        return ("text", heredocs[index])
+    if "$(" in value or "`" in value:
+        return None
+    return ("text", value)
+
+
+def file_source(heredocs, value):
+    """The source a file argument names: the command's stdin heredoc for `-`, else ("file", the path)."""
+    if value == "-":
+        return ("text", heredocs[None]) if None in heredocs else None
+    return ("file", value)
+
+
+def gh_command_source(words, heredocs):
+    """The source of the body that `--body`, `-b`, `--body-file` or `-F` gives, or None."""
     for index, word in enumerate(words[:-1]):
         value = words[index + 1]
         if word in ("--body", "-b"):
-            return heredocs.get(index + 1, value)
+            return text_source(heredocs, index + 1, value)
         if word in ("--body-file", "-F"):
-            return heredocs.get(None) if value == "-" else read_body_file(value, cwd)
+            return file_source(heredocs, value)
     for index, word in enumerate(words):
         if word.startswith("--body="):
-            return heredocs.get(index, word[len("--body="):])
+            return text_source(heredocs, index, word[len("--body="):])
         if word.startswith("--body-file="):
-            value = word[len("--body-file="):]
-            return heredocs.get(None) if value == "-" else read_body_file(value, cwd)
+            return file_source(heredocs, word[len("--body-file="):])
     return None
+
+
+def commit_source(words, heredocs):
+    """The source of the message a `git commit` gives with `-m` or `-F`, or None. With no such flag git
+    reuses a message (`--no-edit`, `-C`) or opens an editor, and there is no new text to check."""
+    index = 1
+    while index < len(words) and words[index] != "commit":
+        index += 2 if words[index] in ("-C", "-c") else 1
+    messages, file_value = [], None
+    index += 1
+    while index < len(words):
+        word = words[index]
+        value, value_index = None, index + 1
+        if word == "--":
+            break
+        if word in ("--message", "--file") and index + 1 < len(words):
+            value = words[index + 1]
+            option = word[2]
+        elif word.startswith(("--message=", "--file=")):
+            option, value, value_index = word[2], word.split("=", 1)[1], index
+        elif word.startswith("-") and not word.startswith("--"):
+            for position, letter in enumerate(word[1:], 1):
+                if letter in COMMIT_VALUE_OPTIONS:
+                    option = letter
+                    if position + 1 < len(word):
+                        value, value_index = word[position + 1:], index
+                    elif index + 1 < len(words):
+                        value = words[index + 1]
+                    break
+        if value is not None:
+            if option == "m":
+                messages.append(text_source(heredocs, value_index, value))
+            elif option in ("F", "f"):
+                file_value = value
+            index = value_index + 1
+            continue
+        index += 1
+    if file_value is not None:
+        return file_source(heredocs, file_value)
+    if not messages or None in messages:
+        return None
+    # git joins several -m values as separate paragraphs.
+    return ("text", "\n\n".join(text for _, text in messages))
 
 
 def read_body_file(value, cwd):
@@ -424,12 +508,13 @@ def piped_in(command, index):
     return before >= 0 and command[before] == "|" and (before == 0 or command[before - 1] != "|")
 
 
-def gh_bodies(command, cwd):
-    """The (kind, body) of every `gh pr|issue create|edit` in a command. It walks the command once and tracks
-    quotes, `$(...)`, arithmetic, comments and heredoc bodies, so it finds a gh command or a heredoc only
-    where the shell runs one: also inside `$(...)` or after another command, but not in quoted text, a
-    comment or a body. Each gh command reads only its own words, so text before it cannot hide it."""
-    bodies, bodies_end_by_line = [], {}
+def message_sources(command):
+    """The (kind, source, start index) of every `gh pr|issue create|edit` body and `git commit` message in a
+    command. Kind is "pr", "issue" or "commit". It walks the command once and tracks quotes, `$(...)`,
+    arithmetic, comments and heredoc bodies, so it finds a command or a heredoc only where the shell runs
+    one: also inside `$(...)` or after another command, but not in quoted text, a comment or a body. Each
+    command reads only its own words, so text before it cannot hide it."""
+    sources, bodies_end_by_line = [], {}
     # Open contexts, innermost last: "'", '"', "(" for a command substitution or subshell, "((" for arithmetic
     # and "a(" for a parenthesis inside arithmetic.
     nesting = []
@@ -493,19 +578,23 @@ def gh_bodies(command, cwd):
             index = opener.end()
             continue
         gh_command = GH_BODY_COMMAND.match(command, index) if char == "g" else None
-        if gh_command:
+        commit_command = GIT_COMMIT_COMMAND.match(command, index) if char == "g" and not gh_command else None
+        if gh_command or commit_command:
             newline = command.find("\n", index)
-            # The bodies of heredocs opened earlier on the line come first, so read them before the gh command
+            # The bodies of heredocs opened earlier on the line come first, so read them before the command
             # reads its own.
             if line_openers and newline != -1:
                 take_line_bodies(newline)
-            words, heredocs, end = read_gh_command(command, index, bodies_end_by_line)
+            words, heredocs, end = read_command_words(command, index, bodies_end_by_line)
             if last_line_body is not None and piped_in(command, index):
                 heredocs.setdefault(None, last_line_body)
-            body = gh_command_body(words, heredocs, cwd)
-            if body:
-                bodies.append((gh_command.group("kind"), body))
-            index = max(end, gh_command.end())
+            if gh_command:
+                kind, source = gh_command.group("kind"), gh_command_source(words, heredocs)
+            else:
+                kind, source = "commit", commit_source(words, heredocs)
+            if source:
+                sources.append((kind, source, index))
+            index = max(end, (gh_command or commit_command).end())
             continue
         if command.startswith(("$((", "(("), index):
             nesting.append("((")
@@ -520,17 +609,82 @@ def gh_bodies(command, cwd):
         elif char == ")" and nesting:
             nesting.pop()
         index += 1
-    return bodies
+    return sources
 
 
-def gh_body_hits(command, cwd, filler):
-    messages = []
-    for kind, body in gh_bodies(command, cwd):
-        hits = lint_text(body, filler)
-        if hits:
-            kind_name = "PR" if kind == "pr" else "issue"
-            messages.append(report(f"the {kind_name} body", hits, f"Edit the {kind_name} body with `gh {kind} edit --body-file`."))
-    return "\n".join(messages) or None
+def command_texts(command, cwd, phase="pre"):
+    """The (kind, text) of every commit message and gh body in a command that the phase can see. Before the
+    call ("pre") that is every inline text and every file the command does not name earlier. After it
+    ("post") it is only the files the command names earlier, since the command itself likely wrote them."""
+    texts = []
+    for kind, (source_type, value), start in message_sources(command):
+        if source_type == "text":
+            if phase == "pre":
+                texts.append((kind, value))
+            continue
+        written_here = value in command[:start]
+        if written_here != (phase == "post"):
+            continue
+        # git reads -F relative to where it runs. gh is never given a directory.
+        directory = command_directory(command, cwd) if kind == "commit" else cwd
+        text = read_body_file(value, directory)
+        if text is not None:
+            texts.append((kind, text))
+    return [(kind, text) for kind, text in texts if text.strip()]
+
+
+def denied_texts_path():
+    state_home = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    return pathlib.Path(state_home, "claude", "plain-writing-lint-denied.json")
+
+
+def text_digest(kind, text):
+    return hashlib.sha256(f"{kind}\0{text}".encode("utf-8")).hexdigest()
+
+
+def load_denied_texts():
+    """{session_id: {digest: time denied}}, with expired entries dropped."""
+    try:
+        state = json.loads(denied_texts_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    cutoff = time.time() - DENIED_TEXT_SECONDS
+    kept = {}
+    for session, digests in state.items() if isinstance(state, dict) else ():
+        fresh = {d: t for d, t in digests.items() if isinstance(t, (int, float)) and t >= cutoff} if isinstance(digests, dict) else {}
+        if fresh:
+            kept[session] = fresh
+    return kept
+
+
+def save_denied_texts(state):
+    """Write the state in one rename, so a reader never sees half a file. Two sessions that write at once
+    can lose one entry. That costs only a second deny of the same text, so the hook takes no lock."""
+    path = denied_texts_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(state), encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def pre_tool_use_reason(findings, session):
+    """The deny reason, or None to allow. A text denied before in this session passes unchanged."""
+    state = load_denied_texts()
+    denied = state.setdefault(session, {})
+    pending = [(kind, text, hits) for kind, text, hits in findings if text_digest(kind, text) not in denied]
+    if not pending:
+        return None
+    now = time.time()
+    for kind, text, _ in pending:
+        denied[text_digest(kind, text)] = now
+    # Without the stored digest the retry would be denied again, and the agent could not get through.
+    # save_denied_texts raises on failure, and main() then allows the call.
+    save_denied_texts(state)
+    lines = []
+    for kind, _, hits in pending:
+        lines.extend(hit_lines(TARGET_NAMES[kind], hits))
+    lines.append(DENY_FOOTER)
+    return "\n".join(lines)
 
 
 def excluded(path):
@@ -608,31 +762,50 @@ def markdown_hits(tool_name, tool_input, cwd, filler):
     return report(path.name, hits, "Rewrite the new text. Leave old text alone unless the task covers it.")
 
 
+def bash_findings(command, cwd, phase, filler):
+    findings = []
+    for kind, text in command_texts(command, cwd, phase):
+        hits = message_hits(kind, text, filler)
+        if hits:
+            findings.append((kind, text, hits))
+    return findings
+
+
 def handle(event):
+    """The hook output as a dict, or None to stay silent."""
     tool_name = event.get("tool_name") or ""
     tool_input = event.get("tool_input") or {}
     cwd = event.get("cwd") or os.getcwd()
+    phase = "pre" if event.get("hook_event_name") == "PreToolUse" else "post"
     filler = filler_pattern(load_filler_words(word_swaps_path()))
     if tool_name == "Bash":
         command = tool_input.get("command") or ""
-        if GH_BODY_COMMAND.search(command):
-            return gh_body_hits(command, cwd, filler)
-        if GIT_COMMIT_COMMAND.search(command):
-            return commit_message_hits(command, cwd, filler)
-        return None
-    if tool_name in ("Write", "Edit", "MultiEdit"):
-        return markdown_hits(tool_name, tool_input, cwd, filler)
+        findings = bash_findings(command, cwd, phase, filler)
+        if not findings:
+            return None
+        if phase == "pre":
+            reason = pre_tool_use_reason(findings, str(event.get("session_id") or ""))
+            if reason is None:
+                return None
+            return {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}
+        reports = [report(TARGET_NAMES[kind], hits, FIX_AFTER_POST[kind]) for kind, _, hits in findings]
+        return {"hookEventName": "PostToolUse", "additionalContext": "\n".join(reports)}
+    # Before a Write or Edit the file still holds its old text, so Markdown is linted only after the call.
+    if tool_name in ("Write", "Edit", "MultiEdit") and phase == "post":
+        message = markdown_hits(tool_name, tool_input, cwd, filler)
+        if message:
+            return {"hookEventName": "PostToolUse", "additionalContext": message}
     return None
 
 
 def main():
     try:
         event = json.load(sys.stdin)
-        message = handle(event)
-    except Exception:  # an advisory hook must never break the tool call it follows
+        output = handle(event)
+    except Exception:  # the hook must never break the tool call on its own error
         return 0
-    if message:
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": message}}))
+    if output:
+        print(json.dumps({"hookSpecificOutput": output}))
     return 0
 
 
