@@ -133,6 +133,6 @@ Act.define("cursor.drag_drop", {
 
 Act.define("cursor.drag_cancel", {
   label = "Cancel Drag",
-  intent = "Cancel a held drag: the pointer returns to the grab point, Escape is sent and the button is released. Does nothing when no drag is held.",
+  intent = "Cancel a held drag: the pointer returns to the grab point and the button is released. Does nothing when no drag is held.",
   run = function() cursor().drag_cancel() end,
 })

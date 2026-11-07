@@ -297,7 +297,7 @@ check(
 )
 check(count("wlrctl pointer move 1 0") == 1, "manual: drop wiggles onto the spot")
 check(line_of("ydotool click 0x40") < line_of("ydotool click 0x80"), "manual: press before release")
-check(line_of("ydotool click 0x80") and not log():find("1:1 1:0", 1, true), "manual: a drop sends no Escape")
+check(count("ydotool key") == 0, "manual: a drop sends no Escape")
 assert_clean("manual")
 
 --- 3. Enter and Esc with no drag.
@@ -308,7 +308,8 @@ check(count("ydotool ") == 0 and count("ydotoold") == 0, "no drag: Enter and Esc
 check(submap_calls[#submap_calls] == "reset", "no drag: Esc leaves the submap")
 assert_clean("no drag")
 
---- 4. Cancel: back to the grab point, Escape while down, then release; the submap stays open.
+--- 4. Cancel: back to the grab point, then release; no Escape key (the submap's own Esc bind would catch it) and the
+--- submap stays open.
 fresh()
 press("V")
 ready()
@@ -323,10 +324,7 @@ check(
 )
 local px, py = pointer()
 check(px == 100 and py == 100, "cancel: pointer back at the grab point")
-check(
-	line_of("ydotool key 1:1 1:0") and line_of("ydotool key 1:1 1:0") < line_of("ydotool click 0x80"),
-	"cancel: Escape before release"
-)
+check(count("ydotool key") == 0, "cancel: no Escape key is sent")
 check(#submap_calls == 0, "cancel: submap stays open")
 check(
 	settle(function()
@@ -410,7 +408,7 @@ check(
 )
 check(settle(function()
 	return count("ydotoold stop") == 1
-end) and log():find("1:1 1:0", 1, true), "submap exit: cancels and stops the daemon")
+end) and count("ydotool key") == 0, "submap exit: cancels and stops the daemon")
 assert_clean("submap exit")
 
 --- 10. wl-kbptr mid-drag is refused; the drag survives.
@@ -515,7 +513,7 @@ advance(1000)
 check(count("wlrctl pointer move") == moves_then, "glide: no step after Esc")
 local cx, cy = pointer()
 check(cx == 100 and cy == 100, "glide: pointer back at the item")
-check(line_of("ydotool key 1:1 1:0") ~= nil, "glide: Escape key sent")
+check(count("ydotool key") == 0, "glide: no Escape key")
 assert_clean("glide cancel")
 
 --- 15. ydotoold killed from outside mid-drag: no stuck state, and a new drag works.
@@ -559,7 +557,7 @@ check(
 	end),
 	"focus: loss releases"
 )
-check(not log():find("1:1 1:0", 1, true), "focus: no Escape to the new window")
+check(count("ydotool key") == 0, "focus: no Escape to the new window")
 assert_clean("focus loss")
 
 --- 17. A reload leaves a session script holding the button: the new config lets go.
@@ -596,6 +594,112 @@ settle(function()
 end)
 check(count("kbptr") == 1, "quick click: find drag runs")
 assert_clean("quick click")
+
+--- 19. A direction key held past 30 s keeps the drag alive: the watchdog is for idle drags, and the held key's
+--- repeat timer is what moves the pointer.
+fresh()
+press("V")
+ready()
+Cursor.move_press("left", 1)
+advance(31000)
+check(Cursor.drag_active() and count("ydotool click 0x80") == 0, "held key: the repeat refreshes the watchdog")
+Cursor.move_release("left")
+press("RETURN")
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+assert_clean("held key")
+
+--- 20. XDG_RUNTIME_DIR gone when the pick returns: back to idle, with a notice.
+fresh('PICK="400 300"')
+local real_getenv = os.getenv
+os.getenv = function(name)
+	if name == "XDG_RUNTIME_DIR" then
+		return nil
+	end
+	return real_getenv(name)
+end
+press("SHIFT + V")
+check(
+	settle(function()
+		return log():find("XDG_RUNTIME_DIR", 1, true) ~= nil
+	end),
+	"no runtime dir: notice"
+)
+check(
+	settle(function()
+		return not Cursor.drag_active()
+	end),
+	"no runtime dir: back to idle"
+)
+os.getenv = real_getenv
+check(count("ydotool ") == 0, "no runtime dir: no press")
+
+--- 21. A new drag right after a drop waits for the old session's cleanup, so it cannot share its socket and pid file.
+fresh()
+press("V")
+ready()
+press("RETURN")
+press("V")
+check(count("ydotoold start") == 1, "fast regrab: ignored while the old session cleans up")
+check(
+	settle(function()
+		return count("ydotoold stop") == 1
+	end),
+	"fast regrab: old daemon stopped"
+)
+check(
+	settle(function()
+		press("V") -- ignored until the `gone` callback ends the release
+		return count("ydotoold start") == 2
+	end),
+	"fast regrab: allowed once cleanup is done"
+)
+ready()
+press("RETURN")
+settle(function()
+	return count("ydotool click 0x80") == 2
+end)
+assert_clean("fast regrab")
+
+--- 22. Enter while a picked drag is still starting does not end it before the glide.
+fresh('PICK="400 300"')
+press("SHIFT + V")
+settle(function()
+	return count("ydotoold start") >= 1
+end)
+press("RETURN")
+check(
+	settle(function()
+		return count("wlrctl pointer move 8 0") == 1
+	end),
+	"picked drag: Enter while starting is ignored"
+)
+for _ = 1, 20 do
+	advance(30)
+	sleep(0.01)
+end
+advance(100)
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+local ex, ey = pointer()
+check(ex == 400 and ey == 300, "picked drag: still reaches the target")
+assert_clean("picked drag Enter")
+
+--- 23. A stale pid file must not get an unrelated process killed (the pid was reused).
+fresh()
+local bystander = io.popen("sleep 60 >/dev/null 2>&1 & echo $!"):read("n")
+write_file(pidfile, bystander .. "\n")
+handlers["config.reloaded"]()
+sleep(0.5)
+check(os.execute("kill -0 " .. bystander) == true, "stale pid: an unrelated process is not killed")
+os.execute("kill " .. bystander)
+os.remove(pidfile)
+
+--- 24. The Esc bind says what Esc does in each submap.
+fresh()
+check(binds_by["Cursor|ESCAPE"].opts.desc:find("Cancel", 1, true), "esc label: Cursor says it cancels a drag")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

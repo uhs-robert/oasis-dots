@@ -49,7 +49,7 @@ arrows	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
 arrows	Cursor	DOWN	Cursor Down	-	exec_cmd(wlrctl pointer move 0 10)
 arrows	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
 arrows	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
-arrows	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
+arrows	Cursor	ESCAPE	Cancel/Exit Cursor	-	submap(reset)
 arrows	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Cursor	H	-	-	exec_cmd(wlrctl pointer move -10 0)
@@ -250,7 +250,7 @@ arrows	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/hyp
 arrows	Quick Click	CTRL + G	Split Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	CTRL + T	Tiling Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor drag' 'Drag could not read the pointer')
-arrows	Quick Click	ESCAPE	Exit Quick Click	-	submap(reset)
+arrows	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 arrows	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	RETURN	Drop	-	-
@@ -442,7 +442,7 @@ default	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 default	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
 default	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
 default	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
-default	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
+default	Cursor	ESCAPE	Cancel/Exit Cursor	-	submap(reset)
 default	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
@@ -643,7 +643,7 @@ default	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/hy
 default	Quick Click	CTRL + G	Split Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	CTRL + T	Tiling Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor drag' 'Drag could not read the pointer')
-default	Quick Click	ESCAPE	Exit Quick Click	-	submap(reset)
+default	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 default	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	RETURN	Drop	-	-
@@ -836,7 +836,7 @@ no-leader	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 no-leader	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
 no-leader	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
 no-leader	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
-no-leader	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
+no-leader	Cursor	ESCAPE	Cancel/Exit Cursor	-	submap(reset)
 no-leader	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
@@ -1038,7 +1038,7 @@ no-leader	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config/
 no-leader	Quick Click	CTRL + G	Split Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	CTRL + T	Tiling Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor drag' 'Drag could not read the pointer')
-no-leader	Quick Click	ESCAPE	Exit Quick Click	-	submap(reset)
+no-leader	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 no-leader	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	RETURN	Drop	-	-
@@ -1221,7 +1221,7 @@ persistent	Cursor	DOWN	-	-	exec_cmd(wlrctl pointer move 0 10)
 persistent	Cursor	DOWN	-	ignore_mods=true,release=true,transparent=true	-
 persistent	Cursor	E	-	ignore_mods=true,release=true,transparent=true	-
 persistent	Cursor	E	Scroll Up	-	exec_cmd(wlrctl pointer scroll 10 0)
-persistent	Cursor	ESCAPE	Exit Cursor	-	submap(reset)
+persistent	Cursor	ESCAPE	Cancel/Exit Cursor	-	submap(reset)
 persistent	Cursor	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Cursor	H	-	ignore_mods=true,release=true,transparent=true	-
@@ -1422,7 +1422,7 @@ persistent	Quick Click	CTRL + F	Floating Move	-	submap(reset);exec_cmd(~/.config
 persistent	Quick Click	CTRL + G	Split Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	CTRL + T	Tiling Move	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=tile ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor drag' 'Drag could not read the pointer')
-persistent	Quick Click	ESCAPE	Exit Quick Click	-	submap(reset)
+persistent	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 persistent	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	RETURN	Drop	-	-
