@@ -285,6 +285,9 @@ STEPS = [
     Step("theme-state", "hypr", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("submap-hints", "hypr", "lua ./home/hypr/tests/submap_hints.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("session-start", "hypr", "lua ./home/hypr/tests/session_start.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    # The real-tree action tests also run in check-cache, which a Hyprland or action-definition edit does not reach. Named
+    # one by one, so a rename fails the step: a `-k` filter would select nothing and pass.
+    Step("action-registry", "hypr", "PYTHONPATH=lib/check/tests python3 -B -m unittest test_registry.HeadlessLoadTest.test_the_real_tree_defines_the_lua_actions test_registry.HeadlessLoadTest.test_the_real_tree_defines_the_keyless_ipc_actions", ("lua", "python3"), skip_reason="the action registry tests need lua and python3"),
     Step("input-vectors-lua", "quickshell", "lua ./home/quickshell/tests/input_settings/run_lua.lua", ("lua",), skip_reason="the input vectors need lua"),
     Step("input-vectors-js", "quickshell", "node ./home/quickshell/tests/input_settings/run_js.js", ("node",), skip_reason="the input vectors need node"),
     Step("packages", "tree", "sh ./lib/check/steps/packages.sh"),

@@ -197,6 +197,16 @@ case_outside_quickshell_consumer() {
   expect_skipped voxcmd-click
 }
 
+case_action_definition() {
+  start_case 'an action definition under home/hypr'
+  local defs
+  defs=$(first_tracked 'home/hypr/.config/hypr/lib/act/defs/*.lua') || return 0
+  echo '-- x' >>"$defs"
+  plan
+  expect_ran action-registry
+  expect_skipped voxcmd-click check-cache
+}
+
 case_greeter_lua() {
   start_case 'Lua under system/etc/greetd/quickshell'
   local lua
@@ -420,7 +430,7 @@ case_only() {
   [ $? = 2 ] || fail 'an unknown step to exit 2'
 }
 
-for case_fn in case_hook_edit case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
+for case_fn in case_hook_edit case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_action_definition case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
   case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"
