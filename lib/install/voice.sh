@@ -31,7 +31,10 @@ setup_voxtype() {
     return
   fi
   info "Configuring voxtype..."
-  ensure_input_group
+  if ! groups | grep -q '\binput\b'; then
+    sudo usermod -aG input "$USER"
+    warn "Added $USER to input group, takes effect on next login"
+  fi
 
   local gpu_conf="$HOME/.config/systemd/user/voxtype.service.d/gpu.conf"
   [[ -L "$gpu_conf" && ! -e "$gpu_conf" ]] && rm -f "$gpu_conf"

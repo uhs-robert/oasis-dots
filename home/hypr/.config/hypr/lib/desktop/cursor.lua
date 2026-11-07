@@ -276,7 +276,7 @@ ydotoold --socket-path="$sock" --socket-perm=0600 >/dev/null 2>&1 &
 dpid=$!
 echo $dpid >"$pidf"
 n=0; until [ -S "$sock" ] || [ $n -ge 40 ]; do sleep 0.05; n=$((n+1)); done
-if [ ! -S "$sock" ]; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'ydotoold did not start (it needs write access to /dev/uinput: the input group)'; fi
+if [ ! -S "$sock" ]; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'ydotoold did not start (it needs write access to /dev/uinput: the udev rule 70-dotfiles-uinput.rules, then log in again or reboot)'; fi
 if ! YDOTOOL_SOCKET="$sock" ydotool click 0x40 >/dev/null 2>&1; then kill $dpid 2>/dev/null; wait $dpid 2>/dev/null; fail 'Drag could not press the button'; fi
 %s
 wait $dpid

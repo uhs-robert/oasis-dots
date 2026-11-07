@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon, the input group and root's symlinks.
+# System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon and root's symlinks.
 
 install_system_files() {
   info "Installing system config files..."
   cd "$DOTFILES_DIR" || return 1
   sudo install -Dm644 system/etc/vtrgb-oasis /etc/vtrgb-oasis
   sudo install -Dm644 system/etc/keyd/default.conf /etc/keyd/default.conf
+  # ydotool (Cursor submap drag and drop) writes /dev/uinput; the rule gives the seat user that device only, not the input group.
+  sudo install -Dm644 system/etc/udev/rules.d/70-dotfiles-uinput.rules /etc/udev/rules.d/70-dotfiles-uinput.rules
   sudo install -Dm644 system/etc/pacman.d/hooks/voxtype-gpu-setup.hook /etc/pacman.d/hooks/voxtype-gpu-setup.hook
   sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
   sudo install -Dm644 system/etc/pacman.d/hooks/betterbird-autoconfig.hook /etc/pacman.d/hooks/betterbird-autoconfig.hook
@@ -31,14 +33,6 @@ set_default_shell() {
   info "Setting default shell to zsh..."
   sudo usermod -s "$zsh_path" "$USER"
   success "Default shell set to zsh (takes effect on next login)"
-}
-
-# Tools that write to /dev/uinput (voxtype, ydotool for keyboard drag and drop) need the `input` group. Root-owned udev
-# rules give that group the device; the membership takes effect on the next login.
-ensure_input_group() {
-  if groups | grep -q '\binput\b'; then return 0; fi
-  sudo usermod -aG input "$USER"
-  warn "Added $USER to input group, takes effect on next login"
 }
 
 enable_keyd() {
