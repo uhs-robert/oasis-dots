@@ -107,6 +107,20 @@ class FakeProcTest(ProcCase):
             handle.write(b"/home/u/.local/bin/claude\0")
         self.assertTrue(liveness.pid_runs_claude(DEAD_PID))
 
+    def test_an_interpreted_claude_counts_and_other_node_programs_do_not(self):
+        cases = [(["node", "/usr/lib/node_modules/@anthropic-ai/claude-code/cli.js", "--resume"], True),
+                 (["/usr/bin/node", "--no-warnings", "/home/u/.npm-global/bin/claude"], True),
+                 (["bun", "/home/u/.bun/install/global/node_modules/@anthropic-ai/claude-code/cli.js"], True),
+                 (["node", "server.js", "claude"], False), (["node", "-e", "claude"], False),
+                 (["node", "-r", "claude", "app.js"], False), (["node"], False)]
+        for arguments, expected in cases:
+            with self.subTest(arguments=arguments):
+                with open(os.path.join(self.proc, str(DEAD_PID), "comm"), "w", encoding="utf-8") as handle:
+                    handle.write(os.path.basename(arguments[0]) + "\n")
+                with open(os.path.join(self.proc, str(DEAD_PID), "cmdline"), "wb") as handle:
+                    handle.write("\0".join(arguments).encode() + b"\0")
+                self.assertEqual(liveness.pid_runs_claude(DEAD_PID), expected)
+
     def test_a_missing_proc_counts_as_alive(self):
         with mock.patch.object(liveness, "PROC_ROOT", os.path.join(self.proc, "nowhere")):
             self.assertTrue(liveness.pid_runs_claude(DEAD_PID))
@@ -222,6 +236,44 @@ class TakeBackTest(ProcCase):
         keys = parse.load(self.path).keys
         self.assertEqual((keys["owner_session"], keys["owner_session_id"], keys["owner_session_pid"]), ("gone-1", "id-b", 300))
 
+    def test_a_release_between_read_and_lock_is_retried(self):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=DEAD_PID))
+        doc = parse.load(self.path)
+        real_update = store.update
+        released = []
+
+        def release_first(read, changes, **kwargs):
+            if not released:
+                released.append(read.path)
+                liveness.release_dead_owners([parse.load(self.path)])
+            return real_update(read, changes, **kwargs)
+
+        with mock.patch.object(store, "update", release_first):
+            self.assertEqual(len(liveness.take_back([doc], "id-a", LIVE_PID)), 1)
+        keys = parse.load(self.path).keys
+        self.assertEqual((keys["owner_session"], keys["owner_session_id"], keys["owner_session_pid"], keys["last_owner_session"]),
+                         ("gone-1", "id-a", LIVE_PID, ""))
+
+    def test_a_new_id_after_a_clear_goes_in_only_while_the_pid_still_names_this_session(self):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=LIVE_PID))
+        doc = parse.load(self.path)
+        self.assertEqual(len(liveness.take_back([doc], "id-new", LIVE_PID)), 1)
+        self.assertEqual(parse.load(self.path).keys["owner_session_id"], "id-new")
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=LIVE_PID))
+        doc = parse.load(self.path)
+        real_update = store.update
+
+        def resume_elsewhere_first(read, changes, **kwargs):
+            real_update(parse.load(self.path), {"owner_session_pid": 300})
+            return real_update(read, changes, **kwargs)
+
+        with mock.patch.object(store, "update", resume_elsewhere_first):
+            self.assertEqual(liveness.take_back([doc], "id-new", LIVE_PID), [])
+        self.assertEqual(parse.load(self.path).keys["owner_session_id"], "id-a")
+
     def test_a_new_pid_goes_in_only_while_the_id_still_names_this_session(self):
         with open(self.path, "w", encoding="utf-8") as handle:
             handle.write(DOC.format(pid=DEAD_PID))
@@ -243,8 +295,15 @@ class OwnClaudePidTest(ProcCase):
         with open(os.path.join(self.proc, str(pid), "stat"), "w", encoding="utf-8") as handle:
             handle.write(f"{pid} (sh -c x) S {parent} 1 1\n")
 
-    def test_claude_pid_wins_when_it_runs_claude(self):
+    def test_claude_pid_stands_in_when_no_ancestor_runs_claude(self):
         self.assertEqual(liveness.own_claude_pid({"CLAUDE_PID": str(LIVE_PID)}), LIVE_PID)
+
+    def test_the_nearest_claude_ancestor_wins_over_an_inherited_claude_pid(self):
+        # A nested `claude` started from a Bash call inherits the outer session's $CLAUDE_PID.
+        fake_proc(self.proc, claude_pids=[201])
+        self.stat(500, LIVE_PID)
+        with mock.patch.object(os, "getppid", return_value=500):
+            self.assertEqual(liveness.own_claude_pid({"CLAUDE_PID": "201"}), LIVE_PID)
 
     def test_the_nearest_claude_ancestor_stands_in(self):
         self.stat(500, 501)

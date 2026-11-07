@@ -13,6 +13,13 @@ from . import parse, store, validate
 
 PROC_ROOT = "/proc"
 CLAUDE_NAME = "claude"
+# An npm install runs Claude Code as a script under one of these, so the comm and the first argument name the
+# interpreter. The script then counts only when it is the `claude` launcher or lies inside the Claude Code package.
+INTERPRETERS = ("node", "nodejs", "bun")
+CLAUDE_PACKAGE = "/@anthropic-ai/claude-code/"
+# Interpreter options that take the next argument as their value, and those that run code given on the command line.
+VALUE_OPTIONS = ("-r", "--require", "--import", "--loader", "--experimental-loader")
+EVAL_OPTIONS = ("-e", "--eval", "-p", "--print")
 # A hook runs a few shells below Claude. The cap stops a walk that a broken stat file would keep going.
 MAX_ANCESTORS = 16
 
@@ -46,20 +53,45 @@ def pid_runs_claude(pid):
 
 def claude_process_state(pid):
     """True when the pid runs Claude, False when it runs something else or nothing, None when /proc cannot tell. A
-    Claude Code process has `claude` as its comm, or as the file name of its first argument. A missing /proc gives
-    None, because every pid would look gone."""
+    missing /proc gives None, because every pid would look gone."""
     if not os.path.isdir(os.path.join(PROC_ROOT, "self")):
         return None
     try:
         with open(os.path.join(PROC_ROOT, str(pid), "comm"), "rb") as handle:
             comm = handle.read().decode("utf-8", "replace").strip()
         with open(os.path.join(PROC_ROOT, str(pid), "cmdline"), "rb") as handle:
-            first_argument = handle.read().split(b"\0", 1)[0].decode("utf-8", "replace")
+            arguments = handle.read().decode("utf-8", "replace").split("\0")
     except (FileNotFoundError, ProcessLookupError):
         return False
     except OSError:
         return None
-    return CLAUDE_NAME in (comm, os.path.basename(first_argument))
+    return is_claude_command(comm, arguments)
+
+
+def is_claude_command(comm, arguments):
+    """A native Claude Code has `claude` as its comm or as the file name of its first argument. An interpreted one
+    runs `claude` or a file of the Claude Code package as its script, the first argument after the interpreter's
+    options."""
+    program = os.path.basename(arguments[0]) if arguments else ""
+    if CLAUDE_NAME in (comm, program):
+        return True
+    if program not in INTERPRETERS and comm not in INTERPRETERS:
+        return False
+    script = interpreted_script(arguments)
+    return os.path.basename(script) == CLAUDE_NAME or CLAUDE_PACKAGE in script
+
+
+def interpreted_script(arguments):
+    """The script an interpreter runs, or "" when it runs code from the command line or no script at all."""
+    rest = iter(arguments[1:])
+    for argument in rest:
+        if argument in EVAL_OPTIONS:
+            return ""
+        if argument in VALUE_OPTIONS:
+            next(rest, None)
+        elif argument and not argument.startswith("-"):
+            return argument
+    return ""
 
 
 def release_dead_owners(docs):
@@ -92,20 +124,20 @@ def refuse_live_owner(fresh):
 
 
 def own_claude_pid(environ=os.environ):
-    """The pid of the Claude process this command runs under: $CLAUDE_PID when it runs Claude, else the nearest
-    ancestor that does. A hook gets no promise of $CLAUDE_PID, so the walk up the parents covers it. None when no
-    Claude process is found."""
-    raw = environ.get("CLAUDE_PID", "")
-    # A guess would claim docs, so this asks for a sure True, unlike pid_runs_claude.
-    if parse.INTEGER.fullmatch(raw) and int(raw) > 0 and claude_process_state(int(raw)) is True:
-        return int(raw)
+    """The pid of the Claude process this command runs under: the nearest ancestor that runs Claude, else $CLAUDE_PID
+    when it runs Claude. The walk comes first because a nested `claude` inherits its parent's $CLAUDE_PID, and a hook
+    gets no promise of the variable. None when no Claude process is found."""
+    # A guess would claim docs, so both ask for a sure True, unlike pid_runs_claude.
     pid = os.getppid()
     for _ in range(MAX_ANCESTORS):
         if pid <= 1:
-            return None
+            break
         if claude_process_state(pid) is True:
             return pid
         pid = parent_of(pid)
+    raw = environ.get("CLAUDE_PID", "")
+    if parse.INTEGER.fullmatch(raw) and int(raw) > 0 and claude_process_state(int(raw)) is True:
+        return int(raw)
     return None
 
 
@@ -119,27 +151,46 @@ def parent_of(pid):
 
 
 def take_back(docs, session_id, pid):
-    """Point this session's docs at its new pid after a resume, and claim back each free doc it lost while it was
-    gone. Returns the docs it wrote. A doc another session holds is left alone, and a doc that changes, vanishes or
-    fails to write is skipped."""
+    """Point this session's docs at its new pid after a resume or its new id after a `/clear`, and claim back each free
+    doc it lost while it was gone. Returns the docs it wrote. A doc another session holds is left alone, and a doc
+    that vanishes or fails to write is skipped."""
     taken = []
     for doc in docs:
-        changes = take_back_changes(doc, session_id, pid)
-        if changes is None:
-            continue
         try:
-            taken.append(store.update(doc, changes, check_under_lock=lambda fresh: refuse_changed_take_back(fresh, changes, session_id, pid)))
+            written = take_back_one(doc, session_id, pid)
         except (store.Conflict, store.Vanished, NotThisSession, parse.ParseError, OSError, UnicodeDecodeError):
             continue
+        if written is not None:
+            taken.append(written)
     return taken
+
+
+def take_back_one(doc, session_id, pid):
+    # A release can land between the read and the lock, which turns an owned doc free. One retry on a fresh read
+    # then claims the doc back instead of leaving it free until the next session start.
+    for attempt in range(2):
+        changes = take_back_changes(doc, session_id, pid)
+        if changes is None:
+            return None
+        try:
+            return store.update(doc, changes, check_under_lock=lambda fresh: refuse_changed_take_back(fresh, changes, session_id, pid))
+        except store.Conflict:
+            if attempt:
+                raise
+            doc = parse.load(doc.path)
+    return None
 
 
 def take_back_changes(doc, session_id, pid):
     owner = validate.owner_of(doc)
     if owner is not None:
-        if doc.keys.get(validate.OWNER_SESSION_ID) != session_id or doc.keys.get(validate.OWNER_SESSION_PID) == pid:
-            return None
-        return {validate.OWNER_SESSION_PID: pid}
+        stored_id, stored_pid = validate.stored_owner_values(doc)
+        if stored_id == session_id and stored_pid != pid:
+            return {validate.OWNER_SESSION_PID: pid}
+        # A live pid belongs to one process, so a doc that stores this pid is this session's, now under a new id.
+        if stored_pid == pid and stored_id != session_id:
+            return {validate.OWNER_SESSION_ID: session_id}
+        return None
     last_owner = doc.keys.get(validate.LAST_OWNER_SESSION)
     if doc.keys.get(validate.LAST_OWNER_SESSION_ID) != session_id or not validate.is_session_or_none(last_owner) \
             or last_owner == validate.NO_SESSION:
