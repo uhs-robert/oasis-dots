@@ -17,7 +17,8 @@ from unittest import mock
 sys.dont_write_bytecode = True
 PACKAGE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PACKAGE, ".local", "lib", "plans"))
-from plans import parse, query, roots, server  # noqa: E402
+from plans import liveness, parse, query, roots, server  # noqa: E402
+from test_liveness import fake_proc  # noqa: E402
 
 for name in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
              "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE", "GIT_PREFIX"):
@@ -54,6 +55,10 @@ class Fixture:
         self.test = test
         self.httpd = None
         test.addCleanup(self.temp.cleanup)
+        # Pid 100 runs Claude, pid 400 another program.
+        patcher = mock.patch.object(liveness, "PROC_ROOT", fake_proc(os.path.join(self.temp.name, "proc"), [100], [400]))
+        patcher.start()
+        test.addCleanup(patcher.stop)
 
     def repo(self, rel):
         path = os.path.join(self.root, rel)
@@ -153,6 +158,19 @@ class BoardJsonTest(unittest.TestCase):
         self.assertEqual(web["docs"][1]["waiting_on"], "owner: pick")
         self.assertEqual(web["docs"][1]["pr"], 12)
         self.assertEqual(web["web_url"], "https://github.com/someone/web")
+
+    def test_a_dead_owner_is_freed_on_the_board(self):
+        dead = self.fixture.add(self.web, "dead", 10, owner="gone-1")
+        live = self.fixture.add(self.web, "live", 20, owner="other-1")
+        for path, pid in ((dead, 400), (live, 100)):
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(text.replace("updated:", f"owner_session_id: id-a\nowner_session_pid: {pid}\nupdated:"))
+        self.fixture.start()
+        web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
+        self.assertEqual([doc["owner_session"] for doc in web["docs"]], ["none", "other-1"])
+        self.assertEqual([parse.load(path).keys["owner_session"] for path in (dead, live)], ["none", "other-1"])
 
     def test_a_repo_without_a_github_remote_keeps_its_folder_label_and_the_parent_on_a_clash(self):
         self.fixture.start()

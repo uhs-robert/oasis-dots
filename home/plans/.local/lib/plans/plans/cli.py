@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import gh, issues, parse, query, retire, roots, server, store, validate
+from . import gh, issues, liveness, parse, query, retire, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -132,12 +132,25 @@ def add_session_option(parser):
 
 def repos(args):
     if getattr(args, "all", False):
-        return [query.read_repo(root) for root in roots.all_repos()]
-    return [query.read_repo(roots.main_checkout())]
+        return [read_repo_freeing_dead_owners(root) for root in roots.all_repos()]
+    return [read_repo_freeing_dead_owners(roots.main_checkout())]
 
 
 def current_repo():
-    return query.read_repo(roots.main_checkout())
+    return read_repo_freeing_dead_owners(roots.main_checkout())
+
+
+def read_repo_freeing_dead_owners(root):
+    repo = query.read_repo(root)
+    docs, released = liveness.release_dead_owners(repo.docs)
+    report_releases(released)
+    return repo._replace(docs=docs)
+
+
+def report_releases(released):
+    for release in released:
+        print(f"plans: {release.doc.path}: freed, owner {release.owner} is dead (pid {release.pid} runs no Claude)",
+              file=sys.stderr)
 
 
 def session_of(args, required):
@@ -266,7 +279,9 @@ def load_doc(repo_root, doc_id):
         raise UsageError(f"no doc {doc_id!r} under {repo_root}/.plans")
     if len(paths) > 1:
         raise UsageError(f"id {doc_id!r} names several docs: {', '.join(paths)}")
-    return parse.load(paths[0])
+    docs, released = liveness.release_dead_owners([parse.load(paths[0])])
+    report_releases(released)
+    return docs[0]
 
 
 def run_show(args):

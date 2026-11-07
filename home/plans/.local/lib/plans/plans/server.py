@@ -17,7 +17,7 @@ import time
 
 from typing import NamedTuple
 
-from . import parse, query, retire, roots, store, validate
+from . import liveness, parse, query, retire, roots, store, validate
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -105,7 +105,9 @@ class Board:
         # One retry covers a doc deleted or renamed between the glob and the read. A doc that still fails stays an error.
         for _ in range(2):
             try:
-                return RepoView(root, query.read_repo(root), None, self.web_urls[root])
+                repo = query.read_repo(root)
+                # The freed card shows owner none, which says enough. The CLI names each release on stderr.
+                return RepoView(root, repo._replace(docs=liveness.release_dead_owners(repo.docs)[0]), None, self.web_urls[root])
             except OSError as failure:
                 error = f"{failure.filename or root}: {failure.strerror or failure}"
             except UnicodeDecodeError as failure:
