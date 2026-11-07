@@ -182,7 +182,7 @@ PATH_SCOPES = [
     # checkscope: the runner's own modules and tests.
     ("lib/check/*", "checkscope"),
     # Only the steps that always run (whitespace, conflicts, symlinks, packages, git diff) look at these, plus the
-    # shell linters for the shell files among them.
+    # shell linters for the shell files among them. install.sh is not here: it reaches the install scope above.
     ("lib/*", ""),
     ("install.sh", "install"),
     ("uninstall.sh", ""),
@@ -299,7 +299,7 @@ STEPS = [
     Step("ignored-integrations", "tree", "sh ./lib/check/steps/ignored-integrations.sh"),
 ]
 # Found by naming convention: a new test in one of these places is a step without an entry above.
-STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq"), "cursor-drag": ("lua", "python3")})
+STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq"), "cursor-drag": ("lua", "python3", "jq")})
 STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
 STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", maybe_needs=("qs", "python3"))
 STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh", "gpg"), extra_needs={"install-greeter-stage-zsh": ("jq",)})
