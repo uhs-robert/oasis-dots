@@ -85,11 +85,15 @@ class Board:
             for root in self.repo_roots:
                 # The signature comes before the read: a write in between shows as a change at the next poll.
                 signatures[root] = docs_signature(root)
-                if root in self.views and self.signatures.get(root) == signatures[root]:
-                    views[root] = self.views[root]
+                # An owner can die with no file change, so a cached view with a dead owner is read again.
+                cached = self.views.get(root)
+                files_unchanged = cached is not None and self.signatures.get(root) == signatures[root]
+                if files_unchanged and not holds_dead_owner(cached):
+                    views[root] = cached
                     continue
                 views[root] = self.read_view(root)
-                changed = True
+                # A release that keeps failing, on an unwritable doc, must not bump the version on every poll.
+                changed = changed or not files_unchanged or doc_texts(views[root]) != doc_texts(cached)
             # Both are replaced only once every repo read, so a failed poll leaves no view behind its signature.
             self.signatures = signatures
             if changed:
@@ -159,6 +163,14 @@ class Board:
             "kinds": validate.KINDS,
             "repos": [view_json(view, labels[view.root]) for view in views],
         }
+
+
+def holds_dead_owner(view):
+    return any(validate.owner_of(doc) is not None and not liveness.owner_is_alive(doc) for doc in view.repo.docs)
+
+
+def doc_texts(view):
+    return view.error, [doc.text for doc in view.repo.docs + view.repo.unreadable + view.repo.old_kind]
 
 
 def docs_signature(root):
