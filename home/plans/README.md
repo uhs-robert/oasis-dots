@@ -21,6 +21,7 @@ plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind fe
 plans close <id> [--as S] [--force] [--dry-run]    # delete the doc and its log folder, drop it from depends_on
 plans cancel <id> [--as S] [--force] [--dry-run]   # close, plus the PR, the issue and a clean worktree
 plans lint [--gh] [--all]
+plans reclaim                         # for a SessionStart hook: take back this session's docs
 plans serve [--port N]                # the web board, see below
 ```
 
@@ -34,7 +35,8 @@ Two live sessions can get the same name, so a doc also records the owner's `$CLA
 
 - `next` walks the docs with status planned, approved or building, lowest rank first. It skips each doc that another session owns. Each doc above the first free doc gets a line. A doc that waits on the owner gets an `ask` line, and a doc with an unfinished dependency gets a `blocked` line. Then it prints one `work` line for the first free doc. On `next`, `--all` does not scan other repos. It stays in the current repo and prints a `work` line for every free doc, in rank order, and a doc that depends on a free doc stays `blocked` until that doc is done. `--skip` leaves a doc out, for example one an agent already works on, but a skipped doc still blocks the docs that depend on it. A free doc has an empty `waiting_on` and no unfinished `depends_on` entry. A dependency is finished when its doc is done or gone, because a merged piece deletes its doc. A dependency whose doc cannot be read blocks, as `blocked by <id> (unreadable)`.
 - `next` first prints an `ask` line for each open GitHub issue that no doc ranks, and one for each ranked issue that is closed. See [Issue ranks](#issue-ranks).
-- A dead owner frees its doc. A doc whose `owner_session_pid` runs no Claude process (or no process at all) gets `owner_session: none`, with both values cleared, the moment any command reads it. The board checks each owner again every second, so it frees a doc even when no file changed. The CLI names each freed doc on stderr. A doc without a pid keeps its owner, and so does a pid whose `/proc` entry cannot be read. A re-claim that lands between the check and the write wins.
+- A dead owner frees its doc. A doc whose `owner_session_pid` runs no Claude process (or no process at all) gets `owner_session: none`, with both values cleared, the moment any command reads it. The board checks each owner again every second, so it frees a doc even when no file changed. The CLI names each freed doc on stderr. A doc without a pid keeps its owner, and so does a pid whose `/proc` entry cannot be read. A re-claim that lands between the check and the write wins. The freed doc keeps the old owner in `last_owner_session` and `last_owner_session_id`, and any later write of `owner_session` clears both.
+- `reclaim` is for a Claude Code SessionStart hook (`~/.claude/hooks/plans-reclaim.sh`, on startup and resume). A resumed session keeps its session id but gets a new pid. `reclaim` reads the hook input on stdin and works in every repo under the roots. A doc whose `owner_session_id` is this session gets the new pid. A free doc whose `last_owner_session_id` is this session goes back to the last owner's name. A doc another session holds stays with it. The pid is `$CLAUDE_PID` when that runs Claude, else the nearest Claude process above the hook. `reclaim` prints nothing and always exits 0.
 - `claim` and `handoff` refuse a doc that another session owns. `--force` overrides that. A forced `claim` writes the caller's values. `handoff` checks every listed doc before it writes any of them. Every `handoff` clears both values, forced or not, and the receiver's first `claim` writes its own.
 - `close` is the cleanup after a merge. It drops the id from every other doc's `depends_on`, deletes `.logs/<project>/<id>/`, then deletes the doc. The doc goes last, so a failed step leaves it for a retry. It makes no GitHub or git change. Nothing archives the doc: git ignores it, and the issue keeps the record.
 - `cancel` drops a card you no longer want. In order, it closes the doc's PR unmerged with a comment (only if open), closes the issue as not planned (only if open, and not when another doc names the same issue), removes the worktree that has the doc's branch checked out (only if it has no uncommitted changes, and never the main checkout), then runs the `close` cleanup. The branch stays, local and remote, so the PR can be reopened. A step that fails stops the run. The doc stays, and the output says what is `done`, `skipped`, `failed` and `not run`. A dirty worktree is `skipped`, and the run goes on.
@@ -140,6 +142,7 @@ updated: "2026-11-05"
 | `status` | idea, planned, approved, building, review, blocked, parked or done |
 | `owner_session` | a session name, or `none` (an empty or missing value counts as `none`, and lint flags it) |
 | `owner_session_id`, `owner_session_pid` | the owner's session id and pid, `""` when unknown; optional, and a new owner name clears them |
+| `last_owner_session`, `last_owner_session_id` | the dead owner that a release freed the doc from, `""` once anyone writes `owner_session`; optional |
 | `rank` | one order per repo, lowest first, in steps of 10 |
 | `depends_on` | the ids that must be finished first |
 | `waiting_on` | what the doc waits on the owner for, else `""` |
@@ -165,7 +168,7 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `gh.py`: the `lint --gh` checks, and the `gh` runner.
 - `retire.py`: `close` and `cancel`: the step list (the dry run and the board's prompt) and the ordered apply.
 - `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
-- `liveness.py`: the dead-owner check on the stored pid, and the release write every read runs.
+- `liveness.py`: the dead-owner check on the stored pid, the release write every read runs, and the take-back that `reclaim` runs.
 - `cli.py`: argument parsing and output only.
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 

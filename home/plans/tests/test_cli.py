@@ -103,9 +103,9 @@ class CliTest(unittest.TestCase):
         project = keys.get("project", "proj")
         return self.write(f".plans/{project}/{doc_id}.md", doc_text(doc_id, rank, **keys), repo)
 
-    def plans(self, *args, cwd=None, env=None, code=0):
+    def plans(self, *args, cwd=None, env=None, code=0, input=None):  # noqa: A002 - subprocess.run names it so
         result = subprocess.run([sys.executable, "-B", "-c", WITH_FAKE_PROC, LIBRARY, self.proc, ENTRY, *args],
-                                cwd=cwd or self.repo, env={**self.env, **(env or {})}, capture_output=True, text=True)
+                                cwd=cwd or self.repo, env={**self.env, **(env or {})}, capture_output=True, text=True, input=input)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
         return result
 
@@ -372,6 +372,56 @@ class CliTest(unittest.TestCase):
                 self.assertIn(f"plans: {path}: freed, owner gone-1 is dead", stderr)
                 owner = "next-2" if args[0] == "handoff" else "none"
                 self.assertEqual((parse.load(path).keys["owner_session"], *self.proof(path)), (owner, "", ""))
+
+    def reclaim(self, session_id, pid):
+        """The SessionStart hook's call, from a session that Claude Code gave `session_id` and now runs at `pid`."""
+        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        result = self.plans("reclaim", input=json.dumps({"session_id": session_id, "source": "resume"}),
+                            env={"CLAUDE_PID": str(pid)})
+        self.assertEqual((result.stdout, result.stderr), ("", ""))
+
+    def owner_state(self, path):
+        keys = parse.load(path).keys
+        return tuple(keys.get(key) for key in ("owner_session", "owner_session_id", "owner_session_pid",
+                                               "last_owner_session", "last_owner_session_id"))
+
+    def test_a_resumed_session_keeps_its_doc(self):
+        # A resume keeps the session id and starts a new pid, so the stored pid runs no Claude any more.
+        path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
+        self.reclaim("id-a", 300)
+        self.assertEqual(self.plans("ls").stderr, "")
+        self.assertEqual(self.owner_state(path), ("me-1", "id-a", 300, None, None))
+
+    def test_a_session_that_resumes_after_a_release_claims_its_doc_back(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
+        self.plans("ls")
+        self.assertEqual(self.owner_state(path), ("none", "", "", "me-1", "id-a"))
+        self.assertEqual(self.plans("lint").stdout, "")
+        self.reclaim("id-b", 300)
+        self.assertEqual(self.owner_state(path), ("none", "", "", "me-1", "id-a"))
+        self.reclaim("id-a", 300)
+        self.assertEqual(self.owner_state(path), ("me-1", "id-a", 300, "", ""))
+
+    def test_a_doc_another_session_claimed_meanwhile_stays_with_it(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
+        self.plans("ls")
+        self.plans("claim", "demo", "--as", "other-2", env=SESSION_B)
+        self.assertEqual(self.owner_state(path), ("other-2", "id-b", 200, "", ""))
+        self.reclaim("id-a", 300)
+        self.assertEqual(self.owner_state(path), ("other-2", "id-b", 200, "", ""))
+
+    def test_reclaim_is_silent_and_ok_on_bad_input(self):
+        path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
+        before = self.read(path)
+        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        cases = [("not json", {"CLAUDE_PID": "300"}), ("[1]", {"CLAUDE_PID": "300"}), ('{"session_id": 5}', {"CLAUDE_PID": "300"}),
+                 ("{}", {"CLAUDE_PID": "300"}), ('{"session_id": "id-a"}', {"CLAUDE_PID": "x"}),
+                 ('{"session_id": "id-a"}', {"CLAUDE_PID": str(DEAD_PID)})]
+        for stdin, env in cases:
+            with self.subTest(stdin=stdin, env=env):
+                result = self.plans("reclaim", input=stdin, env=env)
+                self.assertEqual((result.stdout, result.stderr), ("", ""))
+        self.assertEqual(self.read(path), before)
 
     def test_a_release_that_loses_a_race_stays_quiet(self):
         dead = self.add_owned("dead", 10, "gone-1", "id-x", DEAD_PID)

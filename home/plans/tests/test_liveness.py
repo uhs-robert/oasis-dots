@@ -195,5 +195,71 @@ class ReleaseTest(ProcCase):
         self.assertEqual(self.owner_values(), ("gone-1", "id-a", DEAD_PID))
 
 
+class TakeBackTest(ProcCase):
+    def setUp(self):
+        super().setUp()
+        plans = os.path.join(os.path.dirname(self.proc), ".plans", "proj")
+        os.makedirs(plans)
+        self.path = os.path.join(plans, "demo.md")
+
+    def write_free(self):
+        text = DOC.format(pid='""').replace("owner_session: gone-1", "owner_session: none").replace("owner_session_id: id-a", 'owner_session_id: ""')
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("updated:", "last_owner_session: gone-1\nlast_owner_session_id: id-a\nupdated:"))
+        return parse.load(self.path)
+
+    def test_a_claim_between_check_and_write_wins(self):
+        doc = self.write_free()
+        real_update = store.update
+
+        def claim_first(read, changes, **kwargs):
+            # Another session claims the doc under the same name first.
+            real_update(parse.load(self.path), {"owner_session": "gone-1", "owner_session_id": "id-b", "owner_session_pid": 300})
+            return real_update(read, changes, **kwargs)
+
+        with mock.patch.object(store, "update", claim_first):
+            self.assertEqual(liveness.take_back([doc], "id-a", LIVE_PID), [])
+        keys = parse.load(self.path).keys
+        self.assertEqual((keys["owner_session"], keys["owner_session_id"], keys["owner_session_pid"]), ("gone-1", "id-b", 300))
+
+    def test_a_new_pid_goes_in_only_while_the_id_still_names_this_session(self):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=DEAD_PID))
+        doc = parse.load(self.path)
+        real_update = store.update
+
+        def handoff_first(read, changes, **kwargs):
+            real_update(parse.load(self.path), {"owner_session_id": "id-b"})
+            return real_update(read, changes, **kwargs)
+
+        with mock.patch.object(store, "update", handoff_first):
+            self.assertEqual(liveness.take_back([doc], "id-a", LIVE_PID), [])
+        self.assertEqual(parse.load(self.path).keys["owner_session_pid"], DEAD_PID)
+
+
+class OwnClaudePidTest(ProcCase):
+    def stat(self, pid, parent):
+        os.makedirs(os.path.join(self.proc, str(pid)), exist_ok=True)
+        with open(os.path.join(self.proc, str(pid), "stat"), "w", encoding="utf-8") as handle:
+            handle.write(f"{pid} (sh -c x) S {parent} 1 1\n")
+
+    def test_claude_pid_wins_when_it_runs_claude(self):
+        self.assertEqual(liveness.own_claude_pid({"CLAUDE_PID": str(LIVE_PID)}), LIVE_PID)
+
+    def test_the_nearest_claude_ancestor_stands_in(self):
+        self.stat(500, 501)
+        self.stat(501, LIVE_PID)
+        with mock.patch.object(os, "getppid", return_value=500):
+            self.assertEqual(liveness.own_claude_pid({"CLAUDE_PID": str(DEAD_PID)}), LIVE_PID)
+            self.assertEqual(liveness.own_claude_pid({}), LIVE_PID)
+        self.stat(502, 1)
+        with mock.patch.object(os, "getppid", return_value=502):
+            self.assertIsNone(liveness.own_claude_pid({}))
+
+    def test_an_unsure_proc_gives_no_pid(self):
+        with mock.patch.object(liveness, "PROC_ROOT", os.path.join(self.proc, "nowhere")):
+            self.assertIsNone(liveness.own_claude_pid({"CLAUDE_PID": str(LIVE_PID)}))
+
+
 if __name__ == "__main__":
     unittest.main()

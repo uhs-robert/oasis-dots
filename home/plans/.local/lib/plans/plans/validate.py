@@ -21,6 +21,10 @@ NO_SESSION = "none"
 OWNER_SESSION_ID = "owner_session_id"
 OWNER_SESSION_PID = "owner_session_pid"
 OWNER_VALUE_KEYS = (OWNER_SESSION_ID, OWNER_SESSION_PID)
+# A release of a dead owner keeps its name and id here, so the session can take the doc back once it resumes.
+LAST_OWNER_SESSION = "last_owner_session"
+LAST_OWNER_SESSION_ID = "last_owner_session_id"
+LAST_OWNER_KEYS = (LAST_OWNER_SESSION, LAST_OWNER_SESSION_ID)
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 CHECKLIST_ITEM = re.compile(r"- \[[ xX]\] .*")
 # The keys whose value a write must take from a closed set.
@@ -78,6 +82,10 @@ def key_findings(doc):
         flag(OWNER_SESSION_ID, "owner-session-id", f'{OWNER_SESSION_ID} must be a string, "" when unknown')
     if OWNER_SESSION_PID in keys and keys[OWNER_SESSION_PID] != "" and not isinstance(keys[OWNER_SESSION_PID], int):
         flag(OWNER_SESSION_PID, "owner-session-pid", f'{OWNER_SESSION_PID} must be a whole number, "" when unknown')
+    if LAST_OWNER_SESSION in keys and keys[LAST_OWNER_SESSION] != "" and not is_session_or_none(keys[LAST_OWNER_SESSION]):
+        flag(LAST_OWNER_SESSION, "last-owner-session", f'{LAST_OWNER_SESSION} {keys[LAST_OWNER_SESSION]!r} is no session name (like dotfiles-56), "" when unset')
+    if LAST_OWNER_SESSION_ID in keys and not isinstance(keys[LAST_OWNER_SESSION_ID], str):
+        flag(LAST_OWNER_SESSION_ID, "last-owner-session-id", f'{LAST_OWNER_SESSION_ID} must be a string, "" when unset')
     if "waiting_on" in keys and not isinstance(keys["waiting_on"], str):
         flag("waiting_on", "waiting-on", 'waiting_on must be a string, "" when the doc waits on nothing')
     for key in parse.LIST_KEYS:
