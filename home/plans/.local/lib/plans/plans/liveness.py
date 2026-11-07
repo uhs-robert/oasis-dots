@@ -65,7 +65,18 @@ def claude_process_state(pid):
         return False
     except OSError:
         return None
-    return is_claude_command(comm, arguments)
+    return is_claude_command(comm, arguments) or runs_claude_install(pid)
+
+
+def runs_claude_install(pid):
+    """True when the pid's executable lies in a Claude install, such as `~/.local/share/claude/versions/<v>`. That
+    covers a native Claude started under another name. Only a whole path component `claude` counts, and an
+    unreadable exe (another user's process, a kernel thread) adds nothing."""
+    try:
+        executable = os.readlink(os.path.join(PROC_ROOT, str(pid), "exe"))
+    except OSError:
+        return False
+    return CLAUDE_NAME in executable.split(os.sep)
 
 
 def is_claude_command(comm, arguments):
@@ -150,14 +161,14 @@ def parent_of(pid):
         return 0
 
 
-def take_back(docs, session_id, pid):
-    """Point this session's docs at its new pid after a resume or its new id after a `/clear`, and claim back each free
-    doc it lost while it was gone. Returns the docs it wrote. A doc another session holds is left alone, and a doc
-    that vanishes or fails to write is skipped."""
+def take_back(docs, session_id, pid, cleared=False):
+    """Point this session's docs at its new pid after a resume or, when `cleared` (a `/clear`), at its new id, and
+    claim back each free doc it lost while it was gone. Returns the docs it wrote. A doc another session holds is left
+    alone, and a doc that vanishes or fails to write is skipped."""
     taken = []
     for doc in docs:
         try:
-            written = take_back_one(doc, session_id, pid)
+            written = take_back_one(doc, session_id, pid, cleared)
         except (store.Conflict, store.Vanished, NotThisSession, parse.ParseError, OSError, UnicodeDecodeError):
             continue
         if written is not None:
@@ -165,15 +176,15 @@ def take_back(docs, session_id, pid):
     return taken
 
 
-def take_back_one(doc, session_id, pid):
+def take_back_one(doc, session_id, pid, cleared):
     # A release can land between the read and the lock, which turns an owned doc free. One retry on a fresh read
     # then claims the doc back instead of leaving it free until the next session start.
     for attempt in range(2):
-        changes = take_back_changes(doc, session_id, pid)
+        changes = take_back_changes(doc, session_id, pid, cleared)
         if changes is None:
             return None
         try:
-            return store.update(doc, changes, check_under_lock=lambda fresh: refuse_changed_take_back(fresh, changes, session_id, pid))
+            return store.update(doc, changes, check_under_lock=lambda fresh: refuse_changed_take_back(fresh, changes, session_id, pid, cleared))
         except store.Conflict:
             if attempt:
                 raise
@@ -181,14 +192,15 @@ def take_back_one(doc, session_id, pid):
     return None
 
 
-def take_back_changes(doc, session_id, pid):
+def take_back_changes(doc, session_id, pid, cleared=False):
     owner = validate.owner_of(doc)
     if owner is not None:
         stored_id, stored_pid = validate.stored_owner_values(doc)
         if stored_id == session_id and stored_pid != pid:
             return {validate.OWNER_SESSION_PID: pid}
-        # A live pid belongs to one process, so a doc that stores this pid is this session's, now under a new id.
-        if stored_pid == pid and stored_id != session_id:
+        # A live pid belongs to one process, so after a `/clear` a doc that stores this pid is this session's, now
+        # under a new id. Only then: on startup or resume the pid can be a dead owner's, reused after a reboot.
+        if cleared and stored_pid == pid and stored_id != session_id:
             return {validate.OWNER_SESSION_ID: session_id}
         return None
     last_owner = doc.keys.get(validate.LAST_OWNER_SESSION)
@@ -198,8 +210,8 @@ def take_back_changes(doc, session_id, pid):
     return {"owner_session": last_owner, validate.OWNER_SESSION_ID: session_id, validate.OWNER_SESSION_PID: pid}
 
 
-def refuse_changed_take_back(fresh, changes, session_id, pid):
+def refuse_changed_take_back(fresh, changes, session_id, pid, cleared):
     """store.update compares only the keys a write changes, not the id that names this session, so the take-back is
     worked out again on the doc as it is on disk."""
-    if take_back_changes(fresh, session_id, pid) != changes:
+    if take_back_changes(fresh, session_id, pid, cleared) != changes:
         raise NotThisSession(fresh.path)

@@ -513,7 +513,7 @@ def run_reclaim(args):
             return OK
         for root in reclaim_repos():
             try:
-                liveness.take_back(query.read_repo(root).docs, session_id, pid)
+                liveness.take_back(query.read_repo(root).docs, session_id, pid, cleared=hook_input.get("source") == "clear")
             except Exception:  # noqa: BLE001, S112 - one unreadable repo must not stop the others
                 continue
     except Exception:  # noqa: BLE001, S110 - see the docstring

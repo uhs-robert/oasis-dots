@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Tests for plans-reclaim.sh: the hook passes its input to `plans reclaim`, prints nothing and exits 0 whatever
-# `plans` does, including when it is missing. HOME is a temp dir, so no test reaches the owner's plan docs.
+# `plans` does, including when it is missing. HOME is a temp dir, so no test reaches real plan docs.
 set -u
-hook="$(cd "$(dirname "$0")/.." && pwd)/plans-reclaim.sh"
-entry="$(cd "$(dirname "$0")/../../../../plans/.local/bin" && pwd)/plans"
+# The real path, because ~/.claude links here and the plans entry is found relative to the repo.
+here=$(dirname "$(realpath "$0")")
+hook="$here/../plans-reclaim.sh"
+entry="$here/../../../../plans/.local/bin/plans"
+[[ -x $entry ]] || entry=$(command -v plans || true)
 failures=0
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -44,10 +47,14 @@ check "a failing plans is silent and ok" silent_ok
 check "plans gets the reclaim command" test "$(cat "$tmp/args")" = reclaim
 check "plans gets the hook input" test "$(cat "$tmp/stdin")" = '{"session_id":"s1","source":"resume"}'
 
-ln -sf "$entry" "$tmp/home/.local/bin/plans"
-for input in 'not json' '[1]' '{}' '{"session_id":5}' ''; do
-  run_hook "$input"
-  check "the real plans is silent and ok on input '$input'" silent_ok
-done
+if [[ -z $entry ]]; then
+  echo "skip the real plans checks: no plans entry found"
+else
+  ln -sf "$entry" "$tmp/home/.local/bin/plans"
+  for input in 'not json' '[1]' '{}' '{"session_id":5}' ''; do
+    run_hook "$input"
+    check "the real plans is silent and ok on input '$input'" silent_ok
+  done
+fi
 
 ((failures == 0)) || exit 1

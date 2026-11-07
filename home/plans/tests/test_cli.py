@@ -373,10 +373,10 @@ class CliTest(unittest.TestCase):
                 owner = "next-2" if args[0] == "handoff" else "none"
                 self.assertEqual((parse.load(path).keys["owner_session"], *self.proof(path)), (owner, "", ""))
 
-    def reclaim(self, session_id, pid, roots=None, cwd=None):
+    def reclaim(self, session_id, pid, roots=None, cwd=None, source="resume"):
         """The SessionStart hook's call, from a session that Claude Code gave `session_id` and now runs at `pid`."""
         self.write(".config/plans/roots", f"{roots or self.repo}\n", repo=self.home)
-        result = self.plans("reclaim", input=json.dumps({"session_id": session_id, "source": "resume"}),
+        result = self.plans("reclaim", input=json.dumps({"session_id": session_id, "source": source}),
                             env={"CLAUDE_PID": str(pid)}, cwd=cwd)
         self.assertEqual((result.stdout, result.stderr), ("", ""))
 
@@ -414,9 +414,16 @@ class CliTest(unittest.TestCase):
         # A `/clear` starts a new session id in the same process, so the stored pid still names this session.
         mine = self.add_owned("mine", 10, "me-1", "id-a", 300)
         theirs = self.add_owned("theirs", 20, "other-2", "id-b", 200)
-        self.reclaim("id-new", 300)
+        self.reclaim("id-new", 300, source="clear")
         self.assertEqual(self.owner_state(mine), ("me-1", "id-new", 300, None, None))
         self.assertEqual(self.owner_state(theirs), ("other-2", "id-b", 200, None, None))
+
+    def test_a_new_session_never_adopts_a_doc_by_its_pid_alone(self):
+        # After a reboot, a new Claude can get the pid a dead owner stored.
+        path = self.add_owned("demo", 10, "gone-1", "id-old", 300)
+        for source in ("startup", "resume"):
+            self.reclaim("id-new", 300, source=source)
+            self.assertEqual(self.owner_state(path), ("gone-1", "id-old", 300, None, None), source)
 
     def test_reclaim_reads_the_current_checkout_and_the_roots(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", DEAD_PID)
