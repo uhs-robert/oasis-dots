@@ -442,6 +442,11 @@ function select_card(path, edge) {
   }
   window.scrollTo({ top: edge === "top" ? 0 : document.documentElement.scrollHeight });
   // The column's end card can sit in a lane far from the page end. Keep it in view rather than lose the selection.
+  // The window also scrolls sideways when the columns do not fit, so reveal the card's column as "nearest" does.
+  const view_width = document.documentElement.clientWidth;
+  const side = card.getBoundingClientRect();
+  if (side.left < 0) window.scrollBy({ left: side.left });
+  else if (side.right > view_width) window.scrollBy({ left: Math.min(side.right - view_width, side.left) });
   const rect = card.getBoundingClientRect();
   const sticky_bottom = document.querySelector(".column-head").getBoundingClientRect().bottom;
   const view_bottom = document.documentElement.clientHeight;
