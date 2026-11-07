@@ -277,7 +277,8 @@ class HeadlessLoadTest(TreeCase):
         lua_ids = sorted(a["id"] for a in listing["actions"] if a["perform"]["kind"] == "lua")
         self.assertEqual(lua_ids, [
             "apps.focus", "apps.open",
-            "cursor.click", "cursor.move", "cursor.move_stop", "cursor.pointer_mode", "cursor.scroll", "cursor.scroll_stop",
+            "cursor.click", "cursor.drag_cancel", "cursor.drag_drop", "cursor.drag_start",
+            "cursor.move", "cursor.move_stop", "cursor.pointer_mode", "cursor.scroll", "cursor.scroll_stop",
             "cursor.send_key",
             "delete.close_group", "delete.close_workspace",
             "files.open",
