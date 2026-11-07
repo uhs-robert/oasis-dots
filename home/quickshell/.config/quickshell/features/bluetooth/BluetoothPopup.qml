@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Bluetooth as QsBt
 import qs.ui.menu
 import qs.theme
@@ -77,9 +78,34 @@ Popup {
     search_cursor: root.selected
     onSearch_select: index => root.selected = index
 
+    readonly property bool blocked: has_adapter && adapter.state === QsBt.BluetoothAdapterState.Blocked
+    property bool power_on_after_unblock: false
+
     function toggle_power() {
         ThemeAudio.play("confirm");
-        if (root.has_adapter) root.adapter.enabled = !root.adapter.enabled;
+        if (!root.has_adapter) return;
+        // BlueZ cannot power a radio that rfkill soft-blocks, so lift the block first and power on once it clears.
+        if (root.blocked) {
+            root.power_on_after_unblock = true;
+            unblock_timeout.restart();
+            Quickshell.execDetached(["rfkill", "unblock", "bluetooth"]);
+            return;
+        }
+        root.adapter.enabled = !root.adapter.enabled;
+    }
+
+    onBlockedChanged: {
+        if (root.blocked || !root.power_on_after_unblock) return;
+        root.power_on_after_unblock = false;
+        unblock_timeout.stop();
+        root.adapter.enabled = true;
+    }
+
+    // A hard block (a hardware switch) never clears, so stop waiting rather than power on much later.
+    Timer {
+        id: unblock_timeout
+        interval: 5000
+        onTriggered: root.power_on_after_unblock = false
     }
 
     function toggle_scan() {
