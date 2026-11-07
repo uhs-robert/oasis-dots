@@ -62,6 +62,24 @@ check "prev adds -prev" has_name sess-03-prev
 run plain4 "$skill/rename-window.sh" "done" sess-04 >/dev/null
 check "done adds -done" has_name sess-04-done
 
+# Every role types the bare session name as a /rename into the caller's own pane. The pane runs cat so the typed
+# text lands in a file. stty -echo keeps the terminal from echoing it back into the pane.
+typed() {
+  local file=$work/typed-$1 pane
+  pane=$(t new-window -d -P -F '#{pane_id}' -n "typing-$1" "stty -echo; cat >$file")
+  TMUX=$(t display-message -p '#{socket_path},#{pid},0') TMUX_PANE=$pane "$skill/rename-window.sh" "$1" "sess-t$1" >/dev/null
+  sleep 0.3
+  [[ $(cat "$file") == "/rename sess-t$1" ]]
+}
+for role in next active prev "done"; do
+  check "$role types /rename with the bare session name" typed "$role"
+done
+touch "$work/typed-refused"
+pane=$(t new-window -d -P -F '#{pane_id}' -n typing-refused "stty -echo; cat >$work/typed-refused")
+TMUX=$(t display-message -p '#{socket_path},#{pid},0') TMUX_PANE=$pane "$skill/rename-window.sh" active 'bad name' >/dev/null 2>&1
+sleep 0.3
+check "a refused name types nothing" test ! -s "$work/typed-refused"
+
 # Refusals leave the window name alone
 run keep1 "$skill/rename-window.sh" bogus sess-05 >/dev/null 2>&1
 check "an unknown role is refused" has_name keep1
