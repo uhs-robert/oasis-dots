@@ -12,8 +12,8 @@ sudo() { printf '%s\n' "$*" >>"$scratch/sudo.log"; }
 
 failures=0
 fail() {
-	printf 'FAIL %s\n' "$1" >&2
-	failures=$((failures + 1))
+  printf 'FAIL %s\n' "$1" >&2
+  failures=$((failures + 1))
 }
 
 rule=$repo_dir/system/etc/udev/rules.d/70-dotfiles-uinput.rules
