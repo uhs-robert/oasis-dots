@@ -61,7 +61,7 @@ def plan(root, doc, cancel):
     others = [other for other in query.read_repo(root).docs if other.path != doc.path]
     steps, notes = [], []
     if cancel:
-        steps += github_steps(root, doc, others, notes)
+        steps += github_steps(root, doc, notes)
         steps += worktree_steps(root, doc, notes)
     steps += local_steps(root, doc, project, others)
     return Plan(steps, notes)
@@ -116,21 +116,26 @@ def current_repo_slug(root):
     return None
 
 
-def github_steps(root, doc, others, notes):
+def github_steps(root, doc, notes):
     steps = []
     pr = reference(doc, "pr")
     if pr:
         steps.append(Step(f"close PR {pr} unmerged, with a comment (if it is still open)", lambda: close_pr(root, pr)))
     issue = reference(doc, "issue")
     if issue:
-        current_repo = current_repo_slug(root)
-        mine = identity_of(issue, current_repo)
-        sharing = [other.id for other in others if shares_issue(other, mine, current_repo)]
+        sharing = sharers(root, doc, issue)
         if sharing:
             notes.append(f"keep issue {issue} open: {', '.join(sharing)} also names it")
         else:
-            steps.append(Step(f"close issue {issue} as not planned (if it is still open)", lambda: close_issue(root, issue)))
+            steps.append(Step(f"close issue {issue} as not planned (if it is still open)", lambda: close_issue(root, doc, issue)))
     return steps
+
+
+def sharers(root, doc, issue):
+    """The ids of the other docs that name `doc`'s issue, read from disk now."""
+    current_repo = current_repo_slug(root)
+    mine = identity_of(issue, current_repo)
+    return [other.id for other in query.read_repo(root).docs if other.path != doc.path and shares_issue(other, mine, current_repo)]
 
 
 def shares_issue(other, mine, current_repo):
@@ -154,7 +159,11 @@ def close_pr(root, pr):
         raise StepFailed(f"gh pr close {pr} failed: {gh.first_line(result.stderr)}")
 
 
-def close_issue(root, issue):
+def close_issue(root, doc, issue):
+    # The plan checked this before the slow PR step, and a sibling may have named the issue since.
+    sharing = sharers(root, doc, issue)
+    if sharing:
+        return f"{', '.join(sharing)} now also names it"
     state, error = gh.view_state(root, "issue", issue)
     if error:
         raise StepFailed(f"could not read issue {issue}: {error}")

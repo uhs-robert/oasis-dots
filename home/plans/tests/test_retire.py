@@ -28,6 +28,9 @@ with open(os.environ["FAKE_LOG"], "a") as log:
 fail = os.environ.get("FAKE_GH_FAIL", "")
 if fail and " ".join(args).startswith(fail):
     sys.exit("gh: boom")
+if args[:2] == ["pr", "close"] and os.environ.get("FAKE_GH_WRITE_PATH"):
+    with open(os.environ["FAKE_GH_WRITE_PATH"], "w") as sibling:
+        sibling.write(os.environ["FAKE_GH_WRITE_TEXT"])
 states = dict(item.split("=") for item in os.environ.get("FAKE_GH_STATES", "").split(",") if item)
 if args[1] == "view":
     key = args[0] + ":" + args[2]
@@ -65,9 +68,10 @@ class FakeTools:
             os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR)
         self.real_git = shutil.which("git")
 
-    def env(self, states="", gh_fail="", git_fail=""):
+    def env(self, states="", gh_fail="", git_fail="", write=("", "")):
         return {"PATH": self.bin + os.pathsep + os.environ["PATH"], "FAKE_LOG": self.log, "REAL_GIT": self.real_git,
-                "FAKE_GH_STATES": states, "FAKE_GH_FAIL": gh_fail, "FAKE_GIT_FAIL": git_fail}
+                "FAKE_GH_STATES": states, "FAKE_GH_FAIL": gh_fail, "FAKE_GIT_FAIL": git_fail,
+                "FAKE_GH_WRITE_PATH": write[0], "FAKE_GH_WRITE_TEXT": write[1]}
 
     def calls(self):
         with open(self.log, encoding="utf-8") as handle:
@@ -392,6 +396,15 @@ class CancelTest(RetireTest):
         result = self.cancel("piece", states=self.STATES)
         self.assertNotIn("issue close", " ".join(self.tools.calls()))
         self.assertIn("sibling also names it", result.stdout)
+
+    def test_a_sibling_that_names_the_issue_during_the_pr_close_keeps_the_issue_open(self):
+        self.piece()
+        sibling = os.path.join(self.repo, ".plans", "proj", "late.md")
+        text = test_cli.doc_text("late", 20, issue="8")
+        result = self.cancel("piece", states=self.STATES, write=(sibling, text))
+        self.assertNotIn("issue close", " ".join(self.tools.calls()))
+        self.assertIn("skipped: close issue 8", result.stdout)
+        self.assertIn("late now also names it", result.stdout)
 
     def test_a_dirty_worktree_stays_and_the_rest_of_the_cancel_goes_on(self):
         path = self.piece()
