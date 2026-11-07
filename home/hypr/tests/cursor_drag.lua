@@ -274,7 +274,7 @@ assert_clean("missing ydotool")
 write_file(stub .. "/ydotool", ydotool_stub)
 os.execute("chmod +x " .. stub .. "/ydotool")
 
---- 2. Manual drag: V grabs, Enter drops.
+--- 2. Manual drag: V grabs, the left-click key drops.
 fresh()
 press("V")
 check(ready(), "manual: grab presses and nudges")
@@ -282,29 +282,28 @@ check(Cursor.drag_active(), "manual: active after grab")
 press("V")
 press("SHIFT + V")
 check(count("ydotool click 0x40") == 1 and count("ydotoold start") == 1, "double V: one daemon, one press")
-press("RETURN")
+press("SPACE")
 check(
 	settle(function()
 		return count("ydotool click 0x80") == 1
 	end),
-	"manual: Enter releases the button"
+	"manual: left click releases the button"
 )
 check(
 	settle(function()
 		return count("ydotoold stop") == 1
 	end),
-	"manual: Enter stops the daemon"
+	"manual: left click stops the daemon"
 )
 check(count("wlrctl pointer move 1 0") == 1, "manual: drop wiggles onto the spot")
 check(line_of("ydotool click 0x40") < line_of("ydotool click 0x80"), "manual: press before release")
 check(count("ydotool key") == 0, "manual: a drop sends no Escape")
 assert_clean("manual")
 
---- 3. Enter and Esc with no drag.
+--- 3. Esc with no drag, and Enter never drops (it is unbound, so the Cursor catchall swallows it).
 fresh()
-press("RETURN")
 press("ESCAPE")
-check(count("ydotool ") == 0 and count("ydotoold") == 0, "no drag: Enter and Esc touch nothing")
+check(count("ydotool ") == 0 and count("ydotoold") == 0, "no drag: Esc touches nothing")
 check(submap_calls[#submap_calls] == "reset", "no drag: Esc leaves the submap")
 assert_clean("no drag")
 
@@ -423,7 +422,7 @@ check(Cursor.drag_active() and count("ydotool click 0x80") == 0, "kbptr mid-drag
 check(log():find("Drop or cancel the drag first", 1, true), "kbptr mid-drag: notice")
 Cursor.hold_stop()
 check(Cursor.drag_active(), "hold_stop does not release")
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
 end)
@@ -492,15 +491,15 @@ check(log():find("could not read the picked spot", 1, true), "no position: notic
 check(count("ydotool ") == 0, "no position: no press")
 assert_clean("no position")
 
---- 14. Glide interrupted by Esc (and Enter ignored while gliding).
+--- 14. Glide interrupted by Esc (and the left click ignored while gliding).
 fresh('PICK="400 300"')
 press("SHIFT + V")
 settle(function()
 	return count("wlrctl pointer move 8 0") == 1
 end)
 advance(80)
-press("RETURN")
-check(count("ydotool click 0x80") == 0, "glide: Enter does not drop")
+press("SPACE")
+check(count("ydotool click 0x80") == 0, "glide: left click does not drop")
 press("ESCAPE")
 check(
 	settle(function()
@@ -537,7 +536,7 @@ advance(40000)
 check(count("ydotool click 0x80") == 0, "external kill: the watchdog is gone")
 press("V")
 check(ready() and Cursor.drag_active(), "external kill: a new drag starts")
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
 end)
@@ -581,13 +580,13 @@ check(
 )
 assert_clean("reload")
 
---- 18. Quick Click carries the pick variants, Enter and the escape, and no plain V.
+--- 18. Quick Click carries the pick variants and the escape, and no plain V and no Enter.
 fresh("PICK=dismiss")
 check(
 	binds_by["Quick Click|SHIFT + V"] and binds_by["Quick Click|CTRL + V"] and binds_by["Quick Click|ALT + V"],
 	"quick click: pick rows"
 )
-check(binds_by["Quick Click|RETURN"] and not binds_by["Quick Click|V"], "quick click: Enter, and no manual V")
+check(not binds_by["Quick Click|V"] and not binds_by["Quick Click|RETURN"], "quick click: no manual V, no Enter")
 press("SHIFT + V", "Quick Click")
 settle(function()
 	return count("kbptr") == 1
@@ -604,7 +603,7 @@ Cursor.move_press("left", 1)
 advance(31000)
 check(Cursor.drag_active() and count("ydotool click 0x80") == 0, "held key: the repeat refreshes the watchdog")
 Cursor.move_release("left")
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
 end)
@@ -639,7 +638,7 @@ check(count("ydotool ") == 0, "no runtime dir: no press")
 fresh()
 press("V")
 ready()
-press("RETURN")
+press("SPACE")
 press("V")
 check(count("ydotoold start") == 1, "fast regrab: ignored while the old session cleans up")
 check(
@@ -656,24 +655,24 @@ check(
 	"fast regrab: allowed once cleanup is done"
 )
 ready()
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 2
 end)
 assert_clean("fast regrab")
 
---- 22. Enter while a picked drag is still starting does not end it before the glide.
+--- 22. A left click while a picked drag is still starting does not end it before the glide.
 fresh('PICK="400 300"')
 press("SHIFT + V")
 settle(function()
 	return count("ydotoold start") >= 1
 end)
-press("RETURN")
+press("SPACE")
 check(
 	settle(function()
 		return count("wlrctl pointer move 8 0") == 1
 	end),
-	"picked drag: Enter while starting is ignored"
+	"picked drag: left click while starting is ignored"
 )
 for _ = 1, 20 do
 	advance(30)
@@ -685,7 +684,7 @@ settle(function()
 end)
 local ex, ey = pointer()
 check(ex == 400 and ey == 300, "picked drag: still reaches the target")
-assert_clean("picked drag Enter")
+assert_clean("picked drag left click")
 
 --- 23. A stale pid file must not get an unrelated process killed (the pid was reused).
 fresh()
@@ -715,27 +714,31 @@ for _, timer in ipairs(timers) do
 end
 check(watchdogs == 1, "watchdog: one timer however many moves (" .. watchdogs .. ")")
 Cursor.move_release("left")
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
 end)
 assert_clean("one watchdog")
 
---- 26. Click actions wait for the drag to end: a full click would let go of the button the app sees held.
+--- 26. Right and middle clicks wait for the drag to end: a full click would let go of the button the app sees held.
 fresh()
 press("V")
 ready()
-press("SPACE")
-press("CTRL + SPACE")
+press("R")
+press("CTRL + R")
+press("M")
+press("CTRL + M")
 advance(100)
 sleep(0.2)
-check(count("wlrctl pointer click") == 0, "click: blocked during a drag")
+check(count("wlrctl pointer click") == 0, "click: right and middle blocked during a drag")
 check(log():find("Drop or cancel the drag first", 1, true) ~= nil, "click: notice")
-check(#submap_calls == 0, "click: the exit variant does not leave the submap either")
-press("RETURN")
+check(#submap_calls == 0, "click: the exit variants do not leave the submap either")
+check(Cursor.drag_active() and count("ydotool click 0x80") == 0, "click: the drag survives")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 1
 end)
+check(count("wlrctl pointer click") == 0, "left click: drops without a plain click")
 settle(function()
 	press("SPACE") -- ignored until the release has finished
 	advance(100)
@@ -748,7 +751,7 @@ assert_clean("click guard")
 fresh()
 press("V")
 ready()
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotoold stop") == 1
 end)
@@ -765,7 +768,7 @@ check(
 	end),
 	"lost gone: the backstop frees the next drag"
 )
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotool click 0x80") == 2
 end)
@@ -777,7 +780,7 @@ press("V")
 settle(function()
 	return count("ydotoold start") == 1 and read_file(pidfile) ~= ""
 end)
-press("RETURN") -- before `ready`: the abort kills the daemon
+press("SPACE") -- before `ready`: the abort kills the daemon
 settle(function()
 	return count("ydotoold stop") == 1
 end)
@@ -795,22 +798,71 @@ check(
 settle(function()
 	return count("wlrctl pointer move 8 0") >= 1
 end)
-press("RETURN")
+press("SPACE")
 settle(function()
 	return count("ydotoold stop") == 2
 end)
 assert_clean("lost ready")
 
---- 29. Enter then Esc while the release finishes: no false cancel notice.
+--- 29. Drop then Esc while the release finishes: no false cancel notice.
 fresh()
 press("V")
 ready()
-press("RETURN")
+press("SPACE")
 press("ESCAPE")
 sleep(0.3)
 pump()
 check(log():find("Drag cancelled", 1, true) == nil, "esc after drop: no cancel notice")
 assert_clean("esc after drop")
+
+--- 30. Enter drops nothing, and the exit variant of the left click drops, then leaves once the release is done.
+fresh()
+press("V")
+ready()
+check(binds_by["Cursor|RETURN"] == nil and binds_by["Quick Click|RETURN"] == nil, "enter: no bind in either submap")
+check(Cursor.drag_active() and count("ydotool click 0x80") == 0, "enter: the drag is still held")
+press("CTRL + SPACE")
+check(#submap_calls == 0, "exit drop: does not leave before the release finishes")
+check(
+	settle(function()
+		return #submap_calls == 1
+	end),
+	"exit drop: leaves the submap after the release"
+)
+check(submap_calls[1] == "reset" and count("ydotool click 0x80") == 1, "exit drop: released, then left")
+check(count("wlrctl pointer click") == 0, "exit drop: no plain click")
+assert_clean("exit drop")
+
+--- 31. The left click while a picked drag starts is ignored, exit variant included.
+fresh('PICK="400 300"')
+press("SHIFT + V")
+settle(function()
+	return count("ydotoold start") >= 1
+end)
+local calls_before = #submap_calls -- the picker itself leaves the submap
+press("CTRL + SPACE")
+check(
+	settle(function()
+		return count("wlrctl pointer move 8 0") == 1
+	end),
+	"picked drag: exit click while starting is ignored"
+)
+for _ = 1, 20 do
+	advance(30)
+	sleep(0.01)
+end
+advance(100)
+settle(function()
+	return count("ydotool click 0x80") == 1
+end)
+local reset_calls = 0
+for index = calls_before + 1, #submap_calls do
+	if submap_calls[index] == "reset" then
+		reset_calls = reset_calls + 1
+	end
+end
+check(reset_calls == 0, "picked drag: the ignored exit click never left the submap")
+assert_clean("picked exit click")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

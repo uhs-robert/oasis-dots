@@ -6,7 +6,7 @@
 # Redumped for the Hyprland 0.57 sweep: mouse binds in one-shot submaps close them, one-shot Back on key-down, and Cursor's any-modifier claims on held keys.
 # Redumped for the forward, back and task buttons (mouse:277 to 279) in the pass-through binds, and for the AltGr no-ops.
 # Columns: config, submap, key, which-key label, flags, what the key does.
-# Redumped for drag and drop: V, SHIFT/CTRL/ALT + V and RETURN in Cursor, all but V in Quick Click, the Drag hint groups, the Quick Click hint and the "Cancel/Exit" Esc label.
+# Redumped for drag and drop: V, SHIFT/CTRL/ALT + V in Cursor, all but V in Quick Click, the Drag hint groups (SPACE drops in Cursor), the Quick Click hint and the "Cancel/Exit" Esc label.
 arrows	Cursor	ALT + H	Arrow Left	repeating=true	send_shortcut({key=LEFT,mods=})
 arrows	Cursor	ALT + J	Arrow Down	repeating=true	send_shortcut({key=DOWN,mods=})
 arrows	Cursor	ALT + K	Arrow Up	repeating=true	send_shortcut({key=UP,mods=})
@@ -66,7 +66,6 @@ arrows	Cursor	M	Middle Click	-	-
 arrows	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
 arrows	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 arrows	Cursor	R	Right Click	-	-
-arrows	Cursor	RETURN	Drop	-	-
 arrows	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
 arrows	Cursor	RIGHT	Cursor Right	-	exec_cmd(wlrctl pointer move 10 0)
 arrows	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
@@ -253,7 +252,6 @@ arrows	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor dra
 arrows	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 arrows	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
-arrows	Quick Click	RETURN	Drop	-	-
 arrows	Quick Click	SEMICOLON	Floating Click (Exit)	-	exec_cmd(pkill wl-kbptr);submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 arrows	Quick Click	SHIFT + F	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 arrows	Quick Click	SHIFT + G	Split Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -340,8 +338,8 @@ arrows	Windows	8	Monitor 8	-	-
 arrows	Windows	9	Monitor 9	-	-
 arrows	Windows	BRACKETLEFT	Prev Float	-	-
 arrows	Windows	BRACKETRIGHT	Next Float	-	-
-arrows	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-arrows	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+arrows	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+arrows	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["←↓↑→","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 arrows	Windows	CTRL + DOWN	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
 arrows	Windows	CTRL + H	-	-	focus({workspace=m-1})
 arrows	Windows	CTRL + J	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
@@ -459,7 +457,6 @@ default	Cursor	M	Middle Click	-	-
 default	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
 default	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 default	Cursor	R	Right Click	-	-
-default	Cursor	RETURN	Drop	-	-
 default	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 default	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
 default	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
@@ -646,7 +643,6 @@ default	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor dr
 default	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 default	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
-default	Quick Click	RETURN	Drop	-	-
 default	Quick Click	SEMICOLON	Floating Click (Exit)	-	exec_cmd(pkill wl-kbptr);submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 default	Quick Click	SHIFT + F	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 default	Quick Click	SHIFT + G	Split Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -733,8 +729,8 @@ default	Windows	8	Monitor 8	-	-
 default	Windows	9	Monitor 9	-	-
 default	Windows	BRACKETLEFT	Prev Float	-	-
 default	Windows	BRACKETRIGHT	Next Float	-	-
-default	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-default	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+default	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+default	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 default	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
 default	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 default	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
@@ -853,7 +849,6 @@ no-leader	Cursor	M	Middle Click	-	-
 no-leader	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
 no-leader	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 no-leader	Cursor	R	Right Click	-	-
-no-leader	Cursor	RETURN	Drop	-	-
 no-leader	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 no-leader	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
 no-leader	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
@@ -1041,7 +1036,6 @@ no-leader	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor 
 no-leader	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 no-leader	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
-no-leader	Quick Click	RETURN	Drop	-	-
 no-leader	Quick Click	SEMICOLON	Floating Click (Exit)	-	exec_cmd(pkill wl-kbptr);submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 no-leader	Quick Click	SHIFT + F	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 no-leader	Quick Click	SHIFT + G	Split Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -1119,8 +1113,8 @@ no-leader	Windows	2	Monitor 2	-	-
 no-leader	Windows	3	Monitor 3	-	-
 no-leader	Windows	BRACKETLEFT	Prev Float	-	-
 no-leader	Windows	BRACKETRIGHT	Next Float	-	-
-no-leader	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-no-leader	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+no-leader	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+no-leader	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 no-leader	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
 no-leader	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 no-leader	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
@@ -1238,7 +1232,6 @@ persistent	Cursor	M	Middle Click	-	-
 persistent	Cursor	PERIOD	-	ignore_mods=true,release=true,transparent=true	-
 persistent	Cursor	PERIOD	Scroll Right	-	exec_cmd(wlrctl pointer scroll 0 10)
 persistent	Cursor	R	Right Click	-	-
-persistent	Cursor	RETURN	Drop	-	-
 persistent	Cursor	RIGHT	-	-	exec_cmd(wlrctl pointer move 10 0)
 persistent	Cursor	RIGHT	-	ignore_mods=true,release=true,transparent=true	-
 persistent	Cursor	SEMICOLON	Floating Click (Exit)	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
@@ -1425,7 +1418,6 @@ persistent	Quick Click	CTRL + V	Drag to Tile Pick	-	exec_cmd(notify-send 'Cursor
 persistent	Quick Click	ESCAPE	Cancel/Exit Quick Click	-	submap(reset)
 persistent	Quick Click	F	Floating Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	G	Split Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split,click ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
-persistent	Quick Click	RETURN	Drop	-	-
 persistent	Quick Click	SEMICOLON	Floating Click (Exit)	-	exec_cmd(pkill wl-kbptr);submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating,click -o mode_floating.source=detect ; hyprctl dispatch 'hl.dsp.submap("reset")')
 persistent	Quick Click	SHIFT + F	Floating Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=floating -o mode_floating.source=detect && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
 persistent	Quick Click	SHIFT + G	Split Right Click	-	submap(reset);exec_cmd(~/.config/hypr/scripts/kbptr.sh -o modes=split && wlrctl pointer click right ; hyprctl dispatch 'hl.dsp.submap("Cursor")')
@@ -1512,8 +1504,8 @@ persistent	Windows	8	Monitor 8	-	-
 persistent	Windows	9	Monitor 9	-	-
 persistent	Windows	BRACKETLEFT	Prev Float	-	-
 persistent	Windows	BRACKETRIGHT	Next Float	-	-
-persistent	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
-persistent	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["Enter","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+persistent	Windows	BackSpace	Back	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
+persistent	Windows	C	+Cursor	-	submap(Cursor);exec_cmd(~/.config/hypr/scripts/qs-ipc call submap_hints set '{"footer":[["Esc","Cancel/Exit"],["?","All keys"]],"groups":[{"keys":[["hjkl","Move"],["S/C","speed"]],"name":"Move"},{"keys":[["space","Left"],["r","Right"],["m","Middle"],["C-space/r/m","+Exit"]],"name":"Click"},{"keys":[["f","Float"],["t","Tile"],["g","Split"],[";","Quick"]],"name":"Pick"},{"keys":[["v","Grab"],["V","Find"],["C-v","Tile"],["A-v","Split"],["space","Drop"]],"name":"Drag"},{"keys":[["ey,.","Scroll"]],"name":"Scroll"},{"keys":[["A-hjkl","Arrows"],["C-u/d","Page"]],"name":"Keys"}],"name":"Cursor"}')
 persistent	Windows	CTRL + DOWN	-	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)
 persistent	Windows	CTRL + H	Workspace Left	-	focus({workspace=m-1})
 persistent	Windows	CTRL + J	Workspace Down	-	focus({window=address:0xa1});window.move({workspace=m-1});focus({window=address:0xa1});event(window_targets)

@@ -95,9 +95,16 @@ Act.define("cursor.click", {
     { name = "exit", type = "bool", default = false },
   },
   run = function(button, exit)
+    local leave = function() require("lib.key.submap").reset() end
+    -- The left button is the drag's held button, so the left-click key drops it; the exit variant leaves once the
+    -- release has finished. A picked drag still starting or gliding ignores it, as it ignores the drop.
+    if button == "left" and cursor().drag_busy() then
+      cursor().drag_drop(exit and leave or nil)
+      return
+    end
     if cursor().drag_blocks_click() then return end
     cursor()["click_" .. button]()()
-    if exit then require("lib.key.submap").reset() end
+    if exit then leave() end
   end,
 })
 
@@ -128,7 +135,7 @@ Act.define("cursor.drag_start", {
 
 Act.define("cursor.drag_drop", {
   label = "Drop",
-  intent = "Release a held drag where the pointer is. Does nothing when no drag is held.",
+  intent = "Release a held drag where the pointer is. Does nothing when no drag is held. The left-click action drops the same way during a drag.",
   run = function() cursor().drag_drop() end,
 })
 

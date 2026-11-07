@@ -47,8 +47,9 @@ local function escape_cursor()
   Submap.reset()
 end
 
---- Rows that start a drag and end one, shared by both submaps. Plain V grabs and moves by hand, which needs the Cursor
---- submap's move keys, so Quick Click has only the picking variants.
+--- Rows that start a drag, shared by both submaps. Dropping is the Cursor submap's left-click key (see cursor.click).
+--- Plain V grabs and moves by hand, which needs the Cursor submap's move keys, so Quick Click has only the picking
+--- variants, which drop on their own at the target.
 --- @param manual boolean
 --- @return table[]
 local function drag_rows(manual)
@@ -57,7 +58,6 @@ local function drag_rows(manual)
   rows[#rows + 1] = { "SHIFT + V", { "cursor.drag_start", { "find" } }, "Drag to Find Pick" }
   rows[#rows + 1] = { "CTRL + V", { "cursor.drag_start", { "tile" } }, "Drag to Tile Pick" }
   rows[#rows + 1] = { "ALT + V", { "cursor.drag_start", { "split" } }, "Drag to Split Pick" }
-  rows[#rows + 1] = { "RETURN", "cursor.drag_drop", "Drop" }
   return rows
 end
 
@@ -159,7 +159,7 @@ local cursor_mode = Submap.define({
       { "cursor.drag_start", args = { "find" }, label = "Find" },
       { "cursor.drag_start", args = { "tile" }, label = "Tile" },
       { "cursor.drag_start", args = { "split" }, label = "Split" },
-      { "cursor.drag_drop", label = "Drop" },
+      { "cursor.click", args = { "left" }, label = "Drop" },
     },
     { "Scroll", { "cursor.scroll", label = "Scroll" } },
     {
@@ -272,7 +272,6 @@ local quick_click = Submap.define({
       { "cursor.drag_start", args = { "find" }, label = "Find" },
       { "cursor.drag_start", args = { "tile" }, label = "Tile" },
       { "cursor.drag_start", args = { "split" }, label = "Split" },
-      { "cursor.drag_drop", label = "Drop" },
     },
   },
 

@@ -331,6 +331,14 @@ local function warp_to(pos) hl.dispatch(hl.dsp.cursor.move({ x = pos.x, y = pos.
 --- @param fn fun()
 local function drag_after(delay, fn) drag.timers[#drag.timers + 1] = hl.timer(fn, { timeout = delay, type = "oneshot" }) end
 
+--- Back to idle, then run what a drop asked for once the release is over (the exit click leaves the submap here).
+local function drag_idle()
+  local on_done = drag.on_done
+  drag.on_done = nil
+  drag.phase = "idle"
+  if on_done then on_done() end
+end
+
 --- The one release path. Every way a drag ends comes here. `how` is "drop", "cancel" (pointer back to the grab point
 --- first) or "abort" (a plain button-up, for focus loss).
 --- @param how "drop"|"cancel"|"abort"
@@ -347,7 +355,7 @@ local function drag_end(how, why)
     -- The press has not happened, or it is on its way: drag_ready sees `abort` and ends the session.
     drag.abort = how
     -- If both of the script's callbacks are lost, nothing else would end this phase.
-    drag_after(DRAG.RELEASE_BACKSTOP_MS, function() drag.phase = "idle" end)
+    drag_after(DRAG.RELEASE_BACKSTOP_MS, drag_idle)
     if sock then
       run_shell(
         string.format([[pidf=%s.pid; %s; [ -f "$pidf" ] && stop_daemon "$(cat "$pidf")"]], sh_quote(sock), STOP_DAEMON)
@@ -359,7 +367,7 @@ local function drag_end(how, why)
     -- Busy until the session script's `gone` callback: its cleanup removes the socket and pid file, which a drag
     -- started now would be using. The timer is a backstop for a lost callback.
     drag.phase = "releasing"
-    drag_after(DRAG.RELEASE_BACKSTOP_MS, function() drag.phase = "idle" end)
+    drag_after(DRAG.RELEASE_BACKSTOP_MS, drag_idle)
   end
   if why then Cursor.drag_notice(why) end
   return true
@@ -379,13 +387,18 @@ end
 --- A drag that is moving is not stuck.
 drag_touch = function() drag.idle_ticks = 0 end
 
---- A full click would let go of the button the app sees held, so clicks wait for the drag to end.
+--- A full click would let go of the button the app sees held, so right and middle clicks wait for the drag to end. A
+--- left click drops instead (see the click action), so it never gets here during a drag.
 --- @return boolean blocked
 Cursor.drag_blocks_click = function()
   if drag.phase == "idle" then return false end
   Cursor.drag_notice("Drop or cancel the drag first")
   return true
 end
+
+--- Whether a drag, in any phase, is using the left button.
+--- @return boolean
+Cursor.drag_busy = function() return drag.phase ~= "idle" end
 
 --- @return boolean
 Cursor.drag_active = function() return drag.phase ~= "idle" and drag.phase ~= "releasing" end
@@ -454,7 +467,7 @@ end
 Cursor.drag_failed = function(id)
   if id ~= drag.session or drag.phase == "idle" then return end
   drag_stop_timers()
-  drag.phase = "idle"
+  drag_idle()
 end
 
 --- Callback: the daemon exited and the session script has cleaned up. Its device is gone, so the button is up; only
@@ -464,8 +477,8 @@ Cursor.drag_gone = function(id)
   if id ~= drag.session or drag.phase == "idle" then return end
   local ended_by_us = drag.phase == "releasing" or drag.abort ~= nil
   drag_stop_timers()
-  drag.phase = "idle"
   if not ended_by_us then Cursor.drag_notice("Drag ended: ydotoold exited") end
+  drag_idle()
 end
 
 --- Callback: the pick-only wl-kbptr run printed a spot (it warped the pointer there). Warp back to the item and press.
@@ -522,10 +535,17 @@ Cursor.drag_start = function(mode)
   end
 end
 
---- Drop where the pointer is (Enter). Does nothing without a held button.
-Cursor.drag_drop = function()
+--- Drop where the pointer is (the left-click key). Does nothing without a held button. `on_done` runs once the release
+--- has finished, which is later than this call.
+--- @param on_done? fun()
+--- @return boolean dropped
+Cursor.drag_drop = function(on_done)
   -- Not while a picked drag starts or glides: it drops on its own at the target.
-  if drag.phase == "manual" or (drag.phase == "starting" and drag.after == "manual") then drag_end("drop") end
+  if drag.phase == "manual" or (drag.phase == "starting" and drag.after == "manual") then
+    drag.on_done = on_done
+    return drag_end("drop")
+  end
+  return false
 end
 
 --- Cancel (Esc): pointer back to the grab point, then release. Also cancels a glide.

@@ -2,7 +2,7 @@
 default	Cursor	Move	hjkl Move · S/C speed
 default	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
 default	Cursor	Pick	f Float · t Tile · g Split · ; Quick
-default	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · Enter Drop
+default	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · space Drop
 default	Cursor	Scroll	ey,. Scroll
 default	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 default	Cursor	(footer)	Esc Cancel/Exit · ? All keys
@@ -12,7 +12,7 @@ default	Move	Mode	w Windows · r Resize
 default	Move	(footer)	Esc Exit · ? All keys
 default	Move	(targets)	on
 default	Quick Click	Pick	f Float · t Tile · g Split
-default	Quick Click	Drag	V Find · C-v Tile · A-v Split · Enter Drop
+default	Quick Click	Drag	V Find · C-v Tile · A-v Split
 default	Quick Click	(footer)	Esc Cancel/Exit · ? All keys
 default	Resize	Resize	hjkl Resize · S/C speed
 default	Resize	Window	= Reset
@@ -29,7 +29,7 @@ default	Windows	(targets)	on
 no-leader	Cursor	Move	hjkl Move · S/C speed
 no-leader	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
 no-leader	Cursor	Pick	f Float · t Tile · g Split · ; Quick
-no-leader	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · Enter Drop
+no-leader	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · space Drop
 no-leader	Cursor	Scroll	ey,. Scroll
 no-leader	Cursor	Keys	A-hjkl Arrows · C-u/d Page
 no-leader	Cursor	(footer)	Esc Cancel/Exit · ? All keys
@@ -39,7 +39,7 @@ no-leader	Move	Mode	w Windows · r Resize
 no-leader	Move	(footer)	Esc Exit · ? All keys
 no-leader	Move	(targets)	on
 no-leader	Quick Click	Pick	f Float · t Tile · g Split
-no-leader	Quick Click	Drag	V Find · C-v Tile · A-v Split · Enter Drop
+no-leader	Quick Click	Drag	V Find · C-v Tile · A-v Split
 no-leader	Quick Click	(footer)	Esc Cancel/Exit · ? All keys
 no-leader	Resize	Resize	hjkl Resize · S/C speed
 no-leader	Resize	Window	= Reset
