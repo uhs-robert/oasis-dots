@@ -200,6 +200,11 @@ class Commands(StateDirectory):
         self.assertIn("contraction", self.bash("git -C sub commit -m 'fix: x\n\nIt doesn'\"'\"'t start.'"))
         self.assertIsNone(self.bash('git commit -m "fix: x" -m "It starts."'))
 
+    def test_attached_values_of_s_and_u_are_not_option_letters(self):
+        # The F and C inside the key id must not read as -F or -C.
+        self.assertIn("contraction", self.bash('git commit -S1F2C3D4E -m "fix: x" -m "It doesn\'t start."'))
+        self.assertIsNone(self.bash('git commit -unormal -m "fix: x" -m "It starts."'))
+
     def test_commit_subject_is_not_linted(self):
         self.assertIsNone(self.bash('git commit -m "feat: add just post-merge, replacing the marker"'))
 
