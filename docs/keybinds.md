@@ -482,7 +482,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + Y` | press | Cursor | Scroll Down (Pixel) | `cursor.scroll` |
 | `CTRL + COMMA` | press | Cursor | Scroll Left (Pixel) | `cursor.scroll` |
 | `CTRL + PERIOD` | press | Cursor | Scroll Right (Pixel) | `cursor.scroll` |
-| `ESCAPE` | press | Cursor | Exit Cursor |  |
+| `ESCAPE` | press | Cursor | Cancel/Exit Cursor |  |
 | `BackSpace` | press | Cursor | Back |  |
 | `SHIFT + SLASH` | press | Cursor | Toggle which-key help |  |
 | `catchall` | release | Cursor |  |  |
@@ -640,7 +640,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + V` | press | Quick Click | Drag to Tile Pick | `cursor.drag_start` |
 | `ALT + V` | press | Quick Click | Drag to Split Pick | `cursor.drag_start` |
 | `RETURN` | press | Quick Click | Drop | `cursor.drag_drop` |
-| `ESCAPE` | press | Quick Click | Exit Quick Click |  |
+| `ESCAPE` | press | Quick Click | Cancel/Exit Quick Click |  |
 | `BackSpace` | press | Quick Click | Back |  |
 | `SHIFT + SLASH` | press | Quick Click | Toggle which-key help |  |
 | `catchall` | release | Quick Click |  |  |

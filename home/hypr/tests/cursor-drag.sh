@@ -16,6 +16,8 @@ for tool in sh sleep rm cat env python3 mkdir touch basename; do
   ln -s "$(command -v "$tool")" "$stub/bin/$tool" || exit 1
 done
 
+# The daemon stub runs python under this name: the scripts only kill a pid whose /proc comm is ydotoold.
+mkdir -p "$stub/py" && ln -s "$(command -v python3)" "$stub/py/ydotoold" || exit 1
 for tool in ydotool wlrctl notify-send; do
   cat >"$stub/$tool" <<'STUB'
 #!/bin/sh
@@ -43,7 +45,7 @@ case $DAEMON in
     trap 'echo "ydotoold stop" >>"$STUB_DIR/log"; exit 0' TERM
     while :; do sleep 0.05; done ;;
 esac
-exec python3 -I -c '
+exec "$STUB_DIR/py/ydotoold" -I -c '
 import signal, socket, sys
 s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])
 def stop(*_):
