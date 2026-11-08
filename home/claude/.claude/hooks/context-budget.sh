@@ -9,6 +9,9 @@
 # cycle (30-45k) can finish. CLAUDE_CONTEXT_WIND_DOWN and CLAUDE_CONTEXT_HANDOFF override either point. The handoff note carries the steps so the
 # session need not load the orchestrator-handoff skill just to start; the sizes in the first note are rough
 # measurements of orchestrator context per kind of piece.
+# The owner can state a different budget in chat: the orchestrator writes the number to <state dir>/<session id>.budget,
+# which wins over CLAUDE_CONTEXT_BUDGET because the env var cannot change mid-session. Its session id is
+# $CLAUDE_CODE_SESSION_ID in the Bash tool, the same id the hook gets as session_id.
 # Other sessions and agents are left alone: only a session that loaded the orchestrator skill gets the notes.
 # Outside tmux there is nowhere to open the successor, so the session gets no notes and its context keeps growing.
 set -u
@@ -19,13 +22,23 @@ transcript=$(jq -r '.transcript_path // empty' <<<"$input")
 session=$(jq -r '.session_id // empty' <<<"$input")
 [[ -f $transcript && $session =~ ^[A-Za-z0-9-]+$ ]] || exit 0
 
-budget=${CLAUDE_CONTEXT_BUDGET:-300000}
-handoff=${CLAUDE_CONTEXT_HANDOFF:-$((budget - 25000))}
-wind_down=${CLAUDE_CONTEXT_WIND_DOWN:-$((handoff - 40000))}
 state_dir=${CLAUDE_CONTEXT_STATE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/claude-context-budget}
 mkdir -p "$state_dir"
+budget=${CLAUDE_CONTEXT_BUDGET:-300000}
+budget_file="$state_dir/$session.budget"
+if [[ -f $budget_file ]]; then
+  file_budget=$(<"$budget_file")
+  [[ $file_budget =~ ^[0-9]+$ ]] && budget=$file_budget
+fi
+handoff=${CLAUDE_CONTEXT_HANDOFF:-$((budget - 25000))}
+wind_down=${CLAUDE_CONTEXT_WIND_DOWN:-$((handoff - 40000))}
 state="$state_dir/$session"
 stage=$(cat "$state" 2>/dev/null || echo unknown)
+# A budget file newer than the stage means the owner changed the budget since the stage was set, so the notes are due again.
+if [[ $stage != unknown && $budget_file -nt $state ]]; then
+  stage=0
+  echo 0 >"$state"
+fi
 
 if [[ $stage == unknown ]]; then
   # The skill arrives either through /orchestrator (a text block starting with this line) or, on a handoff, through

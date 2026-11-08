@@ -89,4 +89,22 @@ check "a smaller budget is the one the note names" grep -q 'of 200k' <<<"$out"
 } >"$b.low"
 check "a smaller budget says nothing below its wind-down point" test -z "$(CLAUDE_CONTEXT_BUDGET=200000 run_hook "$b.low" s7)"
 
+# The per-session budget file wins over the env var, and raising it re-arms the notes.
+f="$tmp/file.jsonl"
+{
+  skill_line
+  usage_line 276000
+} >"$f"
+echo 400000 >"$tmp/state/s8.budget"
+check "a budget file beats the env var" test -z "$(CLAUDE_CONTEXT_BUDGET=300000 run_hook "$f" s8)"
+echo 300000 >"$tmp/state/s9.budget"
+check "a budget file sets the point the note names" grep -q 'of 300k' <<<"$(CLAUDE_CONTEXT_BUDGET=900000 run_hook "$f" s9)"
+check "the handoff note had come once" test -z "$(run_hook "$f" s9)"
+sleep 1
+echo 350000 >"$tmp/state/s9.budget"
+usage_line 330000 >>"$f"
+check "a raised budget re-arms the notes" grep -q 'of 350k' <<<"$(run_hook "$f" s9)"
+echo junk >"$tmp/state/s10.budget"
+check "a malformed budget file falls back to the env var" grep -q 'of 200k' <<<"$(CLAUDE_CONTEXT_BUDGET=200000 run_hook "$b" s10)"
+
 ((failures == 0)) && echo "all passed" || exit 1
