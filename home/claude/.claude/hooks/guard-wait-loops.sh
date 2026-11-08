@@ -14,8 +14,9 @@ deny() {
 cmd=$(awk '
   skip { line = $0; if (tabs) sub(/^\t+/, "", line); if (line == word) skip = 0; next }
   { print }
-  match($0, /<<[-~]?[ ]*["\x27]?[A-Za-z_][A-Za-z_0-9]*["\x27]?/) {
-    w = substr($0, RSTART, RLENGTH); tabs = (w ~ /^<<-/)
+  { opener = $0; gsub(/<<</, "   ", opener) } # a here-string takes no body
+  match(opener, /<<[-~]?[ ]*["\x27]?[A-Za-z_][A-Za-z_0-9]*["\x27]?/) {
+    w = substr(opener, RSTART, RLENGTH); tabs = (w ~ /^<<-/)
     sub(/^<<[-~]?[ ]*["\x27]?/, "", w); sub(/["\x27]$/, "", w); word = w; skip = 1
   }' <<<"$cmd")
 # One line: line continuations joined, fd redirections and |& out of the way, a newline read as the ; it is.
@@ -60,7 +61,12 @@ while [[ ${masked:pos} =~ $loop ]]; do
     args=${args%%||*}
     args=${args%%[\);>]*}
     [[ $args =~ $full_flag ]] || continue
-    [[ $args == *[\$\[]* ]] ||
+    # Only the pattern, the last word that is not an option, can make the loop safe: -u "$USER" does not.
+    read -ra arg_words <<<"$args"
+    pattern=""
+    for arg_word in "${arg_words[@]}"; do [[ $arg_word == -* ]] || pattern=$arg_word; done
+    [[ -n $pattern ]] || continue
+    [[ $pattern == *[\$\[]* ]] ||
       deny "pgrep -f with a literal pattern in a wait loop matches the loop's own command line (the Bash tool keeps it in a live process), so the loop never ends: wait <pid> for a child, tail --pid=<pid> -f /dev/null, flock, a [p]attern bracket form, a \$var pattern, or put a timeout around the wait"
   done
 done

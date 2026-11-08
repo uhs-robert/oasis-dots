@@ -34,6 +34,9 @@ expect deny 'echo start; while pgrep -f lit; do sleep 1; done'
 expect deny 'timeout 1s true; while pgrep -f lit; do sleep 1; done'
 expect deny 'timeout 1s true && until ! pgrep -f "a/b" ; do sleep 1; done'
 expect deny 'timeout 1s true;while pgrep -f lit; do sleep 1; done'
+# shellcheck disable=SC2016
+expect deny 'while pgrep -u "$USER" -f lit; do sleep 1; done'
+expect deny $'cat <<<hi\nwhile pgrep -f lit; do sleep 1; done'
 expect deny '(timeout 1s true); { while pgrep -f lit; do sleep 1; done; }'
 expect deny 'while pgrep -f one && pgrep -f "t[w]o"; do sleep 1; done'
 
