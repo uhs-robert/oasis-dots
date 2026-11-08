@@ -41,7 +41,6 @@ masked=$(awk '{
 # The condition is cut at the first ;, so a compound condition has to join its parts with && or ||.
 loop='(^|[^[:alnum:]_.-])(while|until)([[:space:]]+)([^;]*)[[:space:]]*;[[:space:]]*do([[:space:]]|;|$)'
 full_flag='[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--full)([[:space:]]|$)'
-under_timeout='(^|[;&|(`{[:space:]])timeout[[:space:]]+[^;&|]*$'
 pos=0
 while [[ ${masked:pos} =~ $loop ]]; do
   rest=${masked:pos}
@@ -53,9 +52,6 @@ while [[ ${masked:pos} =~ $loop ]]; do
   start=$((pos + ${#rest} - ${#after_match} - ${#whole}))
   pos=$((start + ${#whole}))
   cond=${flat:start+cond_offset:cond_len}
-  # A wait that timeout wraps still ends. before runs to the loop keyword, so a timeout that closed earlier no longer counts.
-  before=${flat:0:start+lead}
-  [[ $before =~ $under_timeout ]] && continue
   scan=$cond
   while [[ $scan == *pgrep* ]]; do
     scan=${scan#*pgrep}
