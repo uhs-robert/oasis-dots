@@ -335,7 +335,13 @@ def run_note(args):
     if args.section.lower() not in sections:
         raise UsageError(f"{args.id} has no section {args.section!r}")
     title, start, content = sections[args.section.lower()]
-    bullet = f"- {store.today()} {text}\n" if title == "Decisions" else f"- {text}\n"
+    if title == "Decisions":
+        bullet = f"- {store.today()} {text}\n"
+    elif title == "Open questions":
+        # Lint and `plans questions` read only checklist items in this section.
+        bullet = f"{text}\n" if validate.CHECKLIST_ITEM.fullmatch(text) else f"- [ ] {text}\n"
+    else:
+        bullet = f"- {text}\n"
     lines = doc.body.splitlines(keepends=True)
     first = start - doc.body_first_line
     old = lines[first:first + len(content.splitlines(keepends=True))]

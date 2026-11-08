@@ -230,6 +230,16 @@ class CliTest(unittest.TestCase):
         self.assertEqual(self.plans("lint").stdout, "")
         self.assertEqual(after.split("---\n", 2)[2].split("## Owner checks")[0], before.split("---\n", 2)[2].split("## Owner checks")[0])
 
+    def test_note_under_open_questions_is_an_unchecked_item(self):
+        self.add("demo", 10)
+        self.plans("note", "demo", "--section", "Open questions", "which port?")
+        self.plans("note", "demo", "--section", "Open questions", "- [ ] already an item")
+        self.assertEqual(self.plans("lint").stdout, "")
+        listed = self.plans("questions").stdout
+        self.assertIn("which port?", listed)
+        self.assertIn("already an item", listed)
+        self.assertNotIn("[ ] - [ ]", listed)
+
     def test_note_refuses_an_unknown_id_a_missing_section_and_bad_text(self):
         path = self.add("demo", 10)
         before = self.read(path)
