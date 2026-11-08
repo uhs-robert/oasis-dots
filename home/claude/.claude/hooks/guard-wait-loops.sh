@@ -59,6 +59,7 @@ while [[ ${masked:pos} =~ $loop ]]; do
     args=${scan%%pgrep*}
     args=${args%%&&*}
     args=${args%%||*}
+    args=${args%%|*}
     args=${args%%[\);>]*}
     [[ $args =~ $full_flag ]] || continue
     # Only the pattern can make the loop safe: -u "$USER" does not. It is the word that is neither an option nor the
