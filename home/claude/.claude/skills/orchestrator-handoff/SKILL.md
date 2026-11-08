@@ -35,8 +35,10 @@ End of day (the owner said so, or passed `end-of-day`) has no successor, so noth
 Bring each plan doc you own up to date, at the main checkout:
 
 - The front matter, with `plans set`: `status`, `waiting_on`, `branch`, `pr`, `fix_rounds`.
-- Decisions: every owner decision from this session, dated, including ones given only in chat.
-- The Plan and Open questions sections.
+- Decisions: every owner decision from this session, including ones given only in chat. Add each with `plans note <id> --section Decisions "text"` (it adds the date).
+- Open questions: `plans note <id> --section "Open questions" "text"`.
+- The Plan section: a large rewrite goes to a Haiku agent, a small addition to `plans note`.
+- An owner-stated context budget goes to the budget file, as the orchestrator skill says.
 
 Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in. A piece with no doc (a short task tracked only in chat) gets one with `plans new`. Delete the doc of each piece that merged.
 
