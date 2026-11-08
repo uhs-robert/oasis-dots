@@ -213,6 +213,46 @@ class CliTest(unittest.TestCase):
         changed = [b for a, b in zip(before.splitlines(), after.splitlines()) if a != b]
         self.assertEqual([line.split(":")[0] for line in changed], ["status", "depends_on", "waiting_on", "pr", "updated"])
 
+    def test_note_appends_a_dated_bullet_to_decisions(self):
+        path = self.add("demo", 10)
+        self.plans("note", "demo", "--section", "Decisions", "(owner): first")
+        self.plans("note", "demo", "--section", "decisions", "second")
+        body = parse.load(path).body
+        self.assertIn(f"## Decisions\n\n- {TODAY} (owner): first\n- {TODAY} second\n\n## Plan\n", body)
+
+    def test_note_adds_a_plain_bullet_elsewhere_and_touches_nothing_else(self):
+        path = self.add("demo", 10)
+        before = self.read(path)
+        self.plans("note", "demo", "--section", "Owner checks", "look at it")
+        after = self.read(path)
+        self.assertTrue(after.endswith("## Owner checks\n\n- look at it\n") or after.endswith("## Owner checks\n- look at it\n"))
+        self.assertEqual(parse.load(path).keys["updated"], TODAY)
+        self.assertEqual(self.plans("lint").stdout, "")
+        self.assertEqual(after.split("---\n", 2)[2].split("## Owner checks")[0], before.split("---\n", 2)[2].split("## Owner checks")[0])
+
+    def test_note_refuses_an_unknown_id_a_missing_section_and_bad_text(self):
+        path = self.add("demo", 10)
+        before = self.read(path)
+        self.plans("note", "nope", "--section", "Goal", "x", code=2)
+        self.plans("note", "demo", "--section", "Nowhere", "x", code=2)
+        self.plans("note", "demo", "--section", "Goal", "two\nlines", code=2)
+        self.plans("note", "demo", "--section", "Goal", "  ", code=2)
+        self.assertEqual(self.read(path), before)
+
+    def test_note_after_a_stale_read_exits_3(self):
+        path = self.add("demo", 10)
+        real_load = cli.load_doc
+
+        def load_then_race(root, doc_id):
+            doc = real_load(root, doc_id)
+            self.write(".plans/proj/demo.md", self.read(path).replace("## Plan\n", "## Plan\n\n- raced\n"))
+            return doc
+
+        with mock.patch.object(cli, "load_doc", load_then_race), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            with redirect_stderr(io.StringIO()):
+                code = cli.main(["note", "demo", "--section", "Plan", "x"])
+        self.assertEqual(code, 3)
+
     def test_set_adds_fix_rounds_to_a_doc_without_it(self):
         path = self.add("demo", 10)
         self.plans("set", "demo", "fix_rounds=2")

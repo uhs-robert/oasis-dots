@@ -15,6 +15,7 @@ plans waiting [--all] [--json]        # docs with a non-empty waiting_on
 plans questions [--all] [--json]      # the unchecked "- [ ]" items under Open questions
 plans show <id> [--section NAME] [--json]
 plans set <id> key=value...           # e.g. plans set demo status=building depends_on=a,b
+plans note <id> --section NAME "text"  # append a bullet to a body section; Decisions bullets get today's date
 plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
 plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default

@@ -82,6 +82,12 @@ def build_parser():
     set_.add_argument("pairs", nargs="+", metavar="key=value")
     set_.set_defaults(run=run_set)
 
+    note = commands.add_parser("note", help="append a bullet to a body section: plans note <id> --section NAME text")
+    note.add_argument("id")
+    note.add_argument("--section", required=True)
+    note.add_argument("text")
+    note.set_defaults(run=run_note)
+
     claim = commands.add_parser("claim", help="set owner_session to this session")
     claim.add_argument("id")
     add_session_option(claim)
@@ -318,6 +324,30 @@ def run_set(args):
     else:
         owner_values = {}
     store.update(doc, {**changes, **owner_values})
+
+
+def run_note(args):
+    doc = load_doc(roots.main_checkout(), args.id)
+    text = args.text.strip()
+    if not text or "\n" in text or "\r" in text:
+        raise UsageError("the note must be one non-empty line")
+    sections = {title.lower(): (title, start, content) for title, (start, content) in doc.sections().items()}
+    if args.section.lower() not in sections:
+        raise UsageError(f"{args.id} has no section {args.section!r}")
+    title, start, content = sections[args.section.lower()]
+    bullet = f"- {store.today()} {text}\n" if title == "Decisions" else f"- {text}\n"
+    lines = doc.body.splitlines(keepends=True)
+    first = start - doc.body_first_line
+    old = lines[first:first + len(content.splitlines(keepends=True))]
+    # Blank lines at the end of a section separate it from the next heading, so the bullet goes above them.
+    gap = 0
+    while gap < len(old) and old[len(old) - 1 - gap].strip() == "":
+        gap += 1
+    kept = old[:len(old) - gap] or ["\n"]
+    if not kept[-1].endswith("\n"):
+        kept[-1] += "\n"
+    lines[first:first + len(old)] = kept + [bullet] + ["\n"] * gap
+    store.update(doc, {parse.BODY: "".join(lines)})
 
 
 def parse_pair(pair):
