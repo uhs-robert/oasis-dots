@@ -21,18 +21,40 @@ cmd=$(awk '
 # One line: line continuations joined, fd redirections and |& out of the way, a newline read as the ; it is.
 flat=$(sed -E ':a; /\\$/ { N; s/\\\n/ /; ba }; s/[0-9]*>&[0-9-]*/ /g; s/&>>?/>/g; s/\|&/|/g' <<<"$cmd" | tr '\n' ';')
 
+# Same length as flat, with the text inside quotes blanked, so a loop that a commit message or an echo only mentions
+# is not found. A loop inside bash -c "..." is missed for the same reason. The loop's own condition is read from flat,
+# where its quoted pattern is still there.
+masked=$(awk '{
+  out = ""; q = ""
+  for (i = 1; i <= length($0); i++) {
+    c = substr($0, i, 1)
+    if (q == "") { out = out c; if (c == "\"" || c == "\x27") q = c }
+    else if (c == q) { out = out c; q = "" }
+    else if (c == "\\" && q == "\"") { out = out "__"; i++ }
+    else out = out "_"
+  }
+  print out
+}' <<<"$flat")
+
 # The Bash tool runs every command inside a live `bash -c ... eval '<command>'`, so a literal pgrep -f pattern matches
 # that wrapper's own command line and the loop never ends. A $var pattern or a [x] bracket does not match itself.
-loop='(^|[^[:alnum:]_.-])(while|until)[[:space:]]+([^;]*)[[:space:]]*;[[:space:]]*do([[:space:]]|;|$)'
+# The condition is cut at the first ;, so a compound condition has to join its parts with && or ||.
+loop='(^|[^[:alnum:]_.-])(while|until)([[:space:]]+)([^;]*)[[:space:]]*;[[:space:]]*do([[:space:]]|;|$)'
 full_flag='[[:space:]](-[a-zA-Z]*f[a-zA-Z]*|--full)([[:space:]]|$)'
 under_timeout='(^|[;&|(`{[:space:]])timeout[[:space:]]+[^;&|]*$'
-unchecked=$flat
-while [[ $unchecked =~ $loop ]]; do
+pos=0
+while [[ ${masked:pos} =~ $loop ]]; do
+  rest=${masked:pos}
   whole=${BASH_REMATCH[0]}
-  cond=${BASH_REMATCH[3]}
-  before=${unchecked%%"$whole"*}
-  unchecked=${unchecked#*"$whole"}
-  # A wait under timeout still ends.
+  lead=${#BASH_REMATCH[1]}
+  cond_len=${#BASH_REMATCH[4]}
+  cond_offset=$((lead + ${#BASH_REMATCH[2]} + ${#BASH_REMATCH[3]}))
+  after_match=${rest#*"$whole"}
+  start=$((pos + ${#rest} - ${#after_match} - ${#whole}))
+  pos=$((start + ${#whole}))
+  cond=${flat:start+cond_offset:cond_len}
+  # A wait that timeout wraps still ends. before runs to the loop keyword, so a timeout that closed earlier no longer counts.
+  before=${flat:0:start+lead}
   [[ $before =~ $under_timeout ]] && continue
   scan=$cond
   while [[ $scan == *pgrep* ]]; do

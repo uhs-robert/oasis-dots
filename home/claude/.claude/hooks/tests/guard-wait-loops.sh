@@ -31,7 +31,10 @@ expect deny 'while pgrep -af lit; do sleep 1; done'
 expect deny 'while [ -n "$(pgrep -f lit)" ]; do sleep 1; done'
 expect deny $'until ! pgrep -f lit\ndo\n\tsleep 1\ndone'
 expect deny 'echo start; while pgrep -f lit; do sleep 1; done'
-expect deny "bash -c 'until ! pgrep -f lit; do sleep 1; done'"
+expect deny 'timeout 1s true; while pgrep -f lit; do sleep 1; done'
+expect deny 'timeout 1s true && until ! pgrep -f "a/b" ; do sleep 1; done'
+expect deny 'timeout 1s true;while pgrep -f lit; do sleep 1; done'
+expect deny '(timeout 1s true); { while pgrep -f lit; do sleep 1; done; }'
 expect deny 'while pgrep -f one && pgrep -f "t[w]o"; do sleep 1; done'
 
 # Safe forms.
@@ -53,6 +56,10 @@ expect allow 'tail --pid=$pid -f /dev/null'
 expect allow 'pgrep -f lit; while true; do sleep 1; break; done'
 # shellcheck disable=SC2016
 expect allow 'for p in $(pgrep -f lit); do echo $p; done'
+# Quoted text that only mentions a loop is not a loop.
+expect allow 'git commit -m "fix: while pgrep -f x; do sleep 1; done"'
+expect allow 'echo "while pgrep -f x; do sleep 1; done" > f'
+expect allow "gh pr create --body 'until ! pgrep -f x; do :; done'"
 expect allow $'cat <<EOF\nwhile pgrep -f lit; do sleep 1; done\nEOF'
 
 echo "$pass passed, $fail failed"
