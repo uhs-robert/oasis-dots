@@ -28,7 +28,7 @@ budget=${CLAUDE_CONTEXT_BUDGET:-300000}
 budget_file="$state_dir/$session.budget"
 if [[ -f $budget_file ]]; then
   file_budget=$(<"$budget_file")
-  [[ $file_budget =~ ^[0-9]+$ ]] && budget=$file_budget
+  [[ $file_budget =~ ^[0-9]+$ ]] && budget=$((10#$file_budget))
 fi
 handoff=${CLAUDE_CONTEXT_HANDOFF:-$((budget - 25000))}
 wind_down=${CLAUDE_CONTEXT_WIND_DOWN:-$((handoff - 40000))}

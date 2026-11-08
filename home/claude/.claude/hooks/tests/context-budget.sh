@@ -106,5 +106,7 @@ usage_line 330000 >>"$f"
 check "a raised budget re-arms the notes" grep -q 'of 350k' <<<"$(run_hook "$f" s9)"
 echo junk >"$tmp/state/s10.budget"
 check "a malformed budget file falls back to the env var" grep -q 'of 200k' <<<"$(CLAUDE_CONTEXT_BUDGET=200000 run_hook "$b" s10)"
+echo 080000 >"$tmp/state/s11.budget"
+check "a budget file with a leading zero is read as decimal" grep -q 'of 80k' <<<"$(run_hook "$f" s11)"
 
 ((failures == 0)) && echo "all passed" || exit 1
