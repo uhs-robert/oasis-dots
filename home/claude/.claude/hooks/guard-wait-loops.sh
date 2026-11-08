@@ -61,10 +61,27 @@ while [[ ${masked:pos} =~ $loop ]]; do
     args=${args%%||*}
     args=${args%%[\);>]*}
     [[ $args =~ $full_flag ]] || continue
-    # Only the pattern, the last word that is not an option, can make the loop safe: -u "$USER" does not.
+    # Only the pattern can make the loop safe: -u "$USER" does not. It is the word that is neither an option nor the
+    # value of one. pgrep options that take a value: -d -g -G -P -s -t -u -U -F and --delimiter --pgroup --group
+    # --parent --session --terminal --euid --uid --pidfile --ns --nslist --signal.
     read -ra arg_words <<<"$args"
     pattern=""
-    for arg_word in "${arg_words[@]}"; do [[ $arg_word == -* ]] || pattern=$arg_word; done
+    skip_value=false
+    for arg_word in "${arg_words[@]}"; do
+      if $skip_value; then
+        skip_value=false
+      elif [[ $arg_word == --* ]]; then
+        [[ $arg_word == *=* || ! $arg_word =~ ^--(delimiter|pgroup|group|parent|session|terminal|euid|uid|pidfile|ns|nslist|signal)$ ]] ||
+          skip_value=true
+      elif [[ $arg_word == -* ]]; then
+        # In a cluster the first value option takes the rest of the word as its value, or the next word if none is left.
+        cluster=${arg_word#-}
+        value_option=${cluster#"${cluster%%[dgGPstuUF]*}"}
+        ((${#value_option} == 1)) && skip_value=true
+      else
+        pattern=$arg_word
+      fi
+    done
     [[ -n $pattern ]] || continue
     [[ $pattern == *[\$\[]* ]] ||
       deny "pgrep -f with a literal pattern in a wait loop matches the loop's own command line (the Bash tool keeps it in a live process), so the loop never ends: wait <pid> for a child, tail --pid=<pid> -f /dev/null, flock, a [p]attern bracket form, a \$var pattern, or put a timeout around the wait"

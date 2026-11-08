@@ -36,6 +36,10 @@ expect deny 'timeout 1s true && until ! pgrep -f "a/b" ; do sleep 1; done'
 expect deny 'timeout 1s true;while pgrep -f lit; do sleep 1; done'
 # shellcheck disable=SC2016
 expect deny 'while pgrep -u "$USER" -f lit; do sleep 1; done'
+# shellcheck disable=SC2016
+expect deny 'while pgrep -f lit -u "$USER"; do sleep 1; done'
+# shellcheck disable=SC2016
+expect deny 'while pgrep -fu "$USER" lit; do sleep 1; done'
 expect deny $'cat <<<hi\nwhile pgrep -f lit; do sleep 1; done'
 expect deny '(timeout 1s true); { while pgrep -f lit; do sleep 1; done; }'
 expect deny 'while pgrep -f one && pgrep -f "t[w]o"; do sleep 1; done'
@@ -48,6 +52,14 @@ expect allow "pgrep -f '[p]attern'"
 expect allow "while pgrep -f '[k]ey/run.mjs'; do sleep 1; done"
 # shellcheck disable=SC2016
 expect allow 'while pgrep -f "$pat"; do sleep 1; done'
+# shellcheck disable=SC2016
+expect allow 'while pgrep -f "$pat" -u root; do sleep 1; done'
+# shellcheck disable=SC2016
+expect allow 'while pgrep -u root -f "$pat"; do sleep 1; done'
+# shellcheck disable=SC2016
+expect allow 'while pgrep -uroot --parent=1 -f "$pat"; do sleep 1; done'
+# shellcheck disable=SC2016
+expect deny 'while pgrep -uroot -f lit; do sleep 1; done'
 expect allow 'timeout 600 bash -c "until ! pgrep -f lit; do sleep 1; done"'
 expect allow 'timeout 600 bash -c "while pgrep -f lit; do sleep 1; done"'
 expect allow 'while pgrep lit; do sleep 1; done'
