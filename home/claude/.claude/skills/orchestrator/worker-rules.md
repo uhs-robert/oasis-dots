@@ -12,13 +12,13 @@ For agents an orchestrator starts: implementers, fixers, reviewers and explorers
 
 ## Implementers and fixers
 
-- Run targeted tests while building, each under 10 minutes. Run the full check once before reporting, only in a repo whose merge step does not run it. Run broader checks only when shared machinery changes.
+- Run targeted tests while building, each under 10 minutes. Run the full check once before reporting, only where the brief says the merge step does not run it. Run broader checks only when shared machinery changes.
 - Commit, push the branch and report in the same turn. Open no PR. Do not amend a commit after pushing it.
 - Before committing, finish with the `hierarchical-documentation` pass on your diff.
 - With parallel agents, edit only the files the brief gives you and respect its "Do NOT" line. Use the shared code the brief names instead of reimplementing it. Put standalone work in a new file. Where you must share a file (a list, table, index or config), keep your edit a small addition.
 - Concurrency or lifecycle work (signals, locks, processes that hand over or race): write tests that drive each risky path before you report.
 - A fixer makes the smallest change that fixes the finding.
-- A fix adds a test when, and only when, the bug could come back silently and nothing else would catch it. Show the test failing on the unfixed code first. Otherwise say in one line why there is no test.
+- A fix adds a test when, and only when, the bug can come back silently and nothing else would catch it. Show the test failing on the unfixed code first. Otherwise say in one line why there is no test.
 
 ## Reviewers
 
