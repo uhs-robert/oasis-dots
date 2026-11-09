@@ -122,7 +122,9 @@
   #sheet-doc pre code { padding: 0; background: none; }
   #sheet-doc pre.raw { white-space: pre-wrap; background: none; padding: 4px 0; }
   #sheet-doc hr { border: 0; border-top: 1px solid var(--line); }
-  #sheet-doc table.front-matter { margin: 6px 0; border-collapse: collapse; color: var(--dim); font-size: 12px; }
+  #sheet-doc details.front-matter { margin: 6px 0; color: var(--dim); font-size: 12px; }
+  #sheet-doc .front-matter summary { cursor: pointer; }
+  #sheet-doc .front-matter table { margin-top: 4px; border-collapse: collapse; }
   #sheet-doc .front-matter th, #sheet-doc .front-matter td { padding: 1px 10px 1px 0; text-align: left; vertical-align: top; }
   #sheet-doc .front-matter th { font-weight: 400; }
   /* On a wide screen the sheet is a side panel beside the board, so the board stays in view and the selection moves
@@ -963,9 +965,9 @@ function md_inline(escaped, issue_href) {
   const held = [];
   const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
   let text = escaped.replace(/`([^`]+)`/g, (whole, code) => hold(`<code>${code}</code>`));
-  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label, url) => (MD_SAFE_URL.test(url) ? hold(md_link(url, label)) : whole));
+  text = text.replace(/\[([^\]]+)\]\(([^)\s\u0000]+)\)/g, (whole, label, url) => (MD_SAFE_URL.test(url) ? hold(md_link(url, label)) : whole));
   // Escaped text holds & only as an entity, so &amp; is the one entity a bare link may span. The others end it.
-  text = text.replace(/(^|[^\w/=])(https?:\/\/(?:[^\s&\u0000]|&amp;)+?)([.,;:!?)\]]*(?=\s|&(?!amp;)|\u0000|$))/g,
+  text = text.replace(/(^|[^\w/=])(https?:\/\/(?:[^\s&\u0000]|&amp;)+?)([.,;:!?)\]*_]*(?=\s|&(?!amp;)|\u0000|$))/g,
     (whole, before, url, after) => `${before}${hold(md_link(url, url))}${after}`);
   // Not after & (the &#39; entity), a word, a slash (other/repo#12) or another #.
   text = text.replace(/(^|[^\w&/#])#(\d+)\b/g, (whole, before, number) => {
@@ -989,7 +991,8 @@ function md_front_matter(lines) {
     return pair ? `<tr><th>${escape_html(pair[1])}</th><td>${escape_html(pair[2])}</td></tr>`
       : `<tr><td colspan="2">${escape_html(line)}</td></tr>`;
   });
-  return `<table class="front-matter">${rows.join("")}</table>`;
+  // Collapsed, because the card's badges already show the keys that matter most.
+  return `<details class="front-matter"><summary>Fields (${rows.length})</summary><table>${rows.join("")}</table></details>`;
 }
 
 const MD_FENCE = /^\s*(`{3,}|~{3,})/;
@@ -1321,6 +1324,8 @@ document.addEventListener("keydown", (event) => {
     return;
   }
   if (typing_in_field(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+  // A focused button, link or Fields line in the panel takes Enter and Space itself.
+  if (["Enter", " "].includes(event.key) && event.target.closest("button, a, summary")) return;
   // Holding g auto-repeats within the chord window and must not count as a second press.
   if (event.key === "g" && event.repeat) {
     event.preventDefault();
