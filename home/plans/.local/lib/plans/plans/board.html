@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>plans</title>
 <style>
   :root {
@@ -68,6 +69,51 @@
              background: rgba(0, 0, 0, 0.5); }
   #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; max-width: 70ch; }
   .hidden { display: none !important; }
+  /* The phone layout (html.phone, set below PHONE_MAX_WIDTH): one status at a time as tabs, and a sheet per card.
+     None of it shows on a wide screen. */
+  #tabs, #sheet, #confirm .phone-only { display: none; }
+  html.phone { scroll-padding-top: var(--tabs-h, 40px); }
+  html.phone header { position: static; }
+  html.phone #keys, html.phone #status { display: none; }
+  html.phone #repo-picker { flex: 1 1 100%; }
+  html.phone #repo, html.phone #text { width: 100%; }
+  html.phone #text { flex: 1 1 100%; }
+  html.phone #tabs { display: flex; position: sticky; top: 0; z-index: 5; overflow-x: auto; scrollbar-width: none;
+                     background: var(--panel); border-bottom: 1px solid var(--line); }
+  #tabs button { flex: none; padding: 11px 10px 9px; background: none; border: 0; border-bottom: 2px solid transparent;
+                 color: var(--dim); font: 600 12px system-ui, sans-serif; text-transform: uppercase; }
+  #tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  #tabs .count { margin-left: 4px; font-weight: 400; }
+  /* The height keeps the swipe area under the finger on a short tab. */
+  html.phone #board { display: block; min-height: calc(100vh - var(--tabs-h, 40px)); padding: 0 10px 40px; }
+  html.phone .repo-head { position: static; padding: 14px 0 2px; }
+  html.phone .cell { min-height: 0; padding: 0; border-right: 0; }
+  html.phone .card { padding: 9px 10px; font-size: 14px; }
+  html.phone .card .meta { font-size: 12px; }
+  .empty-tab { padding: 30px 0; color: var(--dim); text-align: center; }
+  html.phone #sheet.open { display: flex; position: fixed; inset: 0; z-index: 8; align-items: flex-end;
+                           background: rgba(0, 0, 0, 0.5); }
+  #sheet-panel { width: 100%; max-height: 88vh; overflow-y: auto; padding: 12px 14px 24px; background: var(--panel);
+                 border-top: 1px solid var(--line); border-radius: 12px 12px 0 0; font-size: 14px; }
+  #sheet-panel .top { display: flex; align-items: flex-start; gap: 8px; }
+  #sheet-panel h2 { flex: 1; margin: 0; font-size: 16px; word-break: break-all; }
+  #sheet-panel .where { color: var(--dim); font-size: 12px; margin-top: 2px; }
+  #sheet-panel h3 { margin: 14px 0 6px; color: var(--dim); font-size: 11px; text-transform: uppercase; }
+  #sheet-panel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  #sheet-panel .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; color: var(--dim); font-size: 12px; }
+  #sheet-panel .waiting-on { margin-top: 6px; color: var(--warn); }
+  #sheet-panel .error { margin-top: 6px; color: #f0b8bd; word-break: break-word; }
+  #sheet-panel button, #confirm button { padding: 8px 12px; background: var(--card); color: var(--text);
+                                          border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  #sheet-panel button.current { border-color: var(--accent); color: var(--accent); }
+  #sheet-panel button:disabled { opacity: 0.4; }
+  #sheet-owner { flex: 1; min-width: 0; padding: 8px; background: var(--bg); color: var(--text);
+                 border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+  #sheet-doc { margin: 0; padding: 8px; background: var(--bg); border-radius: 6px; white-space: pre-wrap;
+               word-break: break-word; font: 12px/1.4 ui-monospace, monospace; }
+  html.phone #confirm .phone-only { display: flex; gap: 8px; max-width: none; margin-top: 12px; padding: 0;
+                                    background: none; border: 0; }
+  html.phone #confirm .phone-only button { flex: 1; }
 </style>
 </head>
 <body>
@@ -86,7 +132,9 @@
   <label><input id="waiting" type="checkbox"> waiting on owner</label>
   <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, e owner, x cancel, o open, / filter, r repo</span>
 </header>
+<nav id="tabs"></nav>
 <div id="board"></div>
+<div id="sheet"><div id="sheet-panel"></div></div>
 <div id="message"></div>
 <div id="confirm"><div></div></div>
 <script>
@@ -168,6 +216,14 @@ function doc_name(path) {
 function ask(question, on_yes) {
   const box = element("confirm");
   box.firstElementChild.textContent = `${question}  y / n`;
+  // The keys answer on a wide screen. A phone has no keyboard, so it gets buttons, which CSS hides elsewhere.
+  const buttons = make("div", "phone-only");
+  const yes = make("button", "", "Yes");
+  const no = make("button", "", "No");
+  yes.addEventListener("click", () => answer_confirm(true));
+  no.addEventListener("click", () => answer_confirm(false));
+  buttons.append(yes, no);
+  box.firstElementChild.append(buttons);
   box.style.display = "flex";
   pending_confirm = on_yes;
 }
@@ -242,6 +298,13 @@ function shift_rank(offset) {
   write("move", drop_request(doc, doc.status, others, target));
 }
 
+function set_owner(doc, value) {
+  if (value.trim() === doc.owner_session) return;
+  // The shown session values go in the basis too, so a claim since the page loaded refuses the edit.
+  const basis = { owner_session: doc.owner_session, owner_session_id: doc.owner_session_id, owner_session_pid: doc.owner_session_pid };
+  write("update", { path: doc.path, basis, changes: { owner_session: value.trim() } });
+}
+
 function edit_owner() {
   const doc = doc_by_path(selected_path);
   const card = selected_card();
@@ -261,11 +324,7 @@ function edit_owner() {
   input.focus();
   input.select();
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && input.value.trim() !== doc.owner_session) {
-      // The shown session values go in the basis too, so a claim since the page loaded refuses the edit.
-      const basis = { owner_session: doc.owner_session, owner_session_id: doc.owner_session_id, owner_session_pid: doc.owner_session_pid };
-      write("update", { path: doc.path, basis, changes: { owner_session: input.value.trim() } });
-    }
+    if (event.key === "Enter") set_owner(doc, input.value);
     if (event.key === "Enter" || event.key === "Escape") { event.stopPropagation(); close_input(); }
   });
   input.addEventListener("blur", close_input);
@@ -397,6 +456,10 @@ function card_node(repo, doc) {
   for (const dependency of doc.depends_on || []) meta.append(make("span", "badge depends", `after ${dependency}`));
   card.append(meta);
   if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
+  if (is_phone()) {
+    card.addEventListener("click", (event) => { if (!event.target.closest("a")) open_sheet(doc.path); });
+    return card;
+  }
   card.addEventListener("click", () => select_card(doc.path));
   open_on_dblclick(card, doc.path);
   card.querySelector(".owner").addEventListener("click", () => { select_card(doc.path); edit_owner(); });
@@ -409,6 +472,10 @@ function problem_node(problem) {
   const card = make("div", "card problem");
   card.dataset.path = problem.path;
   card.append(make("div", "id", problem.id), make("div", "error", problem.error));
+  if (is_phone()) {
+    card.addEventListener("click", () => open_sheet(problem.path));
+    return card;
+  }
   card.addEventListener("click", () => select_card(problem.path));
   open_on_dblclick(card, problem.path);
   return card;
@@ -438,6 +505,7 @@ const row_observer = new ResizeObserver(measure_heads);
 new ResizeObserver(measure_heads).observe(document.querySelector("header"));
 
 function render() {
+  if (is_phone()) return render_phone();
   const container = element("board");
   const statuses = board.statuses;
   container.style.gridTemplateColumns = `repeat(${statuses.length}, minmax(150px, 1fr))`;
@@ -544,6 +612,227 @@ function step_column(offset) {
     return;
   }
 }
+
+// The phone layout. Below PHONE_MAX_WIDTH the board shows one status at a time, with a tab per status and a swipe to
+// the next or previous one. A tap on a card opens a sheet with its actions and the doc text. The sheet writes through
+// write(), as the keys do, so it gets the same refusals. It has no cancel and no editor: the server refuses both from
+// the phone.
+const PHONE_MAX_WIDTH = 600;
+const SWIPE_MIN_PX = 60;
+const DEFAULT_TAB = "building";
+const phone_query = matchMedia(`(max-width: ${PHONE_MAX_WIDTH}px)`);
+let phone_status = null;
+let sheet_path = null;
+
+function is_phone() { return phone_query.matches; }
+
+function apply_layout() {
+  document.documentElement.classList.toggle("phone", is_phone());
+  element("board").style.gridTemplateColumns = "";
+  // The tabs replace the status filter, which the phone hides.
+  if (is_phone() && filters.status !== ALL) { filters.status = ALL; element("status").value = ALL; }
+  if (!is_phone()) close_sheet();
+  if (board) render();
+}
+
+function shown_status(doc) { return board.statuses.includes(doc.status) ? doc.status : board.statuses[0]; }
+
+function render_phone() {
+  const statuses = board.statuses;
+  const repos = board.repos.filter((repo) => filters.repo === ALL || repo.root === filters.repo).map((repo) => ({
+    repo, docs: repo.docs.filter(doc_is_shown), problems: repo.problems.filter(problem_is_shown),
+  }));
+  const counts = Object.fromEntries(statuses.map((status) => [status, 0]));
+  for (const { docs, problems } of repos) {
+    for (const item of [...docs, ...problems]) counts[shown_status(item)] += 1;
+  }
+  // The tab follows the card in the sheet, so a status change keeps it in view behind the sheet.
+  const sheet_doc = sheet_path && doc_by_path(sheet_path);
+  if (sheet_doc) phone_status = shown_status(sheet_doc);
+  // The first visit opens on the work in flight, else on the first status that has cards.
+  if (!statuses.includes(phone_status)) {
+    phone_status = counts[DEFAULT_TAB] ? DEFAULT_TAB : statuses.find((status) => counts[status]) || statuses[0];
+  }
+  render_tabs(counts);
+  const container = element("board");
+  container.replaceChildren();
+  for (const { repo, docs, problems } of repos) {
+    const tab_docs = docs.filter((doc) => shown_status(doc) === phone_status);
+    const tab_problems = problems.filter((problem) => shown_status(problem) === phone_status);
+    if (!tab_docs.length && !tab_problems.length) continue;
+    const section = make("div", "repo-section");
+    container.append(section);
+    section.append(make("div", "repo-head", repo.label));
+    if (tab_problems.length) {
+      section.append(make("div", "lane-head", "unreadable"));
+      lane_cells(section, [phone_status], `${repo.root}\n`)[phone_status].append(...tab_problems.map(problem_node));
+    }
+    for (const project of [...new Set(tab_docs.map((doc) => doc.project))].sort()) {
+      section.append(make("div", "lane-head", project));
+      const cell = lane_cells(section, [phone_status], `${repo.root}\n${project}`)[phone_status];
+      cell.append(...tab_docs.filter((doc) => doc.project === project).map((doc) => card_node(repo, doc)));
+    }
+  }
+  if (!container.children.length) container.append(make("div", "empty-tab", `No cards in ${phone_status}.`));
+  if (sheet_path) refresh_sheet();
+}
+
+function render_tabs(counts) {
+  const tabs = element("tabs");
+  tabs.replaceChildren(...board.statuses.map((status) => {
+    const tab = make("button", status === phone_status ? "active" : "", status);
+    tab.append(make("span", "count", String(counts[status])));
+    tab.addEventListener("click", () => show_tab(status));
+    return tab;
+  }));
+  document.documentElement.style.setProperty("--tabs-h", `${tabs.getBoundingClientRect().height}px`);
+  tabs.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function show_tab(status) {
+  if (!status || status === phone_status) return;
+  phone_status = status;
+  render();
+  window.scrollTo({ top: 0 });
+}
+
+let swipe_start = null;
+element("board").addEventListener("touchstart", (event) => {
+  swipe_start = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+}, { passive: true });
+element("board").addEventListener("touchend", (event) => {
+  if (!swipe_start || !is_phone()) return;
+  const dx = event.changedTouches[0].clientX - swipe_start.x;
+  const dy = event.changedTouches[0].clientY - swipe_start.y;
+  swipe_start = null;
+  // A mostly sideways stroke flips the tab. Anything steeper is a scroll.
+  if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < 2 * Math.abs(dy)) return;
+  const statuses = board.statuses;
+  show_tab(statuses[statuses.indexOf(phone_status) + (dx < 0 ? 1 : -1)]);
+}, { passive: true });
+
+function problem_by_path(path) {
+  for (const repo of board.repos) {
+    const problem = repo.problems.find((problem) => problem.path === path && path !== repo.root);
+    if (problem) return problem;
+  }
+  return null;
+}
+
+function open_sheet(path) {
+  sheet_path = path;
+  select_card(path);
+  element("sheet").classList.add("open");
+  build_sheet();
+  refresh_sheet();
+}
+
+function close_sheet() {
+  sheet_path = null;
+  element("sheet").classList.remove("open");
+}
+
+element("sheet").addEventListener("click", (event) => { if (event.target === element("sheet")) close_sheet(); });
+
+// The sheet is built once per card and then updated in place on each board load, so a reload never drops the owner
+// field's typing or the button under the finger.
+function build_sheet() {
+  const panel = element("sheet-panel");
+  const close = make("button", "", "Close");
+  close.addEventListener("click", close_sheet);
+  const top = make("div", "top");
+  const title = make("div");
+  title.style.flex = "1";
+  title.append(make("h2", "sheet-id"), make("div", "where"));
+  top.append(title, close);
+  panel.replaceChildren(top, make("div", "meta-slot"));
+  if (doc_by_path(sheet_path)) {
+    const statuses = make("div", "row statuses");
+    for (const status of board.statuses) {
+      const button = make("button", "", status);
+      button.dataset.status = status;
+      button.addEventListener("click", () => {
+        const doc = doc_by_path(sheet_path);
+        if (doc && doc.status !== status) set_status(doc, status);
+      });
+      statuses.append(button);
+    }
+    const ranks = make("div", "row");
+    const up = make("button", "rank-up", "Up");
+    const down = make("button", "rank-down", "Down");
+    up.addEventListener("click", () => shift_rank(-1));
+    down.addEventListener("click", () => shift_rank(1));
+    ranks.append(up, down, make("span", "where rank-note"));
+    const owner = make("div", "row");
+    const input = make("input");
+    input.id = "sheet-owner";
+    input.placeholder = "session name or none";
+    input.autocomplete = "off";
+    input.autocapitalize = "off";
+    const save = make("button", "", "Set");
+    const free = make("button", "", "None");
+    const send = (value) => { const doc = doc_by_path(sheet_path); if (doc) set_owner(doc, value); };
+    save.addEventListener("click", () => send(input.value));
+    free.addEventListener("click", () => send("none"));
+    input.addEventListener("keydown", (event) => {
+      event.stopPropagation();
+      if (event.key === "Enter") { send(input.value); input.blur(); }
+    });
+    owner.append(input, save, free);
+    panel.append(make("h3", "", "Status"), statuses, make("h3", "", "Rank"), ranks, make("h3", "", "Owner"), owner);
+  }
+  const doc_text = make("pre", "", "Loading...");
+  doc_text.id = "sheet-doc";
+  panel.append(make("h3", "", "Doc"), doc_text);
+  panel.scrollTop = 0;
+}
+
+function refresh_sheet() {
+  const doc = doc_by_path(sheet_path);
+  const problem = doc ? null : problem_by_path(sheet_path);
+  if (!doc && !problem) return close_sheet();
+  const panel = element("sheet-panel");
+  const repo = board.repos.find((repo) => (doc ? repo.docs.includes(doc) : repo.problems.includes(problem)));
+  panel.querySelector(".sheet-id").textContent = (doc || problem).id;
+  panel.querySelector(".where").textContent = doc ? `${repo.label} / ${doc.project}` : repo.label;
+  const slot = panel.querySelector(".meta-slot");
+  if (doc) {
+    // The card's own badges and waiting line, without its handlers.
+    const card = card_node(repo, doc);
+    slot.replaceChildren(...[...card.children].filter((node) => !node.classList.contains("id")));
+    for (const button of panel.querySelectorAll(".statuses button")) {
+      button.classList.toggle("current", button.dataset.status === doc.status);
+    }
+    const card_in_tab = selected_card();
+    const siblings = card_in_tab ? cell_cards(card_in_tab.parentElement, null) : [];
+    const place = siblings.indexOf(card_in_tab);
+    panel.querySelector(".rank-up").disabled = place <= 0;
+    panel.querySelector(".rank-down").disabled = place < 0 || place >= siblings.length - 1;
+    panel.querySelector(".rank-note").textContent = `rank ${doc.rank}`;
+    const input = element("sheet-owner");
+    // A value the owner is typing stays. Only an untouched field follows the board.
+    if (input.value === (input.dataset.shown ?? "")) input.value = doc.owner_session;
+    input.dataset.shown = doc.owner_session;
+  } else {
+    slot.replaceChildren(make("div", "error", problem.error));
+  }
+  load_sheet_doc(sheet_path);
+}
+
+async function load_sheet_doc(path) {
+  let text;
+  try {
+    const response = await fetch(`/api/doc?path=${encodeURIComponent(path)}`, { cache: "no-store" });
+    const answer = await response.json();
+    text = response.ok ? answer.text : `Cannot read the doc: ${answer.error}`;
+  } catch {
+    text = "Cannot reach the server.";
+  }
+  // The sheet can have moved to another card while the request ran.
+  if (path === sheet_path) element("sheet-doc").textContent = text;
+}
+
+phone_query.addEventListener("change", apply_layout);
 
 // fuzzy:start
 // Subsequence match, case-insensitive. Higher is better, -Infinity is no match. A late hit in a long name can score below zero and still match. A consecutive run and a hit at a word start
@@ -810,6 +1099,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (event.key === "Escape") {
     if (typing_in_field(event)) event.target.blur();
+    else if (sheet_path) close_sheet();
     return;
   }
   if (typing_in_field(event) || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -844,6 +1134,8 @@ element("waiting").addEventListener("change", () => {
   element("waiting").blur();
   render();
 });
+
+apply_layout();
 
 // The server sends the board version at connect and after each change on disk. EventSource reconnects by itself.
 const events = new EventSource("/api/events");

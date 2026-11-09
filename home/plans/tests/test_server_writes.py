@@ -1,4 +1,4 @@
-"""The board's write side: the write header check, the 409 on a stale page, racing writes, moves and renumbering."""
+"""The board's write side: the write header check, writes from the phone, the 409 on a stale page, racing writes, moves and renumbering."""
 
 import os
 import socket
@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_server import Fixture, wait_until  # noqa: E402
+from test_server import PHONE, PHONE_HOST, REMOTE, Fixture, wait_until  # noqa: E402
 
 from test_retire import FakeTools  # noqa: E402
 
@@ -112,6 +112,66 @@ class WriteHeaderTest(WriteTest):
         status, _ = self.post("update", {"path": path, "basis": {"owner_session": "me-1"}, "changes": {"owner_session": "other-2"}})
         self.assertEqual(status, 200)
         self.assertEqual([self.key(path, key) for key in ("owner_session", "owner_session_id", "owner_session_pid")], ["other-2", "", ""])
+
+
+class PhoneWriteTest(WriteTest):
+    """Writes through `tailscale serve`: the same header guard, the phone's own origin, and no open or cancel."""
+
+    def setUp(self):
+        super().setUp()
+        self.path = self.add("demo", 10)
+        self.body = {"path": self.path, "basis": {"status": "planned"}, "changes": {"status": "building"}}
+
+    def test_the_owner_phone_writes_status_owner_and_rank(self):
+        self.fixture.start(remote=REMOTE)
+        phone = {**PHONE, "Origin": f"https://{PHONE_HOST}"}
+        self.assertEqual(self.post("update", self.body, phone)[0], 200)
+        owner = {"path": self.path, "basis": {"owner_session": "none"}, "changes": {"owner_session": "dotfiles-9"}}
+        self.assertEqual(self.post("update", owner, phone)[0], 200)
+        move = {"path": self.path, "basis": {"status": "building", "rank": 10}, "status": "review", "above": None, "below": None}
+        self.assertEqual(self.post("move", move, phone)[0], 200)
+        self.assertEqual((self.key(self.path, "status"), self.key(self.path, "owner_session")), ("review", "dotfiles-9"))
+
+    def test_a_phone_write_without_the_header_or_from_another_origin_is_refused(self):
+        self.fixture.start(remote=REMOTE)
+        bad_headers = [
+            {server.WRITE_HEADER: ""},
+            {"Content-Type": "text/plain"},
+            {"Origin": "https://evil.example"},
+            # The phone's host over plain http, and the laptop's origin, are not the phone page.
+            {"Origin": f"http://{PHONE_HOST}"},
+            {"Origin": f"http://127.0.0.1:{self.fixture.port}"},
+        ]
+        for headers in bad_headers:
+            self.assertEqual(self.post("update", self.body, {**PHONE, **headers})[0], 403, headers)
+        self.assertEqual(self.key(self.path, "status"), "planned")
+
+    def test_a_write_to_the_phone_host_without_the_owner_login_is_refused(self):
+        self.fixture.start(remote=REMOTE)
+        origin = {"Host": PHONE_HOST, "Origin": f"https://{PHONE_HOST}"}
+        for login in ({}, {server.LOGIN_HEADER: "someone@github"}):
+            self.assertEqual(self.post("update", self.body, {**origin, **login})[0], 403, login)
+        self.assertEqual(self.key(self.path, "status"), "planned")
+
+    def test_the_phone_host_writes_nothing_without_the_config(self):
+        self.fixture.start()
+        self.assertEqual(self.post("update", self.body, {**PHONE, "Origin": f"https://{PHONE_HOST}"})[0], 403)
+        self.assertEqual(self.key(self.path, "status"), "planned")
+
+    def test_the_phone_cannot_open_the_editor_or_cancel(self):
+        self.fixture.start(remote=REMOTE)
+        phone = {**PHONE, "Origin": f"https://{PHONE_HOST}"}
+        with mock.patch.object(server.subprocess, "Popen") as popen:
+            self.assertEqual(self.post("open", {"path": self.path}, phone)[0], 403)
+            self.assertEqual(self.post("cancel", {"path": self.path, "basis": {}, "apply": True}, phone)[0], 403)
+        popen.assert_not_called()
+        self.assertTrue(os.path.exists(self.path))
+
+    def test_a_stale_phone_write_is_refused_like_the_desktop(self):
+        self.fixture.start(remote=REMOTE)
+        self.agent_sets(self.path, status="review")
+        status, data = self.post("update", self.body, {**PHONE, "Origin": f"https://{PHONE_HOST}"})
+        self.assertEqual((status, data["keys"]), (409, ["status"]))
 
 
 class OwnerEditRaceTest(WriteTest):

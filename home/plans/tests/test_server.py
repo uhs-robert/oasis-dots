@@ -1,4 +1,4 @@
-"""The board's read side: the board JSON, the Host check, the mtime watcher, the event stream and shutdown."""
+"""The board's read side: the board JSON, the Host and phone login checks, the doc text, the mtime watcher, the event stream and shutdown."""
 
 import http.client
 import json
@@ -12,6 +12,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.parse
 
 from unittest import mock
 
@@ -76,10 +77,10 @@ class Fixture:
             handle.write(doc_text(doc_id, rank, **keys))
         return path
 
-    def start(self, watch=True):
+    def start(self, watch=True, remote=None):
         self.board = server.Board(self.roots_file, poll_seconds=POLL)
         self.board.poll(rescan=True)
-        self.httpd = server.make_server(self.board, 0, keepalive_seconds=KEEPALIVE)
+        self.httpd = server.make_server(self.board, 0, keepalive_seconds=KEEPALIVE, remote=remote)
         self.port = self.httpd.server_address[1]
         self.threads = [threading.Thread(target=self.httpd.serve_forever, daemon=True)]
         self.threads[0].start()
@@ -322,6 +323,132 @@ class HostCheckTest(unittest.TestCase):
     def test_localhost_is_served(self):
         status, _ = self.fixture.request("GET", "/api/board", headers={"Host": f"localhost:{self.fixture.port}"})
         self.assertEqual(status, 200)
+
+
+PHONE_HOST = "laptop.tail1234.ts.net"
+OWNER_LOGIN = "owner@github"
+REMOTE = server.Remote(PHONE_HOST, OWNER_LOGIN)
+# What a request through `tailscale serve` from the owner's phone carries.
+PHONE = {"Host": PHONE_HOST, server.LOGIN_HEADER: OWNER_LOGIN}
+
+
+class RemoteHostTest(unittest.TestCase):
+    """The MagicDNS name works only with remote.json and only for the owner's tailnet login."""
+
+    def setUp(self):
+        self.fixture = Fixture(self)
+
+    def get(self, path, headers):
+        return self.fixture.request("GET", path, headers=headers)[0]
+
+    def test_the_owner_through_tailscale_serve_is_served(self):
+        self.fixture.start(remote=REMOTE)
+        for headers in (PHONE, {**PHONE, "Host": PHONE_HOST.upper() + ":443"}):
+            for path in ("/", "/api/board"):
+                self.assertEqual(self.get(path, headers), 200, (headers, path))
+
+    def test_without_the_config_the_phone_host_is_refused(self):
+        self.fixture.start()
+        self.assertEqual(self.get("/api/board", PHONE), 403)
+
+    def test_a_missing_wrong_or_doubled_login_is_refused(self):
+        self.fixture.start(remote=REMOTE)
+        for login in (None, "", "someone@github", OWNER_LOGIN.upper(), OWNER_LOGIN + " "):
+            headers = {"Host": PHONE_HOST} if login is None else {**PHONE, server.LOGIN_HEADER: login}
+            for path in ("/", "/api/board", "/api/events"):
+                self.assertEqual(self.get(path, headers), 403, (login, path))
+        connection = http.client.HTTPConnection("127.0.0.1", self.fixture.port, timeout=5)
+        connection.putrequest("GET", "/api/board", skip_host=True)
+        for name, value in (("Host", PHONE_HOST), (server.LOGIN_HEADER, "someone@github"),
+                            (server.LOGIN_HEADER, OWNER_LOGIN)):
+            connection.putheader(name, value)
+        connection.endheaders()
+        self.assertEqual(connection.getresponse().status, 403)
+        connection.close()
+
+    def test_the_owner_login_does_not_open_another_host(self):
+        self.fixture.start(remote=REMOTE)
+        for host in ("evil.example", f"{PHONE_HOST}.evil.example", f"{PHONE_HOST}:8443", "other.tail1234.ts.net"):
+            self.assertEqual(self.get("/api/board", {**PHONE, "Host": host}), 403, host)
+
+    def test_the_local_hosts_still_work_with_the_config(self):
+        self.fixture.start(remote=REMOTE)
+        self.assertEqual(self.get("/api/board", {}), 200)
+
+
+class LoadRemoteTest(unittest.TestCase):
+    def config(self, text):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = os.path.join(temp.name, "remote.json")
+        if text is not None:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(text)
+        return path
+
+    def test_a_full_config_names_the_host_and_login_without_the_root_dot(self):
+        path = self.config(json.dumps({"host": "Laptop.tail1234.ts.net.", "login": OWNER_LOGIN}))
+        self.assertEqual(server.load_remote(path), REMOTE)
+
+    def test_no_file_keeps_remote_off_quietly(self):
+        with mock.patch("sys.stderr") as stderr:
+            self.assertIsNone(server.load_remote(self.config(None)))
+        stderr.write.assert_not_called()
+
+    def test_a_broken_or_partial_file_keeps_remote_off_and_says_so(self):
+        for text in ("{", "[]", '{"host": "laptop.tail1234.ts.net"}', '{"host": "", "login": "owner@github"}',
+                     '{"host": "laptop.tail1234.ts.net", "login": 5}'):
+            with mock.patch("sys.stderr") as stderr:
+                self.assertIsNone(server.load_remote(self.config(text)), text)
+            self.assertIn("remote access stays off", "".join(call.args[0] for call in stderr.write.call_args_list))
+
+    def test_the_file_lives_under_xdg_config_home(self):
+        path = self.config(json.dumps({"host": PHONE_HOST, "login": OWNER_LOGIN}))
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": os.path.dirname(os.path.dirname(path))}):
+            self.assertEqual(server.remote_config_file(), os.path.join(os.path.dirname(os.path.dirname(path)), "plans", "remote.json"))
+
+
+class DocEndpointTest(unittest.TestCase):
+    def setUp(self):
+        self.fixture = Fixture(self)
+        self.repo = self.fixture.repo("web")
+
+    def doc(self, path, headers=None):
+        query = urllib.parse.urlencode({"path": path})
+        return self.fixture.request("GET", f"/api/doc?{query}", headers=headers)
+
+    def test_a_card_returns_its_doc_text(self):
+        path = self.fixture.add(self.repo, "demo", 10)
+        self.fixture.start()
+        status, data = self.doc(path)
+        self.assertEqual(status, 200)
+        self.assertEqual(data, {"path": path, "text": doc_text("demo", 10)})
+
+    def test_an_error_card_returns_its_text_too(self):
+        path = os.path.join(self.repo, ".plans", "proj", "broken.md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("---\nid: broken\nnested:\n  key: 1\n---\n")
+        self.fixture.start()
+        status, data = self.doc(path)
+        self.assertEqual((status, data["text"]), (200, "---\nid: broken\nnested:\n  key: 1\n---\n"))
+
+    def test_a_path_off_the_board_is_not_read(self):
+        self.fixture.add(self.repo, "demo", 10)
+        self.fixture.start()
+        outside = os.path.join(self.fixture.temp.name, "roots")
+        for path in (outside, os.path.join(self.repo, ".plans", "proj", "..", "..", ".git", "config"), ""):
+            status, data = self.doc(path)
+            self.assertEqual(status, 404, path)
+            self.assertNotIn("text", data)
+        self.assertEqual(self.fixture.request("GET", "/api/doc")[0], 404)
+
+    def test_the_doc_follows_the_host_check(self):
+        path = self.fixture.add(self.repo, "demo", 10)
+        self.fixture.start(remote=REMOTE)
+        self.assertEqual(self.doc(path, {"Host": "evil.example"})[0], 403)
+        self.assertEqual(self.doc(path, {"Host": PHONE_HOST})[0], 403)
+        self.assertEqual(self.doc(path, PHONE)[0], 200)
 
 
 class WatcherTest(unittest.TestCase):
