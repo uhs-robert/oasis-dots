@@ -6,6 +6,7 @@ while a wrong keep only leaves a doc owned as it was before this check.
 """
 
 import os
+import socket
 
 from typing import NamedTuple
 
@@ -39,11 +40,38 @@ class Release(NamedTuple):
 
 
 def owner_is_alive(doc):
-    """False only when the doc stores an owner_session_pid and that pid runs no Claude process."""
+    """False only when the doc stores an owner_session_pid and that pid runs no Claude process here. A doc owned on
+    another host is alive: its pid names a process there, which this host cannot see."""
+    if is_remote_owned(doc):
+        return True
     pid = doc.keys.get(validate.OWNER_SESSION_PID)
     if not isinstance(pid, int) or pid <= 0:
         return True
     return pid_runs_claude(pid)
+
+
+def this_host():
+    # Not the `hostname` binary: a --server install can lack it.
+    return socket.gethostname()
+
+
+def same_host(first, second):
+    """Host names compare without case and without a trailing root dot, as DNS compares them. A short name and the
+    full name of one host still differ, which is safe: every owner_host comes from this_host() on its own machine."""
+    return first.rstrip(".").casefold() == second.rstrip(".").casefold()
+
+
+def owner_host_of(doc):
+    """The doc's owner_host, or None when unset. A non-string value that lint flags counts as a host, so a hand edit
+    never turns a doc owned elsewhere into a local one."""
+    host = doc.keys.get(validate.OWNER_HOST)
+    return None if host in (None, "") else str(host)
+
+
+def is_remote_owned(doc):
+    """True when the doc names an owner_host other than this one. Only that host writes the doc."""
+    host = owner_host_of(doc)
+    return host is not None and not same_host(host, this_host())
 
 
 def pid_runs_claude(pid):
@@ -193,21 +221,26 @@ def take_back_one(doc, session_id, pid, cleared):
 
 
 def take_back_changes(doc, session_id, pid, cleared=False):
+    # The pid and even the id can match by chance across hosts. A session never moves hosts, so a doc owned elsewhere
+    # is never this session's.
+    if is_remote_owned(doc):
+        return None
+    host = {validate.OWNER_HOST: this_host()}
     owner = validate.owner_of(doc)
     if owner is not None:
         stored_id, stored_pid = validate.stored_owner_values(doc)
         if stored_id == session_id and stored_pid != pid:
-            return {validate.OWNER_SESSION_PID: pid}
+            return {validate.OWNER_SESSION_PID: pid, **host}
         # A live pid belongs to one process, so after a `/clear` a doc that stores this pid is this session's, now
         # under a new id. Only then: on startup or resume the pid can be a dead owner's, reused after a reboot.
         if cleared and stored_pid == pid and stored_id != session_id:
-            return {validate.OWNER_SESSION_ID: session_id}
+            return {validate.OWNER_SESSION_ID: session_id, **host}
         return None
     last_owner = doc.keys.get(validate.LAST_OWNER_SESSION)
     if doc.keys.get(validate.LAST_OWNER_SESSION_ID) != session_id or not validate.is_session_or_none(last_owner) \
             or last_owner == validate.NO_SESSION:
         return None
-    return {"owner_session": last_owner, validate.OWNER_SESSION_ID: session_id, validate.OWNER_SESSION_PID: pid}
+    return {"owner_session": last_owner, validate.OWNER_SESSION_ID: session_id, validate.OWNER_SESSION_PID: pid, **host}
 
 
 def refuse_changed_take_back(fresh, changes, session_id, pid, cleared):

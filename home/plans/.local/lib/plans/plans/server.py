@@ -286,6 +286,8 @@ def doc_json(doc):
     data.update({key: doc.keys.get(key, "") for key in validate.OWNER_VALUE_KEYS})
     data["id"] = doc.id
     data["path"] = doc.path
+    # Set for a doc owned on another host. The page shows its card read-only, and the server refuses its writes.
+    data["remote_host"] = liveness.owner_host_of(doc) if liveness.is_remote_owned(doc) else ""
     # Lint flags a depends_on that is no list, but the page iterates it, so it always gets one.
     if not isinstance(data["depends_on"], list):
         data["depends_on"] = [] if data["depends_on"] in (None, "") else [str(data["depends_on"])]
@@ -468,11 +470,20 @@ def run_action(action, board, read_request):
 
 
 def board_doc(board, request):
+    """The doc a write names, refused when another host owns it."""
     path = request.get("path")
     view, doc = board.find_doc(path)
     if doc is None:
         raise Refused(404, f"no readable doc on the board at {path!r}; reload the board")
+    refuse_remote_owned(doc)
     return view, doc
+
+
+def refuse_remote_owned(doc):
+    """Every board write calls this, on the board's copy for a clear early answer and again under the store lock
+    (store.update's check_under_lock), where a claim synced in from the other host since the board read shows."""
+    if liveness.is_remote_owned(doc):
+        raise Refused(403, f"{doc.id} is owned on {liveness.owner_host_of(doc)}; edit it on that host's board")
 
 
 def based_on(doc, basis):
@@ -509,7 +520,7 @@ def update_doc(board, request):
         # The owner's override: the board knows no session's values, so the next claim writes them. A save under the
         # same name keeps them, or another session of that name could then claim the doc without --force.
         changes = {**changes, **validate.cleared_owner_values()}
-    store.update(based_on(doc, basis), changes)
+    store.update(based_on(doc, basis), changes, check_under_lock=refuse_remote_owned)
 
 
 def move_doc(board, request):
@@ -537,7 +548,7 @@ def move_doc(board, request):
     if rank is not None:
         # Both keys go in even when one keeps the shown value: store.update compares only the keys it writes, and an
         # agent's change to either must refuse the move.
-        store.update(based_on(doc, basis), {"status": status, "rank": rank})
+        store.update(based_on(doc, basis), {"status": status, "rank": rank}, check_under_lock=refuse_remote_owned)
         return {"renumbered": 0, "skipped": [], "uncertain": []}
     order = list(ranked)
     order.insert(order.index(below) if below is not None else order.index(above) + 1, doc)
@@ -577,17 +588,18 @@ def rank_between(above, below):
 def renumber(order, moved, moved_basis, status):
     """Give `order` the ranks RANK_STEP, 2 * RANK_STEP and so on. The moved doc goes first, so a stale page refuses the
     whole move. Each other doc is its own store.update: a doc that an agent re-ranked meanwhile keeps the agent's rank
-    and lands in `skipped`. A doc whose write failed partway lands in `uncertain`, and the rest are renumbered."""
+    and lands in `skipped`, as does a doc another host owns. A doc whose write failed partway lands in `uncertain`, and
+    the rest are renumbered."""
     new_ranks = {doc.path: RANK_STEP * (index + 1) for index, doc in enumerate(order)}
-    store.update(moved_basis, {"status": status, "rank": new_ranks[moved.path]})
+    store.update(moved_basis, {"status": status, "rank": new_ranks[moved.path]}, check_under_lock=refuse_remote_owned)
     renumbered, skipped, uncertain = 1, [], []
     for doc in order:
         if doc is moved or doc.keys["rank"] == new_ranks[doc.path]:
             continue
         try:
-            store.update(doc, {"rank": new_ranks[doc.path]})
+            store.update(doc, {"rank": new_ranks[doc.path]}, check_under_lock=refuse_remote_owned)
             renumbered += 1
-        except (store.Conflict, store.Vanished, parse.ParseError, UnicodeDecodeError) as error:
+        except (store.Conflict, store.Vanished, Refused, parse.ParseError, UnicodeDecodeError) as error:
             skipped.append({"path": doc.path, "id": doc.id, "error": str(error)})
         except OSError as error:
             # As in run_action: the new rank may have landed, so this doc is neither renumbered nor skipped.
@@ -604,6 +616,8 @@ def cancel_doc(board, request):
     if not isinstance(basis, dict) or set(basis) != set(retire.GUARDED_KEYS):
         raise Refused(400, f"basis must hold the shown {', '.join(retire.GUARDED_KEYS)}")
     shown = based_on(doc, basis)
+    # The board's copy can lag the disk. retire.apply compares owner_host on disk against this one.
+    refuse_remote_owned(shown)
     owner = validate.owner_of(shown)
     if owner is not None:
         raise Refused(403, f"{shown.id} is owned by {owner}; set the owner to none first")
