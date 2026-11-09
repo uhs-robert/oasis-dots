@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # hypr/.config/hypr/scripts/plans-open.sh
 # Open the plans board in the browser and focus the browser, starting the plans-serve user service when the port is closed.
-# PLANS_PORT picks another port, for tests.
+# Opens https://<host>/ instead when the private remote.json (the file the board reads for the phone) names a host that
+# answers, so the laptop and the phone share one address. PLANS_PORT picks another port, for tests.
 
 port=${PLANS_PORT:-8765}
 url=http://127.0.0.1:$port
@@ -30,12 +31,28 @@ if ! port_open; then
   fi
 fi
 
+# The tailnet host, or nothing: no file, a broken file or a name that is not a plain host all mean local. The board reads
+# the same file and refuses to serve the phone host without it.
+remote_host() {
+  local file=${XDG_CONFIG_HOME:-$HOME/.config}/plans/remote.json host
+  [ -f "$file" ] && command -v jq >/dev/null || return 1
+  host=$(jq -r 'if type == "object" and (.host | type) == "string" then .host else empty end' "$file" 2>/dev/null) || return 1
+  host=${host%.}
+  [[ $host =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] || return 1
+  printf '%s' "${host,,}"
+}
+
+# The board still opens locally when the tailnet is down, so a short timeout keeps the shortcut quick offline.
+if host=$(remote_host) && curl -fsS -o /dev/null --max-time 2 "https://$host/" 2>/dev/null; then
+  url=https://$host/
+fi
+
 xdg-open "$url" >/dev/null 2>&1 &
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
 
 # The default browser names the window class to focus: its desktop entry's StartupWMClass, else the entry's name. Same
 # approach as the clock popup's open_and_focus_script.
-id=$(xdg-mime query default x-scheme-handler/http 2>/dev/null)
+id=$(xdg-mime query default x-scheme-handler/"${url%%:*}" 2>/dev/null)
 [ -n "$id" ] || exit 0
 class=
 old_ifs=$IFS
