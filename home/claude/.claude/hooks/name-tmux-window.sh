@@ -4,7 +4,7 @@
 #     Claude panes in one window, the last to start wins. A window already named <name>, <name>-next, <name>-prev or
 #     <name>-done keeps its name.
 #   end (SessionEnd): turns automatic-rename back on for that window, so it shows what runs there again. A window
-#     labelled <name>-next, <name>-prev or <name>-done by the orchestrator handoff keeps its label.
+#     labelled <name>-prev or <name>-done by the orchestrator handoff keeps its label.
 # The session name comes from ~/.claude/sessions/<pid>.json, an undocumented file, so every miss means do nothing.
 #
 # Like the handoff scripts, a sanctioned change to the owner's tmux server: guard-tmux-socket.sh only checks agent

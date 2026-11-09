@@ -11,7 +11,7 @@ The agent workflow is how Claude sessions plan, build, review and merge work in 
 - The interview skill turns a loose request into a plan that the owner approves.
 - The orchestrator-handoff skill moves the orchestrator role to a fresh session.
 - The ship-batch skill is the only way to merge a PR.
-- Two hooks watch the sessions: `context-budget.sh` warns an orchestrator about its context size, and `guard-git-stash.sh` blocks `git stash` for subagents. `name-tmux-window.sh` names the tmux window after the session at start and restores automatic naming at end.
+- Three hooks watch the sessions: `context-budget.sh` warns an orchestrator about its context size, and `guard-git-stash.sh` blocks `git stash` for subagents. `name-tmux-window.sh` names the tmux window after the session at start and restores automatic naming at end.
 
 ## The life of a piece
 
