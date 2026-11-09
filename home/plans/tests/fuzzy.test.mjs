@@ -1,4 +1,4 @@
-// Tests the repo picker's matcher by cutting it out of board.html between the fuzzy markers.
+// Tests the filter comboboxes' matchers by cutting it out of board.html between the fuzzy markers.
 // Run: node home/plans/tests/fuzzy.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const board_path = join(dirname(fileURLToPath(import.meta.url)), "../.local/lib/plans/plans/board.html");
 const html = readFileSync(board_path, "utf8");
 const block = html.split("// fuzzy:start")[1].split("// fuzzy:end")[0];
-const { fuzzy_score, rank_repos } = new Function(`${block}\nreturn { fuzzy_score, rank_repos };`)();
+const { fuzzy_score, rank_repos, rank_choices } = new Function(`${block}\nreturn { fuzzy_score, rank_repos, rank_choices };`)();
 
 const repo = (label, folder) => ({ label, root: `/home/me/${folder ?? label.split("/")[1]}` });
 const labels = (query, repos) => rank_repos(query, repos).map((entry) => entry.label);
@@ -42,3 +42,15 @@ assert.deepEqual(labels("j", [repo("me/my-long-project")]), ["me/my-long-project
 assert.deepEqual(labels("j", long_repos), ["me/jam", "me/my-long-project"], "the early match still ranks first");
 
 console.log("fuzzy tests passed");
+
+// The generic ranker behind the owner, project, status and kind filters matches on the label alone.
+const choice = (label) => ({ value: `v-${label}`, label });
+const choice_labels = (query, choices) => rank_choices(query, choices).map((entry) => entry.label);
+const statuses = ["blocked", "building", "done", "approved", "draft"].map(choice);
+assert.deepEqual(choice_labels("", statuses), ["blocked", "building", "done", "approved", "draft"], "empty query keeps order");
+assert.deepEqual(choice_labels("DRA", statuses), ["draft"], "case-insensitive");
+assert.deepEqual(choice_labels("bld", statuses), ["blocked", "building"], "subsequence matches, shorter text first on a tie");
+assert.equal(choice_labels("ap", statuses)[0], "approved", "a word-start run beats a scattered hit");
+assert.deepEqual(choice_labels("zzz", statuses), [], "no match gives an empty list");
+assert.equal(rank_choices("dra", statuses)[0].value, "v-draft", "keeps the whole choice object");
+assert.deepEqual(choice_labels("b", [choice("b1"), choice("b2")]), ["b1", "b2"], "ties keep the input order");
