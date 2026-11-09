@@ -11,7 +11,7 @@ cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
 
 # Matches where a command starts (line start or after ; & | ( or a newline), past env assignments and
 # timeout/env/sh/bash wrappers, so a path that is only an argument (shellcheck lib/check.sh, git diff lib/check.sh) does not count.
-start=$'(^|[;&|(\n\r])[[:space:]]*'
+start=$'(^|[;&|(\n])[[:space:]]*'
 wrappers='(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|timeout[[:space:]]+[^[:space:]]+|(ba)?sh)[[:space:]]+)*'
 target='([^[:space:];&|]*/)?(lib/check\.sh|\.claude/skills/ship-batch/ship-batch\.sh|home/voxcmd/tests/(sandbox\.sh[[:space:]]+([^[:space:];&|]*/)?)?run[^/[:space:];&|]*\.sh)([[:space:]]|$)'
 just_check="${start}just[[:space:]]+check([[:space:]]|$)"

@@ -32,6 +32,7 @@ expect bg $'if true; then\n  just check\nfi'
 
 # Paths that are only arguments, and a stray "n" before the command name, are not command starts.
 expect fg 'echo n just check'
+expect fg $'echo hi\rjust check'
 expect fg 'git diff lib/check.sh'
 expect fg 'shellcheck lib/check.sh'
 expect fg $'echo hi\ngit diff lib/check.sh'
