@@ -7,4 +7,7 @@ Documentation=https://github.com/uhs-robert/oasis-dots/blob/main/home/plans/READ
 # Without ~/.config/plans/roots it uses the default roots, as the board service does.
 [Service]
 Type=oneshot
+# A hung rclone would hold the unit active forever: the timer skips an active unit, so every later backup stops. The
+# timeout fails the run instead.
+TimeoutStartSec=30min
 ExecStart=/usr/bin/python3 -I %h/.local/bin/plans backup
