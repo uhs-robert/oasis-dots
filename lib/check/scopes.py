@@ -166,6 +166,7 @@ PATH_SCOPES = [
     ("packages/devtools.ini", "install"),
     ("system/etc/makepkg.conf.d/*", "install"),
     ("system/etc/udev/rules.d/70-dotfiles-uinput.rules", "install"),
+    ("system/etc/systemd/system/user@.service.d/*", "install"),
     ("system/usr/local/bin/qs-greeter", "install"),
     ("home/calendar/*", "install"),
     ("home/agents/*", "install"),

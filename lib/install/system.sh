@@ -11,6 +11,10 @@ install_system_files() {
   # A copied rule reaches the existing /dev/uinput node only once udev reloads its rules and replays the node's add event.
   sudo udevadm control --reload
   sudo udevadm trigger --name-match=uinput
+  # A lower CPUWeight on the user manager lets the login session (Hyprland, Firefox) win contended CPU; a running
+  # user@.service takes the new weight on daemon-reload.
+  sudo install -Dm644 system/etc/systemd/system/user@.service.d/50-cpuweight.conf /etc/systemd/system/user@.service.d/50-cpuweight.conf
+  sudo systemctl daemon-reload
   sudo install -Dm644 system/etc/pacman.d/hooks/voxtype-gpu-setup.hook /etc/pacman.d/hooks/voxtype-gpu-setup.hook
   sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
   sudo install -Dm644 system/etc/pacman.d/hooks/betterbird-autoconfig.hook /etc/pacman.d/hooks/betterbird-autoconfig.hook

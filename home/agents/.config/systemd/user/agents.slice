@@ -9,8 +9,11 @@ Description=AI agent sessions (Claude Code, Codex, ...)
 # slice at MemoryMax. This caps the agents only: it reserves nothing for the rest of the machine.
 MemoryHigh=75%
 MemoryMax=85%
-# Below the default of 100 of the other user-manager apps. Hyprland sits in the login session, outside this branch.
+# Below the default of 100 of the other user-manager apps. Hyprland sits in the login session, a sibling of the user
+# manager; system/etc/systemd/system/user@.service.d/50-cpuweight.conf lowers the whole user manager against it.
 CPUWeight=50
-# The CPU cap while the screen is locked, as a percent of the machine's threads (62% is 10 of 16). systemd ignores
-# X- keys; the lock screen reads this one and applies it as CPUQuota.
+# The CPU caps, as a percent of the machine's threads (87% is 14 of 16, 62% is 10 of 16), for the unlocked and the
+# locked screen. systemd ignores X- keys; the lock screen reads them and applies the one in force as CPUQuota. A
+# CPUQuota you set yourself wins when it is tighter.
+X-UnlockedCPUQuota=87%
 X-LockedCPUQuota=62%

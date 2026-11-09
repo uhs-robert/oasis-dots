@@ -117,12 +117,13 @@ function step(state, sample) {
     return next;
 }
 
-// X-LockedCPUQuota from `systemctl --user cat agents.slice` as a percent of all threads, or NaN when the key is
-// absent, empty or not a percentage in (0, 100]. The last assignment wins as in systemd, and an empty one unsets it.
-function locked_share(unit_text) {
+// The value of an X- key from `systemctl --user cat agents.slice` (X-LockedCPUQuota, X-UnlockedCPUQuota) as a percent
+// of all threads, or NaN when the key is absent, empty or not a percentage in (0, 100]. The last assignment wins as
+// in systemd, and an empty one unsets it.
+function share(unit_text, key) {
     let value = "";
     for (const line of (unit_text || "").split("\n")) {
-        const m = /^\s*X-LockedCPUQuota\s*=\s*(.*?)\s*$/.exec(line);
+        const m = new RegExp("^\\s*" + key + "\\s*=\\s*(.*?)\\s*$").exec(line);
         if (m) value = m[1];
     }
     const m = /^(\d+(?:\.\d+)?)%?$/.exec(value);
@@ -130,16 +131,43 @@ function locked_share(unit_text) {
     return percent > 0 && percent <= 100 ? percent : NaN;
 }
 
-// The CPUQuota for agents.slice while locked: the locked share times the thread count, e.g. "992%" for 62% of 16.
-// "" without a share or threads. set-property replaces a quota the user configured rather than adding a ceiling, so a
-// tighter configured quota wins: the lock must never give agents more CPU than they have unlocked.
-function locked_quota(unit_text, threads) {
-    const percent = locked_share(unit_text);
-    if (!isFinite(percent) || !(threads > 0)) return "";
-    const locked = Math.max(1, Math.round(percent * threads));
+// The share of `key` as a CPUQuota percent of the thread count (62% of 16 threads is 992), NaN without a share or threads.
+function share_quota(unit_text, threads, key) {
+    const percent = share(unit_text, key);
+    if (!isFinite(percent) || !(threads > 0)) return NaN;
+    return Math.max(1, Math.round(percent * threads));
+}
+
+// The quota percent of the CPUQuota the user configured, NaN for none.
+function configured_percent(unit_text) {
     const m = /^(\d+(?:\.\d+)?)%$/.exec(configured_quota(unit_text));
-    const configured = m ? parseFloat(m[1]) : NaN;
-    return (configured > 0 && configured < locked ? m[1] : String(locked)) + "%";
+    const percent = m ? parseFloat(m[1]) : NaN;
+    return percent > 0 ? percent : NaN;
+}
+
+// The smallest of the numbers that are real, NaN when none is.
+function tightest(...values) {
+    const real = values.filter(isFinite);
+    return real.length ? Math.min(...real) : NaN;
+}
+
+// The CPUQuota agents.slice should have now, e.g. "992%", or null to leave it alone. set-property replaces a quota the
+// user configured rather than adding a ceiling, so a tighter configured quota wins in both states. Locked is the
+// locked share, never above the unlocked share. Unlocked is the unlocked share. Without an unlocked share the unlock
+// restores the configured quota ("" clears ours), but only when a cap of ours may be in place: this bar set one
+// (`capped`) or a locked share exists, which a bar that died while locked used. Threads not read yet give null, so
+// nothing is applied until they arrive.
+function slice_quota(unit_text, threads, locked, capped) {
+    const configured = configured_percent(unit_text);
+    const unlocked = share_quota(unit_text, threads, "X-UnlockedCPUQuota");
+    if (locked) {
+        const own = share_quota(unit_text, threads, "X-LockedCPUQuota");
+        return isFinite(own) ? tightest(own, unlocked, configured) + "%" : null;
+    }
+    if (isFinite(unlocked)) return tightest(unlocked, configured) + "%";
+    if (isFinite(share(unit_text, "X-UnlockedCPUQuota"))) return null;
+    const may_hold_ours = capped || isFinite(share(unit_text, "X-LockedCPUQuota"));
+    return may_hold_ours ? configured_quota(unit_text) : null;
 }
 
 // The CPUQuota the user configured for agents.slice, for the unlock to put back: the last `CPUQuota=` in `systemctl

@@ -1,6 +1,6 @@
 # Lock screen and greeter
 
-`lock/` holds the session lock (`Lock`, its IPC handler, preview and capture), the simple lock screen, the styled lock skins in `skins/`, the skin registry `LockSkins`, the login screen's settings `LoginSettings` with `GreeterSync`, which keeps the greeter's data current, and the two load pieces of the lock: `LoadGuard` (stills the skin under heavy load) and `AgentCpuCap` (caps `agents.slice` while locked), with their pure logic in `LoadGuard.js`.
+`lock/` holds the session lock (`Lock`, its IPC handler, preview and capture), the simple lock screen, the styled lock skins in `skins/`, the skin registry `LockSkins`, the login screen's settings `LoginSettings` with `GreeterSync`, which keeps the greeter's data current, and the two load pieces of the lock: `LoadGuard` (stills the skin under heavy load) and `AgentCpuCap` (caps `agents.slice`, locked or not), with their pure logic in `LoadGuard.js`.
 
 `~/.config/hypr/scripts/lock-screen.sh` (used by hypridle and the Power menu; hypridle passes `--auto`) locks with this shell and falls back to hyprlock when the bar isn't running or can't lock. If qs restarts while locked, the new instance takes the lock over.
 
@@ -36,7 +36,7 @@ While the lock is up on AC, it checks the machine every 5 seconds. The main meas
 
 It moves again only when the CPU measure and PPT are both under their lower levels. The log line `Lock: load guard stilled the lock on <agents|load|power>` (and `resumed`) shows each change with the samples behind it. Set `QS_LOAD_GUARD_ROOT` to a folder holding fake `proc/loadavg`, `sys/devices/system/cpu/online`, `sys/class/hwmon/` and `sys/fs/cgroup/user.slice/user-<uid>.slice/user@<uid>.service/agents.slice/cpu.stat` files to try it without load.
 
-The lock also caps the CPU of agent sessions while it is up. When the `agents.slice` user unit exists and has an `X-LockedCPUQuota=` key (a percentage of all threads, e.g. `62%`), locking runs `systemctl --user set-property --runtime agents.slice CPUQuota=<share x threads>%` and unlocking puts back the `CPUQuota=` you configured for the slice yourself (none when you set none). A drop-in can change the share, or unset it with an empty `X-LockedCPUQuota=`, and then the lock leaves the slice alone. The cap is runtime-only, so a reboot drops it, and a bar that starts unlocked undoes one left by a bar that died while locked.
+`AgentCpuCap` caps the CPU of agent sessions always. When the `agents.slice` user unit exists and has an `X-UnlockedCPUQuota=` or `X-LockedCPUQuota=` key (a percentage of all threads, e.g. `87%` and `62%`), it runs `systemctl --user set-property --runtime agents.slice CPUQuota=<share x threads>%` with the unlocked share at bar start and on unlock, and the locked share on lock. A `CPUQuota=` you configured for the slice yourself wins when it is tighter, and locking never raises the cap above the unlocked share. A drop-in can change a share or unset it with an empty key: an empty unlocked key leaves the slice at your configured quota (uncapped when you set none) while unlocked, and an empty locked key makes the lock leave the slice alone. The cap is runtime-only, so a reboot drops it. A bar that starts unlocked applies the unlocked cap, which also undoes one left by a bar that died while locked, and nothing is applied until the thread count is read.
 
 ## Adding a lock skin
 

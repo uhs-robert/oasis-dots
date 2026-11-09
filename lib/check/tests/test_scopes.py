@@ -109,6 +109,8 @@ CASES = [
     ("packages/snapper.ini", " install"),
     # The uinput rule test reads the rule and install.sh.
     ("system/etc/udev/rules.d/70-dotfiles-uinput.rules", " install"),
+    # The user@ CPUWeight drop-in test reads the drop-in and uninstall.sh.
+    ("system/etc/systemd/system/user@.service.d/50-cpuweight.conf", " install"),
     ("install.sh", " install"),
     # The agent launcher shares the install scope.
     ("home/agents/.local/bin/agent-run", " install"),
