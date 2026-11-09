@@ -2,7 +2,8 @@
 # Tests scripts/plans-open.sh against stubbed systemctl, xdg-open, xdg-mime, hyprctl and notify-send, on a spare port:
 # an open port opens the URL without starting the service, a closed port is started and then opened, and a port that
 # never opens sends a notification and exits non-zero. A fake remote.json and curl stub cover the tailnet link: it opens
-# when the host answers, and no file, a dead host or a broken file open the local URL. The stubs keep the owner's service, browser and desktop out of it.
+# when the host answers, and no file, a dead host, a bad host or a broken file open the local URL. The stubs keep the
+# owner's service, browser and desktop out of it.
 set -u
 
 command -v jq >/dev/null || {
@@ -48,7 +49,10 @@ echo "xdg-open $*" >>"$LOG"
 STUB
 cat >"$work/bin/xdg-mime" <<'STUB'
 #!/usr/bin/env bash
-echo testbrowser.desktop
+# Only the two web schemes have a handler, so a wrong scheme query leaves the browser unfocused.
+case "$*" in
+*x-scheme-handler/http | *x-scheme-handler/https) echo testbrowser.desktop ;;
+esac
 STUB
 cat >"$work/bin/hyprctl" <<'STUB'
 #!/usr/bin/env bash
@@ -143,15 +147,22 @@ echo '{"host": "board.example.ts.net.", "login": "me@example"}' >"$work/config/p
 TAILNET_UP=1 run 0
 [[ $out == *"curl "*"https://board.example.ts.net/"* && $out == *"xdg-open https://board.example.ts.net/"* ]] || fail "tailnet up: opens https url"
 [[ $out != *"xdg-open http://127"* && $code -eq 0 ]] || fail "tailnet up: no local open"
+[[ $out == *"--max-time "* ]] || fail "tailnet up: probe has a timeout"
+[[ $out == *"address:0xB"* ]] || fail "tailnet up: focuses browser"
 TAILNET_UP=0 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *"xdg-open https"* ]] || fail "tailnet down: opens local"
 echo '{not json' >"$work/config/plans/remote.json"
 TAILNET_UP=1 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "broken file: opens local"
+for bad in 'a/b.example' 'a b.example'; do
+  printf '{"host": "%s", "login": "me@example"}' "$bad" >"$work/config/plans/remote.json"
+  TAILNET_UP=1 run 0
+  [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "bad host '$bad': opens local"
+done
 rm "$work/config/plans/remote.json"
 TAILNET_UP=1 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "no file: opens local"
 stop_listener
 
-echo "$((14 - failures))/14 passed"
+echo "$((14 + 2 + 1 - failures))/17 passed"
 exit $((failures ? 1 : 0))

@@ -127,7 +127,7 @@ The board opens on a phone over Tailscale. `tailscale serve` takes HTTPS on the 
 2. Write `~/.config/plans/remote.json` with the laptop's MagicDNS name and your tailnet login. `tailscale status --json` shows both, under `Self.DNSName` and `User.<id>.LoginName`:
 
    ```json
-   {"host": "uphill-arch-laptop.tail1234.ts.net", "login": "you@github"}
+   {"host": "laptop.tail1234.ts.net", "login": "you@github"}
    ```
 
 3. Restart the board: `systemctl --user restart plans-serve`. It reads the file at start and prints the phone address.
