@@ -71,16 +71,17 @@ case_name='setup installs the drop-in, the roots file, linger and the unit'
 setup_agent_host >/dev/null 2>&1
 check test "$?" -eq 0
 check grep -qx 'WantedBy=default.target' "$dropin"
-check grep -qx 'PartOf=' "$dropin"
+check test "$(grep -c PartOf "$dropin")" = 0
 check test "$(cat "$roots")" = "$scratch/dev"$'\n'"$repo_dir"
 check called 'loginctl enable-linger tester'
 check called 'systemctl --user daemon-reload'
-check called 'systemctl --user enable plans-serve.service'
+check called 'systemctl --user enable --now plans-serve.service'
 check test ! -e "$XDG_CONFIG_HOME/systemd/user/default.target.wants"
 
 case_name='it enables no unit but plans-serve'
 check test "$(grep -c 'systemctl --user enable' "$calls")" = 1
-check test "$(grep -c 'enable --now\|graphical' "$calls")" = 0
+check test "$(grep -c 'systemctl --user enable' "$calls")" = "$(grep -c 'enable --now plans-serve.service' "$calls")"
+check test "$(grep -c graphical "$calls")" = 0
 
 case_name='a rerun changes nothing and keeps an edited roots file'
 echo "$scratch/mine" >"$roots"
@@ -94,8 +95,15 @@ check test "$(grep -c daemon-reload "$calls")" = 0
 case_name='a missing stowed unit is stowed first'
 rm "$XDG_CONFIG_HOME/systemd/user/plans-serve.service"
 : >"$calls"
-setup_agent_host >/dev/null 2>&1
+(setup_agent_host >/dev/null 2>&1)
 check called 'do_stow plans'
+
+case_name='a stow that leaves no unit stops setup with a message'
+: >"$calls"
+out=$(setup_agent_host 2>&1)
+check test "$?" -ne 0
+check test "${out#*Could not stow plans}" != "$out"
+check test "$(grep -c 'systemctl --user enable' "$calls")" = 0
 
 # The seed runs rsync for real. The ssh stub drops the options and host, then runs the remote command here in a
 # scratch home, so the destination is local. It records its arguments to pin RemoteCommand=none.
@@ -107,15 +115,18 @@ shift
 cd "$remote" && exec sh -c "$*"'
 
 src="$HOME"
-mkdir -p "$src/.local/state/quickshell" "$src/.local/state/hypr" "$src/.config/hypr/theme/colors" \
-  "$src/.config/quickshell/features/lock/skins/ff7/audio" "$src/.local/share/fonts/MapleMono"
+# The paths are the ones .claude/skills/shadow/shadow.sh reads: state JSON and hypr/theme, the checkout's audio, user fonts.
+export AGENT_HOST_CHECKOUT="$src/dotfiles"
+audio_dir=dotfiles/home/quickshell/.config/quickshell/features/lock/skins/ff7/audio
+mkdir -p "$src/.local/state/quickshell" "$src/.local/state/hypr" "$src/$audio_dir" "$src/.local/share/fonts/MapleMono" \
+  "$src/.config/quickshell/features/lock/skins/ff7/audio"
 echo '{}' >"$src/.local/state/quickshell/bars.json"
 echo '{"unit":"x"}' >"$src/.local/state/quickshell/weather.local.json"
 echo 'not json' >"$src/.local/state/quickshell/cache.txt"
 echo '{}' >"$src/.local/state/hypr/apps.json"
-echo desert >"$src/.config/hypr/theme/.current_theme"
-echo stowed >"$src/.config/hypr/theme/init.lua"
-echo wav >"$src/.config/quickshell/features/lock/skins/ff7/audio/buzzer.wav"
+echo desert >"$src/.local/state/hypr/theme"
+echo wav >"$src/$audio_dir/buzzer.wav"
+echo wav >"$src/.config/quickshell/features/lock/skins/ff7/audio/stray.wav"
 echo font >"$src/.local/share/fonts/MapleMono/a.ttf"
 
 case_name='the seed copies the state, theme, audio and fonts, and never weather.local.json'
@@ -124,17 +135,17 @@ case_name='the seed copies the state, theme, audio and fonts, and never weather.
 check test "$?" -eq 0
 check test -e "$remote/.local/state/quickshell/bars.json"
 check test -e "$remote/.local/state/hypr/apps.json"
-check test -e "$remote/.config/hypr/theme/.current_theme"
-check test -e "$remote/.config/quickshell/features/lock/skins/ff7/audio/buzzer.wav"
+check test -e "$remote/.local/state/hypr/theme"
+check test -e "$remote/$audio_dir/buzzer.wav"
+check test ! -e "$remote/.config"
 check test -e "$remote/.local/share/fonts/MapleMono/a.ttf"
 check test ! -e "$remote/.local/state/quickshell/weather.local.json"
 check test ! -e "$remote/.local/state/quickshell/cache.txt"
-check test ! -e "$remote/.config/hypr/theme/init.lua"
 check test -z "$(find "$remote" -name 'weather.local.json')"
 
-case_name='the seed connects with RemoteCommand=none every time'
-check test "$(grep -c '^ssh ' "$calls")" -ge 5
-check test "$(grep '^ssh ' "$calls" | grep -vc 'RemoteCommand=none')" = 0
+case_name='the seed connects with RemoteCommand=none and RequestTTY=no every time'
+check test "$(grep -c '^ssh ' "$calls")" -ge 4
+check test "$(grep '^ssh ' "$calls" | grep -vc 'RemoteCommand=none -o RequestTTY=no')" = 0
 
 case_name='a rerun never overwrites what the host has since changed'
 echo kept >"$remote/.local/state/hypr/apps.json"

@@ -13,7 +13,11 @@ setup_agent_host() {
   loginctl enable-linger "$USER"
 
   # --server stows no plans package, and the drop-in only adds to its unit.
-  [[ -e $unit_dir/plans-serve.service ]] || do_stow plans
+  if [[ ! -e $unit_dir/plans-serve.service ]]; then
+    # do_stow only warns on a conflict, so the unit is checked afterwards.
+    do_stow plans
+    [[ -e $unit_dir/plans-serve.service ]] || die "Could not stow plans, so there is no plans-serve unit; fix the stow conflict, then re-run"
+  fi
 
   if ! cmp -s "$AGENT_HOST_DROPIN_SRC" "$dropin_dir/agent-host.conf"; then
     mkdir -p "$dropin_dir"
@@ -28,8 +32,8 @@ setup_agent_host() {
     printf '%s\n' "$GITHUB_DIR" "$DOTFILES_DIR" >"$roots"
   fi
 
-  systemctl --user enable plans-serve.service
-  success "Agent host: plans-serve starts at boot (linger is on); no desktop service is enabled"
+  systemctl --user enable --now plans-serve.service
+  success "Agent host: plans-serve is running and starts at boot (linger is on); no desktop service is enabled"
   info "Next: write ${config_home}/plans/remote.json (this host's MagicDNS name and tailnet login), then run:"
   info "  tailscale serve --bg --https=443 http://127.0.0.1:8765"
   info "Then run 'just agent-host-seed <this-host>' on the laptop"
