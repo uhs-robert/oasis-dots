@@ -475,26 +475,33 @@ async function load_board() {
 const UNSET = "\u0000unset";
 const doc_value = (doc, key) => (doc[key] ?? "") === "" ? UNSET : String(doc[key]);
 
-function fill_filter_choices() {
-  const docs = board.repos.flatMap((repo) => repo.docs);
-  const distinct = (key) => [...new Set(docs.map((doc) => doc_value(doc, key)))].sort()
-    .map((value) => ({ value, label: value === UNSET ? "(none)" : value }));
-  const plain = (values) => values.map((value) => ({ value, label: value }));
-  combos.repo.set_choices(board.repos.filter((repo) => repo.docs.length || repo.problems.length)
-    .map((repo) => ({ ...repo, value: repo.root })));
-  combos.owner.set_choices(distinct("owner_session"));
-  combos.project.set_choices(distinct("project"));
-  combos.status.set_choices(plain(board.statuses));
-  combos.kind.set_choices(plain(board.kinds));
-}
-
 // Each filter combo and the front matter key it compares.
 const SELECT_FILTER_KEYS = { owner: "owner_session", project: "project", status: "status", kind: "kind" };
+const filter_value = (doc, filter) => doc_value(doc, SELECT_FILTER_KEYS[filter]);
+
+// The docs the lists draw from: the picked repo's, so the repo pick scopes every list.
+function scoped_docs() {
+  return board.repos.filter((repo) => filters.repo === ALL || repo.root === filters.repo)
+    .flatMap((repo) => repo.docs);
+}
+
+function fill_filter_choices() {
+  const docs = scoped_docs();
+  const board_order = { status: board.statuses, kind: board.kinds };
+  const choices_for = (filter) => {
+    const values = facet_choices(docs, filters, filter, filter_value);
+    const order = board_order[filter];
+    // Status and kind keep the board's own order. A picked value off that list sorts last.
+    if (order) values.sort((a, b) => (order.indexOf(a) + 1 || Infinity) - (order.indexOf(b) + 1 || Infinity));
+    return values.map((value) => ({ value, label: value === UNSET ? "(none)" : value }));
+  };
+  combos.repo.set_choices(board.repos.filter((repo) => repo.docs.length || repo.problems.length)
+    .map((repo) => ({ ...repo, value: repo.root })));
+  for (const filter of Object.keys(SELECT_FILTER_KEYS)) combos[filter].set_choices(choices_for(filter));
+}
 
 function doc_is_shown(doc) {
-  const select_matches = Object.entries(SELECT_FILTER_KEYS)
-    .every(([filter, key]) => filters[filter] === ALL || doc_value(doc, key) === filters[filter]);
-  return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
+  return doc_passes(doc, filters, null, filter_value);
 }
 
 // An unreadable doc has no keys to filter on, so any select filter hides it.
@@ -1224,6 +1231,24 @@ function rank_repos(query, repos) {
 function rank_choices(query, choices) {
   return rank_by(query, choices, (choice) => fuzzy_score(query, choice.label));
 }
+
+// The card view and the filter lists share one rule. skip_filter names the list being built, which its own pick
+// must not narrow. value_of(doc, filter) reads the value a select filter compares.
+const SELECT_FILTERS = ["owner", "project", "status", "kind"];
+function doc_passes(doc, filters, skip_filter, value_of) {
+  const select_matches = SELECT_FILTERS.every((filter) => filter === skip_filter || filters[filter] === "" ||
+    value_of(doc, filter) === filters[filter]);
+  return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
+}
+
+// The values for one select filter's list: those on docs that pass every other filter, plus its own pick so it can
+// be cleared. Callers scope docs to the picked repo.
+function facet_choices(docs, filters, filter, value_of) {
+  const values = new Set(docs.filter((doc) => doc_passes(doc, filters, filter, value_of))
+    .map((doc) => value_of(doc, filter)));
+  if (filters[filter] !== "") values.add(filters[filter]);
+  return [...values].sort();
+}
 // fuzzy:end
 
 // markdown:start
@@ -1462,6 +1487,7 @@ function make_combo({ id, all_label, none_label, get_choices_rank }) {
     filters[id] = value;
     close_list();
     input.blur();
+    fill_filter_choices();
     render();
   }
 
@@ -1665,6 +1691,7 @@ document.addEventListener("keydown", (event) => {
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
+  fill_filter_choices();
   render();
 });
 
