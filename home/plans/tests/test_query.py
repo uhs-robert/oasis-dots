@@ -27,6 +27,35 @@ def lines(steps):
     return [(step.action, step.doc.id, step.detail) for step in steps]
 
 
+class ConflictCopyTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = self.temp.name
+        self.dir = os.path.join(self.root, ".plans", "proj")
+        os.makedirs(self.dir)
+        for name in ("a.md", "a.sync-conflict-20261109-101500-ABCDEFG.md", ".stignore", ".stfolder.md", "note.txt"):
+            with open(os.path.join(self.dir, name), "w", encoding="utf-8") as handle:
+                handle.write("x\n")
+        for name in (".stfolder", ".stversions"):
+            os.makedirs(os.path.join(self.root, ".plans", name))
+            with open(os.path.join(self.root, ".plans", name, "a.md"), "w", encoding="utf-8") as handle:
+                handle.write("x\n")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_doc_paths_skips_the_copy_and_dot_entries(self):
+        self.assertEqual([os.path.basename(path) for path in query.doc_paths(self.root)], ["a.md"])
+
+    def test_conflict_paths_lists_only_copies(self):
+        copies = query.conflict_paths(self.root)
+        self.assertEqual([os.path.basename(path) for path in copies], ["a.sync-conflict-20261109-101500-ABCDEFG.md"])
+        self.assertEqual(query.conflict_original(copies[0]), "a.md")
+
+    def test_find_does_not_see_the_copy(self):
+        self.assertEqual(len(query.find(self.root, "a")), 1)
+
+
 class ListingTest(unittest.TestCase):
     def test_rank_order_and_filters(self):
         docs = [make("c", 30, owner="s-1"), make("a", 10, status="done"), make("b", 20, project="other"), make("x", '"high"')]

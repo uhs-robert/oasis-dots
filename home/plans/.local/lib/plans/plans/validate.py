@@ -200,6 +200,15 @@ def lint_repo(docs):
     return findings
 
 
+def conflict_message(original):
+    return f"merge {original} by hand, then delete the copy"
+
+
+def conflict_findings(copies):
+    """One finding per Syncthing conflict copy, given as (path, original doc file name) pairs."""
+    return [Finding(path, 1, "conflict", conflict_message(original)) for path, original in copies]
+
+
 def old_layouts(repo):
     """One line per old layout in the repo: its name and the call to migrate."""
     found = []

@@ -598,6 +598,32 @@ class CliTest(unittest.TestCase):
             ".plans/proj/bad.md:8: depends-on: no doc 'missing'; drop it if that piece merged",
         ])
 
+    COPY = "good.sync-conflict-20261109-101500-ABCDEFG.md"
+
+    def add_conflict_pair(self):
+        doc = self.add("good", 10)
+        copy = self.write(f".plans/proj/{self.COPY}", self.read(doc).replace("rank: 10", "rank: 11"))
+        for dot in (".stfolder/marker", ".stversions/good.md", ".stignore"):
+            self.write(f".plans/proj/{dot}", "x\n")
+        return doc, copy
+
+    def test_lint_warns_once_per_conflict_copy_and_leaves_it(self):
+        _, copy = self.add_conflict_pair()
+        before = self.read(copy)
+        result = self.plans("lint", code=1)
+        self.assertEqual(result.stdout.splitlines(), [f".plans/proj/{self.COPY}:1: conflict: merge good.md by hand, then delete the copy"])
+        self.assertEqual(self.read(copy), before)
+        self.assertTrue(os.path.exists(copy))
+
+    def test_ls_warns_about_a_conflict_copy_under_every_filter(self):
+        doc, _ = self.add_conflict_pair()
+        warning = f"plans: {os.path.join(self.repo, '.plans/proj', self.COPY)}: conflict: merge good.md by hand, then delete the copy\n"
+        for filters in ((), ("--status", "done"), ("--owner", "nobody"), ("--project", "other")):
+            result = self.plans("ls", *filters)
+            self.assertEqual(result.stderr, warning)
+        self.assertEqual(self.plans("ls").stdout.count("\n"), 1)
+        self.assertEqual(self.plans("ls", "--json").stderr, warning)
+
     def test_lint_gh(self):
         self.add("merged", 10, pr="5", issue="8", branch="here")
         self.add("open", 20, pr="\"#6\"", issue="7", branch="gone")
