@@ -349,7 +349,8 @@ class RemoteHostTest(unittest.TestCase):
 
     def test_without_the_config_the_phone_host_is_refused(self):
         self.fixture.start()
-        self.assertEqual(self.get("/api/board", PHONE), 403)
+        status, data = self.fixture.request("GET", "/api/board", headers=PHONE)
+        self.assertEqual((status, data["error"]), (403, "Host must be 127.0.0.1 or localhost"))
 
     def test_a_missing_wrong_or_doubled_login_is_refused(self):
         self.fixture.start(remote=REMOTE)
@@ -357,6 +358,8 @@ class RemoteHostTest(unittest.TestCase):
             headers = {"Host": PHONE_HOST} if login is None else {**PHONE, server.LOGIN_HEADER: login}
             for path in ("/", "/api/board", "/api/events"):
                 self.assertEqual(self.get(path, headers), 403, (login, path))
+            # The owner with a typo in remote.json learns that the login failed, not the Host.
+            self.assertIn("tailnet login", self.fixture.request("GET", "/api/board", headers=headers)[1]["error"])
         connection = http.client.HTTPConnection("127.0.0.1", self.fixture.port, timeout=5)
         connection.putrequest("GET", "/api/board", skip_host=True)
         for name, value in (("Host", PHONE_HOST), (server.LOGIN_HEADER, "someone@github"),

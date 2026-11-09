@@ -215,7 +215,7 @@ function doc_name(path) {
 
 function ask(question, on_yes) {
   const box = element("confirm");
-  box.firstElementChild.textContent = `${question}  y / n`;
+  box.firstElementChild.textContent = is_phone() ? question : `${question}  y / n`;
   // The keys answer on a wide screen. A phone has no keyboard, so it gets buttons, which CSS hides elsewhere.
   const buttons = make("div", "phone-only");
   const yes = make("button", "", "Yes");
@@ -792,6 +792,8 @@ function refresh_sheet() {
   const problem = doc ? null : problem_by_path(sheet_path);
   if (!doc && !problem) return close_sheet();
   const panel = element("sheet-panel");
+  // A doc that turns readable or unreadable on disk needs the other set of controls.
+  if (Boolean(doc) !== Boolean(panel.querySelector("#sheet-owner"))) build_sheet();
   const repo = board.repos.find((repo) => (doc ? repo.docs.includes(doc) : repo.problems.includes(problem)));
   panel.querySelector(".sheet-id").textContent = (doc || problem).id;
   panel.querySelector(".where").textContent = doc ? `${repo.label} / ${doc.project}` : repo.label;
