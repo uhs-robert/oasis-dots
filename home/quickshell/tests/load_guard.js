@@ -8,8 +8,8 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/lock/LoadGuard.js"), "utf8");
 const context = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, locked_share, configured_quota };", context);
-const { thread_count, load_ratio, power_ratio, initial, step, locked_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, locked_share, configured_quota } = context.api;
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { thread_count, load_ratio, power_ratio, initial, step, slice_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, share, configured_quota };", context);
+const { thread_count, load_ratio, power_ratio, initial, step, slice_quota, window_samples, status_uid, agents_cpu_stat_path, usage_usec, agents_ratio, share, configured_quota } = context.api;
 
 // The still flag after each sample of `samples` ([load, power, agents] triples, agents NaN when left out), from a
 // fresh state.
@@ -34,6 +34,11 @@ const agents_stilled = run(repeat(window_samples, agent(0.3))).state;
 const stat = usec => "usage_usec " + usec + "\nuser_usec 1\nsystem_usec 1\n";
 
 const unit = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-LockedCPUQuota=62%", ""].join("\n");
+const both = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-UnlockedCPUQuota=87%", "X-LockedCPUQuota=62%", ""].join("\n");
+const configured = q => "\n# /home/u/.config/systemd/user/agents.slice.d/override.conf\n[Slice]\nCPUQuota=" + q + "\n";
+// The quota while locked or unlocked on 16 threads; `capped` is whether this bar set a cap before.
+const locked_on = (text, threads = 16) => slice_quota(text, threads, true, false);
+const unlocked_on = (text, threads = 16, capped = false) => slice_quota(text, threads, false, capped);
 
 // `systemctl --user cat` output: each file starts with a `# <path>` line.
 const vendor = ["# /usr/lib/systemd/user/agents.slice", "[Slice]", "X-LockedCPUQuota=62%"].join("\n");
@@ -86,17 +91,27 @@ const cases = [
   ["our runtime drop-in is ignored", () => [configured_quota(join(vendor, runtime_dropin)), configured_quota(join(vendor, user_dropin("400%"), runtime_dropin))], ["", "400%"]],
   ["a persistent set-property drop-in is ignored too", () => configured_quota(join(vendor, user_dropin("300%"), ["# /home/u/.config/systemd/user.control/agents.slice.d/50-CPUQuota.conf", "[Slice]", "CPUQuota=50%"].join("\n"))), "300%"],
   ["the last user quota wins, an empty one unsets", () => [configured_quota(join(user_dropin("400%"), user_dropin("200%"))), configured_quota(join(user_dropin("400%"), user_dropin("")))], ["200%", ""]],
-  ["the locked share reads the key alone", () => [locked_share(vendor), isNaN(locked_share(join(user_dropin("400%")))), isNaN(locked_share(vendor + "\nX-LockedCPUQuota=\n"))], [62, true, true]],
-  ["62% of 16 threads", () => locked_quota(unit, 16), "992%"],
-  ["a tighter configured quota wins", () => locked_quota(unit + "\n# /home/u/.config/systemd/user/agents.slice.d/override.conf\n[Slice]\nCPUQuota=200%\n", 16), "200%"],
-  ["a looser configured quota loses", () => locked_quota(unit + "\n# /home/u/.config/systemd/user/agents.slice.d/override.conf\n[Slice]\nCPUQuota=1400%\n", 16), "992%"],
-  ["our own runtime cap is not a configured quota", () => locked_quota(unit + "\n# /run/user/1000/systemd/user.control/agents.slice.d/50-CPUQuota.conf\n[Slice]\nCPUQuota=100%\n", 16), "992%"],
-  ["a drop-in's later line wins", () => locked_quota(unit + "\n# drop-in\n[Slice]\nX-LockedCPUQuota = 25\n", 16), "400%"],
-  ["an empty later line unsets it", () => locked_quota(unit + "\n[Slice]\nX-LockedCPUQuota=\n", 16), ""],
-  ["no key, no unit or no threads is no quota", () => [locked_quota("[Slice]\nCPUWeight=20\n", 16), locked_quota("", 16), locked_quota(unit, 0)], ["", "", ""]],
-  ["a commented key does not count", () => locked_quota("[Slice]\n# X-LockedCPUQuota=50%\n", 16), ""],
-  ["out of range or not a number is no quota", () => ["0%", "150%", "abc", "-5%"].map(v => locked_quota("X-LockedCPUQuota=" + v, 16)), ["", "", "", ""]],
-  ["a tiny share still sets at least 1%", () => locked_quota("X-LockedCPUQuota=1%", 1), "1%"],
+  ["the share reads its own key alone", () => [share(vendor, "X-LockedCPUQuota"), isNaN(share(vendor, "X-UnlockedCPUQuota")), isNaN(share(join(user_dropin("400%")), "X-LockedCPUQuota")), isNaN(share(vendor + "\nX-LockedCPUQuota=\n", "X-LockedCPUQuota"))], [62, true, true, true]],
+  ["62% of 16 threads while locked", () => locked_on(unit), "992%"],
+  ["87% of 16 threads while unlocked", () => unlocked_on(both), "1392%"],
+  ["a bar that starts unlocked applies the unlocked cap", () => slice_quota(both, 16, false, false), "1392%"],
+  ["lock then unlock restores the unlocked cap, not none", () => [locked_on(both), unlocked_on(both, 16, true)], ["992%", "1392%"]],
+  ["a configured quota tighter than both shares wins in both states", () => [locked_on(both + configured("200%")), unlocked_on(both + configured("200%"))], ["200%", "200%"]],
+  ["a configured quota between the shares wins only unlocked", () => [locked_on(both + configured("1200%")), unlocked_on(both + configured("1200%"))], ["992%", "1200%"]],
+  ["a configured quota looser than both shares loses", () => [locked_on(both + configured("1600%")), unlocked_on(both + configured("1600%"))], ["992%", "1392%"]],
+  ["locking never raises the cap above the unlocked share", () => locked_on("[Slice]\nX-UnlockedCPUQuota=25%\nX-LockedCPUQuota=62%\n"), "400%"],
+  ["an empty unlocked key leaves an uncapped slice alone", () => unlocked_on("[Slice]\nX-UnlockedCPUQuota=\n"), null],
+  ["an empty unlocked key still lets the lock cap and the unlock clear it", () => { const t = both + "\n[Slice]\nX-UnlockedCPUQuota=\n"; return [locked_on(t), unlocked_on(t, 16, true)]; }, ["992%", ""]],
+  ["an empty unlocked key restores the configured quota", () => unlocked_on(unit + "\n[Slice]\nX-UnlockedCPUQuota=\n" + configured("800%"), 16, true), "800%"],
+  ["threads 0 applies nothing until threads arrive", () => [locked_on(both, 0), unlocked_on(both, 0), unlocked_on(both, 16)], [null, null, "1392%"]],
+  ["with no threads a capped unlock to no unlocked share still restores", () => unlocked_on(unit, 0, true), ""],
+  ["our own runtime cap is not a configured quota", () => locked_on(both + "\n# /run/user/1000/systemd/user.control/agents.slice.d/50-CPUQuota.conf\n[Slice]\nCPUQuota=100%\n"), "992%"],
+  ["a drop-in's later line wins", () => locked_on(unit + "\n# drop-in\n[Slice]\nX-LockedCPUQuota = 25\n"), "400%"],
+  ["an empty later locked line leaves the slice alone", () => locked_on(unit + "\n[Slice]\nX-LockedCPUQuota=\n"), null],
+  ["no key or no unit leaves the slice alone", () => [locked_on("[Slice]\nCPUWeight=20\n"), locked_on(""), unlocked_on("[Slice]\nCPUWeight=20\n"), unlocked_on("")], [null, null, null, null]],
+  ["a commented key does not count", () => locked_on("[Slice]\n# X-LockedCPUQuota=50%\n"), null],
+  ["out of range or not a number is no cap", () => ["0%", "150%", "abc", "-5%"].map(v => locked_on("X-LockedCPUQuota=" + v)), [null, null, null, null]],
+  ["a tiny share still sets at least 1%", () => locked_on("X-LockedCPUQuota=1%", 1), "1%"],
 ];
 
 let failed = 0;

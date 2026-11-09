@@ -107,6 +107,7 @@ remove_system_files() {
     /etc/vtrgb-oasis
     /etc/keyd/default.conf
     /etc/udev/rules.d/70-dotfiles-uinput.rules
+    /etc/systemd/system/user@.service.d/50-cpuweight.conf
     /etc/pacman.d/hooks/voxtype-gpu-setup.hook
     /usr/local/bin/voxtype-gpu-setup
     /etc/pacman.d/hooks/betterbird-autoconfig.hook
@@ -128,6 +129,9 @@ remove_system_files() {
   # node's add event (the mirror of install_system_files).
   sudo udevadm control --reload
   sudo udevadm trigger --name-match=uinput
+  # The removed drop-in keeps its weight on the user manager until systemd reloads (the mirror of install_system_files).
+  sudo rmdir /etc/systemd/system/user@.service.d 2>/dev/null || true
+  sudo systemctl daemon-reload
   sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
   if [[ -f /etc/greetd/hyprland.lua.bak ]]; then
     sudo mv /etc/greetd/hyprland.lua.bak /etc/greetd/hyprland.lua && success "Restored /etc/greetd/hyprland.lua from its pre-install backup"
