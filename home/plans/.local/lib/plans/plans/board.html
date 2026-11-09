@@ -76,8 +76,7 @@
   html.phone header { position: static; }
   html.phone #keys, html.phone #status { display: none; }
   html.phone #repo-picker { flex: 1 1 100%; }
-  html.phone #repo, html.phone #text { width: 100%; }
-  html.phone #text { flex: 1 1 100%; }
+  html.phone #repo { width: 100%; }
   html.phone #tabs { display: flex; position: sticky; top: 0; z-index: 5; overflow-x: auto; scrollbar-width: none;
                      background: var(--panel); border-bottom: 1px solid var(--line); }
   #tabs button { flex: none; padding: 11px 10px 9px; background: none; border: 0; border-bottom: 2px solid transparent;
@@ -96,9 +95,9 @@
   #sheet-panel { width: 100%; max-height: 88vh; overflow-y: auto; padding: 12px 14px 24px; background: var(--panel);
                  border-top: 1px solid var(--line); border-radius: 12px 12px 0 0; font-size: 14px; }
   #sheet-panel .top { display: flex; align-items: flex-start; gap: 8px; }
-  #sheet-panel h2 { flex: 1; margin: 0; font-size: 16px; word-break: break-all; }
+  #sheet-panel .sheet-id { flex: 1; margin: 0; font-size: 16px; word-break: break-all; }
   #sheet-panel .where { color: var(--dim); font-size: 12px; margin-top: 2px; }
-  #sheet-panel h3 { margin: 14px 0 6px; color: var(--dim); font-size: 11px; text-transform: uppercase; }
+  #sheet-panel > h3 { margin: 14px 0 6px; color: var(--dim); font-size: 11px; text-transform: uppercase; }
   #sheet-panel .row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   #sheet-panel .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; color: var(--dim); font-size: 12px; }
   #sheet-panel .waiting-on { margin-top: 6px; color: var(--warn); }
@@ -109,8 +108,33 @@
   #sheet-panel button:disabled { opacity: 0.4; }
   #sheet-owner { flex: 1; min-width: 0; padding: 8px; background: var(--bg); color: var(--text);
                  border: 1px solid var(--line); border-radius: 6px; font: inherit; }
-  #sheet-doc { margin: 0; padding: 8px; background: var(--bg); border-radius: 6px; white-space: pre-wrap;
-               word-break: break-word; font: 12px/1.4 ui-monospace, monospace; }
+  /* The rendered doc. Its markup comes from render_markdown only. */
+  #sheet-doc { padding: 4px 10px; background: var(--bg); border-radius: 6px; line-height: 1.45; word-break: break-word; }
+  #sheet-doc h1, #sheet-doc h2, #sheet-doc h3, #sheet-doc h4 { margin: 14px 0 6px; color: var(--accent); }
+  #sheet-doc h1 { font-size: 17px; } #sheet-doc h2 { font-size: 15px; } #sheet-doc h3, #sheet-doc h4 { font-size: 14px; }
+  #sheet-doc p { margin: 6px 0; }
+  #sheet-doc ul, #sheet-doc ol { margin: 4px 0; padding-left: 22px; }
+  #sheet-doc li.task { list-style: none; margin-left: -18px; }
+  #sheet-doc li.task input { margin: 0 4px 0 0; vertical-align: -1px; }
+  #sheet-doc code { padding: 0 3px; background: var(--card); border-radius: 3px; font: 12px ui-monospace, monospace; }
+  #sheet-doc pre { margin: 6px 0; padding: 8px; overflow-x: auto; background: var(--card); border-radius: 4px;
+                   font: 12px/1.4 ui-monospace, monospace; }
+  #sheet-doc pre code { padding: 0; background: none; }
+  #sheet-doc pre.raw { white-space: pre-wrap; background: none; padding: 4px 0; }
+  #sheet-doc hr { border: 0; border-top: 1px solid var(--line); }
+  #sheet-doc table.front-matter { margin: 6px 0; border-collapse: collapse; color: var(--dim); font-size: 12px; }
+  #sheet-doc .front-matter th, #sheet-doc .front-matter td { padding: 1px 10px 1px 0; text-align: left; vertical-align: top; }
+  #sheet-doc .front-matter th { font-weight: 400; }
+  /* On a wide screen the sheet is a side panel beside the board, so the board stays in view and the selection moves
+     under it. The scroll padding keeps a selected card out from under the panel. */
+  html.panel-open { --panel-w: 40vw; scroll-padding-right: var(--panel-w); }
+  html.panel-open #board { margin-right: var(--panel-w); --column-min: 120px; }
+  html:not(.phone) #sheet.open { display: block; position: fixed; top: var(--header-h); right: 0; bottom: 0; z-index: 6;
+                                 width: var(--panel-w); }
+  html:not(.phone) #sheet-panel { height: 100%; max-height: none; border-top: 0; border-left: 1px solid var(--line);
+                                  border-radius: 0; font-size: 13px; }
+  html:not(.phone) #sheet-panel button { padding: 4px 9px; }
+  html:not(.phone) #sheet-owner { padding: 4px 8px; }
   html.phone #confirm .phone-only { display: flex; gap: 8px; max-width: none; margin-top: 12px; padding: 0;
                                     background: none; border: 0; }
   html.phone #confirm .phone-only button { flex: 1; }
@@ -121,16 +145,15 @@
   <h1>plans</h1>
   <div id="repo-picker">
     <input id="repo" type="text" role="combobox" aria-expanded="false" aria-controls="repo-list"
-           aria-autocomplete="list" autocomplete="off" placeholder="all repos" title="repo (r)">
+           aria-autocomplete="list" autocomplete="off" placeholder="all repos" title="repo (/)">
     <ul id="repo-list" role="listbox"></ul>
   </div>
-  <input id="text" type="text" placeholder="/ filter id" autocomplete="off">
   <select id="owner" title="owner"></select>
   <select id="project" title="project"></select>
   <select id="status" title="status"></select>
   <select id="kind" title="kind"></select>
   <label><input id="waiting" type="checkbox"> waiting on owner</label>
-  <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, e owner, x cancel, o open, / filter, r repo</span>
+  <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo</span>
 </header>
 <nav id="tabs"></nav>
 <div id="board"></div>
@@ -143,7 +166,7 @@
 const ALL = "";
 let board = null;
 let selected_path = null;
-const filters = { repo: ALL, text: "", owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
+const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
 const element = (id) => document.getElementById(id);
 
 function make(tag, class_name, text) {
@@ -354,16 +377,20 @@ async function cancel_card() {
   ask(`Cancel ${doc.id}? It will: ${lines.join("; ")}.`, () => write("cancel", { path: doc.path, basis, apply: true }));
 }
 
-function open_doc() {
-  if (can_open(selected_path)) write("open", { path: selected_path });
+// The phone has no editor, and the server refuses the request from it.
+function open_in_editor() {
+  if (!is_phone() && can_open(selected_path)) write("open", { path: selected_path });
 }
 
-// The owner badge, links and inputs keep their own double-click meaning, so they never open the editor.
-function open_on_dblclick(card, path) {
+function open_view() {
+  if (selected_path && (doc_by_path(selected_path) || problem_by_path(selected_path))) open_sheet(selected_path);
+}
+
+// The owner badge, links and inputs keep their own double-click meaning, so they never open the view.
+function open_view_on_dblclick(card, path) {
   card.addEventListener("dblclick", (event) => {
     if (event.target.closest("a, .owner, input")) return;
-    select_card(path);
-    open_doc();
+    open_sheet(path);
   });
 }
 
@@ -419,14 +446,13 @@ const SELECT_FILTER_KEYS = { owner: "owner_session", project: "project", status:
 function doc_is_shown(doc) {
   const select_matches = Object.entries(SELECT_FILTER_KEYS)
     .every(([filter, key]) => filters[filter] === ALL || String(doc[key]) === filters[filter]);
-  const text_matches = !filters.text || doc.id.includes(filters.text);
-  return select_matches && text_matches && (!filters.waiting || Boolean(doc.waiting_on));
+  return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
 }
 
-// An unreadable doc has no keys to filter on, so any select filter hides it, and the text filter matches its id.
-function problem_is_shown(problem) {
+// An unreadable doc has no keys to filter on, so any select filter hides it.
+function problem_is_shown() {
   const select_filter_set = Object.keys(SELECT_FILTER_KEYS).some((filter) => filters[filter] !== ALL);
-  return !select_filter_set && !filters.waiting && (!filters.text || problem.id.includes(filters.text));
+  return !select_filter_set && !filters.waiting;
 }
 
 function pr_link(repo, pr) {
@@ -461,9 +487,9 @@ function card_node(repo, doc) {
     return card;
   }
   card.addEventListener("click", () => select_card(doc.path));
-  open_on_dblclick(card, doc.path);
+  open_view_on_dblclick(card, doc.path);
   card.querySelector(".owner").addEventListener("click", () => { select_card(doc.path); edit_owner(); });
-  card.querySelector(".owner").title = "click or e: change the owner";
+  card.querySelector(".owner").title = "click or a: change the owner";
   card.addEventListener("pointerdown", (event) => start_drag(event, card, doc));
   return card;
 }
@@ -477,7 +503,7 @@ function problem_node(problem) {
     return card;
   }
   card.addEventListener("click", () => select_card(problem.path));
-  open_on_dblclick(card, problem.path);
+  open_view_on_dblclick(card, problem.path);
   return card;
 }
 
@@ -508,7 +534,7 @@ function render() {
   if (is_phone()) return render_phone();
   const container = element("board");
   const statuses = board.statuses;
-  container.style.gridTemplateColumns = `repeat(${statuses.length}, minmax(150px, 1fr))`;
+  container.style.gridTemplateColumns = `repeat(${statuses.length}, minmax(var(--column-min, 150px), 1fr))`;
   const column_row = make("div");
   column_row.id = "column-row";
   column_row.append(...statuses.map((status) => make("div", "column-head", status)));
@@ -542,6 +568,7 @@ function render() {
   if (!cards.some((card) => card.dataset.path === selected_path)) selected_path = cards.length ? cards[0].dataset.path : null;
   mark_selected();
   measure_heads();
+  if (sheet_path) follow_selection();
 }
 
 function all_cards() { return [...document.querySelectorAll("#board .card")]; }
@@ -552,6 +579,7 @@ function selected_card() { return all_cards().find((card) => card.dataset.path =
 function select_card(path, edge) {
   selected_path = path;
   mark_selected();
+  if (sheet_path && path !== sheet_path) follow_selection();
   const card = selected_card();
   if (!card) return;
   if (!edge) {
@@ -561,7 +589,7 @@ function select_card(path, edge) {
   window.scrollTo({ top: edge === "top" ? 0 : document.documentElement.scrollHeight });
   // The column's end card can sit in a lane far from the page end. Keep it in view rather than lose the selection.
   // The window also scrolls sideways when the columns do not fit, so reveal the card's column as "nearest" does.
-  const view_width = document.documentElement.clientWidth;
+  const view_width = document.documentElement.clientWidth - side_panel_width();
   const side = card.getBoundingClientRect();
   if (side.left < 0) window.scrollBy({ left: side.left });
   else if (side.right > view_width) window.scrollBy({ left: Math.min(side.right - view_width, side.left) });
@@ -614,9 +642,9 @@ function step_column(offset) {
 }
 
 // The phone layout. Below PHONE_MAX_WIDTH the board shows one status at a time, with a tab per status and a swipe to
-// the next or previous one. A tap on a card opens a sheet with its actions and the doc text. The sheet writes through
-// write(), as the keys do, so it gets the same refusals. It has no cancel and no editor: the server refuses both from
-// the phone.
+// the next or previous one. A tap on a card opens a sheet with its actions and the rendered doc. The sheet writes
+// through write(), as the keys do, so it gets the same refusals. It has no cancel and no editor: the server refuses
+// both from the phone. On a wide screen the same sheet is the doc view, a side panel that follows the selection.
 const PHONE_MAX_WIDTH = 600;
 const SWIPE_MIN_PX = 60;
 const DEFAULT_TAB = "building";
@@ -631,7 +659,7 @@ function apply_layout() {
   element("board").style.gridTemplateColumns = "";
   // The tabs replace the status filter, which the phone hides.
   if (is_phone() && filters.status !== ALL) { filters.status = ALL; element("status").value = ALL; }
-  if (!is_phone()) close_sheet();
+  mark_panel_open();
   if (board) render();
 }
 
@@ -720,16 +748,37 @@ function problem_by_path(path) {
 }
 
 function open_sheet(path) {
+  if (path === sheet_path) return select_card(path);
   sheet_path = path;
-  select_card(path);
+  selected_path = path;
   element("sheet").classList.add("open");
+  mark_panel_open();
   build_sheet();
   refresh_sheet();
+  // Select only now, so the scroll sees the board the panel narrowed.
+  select_card(path);
 }
 
 function close_sheet() {
   sheet_path = null;
   element("sheet").classList.remove("open");
+  mark_panel_open();
+}
+
+function side_panel_width() {
+  return sheet_path && !is_phone() ? element("sheet").offsetWidth : 0;
+}
+
+function mark_panel_open() {
+  document.documentElement.classList.toggle("panel-open", Boolean(sheet_path) && !is_phone());
+}
+
+// The desktop panel shows the selected card. A selection the filters cleared leaves the panel on its doc.
+function follow_selection() {
+  if (is_phone() || !selected_path || selected_path === sheet_path) return refresh_sheet();
+  sheet_path = selected_path;
+  build_sheet();
+  refresh_sheet();
 }
 
 element("sheet").addEventListener("click", (event) => { if (event.target === element("sheet")) close_sheet(); });
@@ -776,13 +825,15 @@ function build_sheet() {
     free.addEventListener("click", () => send("none"));
     input.addEventListener("keydown", (event) => {
       event.stopPropagation();
-      if (event.key === "Enter") { send(input.value); input.blur(); }
+      if (event.key === "Enter") send(input.value);
+      if (event.key === "Enter" || event.key === "Escape") input.blur();
     });
     owner.append(input, save, free);
     panel.append(make("h3", "", "Status"), statuses, make("h3", "", "Rank"), ranks, make("h3", "", "Owner"), owner);
   }
-  const doc_text = make("pre", "", "Loading...");
+  const doc_text = make("div", "", "Loading...");
   doc_text.id = "sheet-doc";
+  shown_doc_text = null;
   panel.append(make("h3", "", "Doc"), doc_text);
   panel.scrollTop = 0;
 }
@@ -821,17 +872,33 @@ function refresh_sheet() {
   load_sheet_doc(sheet_path);
 }
 
+// The text the doc box shows, so a board update that leaves the doc as it was keeps the box and its scroll.
+let shown_doc_text = null;
+
 async function load_sheet_doc(path) {
   let text;
+  let readable = false;
   try {
     const response = await fetch(`/api/doc?path=${encodeURIComponent(path)}`, { cache: "no-store" });
     const answer = await response.json();
+    readable = response.ok;
     text = response.ok ? answer.text : `Cannot read the doc: ${answer.error}`;
   } catch {
     text = "Cannot reach the server.";
   }
   // The sheet can have moved to another card while the request ran.
-  if (path === sheet_path) element("sheet-doc").textContent = text;
+  if (path !== sheet_path) return;
+  // An unreadable doc shows its raw text, since the parse that failed is what the owner needs to see.
+  const doc = readable ? doc_by_path(path) : null;
+  const shown = `${Boolean(doc)}\n${text}`;
+  if (shown === shown_doc_text) return;
+  shown_doc_text = shown;
+  const box = element("sheet-doc");
+  if (!doc) return box.replaceChildren(make("pre", "raw", text));
+  const repo = board.repos.find((repo) => repo.docs.includes(doc));
+  const issue_href = (number) => (repo.web_url ? `${repo.web_url}/issues/${number}` : null);
+  // Safe as innerHTML: render_markdown escapes the doc text before it adds any markup (see markdown:start).
+  box.innerHTML = render_markdown(text, { issue_href });
 }
 
 phone_query.addEventListener("change", apply_layout);
@@ -872,6 +939,155 @@ function rank_repos(query, repos) {
     .map((entry) => entry.repo);
 }
 // fuzzy:end
+
+// markdown:start
+// The doc view's renderer, for the markdown subset plan docs use. The doc text comes from disk and this page can
+// write, so each line is escaped whole before any markup goes in, and markup comes only from the fixed tags here. A
+// link keeps only an http(s) target or an issue ref. Anything else stays escaped text.
+const MD_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const MD_SAFE_URL = /^https?:\/\/\S+$/i;
+// A held piece of finished markup, so later patterns cannot match inside it. The input loses its NUL characters
+// first, so a doc cannot forge one.
+const MD_HOLD = /\u0000(\d+)\u0000/g;
+
+function escape_html(text) {
+  return String(text).replace(/[&<>"']/g, (character) => MD_ESCAPES[character]);
+}
+
+function md_link(href, label) {
+  return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+}
+
+// `escaped` is already escaped. issue_href(n) gives the target of a #N ref, or null to leave it as text.
+function md_inline(escaped, issue_href) {
+  const held = [];
+  const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
+  let text = escaped.replace(/`([^`]+)`/g, (whole, code) => hold(`<code>${code}</code>`));
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (whole, label, url) => (MD_SAFE_URL.test(url) ? hold(md_link(url, label)) : whole));
+  // Escaped text holds & only as an entity, so &amp; is the one entity a bare link may span. The others end it.
+  text = text.replace(/(^|[^\w/=])(https?:\/\/(?:[^\s&\u0000]|&amp;)+?)([.,;:!?)\]]*(?=\s|&(?!amp;)|\u0000|$))/g,
+    (whole, before, url, after) => `${before}${hold(md_link(url, url))}${after}`);
+  // Not after & (the &#39; entity), a word, a slash (other/repo#12) or another #.
+  text = text.replace(/(^|[^\w&/#])#(\d+)\b/g, (whole, before, number) => {
+    const href = issue_href ? issue_href(Number(number)) : null;
+    return href && MD_SAFE_URL.test(href) ? `${before}${hold(md_link(escape_html(href), `#${number}`))}` : whole;
+  });
+  text = text.replace(/\*\*(?=\S)(.*?\S)\*\*/g, (whole, inner) => `<strong>${inner}</strong>`);
+  text = text.replace(/(^|[^\w])__(?=\S)(.*?\S)__(?!\w)/g, (whole, before, inner) => `${before}<strong>${inner}</strong>`);
+  text = text.replace(/(^|[^\w*])\*([^\s*]|[^\s*][^*]*?[^\s*])\*(?![\w*])/g,
+    (whole, before, inner) => `${before}<em>${inner}</em>`);
+  // Single _ only at word edges, so snake_case names stay whole.
+  text = text.replace(/(^|[^\w])_([^\s_]|[^\s_][^_]*?[^\s_])_(?!\w)/g, (whole, before, inner) => `${before}<em>${inner}</em>`);
+  // A held piece holds only earlier pieces (code in a link label), so the recursion ends.
+  const restore = (piece) => piece.replace(MD_HOLD, (whole, index) => restore(held[Number(index)]));
+  return restore(text);
+}
+
+function md_front_matter(lines) {
+  const rows = lines.map((line) => {
+    const pair = /^([^:\s][^:]*):\s?(.*)$/.exec(line);
+    return pair ? `<tr><th>${escape_html(pair[1])}</th><td>${escape_html(pair[2])}</td></tr>`
+      : `<tr><td colspan="2">${escape_html(line)}</td></tr>`;
+  });
+  return `<table class="front-matter">${rows.join("")}</table>`;
+}
+
+const MD_FENCE = /^\s*(`{3,}|~{3,})/;
+const MD_HEADING = /^(#{1,6})\s+(.*?)(\s+#+)?\s*$/;
+const MD_RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
+const MD_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+const MD_TASK = /^\[([ xX])\]\s+(.*)$/;
+const MD_TABLE = /^\s*\|/;
+
+// Headings, nested bullet and numbered lists, task items as disabled checkboxes, fenced code, rules, and the front
+// matter as a key/value table. A table stays its plain text in a pre block.
+function render_markdown(text, options = {}) {
+  const inline = (line) => md_inline(escape_html(line), options.issue_href);
+  const lines = String(text).replace(/\u0000/g, "�").replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let at = 0;
+  if (lines[0] === "---") {
+    const end = lines.indexOf("---", 1);
+    if (end > 0) {
+      out.push(md_front_matter(lines.slice(1, end)));
+      at = end + 1;
+    }
+  }
+  let paragraph = [];
+  const lists = [];
+  const flush_paragraph = () => {
+    if (paragraph.length) out.push(`<p>${paragraph.map(inline).join("\n")}</p>`);
+    paragraph = [];
+  };
+  const close_lists = (indent) => {
+    while (lists.length && lists[lists.length - 1].indent > indent) out.push(`</li></${lists.pop().tag}>`);
+  };
+  const end_block = () => { flush_paragraph(); close_lists(-1); };
+  for (; at < lines.length; at += 1) {
+    const line = lines[at];
+    const fence = MD_FENCE.exec(line);
+    if (fence) {
+      // A fence indented under a list item stays in that item.
+      if (/^\s/.test(line) && lists.length) flush_paragraph();
+      else end_block();
+      const body = [];
+      for (at += 1; at < lines.length && !lines[at].trim().startsWith(fence[1]); at += 1) body.push(lines[at]);
+      out.push(`<pre><code>${escape_html(body.join("\n"))}</code></pre>`);
+      continue;
+    }
+    if (!line.trim()) { end_block(); continue; }
+    const heading = MD_HEADING.exec(line);
+    if (heading) {
+      end_block();
+      out.push(`<h${heading[1].length}>${inline(heading[2])}</h${heading[1].length}>`);
+      continue;
+    }
+    if (MD_RULE.test(line)) { end_block(); out.push("<hr>"); continue; }
+    if (MD_TABLE.test(line)) {
+      end_block();
+      const rows = [];
+      for (; at < lines.length && MD_TABLE.test(lines[at]); at += 1) rows.push(lines[at]);
+      at -= 1;
+      out.push(`<pre class="table">${escape_html(rows.join("\n"))}</pre>`);
+      continue;
+    }
+    const item = MD_ITEM.exec(line);
+    if (item) {
+      flush_paragraph();
+      const indent = item[1].replace(/\t/g, "    ").length;
+      const tag = /\d/.test(item[2]) ? "ol" : "ul";
+      close_lists(indent);
+      const top = lists[lists.length - 1];
+      if (top && top.indent === indent && top.tag !== tag) out.push(`</li></${lists.pop().tag}>`);
+      const same_list = lists.length && lists[lists.length - 1].indent === indent;
+      if (same_list) {
+        out.push("</li>");
+      } else {
+        const number = tag === "ol" ? parseInt(item[2], 10) : 1;
+        out.push(number === 1 ? `<${tag}>` : `<${tag} start="${number}">`);
+        lists.push({ indent, tag });
+      }
+      const task = MD_TASK.exec(item[3]);
+      if (task) {
+        const checked = task[1] === " " ? "" : " checked";
+        out.push(`<li class="task"><input type="checkbox" disabled${checked}> ${inline(task[2])}`);
+      } else {
+        out.push(`<li>${inline(item[3])}`);
+      }
+      continue;
+    }
+    // An indented line continues the list item above it.
+    if (lists.length && /^\s/.test(line) && !paragraph.length) {
+      out.push(`\n${inline(line.trim())}`);
+      continue;
+    }
+    if (lists.length) close_lists(-1);
+    paragraph.push(line);
+  }
+  end_block();
+  return out.join("\n");
+}
+// markdown:end
 
 // The repo picker is a combobox. A repo with no plan docs and no unreadable docs has nothing to show, so it is
 // not listed. The row with root ALL stands for all repos.
@@ -1081,16 +1297,16 @@ const KEYS = {
   k: () => step_in_column(-1),
   h: () => step_column(-1),
   l: () => step_column(1),
-  r: () => element("repo").focus(),
-  "/": () => element("text").focus(),
+  "/": () => element("repo").focus(),
   H: () => shift_status(-1),
   L: () => shift_status(1),
   J: () => shift_rank(1),
   K: () => shift_rank(-1),
-  e: () => edit_owner(),
+  a: () => edit_owner(),
+  e: () => open_in_editor(),
   x: () => cancel_card(),
-  o: () => open_doc(),
-  Enter: () => open_doc(),
+  o: () => open_view(),
+  Enter: () => open_view(),
 };
 
 document.addEventListener("keydown", (event) => {
@@ -1124,13 +1340,10 @@ document.addEventListener("keydown", (event) => {
   action();
 });
 
-// A select or checkbox gives focus back after a pick, so the vim keys work again at once. The text filter keeps its
-// focus until Enter or Escape.
+// A select or checkbox gives focus back after a pick, so the vim keys work again at once.
 for (const id of ["owner", "project", "status", "kind"]) {
   element(id).addEventListener("change", () => { filters[id] = element(id).value; element(id).blur(); render(); });
 }
-element("text").addEventListener("input", () => { filters.text = element("text").value; render(); });
-element("text").addEventListener("keydown", (event) => { if (event.key === "Enter") event.target.blur(); });
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
