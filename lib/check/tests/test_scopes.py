@@ -72,7 +72,6 @@ CASES = [
     ("home/voxcmd/tests/run-phrases.sh", " voxphrases"),
     ("home/voxcmd/tests/run-calendar.sh", " voxrest"),
     ("home/voxcmd/tests/run-wake.sh", " voxrest"),
-    ("home/voxcmd/tests/wake_test.py", " voxrest"),
     ("home/voxcmd/tests/run-firefox-extension.sh", " voxrest"),
     ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxrest"),
     ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxrest"),

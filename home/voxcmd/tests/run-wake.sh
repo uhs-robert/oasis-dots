@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# The wake word listener: the Python listener's decision logic (wake_test.py, fake scores and stubbed commands),
-# `voxcmd wake` against a stub systemctl, and the Rust `voxcmd wake listen` run in the background against a stub
-# pw-record, inside the sandbox. The microphone is never opened.
+# The wake word listener: `voxcmd wake` against a stub systemctl, the unit file and its handover from the old Python
+# unit, and `voxcmd wake listen` run in the background against a stub pw-record, inside the sandbox. The microphone is
+# never opened.
 #
 #   home/voxcmd/tests/run-wake.sh
 set -euo pipefail
@@ -14,7 +14,6 @@ if [ -z "${SANDBOX_DIR:-}" ]; then
   exec "$tests_dir/sandbox.sh" "$0" "$@"
 fi
 # In the sandbox, so a notify-send the tests miss reaches its stub, never the desktop.
-python3 -I "$tests_dir/wake_test.py"
 
 # A systemctl that keeps the unit's state in a file: start sets it, stop clears it.
 systemctl_dir="$SANDBOX_DIR/wake-bin"
@@ -261,6 +260,66 @@ check "daemon passes no ducking, voxtype-duck owns it" 0 "$(daemon_args | grep -
 check "daemon passes no ducking even from the environment" 0 "$(VOXCMD_DUCK_MEDIA_VOLUME=0 daemon_args | grep -c -e '--duck-media-volume')"
 rm -f "$voice_env"
 unset VOXCMD_VOICE_ENV_FILE
+
+# ---- the unit file, and the handover from the Python unit ---------------------------------------------------------------
+unit_file="$tests_dir/../../systemd/.config/systemd/user/voxcmd-wake.service"
+unit_line() { grep -c -x -F -- "$1" "$unit_file" || true; }
+check "the unit runs the Rust listener" 1 "$(unit_line 'ExecStart=%h/.local/bin/voxcmd wake listen')"
+check "the unit fetches the models first, ignoring a failed download" 1 "$(unit_line 'ExecStartPre=-%h/.local/bin/voxcmd wake listen --fetch-models')"
+check "the unit does not restart a missing setup" 1 "$(unit_line 'RestartPreventExitStatus=78')"
+check "the unit restarts a crash" 1 "$(unit_line 'Restart=on-failure')"
+check "the unit keeps its start timeout for the model download" 1 "$(unit_line 'TimeoutStartSec=5min')"
+check "the unit removes wake.json when it stops" 1 "$(grep -c '^ExecStopPost=.*wake.json$' "$unit_file" || true)"
+check "the unit no longer runs Python" 0 "$(grep -c -i 'python\|voxcmd-wake$' "$unit_file" || true)"
+
+# The swap order from the plan: stop the old unit, install the new one, daemon-reload, start. The stub systemctl keeps
+# the microphone as a file that the running unit holds: a start while it is held is an overlap. The steps are the ones
+# the swap runs by hand; nothing here touches a real unit.
+handover_dir="$SANDBOX_DIR/handover"
+mkdir -p "$handover_dir/bin"
+cat >"$handover_dir/bin/systemctl" <<'STUB'
+#!/bin/sh
+d="$SANDBOX_DIR/handover"
+printf '%s\n' "$*" >>"$d/log"
+case "$*" in
+"--user stop voxcmd-wake.service") rm -f "$d/mic" "$d/active" ;;
+"--user daemon-reload") : >"$d/reloaded" ;;
+"--user start voxcmd-wake.service")
+  if [ -e "$d/mic" ]; then echo overlap >>"$d/log"; exit 1; fi
+  echo "$(cat "$d/installed")" >"$d/mic"
+  : >"$d/active"
+  ;;
+"--user is-active voxcmd-wake.service") [ -e "$d/active" ] ;;
+esac
+STUB
+chmod +x "$handover_dir/bin/systemctl"
+echo python >"$handover_dir/installed"
+echo python >"$handover_dir/mic"
+: >"$handover_dir/active"
+: >"$handover_dir/log"
+install_new_unit() {
+  echo rust >"$handover_dir/installed"
+  echo "install" >>"$handover_dir/log"
+}
+swap_unit() {
+  local sc="$handover_dir/bin/systemctl"
+  if "$sc" --user is-active voxcmd-wake.service; then "$sc" --user stop voxcmd-wake.service; fi
+  install_new_unit
+  "$sc" --user daemon-reload
+  "$sc" --user start voxcmd-wake.service
+}
+swap_unit
+check "the swap stops the old unit, installs the new one, reloads, then starts" \
+  "--user is-active voxcmd-wake.service|--user stop voxcmd-wake.service|install|--user daemon-reload|--user start voxcmd-wake.service" \
+  "$(paste -sd'|' "$handover_dir/log")"
+check "the new unit holds the microphone alone after the swap" rust "$(cat "$handover_dir/mic")"
+check "the swap never starts a unit while the old one holds the microphone" 0 "$(grep -c '^overlap$' "$handover_dir/log" || true)"
+check "a start with the old unit still holding the microphone is refused" 1 "$(
+  echo python >"$handover_dir/mic"
+  "$handover_dir/bin/systemctl" --user start voxcmd-wake.service >/dev/null 2>&1
+  echo $?
+)"
+rm -f "$handover_dir/mic"
 
 # ---- voxcmd wake listen: the lifecycle, against stub pw-record, pactl and playerctl ------------------------------------
 # The real listener binary runs in the background with stubs first on PATH, so the microphone is never opened: pw-record
