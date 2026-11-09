@@ -237,6 +237,10 @@ syncthing-folders:
     source lib/install/load.sh
     syncthing_add_folders
 
+# Copy the laptop's bar state, theme, FF7 lock audio and fonts to an agent host, once (never weather.local.json)
+agent-host-seed host:
+    lib/install/agent-host-seed "{{host}}"
+
 # Clone or link external repos into repos/ without a full install; pass --dev to use $GITHUB_DIR (default ~/Development)
 repos *ARGS:
     #!/usr/bin/env bash

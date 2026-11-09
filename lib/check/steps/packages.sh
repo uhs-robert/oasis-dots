@@ -6,13 +6,15 @@ script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo_dir=$(CDPATH='' cd -- "$script_dir/../../.." && pwd)
 pkg_dir="$repo_dir/packages"
 
-# Every manifest in packages/ lists OS/language package names, except these two:
+# Every manifest in packages/ lists OS/language package names, except these three:
 # stow.ini names dotfile directories and repos.ini names git repositories, so a
-# name shared with a real package there is not a duplicate.
+# name shared with a real package there is not a duplicate. agent-host.ini lists
+# packages that arch.ini [DESKTOP] already holds: --server skips that section, and
+# the agent host reads them from here. Its own names are still checked below.
 set --
 for manifest in "$pkg_dir"/*.ini; do
   case "${manifest##*/}" in
-  stow.ini | repos.ini) continue ;;
+  stow.ini | repos.ini | agent-host.ini) continue ;;
   esac
   set -- "$@" "$manifest"
 done
@@ -33,6 +35,8 @@ packages=$(
 }
 
 duplicates=$(printf '%s\n' "$packages" | sort | uniq -d)
+agent_host_duplicates=$(awk '/^[[:space:]]*($|#|\[)/ { next } { print $1 }' "$pkg_dir/agent-host.ini" | sort | uniq -d)
+duplicates=$(printf '%s\n%s' "$duplicates" "$agent_host_duplicates" | sed '/^$/d')
 
 if [ -n "$duplicates" ]; then
   printf 'Duplicate package declarations:\n%s\n' "$duplicates" >&2

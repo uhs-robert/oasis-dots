@@ -70,6 +70,9 @@ print_failed_packages() {
 install_packages() {
   info "Installing system packages..."
   mapfile -t pkgs < <(read_manifest "$DISTRO.ini" CORE SYSTEM CLI DEV)
+  if [[ "${OPT_AGENT_HOST:-0}" -eq 1 ]]; then
+    mapfile -t -O "${#pkgs[@]}" pkgs < <(read_pkgs agent-host.ini)
+  fi
   install_with_retry pacman "${pkgs[@]}"
   success "System packages processed"
   [[ "${OPT_SERVER:-0}" -eq 1 ]] || check_quickshell_version

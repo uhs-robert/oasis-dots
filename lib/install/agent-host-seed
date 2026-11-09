@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# One-time copy of the laptop's bar state, theme, FF7 lock audio and fonts to an agent host, so the shadow bar there looks
+# like the real one. Usage: agent-host-seed <host>
+# Existing files on the host are never overwritten, so a rerun cannot undo state the host has made since.
+# weather.local.json (a location) never leaves the laptop.
+set -euo pipefail
+
+host=${1:?usage: agent-host-seed <host>}
+# The laptop's ssh config runs a RemoteCommand (a tmux attach) for interactive logins; rsync needs a plain connection.
+rsh='ssh -o RemoteCommand=none'
+
+# Copies a directory's contents into the same place under the host's home. The remote mkdir comes first because rsync
+# makes no parent directories before 3.2.3.
+copy() {
+  local dir=$1
+  shift
+  if [[ ! -d $HOME/$dir ]]; then
+    echo "skip $dir: not on this machine"
+    return 0
+  fi
+  rsync -a --ignore-existing --exclude=weather.local.json -e "$rsh" --rsync-path="mkdir -p $dir && rsync" "$@" "$HOME/$dir/" "$host:$dir/"
+}
+
+copy .local/state/quickshell --include='*.json' --exclude='*'
+copy .local/state/hypr --include='*.json' --exclude='*'
+# The part of the theme directory that the theme switcher generates; the rest is stowed from the repo.
+copy .config/hypr/theme --include=.current_theme --exclude='*'
+copy .config/quickshell/features/lock/skins/ff7/audio
+# The shadow reads fonts here, and install_fonts is skipped under --server.
+copy .local/share/fonts

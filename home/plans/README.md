@@ -104,7 +104,7 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `J` `K` | move the card one place down or up in its cell (its rank) |
 | `o`, Enter | open the doc view of the card; Esc closes it |
 | double-click a card | the same as `o` (not on the owner badge or a link) |
-| `e` | open the doc in `$EDITOR` in a new terminal |
+| `e` | open the doc in `$EDITOR` in a new terminal (not on a host without a Wayland session) |
 | `a` | edit the owner: a session name or `none` |
 | `x` | cancel the card: the prompt lists every change (PR, issue, worktree, files) and `y` runs it. A card that a session owns is refused: set the owner to none with `a` first. There is no board key for `close` |
 | `/` | the repo search box |
@@ -131,6 +131,10 @@ A card owned on another host (see `owner_host` under [Usage](#usage)) has a dash
 `e` also opens a read-only card owned on another host. A save there writes the file outside the store lock and the host rule, so the other host's copy can clash in sync.
 
 The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port, unless `remote.json` opens the phone host (see [On the phone](#on-the-phone)). A write also needs the board's own request header, so a page on another site cannot write.
+
+### A second board on a headless host
+
+An agent host (`./install.sh --agent-host`, see [the installer](../../lib/install/README.md#agent-host)) runs its own `plans serve` from boot: linger is on and a drop-in wants the unit from `default.target`. Run `tailscale serve --bg --https=443 http://127.0.0.1:8765` there and write its `remote.json`, so the board has its own tailnet address. Each board edits only the docs owned on its own host and shows the others read-only. The host has no Wayland session, so the board reports that to the page and `e` is gone from the key hint and only says so when pressed.
 
 ### On the phone
 
