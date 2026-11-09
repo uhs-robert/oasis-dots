@@ -39,6 +39,8 @@ Every piece has one owning session, named in `owner_session`, or `none`. A sessi
 - `plans handoff --to <session> <id>` moves a doc to another session.
 - `--force` overrides an owner. Use it only with the owner's word.
 
+When `.plans/` syncs between machines, `claim` also records the owner's host in `owner_host`. A doc owned on another host stays owned there: this host never frees it, and only that host's board edits it. To move a piece to a session on another host, run `plans handoff` on the host that owns it. [Usage](../home/plans/README.md#usage) has the rules.
+
 Two writers can race on one doc, for example an agent and the board. The write path reads the doc, locks `.plans/`, reads it again and compares the keys it changes. If another writer changed one of them, the write stops with exit code 3 and leaves the file as it was. Writes to different keys both land.
 
 ## Handoff

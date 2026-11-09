@@ -19,6 +19,7 @@ from plans import parse, retire, server, store  # noqa: E402
 WRITE = {"Content-Type": "application/json", server.WRITE_HEADER: "1"}
 # Agent edits go through this, so a test that wraps store.update to step in mid-write does not see them.
 AGENT_UPDATE = store.update
+OTHER_HOST = "nightshift.invalid"
 
 
 class WriteTest(unittest.TestCase):
@@ -210,10 +211,10 @@ class OwnerEditRaceTest(WriteTest):
         path = self.add("demo", 10, owner="me-1")
         self.fixture.start()
 
-        def claim_then_write(doc, changes):
+        def claim_then_write(doc, changes, **kwargs):
             # The owner re-claims after the board read the doc and before the board's write takes the lock.
             AGENT_UPDATE(parse.load(path), {"owner_session_id": "id-a", "owner_session_pid": 100})
-            return AGENT_UPDATE(doc, changes)
+            return AGENT_UPDATE(doc, changes, **kwargs)
 
         with mock.patch.object(server.store, "update", claim_then_write):
             status, _ = self.post("update", {"path": path, "basis": {"owner_session": "me-1"}, "changes": {"owner_session": "other-2"}})
@@ -328,12 +329,12 @@ class MoveTest(WriteTest):
         real_update = store.update
         calls = []
 
-        def update_with_agent_in_between(doc, changes, date=None):
+        def update_with_agent_in_between(doc, changes, date=None, **kwargs):
             calls.append(doc.path)
             if len(calls) == 2:
                 self.agent_sets(paths["c"], rank=99)
                 self.agent_sets(paths["b"], status="review")
-            return real_update(doc, changes, date)
+            return real_update(doc, changes, date, **kwargs)
 
         with mock.patch.object(store, "update", update_with_agent_in_between):
             status, data = self.move(paths["d"], "planned", 4, above=paths["a"], below=paths["b"])
@@ -458,6 +459,88 @@ class OpenTest(WriteTest):
         popen.assert_not_called()
 
 
+class RemoteOwnedWriteTest(WriteTest):
+    """Only the owner's host writes a doc. This board shows a doc owned elsewhere and refuses every write to it."""
+
+    def setUp(self):
+        super().setUp()
+        self.far = self.add("far", 10, owner="far-1")
+        # Pid 400 runs no Claude here. On the owner's host it is a live session.
+        self.agent_sets(self.far, owner_session_id="id-z", owner_session_pid=400, owner_host=OTHER_HOST)
+        self.near = self.add("near", 20, owner="near-1")
+        self.agent_sets(self.near, owner_session_id="id-a", owner_session_pid=100, owner_host=socket.gethostname())
+
+    def shown(self, path):
+        return next(doc for doc in self.fixture.board_json()["repos"][0]["docs"] if doc["path"] == path)
+
+    def writes(self, path):
+        """One request per write kind the board sends, each built from what the page shows."""
+        doc = self.shown(path)
+        owner_basis = {key: doc[key] for key in ("owner_session", "owner_session_id", "owner_session_pid", "owner_host")}
+        return [
+            ("update", {"path": path, "basis": {"status": doc["status"]}, "changes": {"status": "building"}}),
+            ("move", {"path": path, "basis": {"status": "building", "rank": doc["rank"]}, "status": "review",
+                      "above": None, "below": None}),
+            ("update", {"path": path, "basis": owner_basis, "changes": {"owner_session": "none"}}),
+        ]
+
+    def read(self, path):
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_the_board_check_keeps_a_doc_owned_elsewhere_and_marks_it(self):
+        self.fixture.start(watch=False)
+        self.fixture.board.poll()
+        self.fixture.board.poll()
+        docs = {doc["id"]: doc for doc in self.fixture.board_json()["repos"][0]["docs"]}
+        self.assertEqual((docs["far"]["owner_session"], docs["far"]["remote_host"]), ("far-1", OTHER_HOST))
+        self.assertEqual((docs["near"]["owner_session"], docs["near"]["remote_host"]), ("near-1", ""))
+        self.assertEqual(self.key(self.far, "owner_session_pid"), 400)
+
+    def test_each_write_kind_is_refused_on_a_doc_owned_elsewhere(self):
+        self.fixture.start()
+        before = self.read(self.far)
+        for action, body in self.writes(self.far):
+            with self.subTest(action=action, changes=body.get("changes")):
+                status, data = self.post(action, body)
+                self.assertEqual(status, 403)
+                self.assertEqual(data["error"], f"far is owned on {OTHER_HOST}; edit it on that host's board")
+        self.assertEqual(self.read(self.far), before)
+
+    def test_each_write_kind_works_on_a_doc_owned_here(self):
+        self.fixture.start()
+        for action, body in self.writes(self.near):
+            with self.subTest(action=action, changes=body.get("changes")):
+                status, data = self.post(action, body)
+                self.assertEqual(status, 200, data)
+        self.assertEqual([self.key(self.near, key) for key in ("status", "owner_session", "owner_host")], ["review", "none", ""])
+
+    def test_a_claim_synced_in_from_another_host_during_a_write_refuses_it(self):
+        path = self.add("free", 30)
+        self.fixture.start()
+
+        def claim_then_write(doc, changes, **kwargs):
+            AGENT_UPDATE(parse.load(path), {"owner_session": "far-1", "owner_host": OTHER_HOST})
+            return AGENT_UPDATE(doc, changes, **kwargs)
+
+        with mock.patch.object(server.store, "update", claim_then_write):
+            status, data = self.post("update", {"path": path, "basis": {"status": "planned"}, "changes": {"status": "building"}})
+        self.assertEqual(status, 403, data)
+        self.assertEqual((self.key(path, "status"), self.key(path, "owner_host")), ("planned", OTHER_HOST))
+
+    def test_a_renumber_skips_a_doc_owned_elsewhere(self):
+        paths = {doc_id: self.add(doc_id, rank, project="cell") for doc_id, rank in (("a", 1), ("b", 2), ("c", 3), ("d", 4))}
+        self.agent_sets(paths["b"], owner_session="far-1", owner_host=OTHER_HOST)
+        self.fixture.start()
+        status, data = self.post("move", {"path": paths["d"], "basis": {"status": "planned", "rank": 4}, "status": "planned",
+                                          "above": paths["a"], "below": paths["b"]})
+        self.assertEqual(status, 200, data)
+        # The renumber spans the repo, so the setUp's doc owned elsewhere is skipped too.
+        self.assertEqual([skip["id"] for skip in data["skipped"]], ["b", "far"])
+        self.assertEqual([self.key(paths[doc_id], "rank") for doc_id in "adbc"], [10, 20, 2, 40])
+        self.assertEqual((self.key(self.far, "rank"), self.key(self.near, "rank")), (10, 60))
+
+
 class CancelEndpointTest(WriteTest):
     BASIS_KEYS = retire.GUARDED_KEYS
 
@@ -531,6 +614,18 @@ class CancelEndpointTest(WriteTest):
             self.assertIn("dotfiles-3", data["error"])
         self.assertTrue(os.path.exists(self.path))
         self.assertEqual(self.tools.calls(), [])
+
+    def test_a_doc_owned_on_another_host_is_refused_and_one_owned_here_is_not(self):
+        self.rewrite(owner_host=OTHER_HOST)
+        for apply in (False, True):
+            status, data = self.post_with(self.body(apply=apply))
+            self.assertEqual(status, 403)
+            self.assertIn(f"owned on {OTHER_HOST}", data["error"])
+        self.assertTrue(os.path.exists(self.path))
+        self.assertEqual(self.tools.calls(), [])
+        self.rewrite(owner_host=socket.gethostname())
+        self.assertTrue(wait_until(lambda: self.fixture.board_json()["repos"][0]["docs"][0]["remote_host"] == ""))
+        self.assertEqual(self.post_with(self.body())[0], 200)
 
     def test_a_basis_without_the_guarded_keys_or_for_an_unknown_path_is_refused(self):
         body = self.body(apply=True)

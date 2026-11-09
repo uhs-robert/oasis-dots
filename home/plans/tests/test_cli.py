@@ -4,6 +4,7 @@ import datetime
 import io
 import json
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -60,6 +61,7 @@ SESSION_B = {"CLAUDE_CODE_SESSION_ID": "id-b", "CLAUDE_PID": "200"}
 # The fake /proc runs Claude at the session pids above and at the resumed pid 300. DEAD_PID runs another program.
 LIVE_PIDS = (100, 200, 300)
 DEAD_PID = 400
+OTHER_HOST = "nightshift.invalid"
 
 
 class CliTest(unittest.TestCase):
@@ -542,6 +544,75 @@ class CliTest(unittest.TestCase):
             with self.subTest(pair=pair):
                 self.assertIn("cannot be set", self.plans("set", "demo", pair, code=2).stderr)
         self.assertNotIn("owner_session_id", self.read(path))
+
+    def host_of(self, path):
+        return parse.load(path).keys.get("owner_host")
+
+    def add_owned_on(self, doc_id, rank, owner, session_id, pid, host):
+        path = self.add_owned(doc_id, rank, owner, session_id, pid)
+        self.write(path, self.read(path).replace("updated:", f"owner_host: {host}\nupdated:"))
+        return path
+
+    def test_claim_writes_this_host_and_handoff_clears_it(self):
+        path = self.add("demo", 10)
+        self.plans("claim", "demo", "--as", "me-1", env=SESSION_A)
+        self.assertEqual(self.host_of(path), socket.gethostname())
+        self.assertEqual(self.plans("lint").stdout, "")
+        self.plans("handoff", "--to", "next-2", "demo", "--as", "me-1", env=SESSION_A)
+        self.assertEqual((self.host_of(path), *self.proof(path)), ("", "", ""))
+        self.plans("claim", "demo", "--as", "next-2", env=SESSION_B)
+        self.assertEqual(self.host_of(path), socket.gethostname())
+        self.plans("set", "demo", "owner_session=other-3")
+        self.assertEqual(self.host_of(path), "")
+
+    def test_owner_host_is_not_settable(self):
+        path = self.add("demo", 10)
+        self.assertIn("owner_host cannot be set", self.plans("set", "demo", "owner_host=x", code=2).stderr)
+        self.assertNotIn("owner_host", self.read(path))
+
+    def test_a_doc_owned_on_another_host_stays_owned_though_its_pid_is_dead_here(self):
+        path = self.add_owned_on("far", 10, "me-1", "id-a", DEAD_PID, OTHER_HOST)
+        cleared = self.add_owned_on("far2", 20, "me-1", "id-z", 300, OTHER_HOST)
+        before = {doc: self.read(doc) for doc in (path, cleared)}
+        self.add("free", 30)
+        self.assertEqual(self.plans("ls").stderr, "")
+        for args in (("show", "far"), ("lint",), ("waiting",), ("ls", "--all")):
+            self.plans(*args)
+        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        self.assertEqual(self.plans("next", "--as", "me-2", env=SESSION_B).stdout, "work\tfree\tplanned\n")
+        self.reclaim("id-a", 300)
+        self.reclaim("id-new", 300, source="clear")
+        self.assertEqual({doc: self.read(doc) for doc in (path, cleared)}, before)
+
+    def test_only_force_takes_a_doc_owned_on_another_host(self):
+        path = self.add_owned_on("far", 10, "me-1", "id-a", DEAD_PID, OTHER_HOST)
+        before = self.read(path)
+        # The same name from a shell, which matches by name alone, and from a session with values.
+        for env in ({}, SESSION_B):
+            for args in (("claim", "far"), ("handoff", "--to", "next-2", "far"), ("close", "far")):
+                with self.subTest(env=env, args=args):
+                    stderr = self.plans(*args, "--as", "me-1", env=env, code=1).stderr
+                    self.assertIn("me-1", stderr)
+        self.assertIn(f"on {OTHER_HOST}", self.plans("claim", "far", "--as", "me-1", code=1).stderr)
+        self.assertEqual(self.read(path), before)
+        self.plans("claim", "far", "--as", "me-1", "--force")
+        self.assertEqual((self.host_of(path), *self.proof(path)), (socket.gethostname(), "", ""))
+
+    def test_a_doc_owned_on_this_host_keeps_the_pid_check(self):
+        # Host names compare without case and without the DNS root dot.
+        for host in (socket.gethostname(), socket.gethostname().upper() + "."):
+            with self.subTest(host=host):
+                path = self.add_owned_on("demo", 10, "me-1", "id-a", DEAD_PID, host)
+                self.assertIn("freed, owner me-1 is dead", self.plans("ls").stderr)
+                self.assertEqual((parse.load(path).keys["owner_session"], self.host_of(path)), ("none", ""))
+                self.reclaim("id-a", 300)
+                self.assertEqual((self.owner_state(path)[:3], self.host_of(path)), (("me-1", "id-a", 300), socket.gethostname()))
+
+    def test_a_set_never_moves_a_doc_owned_on_another_host_to_this_session(self):
+        # The pid can match by chance across hosts.
+        path = self.add_owned_on("far", 10, "me-1", "id-z", 100, OTHER_HOST)
+        self.plans("set", "far", "status=building", env=SESSION_A)
+        self.assertEqual((self.proof(path), self.host_of(path)), (("id-z", 100), OTHER_HOST))
 
     def test_a_claim_after_a_stale_read_of_the_values_leaves_the_file(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", 100)

@@ -78,6 +78,12 @@ class DocRulesTest(unittest.TestCase):
         self.assertEqual(rules(make({"owner_session_id": "[a]"})), ["owner-session-id"])
         self.assertEqual(rules(make({"owner_session_pid": "abc"})), ["owner-session-pid"])
 
+    def test_owner_host_is_a_string(self):
+        for good in ("uphill-arch-laptop", "nightshift.tail1234.ts.net", '""', '"5"'):
+            self.assertEqual(rules(make({"owner_host": good})), [], good)
+        for bad in ("5", "[a]"):
+            self.assertEqual(rules(make({"owner_host": bad})), ["owner-host"], bad)
+
     def test_last_owner_values(self):
         for good in ({"last_owner_session": "dotfiles-56", "last_owner_session_id": "47d3359c"}, {"last_owner_session": '""', "last_owner_session_id": '""'}):
             self.assertEqual(rules(make(good)), [], good)

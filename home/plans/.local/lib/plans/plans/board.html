@@ -54,6 +54,7 @@
   .card.selected { outline: 2px solid var(--accent); }
   .card.waiting { border-left-color: var(--warn); }
   .card.problem { border-left-color: var(--bad); background: #3a2a2e; }
+  .card.remote { border-style: dashed; opacity: 0.75; }
   .card .id { font-weight: 600; word-break: break-all; }
   .card .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; color: var(--dim); font-size: 11px; }
   .card .waiting-on { margin-top: 3px; color: var(--warn); font-size: 12px; }
@@ -219,7 +220,7 @@ async function write(action, body) {
   } else {
     const ids = (list) => (list || []).map((doc) => doc.id).join(", ");
     const notes = [];
-    if (answer.skipped && answer.skipped.length) notes.push(`these changed meanwhile and kept their rank: ${ids(answer.skipped)}`);
+    if (answer.skipped && answer.skipped.length) notes.push(`these changed meanwhile or belong to another host and kept their rank: ${ids(answer.skipped)}`);
     if (answer.uncertain && answer.uncertain.length) notes.push(`these failed to write and may have the new rank: ${ids(answer.uncertain)}`);
     const kept = (answer.results || []).filter((line) => line.startsWith("skipped:"));
     if (kept.length) show_message(`Cancelled ${doc_name(body.path)}, but ${kept.join("; ")}`);
@@ -227,6 +228,13 @@ async function write(action, body) {
   }
   if (action !== "open") await load_board();
   return response.ok;
+}
+
+// The server refuses every write to a doc another host owns. The page says so before it asks or sends anything.
+function refuse_read_only(doc) {
+  if (!doc.remote_host) return false;
+  show_message(`${doc.id} is owned on ${doc.remote_host}; edit it on that host's board.`);
+  return true;
 }
 
 function doc_by_path(path) {
@@ -265,6 +273,7 @@ function answer_confirm(yes) {
 }
 
 function set_status(doc, status) {
+  if (refuse_read_only(doc)) return;
   const send = () => write("update", { path: doc.path, basis: { status: doc.status }, changes: { status } });
   if (CONFIRM_STATUSES.includes(status)) ask(`Move ${doc.id} to ${status}?`, send);
   else send();
@@ -319,7 +328,7 @@ function move_confirmed(doc, status, request) {
 function shift_rank(offset) {
   const doc = doc_by_path(selected_path);
   const card = selected_card();
-  if (!doc || !card) return;
+  if (!doc || !card || refuse_read_only(doc)) return;
   const siblings = cell_cards(card.parentElement, null);
   const target = siblings.indexOf(card) + offset;
   if (target < 0 || target >= siblings.length) return;
@@ -328,16 +337,17 @@ function shift_rank(offset) {
 }
 
 function set_owner(doc, value) {
-  if (value.trim() === doc.owner_session) return;
-  // The shown session values go in the basis too, so a claim since the page loaded refuses the edit.
-  const basis = { owner_session: doc.owner_session, owner_session_id: doc.owner_session_id, owner_session_pid: doc.owner_session_pid };
+  if (value.trim() === doc.owner_session || refuse_read_only(doc)) return;
+  // The shown session values and host go in the basis too, so a claim since the page loaded refuses the edit.
+  const basis = { owner_session: doc.owner_session, owner_session_id: doc.owner_session_id,
+                  owner_session_pid: doc.owner_session_pid, owner_host: doc.owner_host };
   write("update", { path: doc.path, basis, changes: { owner_session: value.trim() } });
 }
 
 function edit_owner() {
   const doc = doc_by_path(selected_path);
   const card = selected_card();
-  if (!doc || !card) return;
+  if (!doc || !card || refuse_read_only(doc)) return;
   const input = make("input", "owner-input");
   // input.remove() fires blur, which calls close_input again on the input that is already leaving.
   let closed = false;
@@ -369,8 +379,8 @@ function can_open(path) {
 // that changed since the board loaded is refused.
 async function cancel_card() {
   const doc = doc_by_path(selected_path);
-  if (!doc) return;
-  const basis = Object.fromEntries(["status", "owner_session", "owner_session_id", "owner_session_pid", "pr", "issue", "branch"].map((key) => [key, doc[key] ?? ""]));
+  if (!doc || refuse_read_only(doc)) return;
+  const basis = Object.fromEntries(["status", "owner_session", "owner_session_id", "owner_session_pid", "owner_host", "pr", "issue", "branch"].map((key) => [key, doc[key] ?? ""]));
   let answer;
   try {
     const response = await fetch("/api/cancel", { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify({ path: doc.path, basis, apply: false }) });
@@ -475,6 +485,7 @@ function card_node(repo, doc) {
   card.dataset.path = doc.path;
   card.dataset.status = doc.status;
   if (doc.waiting_on) card.classList.add("waiting");
+  if (doc.remote_host) card.classList.add("remote");
   card.append(make("div", "id", doc.id));
   const meta = make("div", "meta");
   meta.append(make("span", "badge", doc.kind), make("span", "badge owner", doc.owner_session),
@@ -486,6 +497,7 @@ function card_node(repo, doc) {
     meta.append(node);
   }
   for (const dependency of doc.depends_on || []) meta.append(make("span", "badge depends", `after ${dependency}`));
+  if (doc.remote_host) meta.append(make("span", "badge", `on ${doc.remote_host}, read-only`));
   card.append(meta);
   if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
   if (is_phone()) {
@@ -494,6 +506,7 @@ function card_node(repo, doc) {
   }
   card.addEventListener("click", () => select_card(doc.path));
   open_view_on_dblclick(card, doc.path);
+  if (doc.remote_host) return card;
   card.querySelector(".owner").addEventListener("click", () => { select_card(doc.path); edit_owner(); });
   card.querySelector(".owner").title = "click or a: change the owner";
   card.addEventListener("pointerdown", (event) => start_drag(event, card, doc));

@@ -20,7 +20,11 @@ NO_SESSION = "none"
 # and the pid changes on `--resume`, so the owner matches when either one does. A doc may leave both out.
 OWNER_SESSION_ID = "owner_session_id"
 OWNER_SESSION_PID = "owner_session_pid"
-OWNER_VALUE_KEYS = (OWNER_SESSION_ID, OWNER_SESSION_PID)
+SESSION_VALUE_KEYS = (OWNER_SESSION_ID, OWNER_SESSION_PID)
+# The host the owner session runs on, written by `claim`. A pid means something only on its own host, so liveness
+# judges a doc owned elsewhere as alive. It goes and comes with the session values: an owner change clears all three.
+OWNER_HOST = "owner_host"
+OWNER_VALUE_KEYS = (*SESSION_VALUE_KEYS, OWNER_HOST)
 # A release of a dead owner keeps its name and id here, so the session can take the doc back once it resumes.
 LAST_OWNER_SESSION = "last_owner_session"
 LAST_OWNER_SESSION_ID = "last_owner_session_id"
@@ -84,6 +88,8 @@ def key_findings(doc):
         flag(OWNER_SESSION_ID, "owner-session-id", f'{OWNER_SESSION_ID} must be a string, "" when unknown')
     if OWNER_SESSION_PID in keys and keys[OWNER_SESSION_PID] != "" and not isinstance(keys[OWNER_SESSION_PID], int):
         flag(OWNER_SESSION_PID, "owner-session-pid", f'{OWNER_SESSION_PID} must be a whole number, "" when unknown')
+    if OWNER_HOST in keys and not isinstance(keys[OWNER_HOST], str):
+        flag(OWNER_HOST, "owner-host", f'{OWNER_HOST} must be a host name, "" when unset')
     if LAST_OWNER_SESSION in keys and keys[LAST_OWNER_SESSION] != "" and not is_session_or_none(keys[LAST_OWNER_SESSION]):
         flag(LAST_OWNER_SESSION, "last-owner-session", f'{LAST_OWNER_SESSION} {keys[LAST_OWNER_SESSION]!r} is no session name (like dotfiles-56), "" when unset')
     if LAST_OWNER_SESSION_ID in keys and not isinstance(keys[LAST_OWNER_SESSION_ID], str):
@@ -115,7 +121,7 @@ class Caller(NamedTuple):
 
 def stored_owner_values(doc):
     """The doc's owner_session_id and owner_session_pid, None for a missing or empty value."""
-    return tuple(None if doc.keys.get(key) in (None, "") else doc.keys[key] for key in OWNER_VALUE_KEYS)
+    return tuple(None if doc.keys.get(key) in (None, "") else doc.keys[key] for key in SESSION_VALUE_KEYS)
 
 
 def is_name_clash(doc, caller):
@@ -141,12 +147,13 @@ def owner_value_changes(doc, caller):
     """The owner_session_id and owner_session_pid write for `caller`. A value the caller lacks goes in empty only when
     the doc already has its key, so a claim from before the keys adds no `""` line."""
     values = (caller.session_id or "", "" if caller.pid is None else caller.pid)
-    return {key: value for key, value in zip(OWNER_VALUE_KEYS, values, strict=True) if value != "" or key in doc.keys}
+    return {key: value for key, value in zip(SESSION_VALUE_KEYS, values, strict=True) if value != "" or key in doc.keys}
 
 
 def cleared_owner_values():
-    """The write that drops the old owner's values on an owner change. Both keys go in even on a doc without them, so
-    store.update sees a claim that lands meanwhile and refuses with Conflict instead of keeping its values."""
+    """The write that drops the old owner's values and host on an owner change. Every key goes in even on a doc
+    without it, so store.update sees a claim that lands meanwhile and refuses with Conflict instead of keeping its
+    values."""
     return {key: "" for key in OWNER_VALUE_KEYS}
 
 

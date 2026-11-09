@@ -13,7 +13,7 @@ SESSION_ENV = "PLANS_SESSION"
 SESSION_ID_ENV = "CLAUDE_CODE_SESSION_ID"
 SESSION_PID_ENV = "CLAUDE_PID"
 # `set` leaves these alone. The id and the project come from the doc's path, every write sets `updated` itself, and
-# the owner's values come from the environment.
+# the owner's values come from the environment and its host from this machine.
 UNSETTABLE = ("id", "project", store.UPDATED, *validate.OWNER_VALUE_KEYS)
 NEW_RANK_GAP = 10
 
@@ -330,9 +330,10 @@ def run_set(args):
     changes = dict(parse_pair(pair) for pair in args.pairs)
     if changes.get("owner_session", doc.keys.get("owner_session")) != doc.keys.get("owner_session"):
         owner_values = validate.cleared_owner_values()
-    elif validate.shares_a_value(doc, caller):
+    elif validate.shares_a_value(doc, caller) and not liveness.is_remote_owned(doc):
         # The skills write with a plain `set` and claim a doc once. Without this, a `/clear` and then a resume leave
-        # both stored values stale, and the owner is locked out of its own doc.
+        # both stored values stale, and the owner is locked out of its own doc. A doc owned on another host is
+        # left out: its pid can match a session here by chance.
         owner_values = validate.owner_value_changes(doc, caller)
     else:
         owner_values = {}
@@ -414,15 +415,19 @@ def refuse_other_owner(doc, caller, force, verb):
     owner = validate.owner_of(doc)
     if owner not in (None, caller.name):
         raise Refused(f"{doc.id} is owned by {owner}; {verb} it with --force")
+    # A session on another host can share this caller's name, and a shell caller matches by name alone.
+    if owner is not None and liveness.is_remote_owned(doc):
+        raise Refused(f"{doc.id} is owned by {owner} on {liveness.owner_host_of(doc)}; hand it off from there, or "
+                      f"{verb} it with --force once that session is dead")
 
 
 def claim_values(doc, caller):
     """The owner_session_id and owner_session_pid a claim writes. A caller with values writes its own, so a `/clear`
     (new id) or a resume (new pid) heals on the next claim. A caller without values (a human shell) keeps them under
-    the same name and drops the old owner's under a new one."""
+    the same name and drops the old owner's under a new one or from another host."""
     if caller.has_values:
         return validate.owner_value_changes(doc, caller)
-    if caller.name != doc.keys.get("owner_session"):
+    if caller.name != doc.keys.get("owner_session") or liveness.is_remote_owned(doc):
         return validate.cleared_owner_values()
     return {}
 
@@ -431,7 +436,7 @@ def run_claim(args):
     caller = caller_of(args, required=True)
     doc = load_doc(roots.main_checkout(), args.id)
     refuse_other_owner(doc, caller, args.force, "claim")
-    store.update(doc, {"owner_session": caller.name, **claim_values(doc, caller)})
+    store.update(doc, {"owner_session": caller.name, **claim_values(doc, caller), validate.OWNER_HOST: liveness.this_host()})
 
 
 def run_handoff(args):

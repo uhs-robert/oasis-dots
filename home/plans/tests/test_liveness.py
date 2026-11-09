@@ -156,6 +156,45 @@ class FakeProcTest(ProcCase):
             self.assertFalse(liveness.pid_runs_claude(LIVE_PID))
 
 
+OTHER_HOST = "nightshift.invalid"
+
+
+def with_host(doc, host):
+    return parse.Doc(doc.path, doc.text.replace("updated:", f"owner_host: {host}\nupdated:"))
+
+
+class OwnerHostTest(ProcCase):
+    """A pid means something only on the host that wrote it."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(liveness.socket, "gethostname", return_value="Laptop")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_doc_owned_on_another_host_is_alive_whatever_its_pid(self):
+        for pid_line in (f"owner_session_pid: {DEAD_PID}\n", "owner_session_pid: 999999\n", ""):
+            doc = with_host(doc_with(pid_line), OTHER_HOST)
+            self.assertTrue(liveness.is_remote_owned(doc))
+            self.assertTrue(liveness.owner_is_alive(doc), pid_line)
+
+    def test_this_host_in_any_case_or_with_a_root_dot_keeps_the_pid_check(self):
+        for host in ("Laptop", "laptop", "LAPTOP.", '""'):
+            with self.subTest(host=host):
+                dead = with_host(doc_with(f"owner_session_pid: {DEAD_PID}\n"), host)
+                self.assertFalse(liveness.is_remote_owned(dead))
+                self.assertFalse(liveness.owner_is_alive(dead))
+                self.assertTrue(liveness.owner_is_alive(with_host(doc_with(f"owner_session_pid: {LIVE_PID}\n"), host)))
+
+    def test_a_short_and_a_full_name_count_as_different_hosts(self):
+        self.assertTrue(liveness.is_remote_owned(with_host(doc_with(""), "laptop.tail1234.ts.net")))
+
+    def test_a_non_string_host_from_a_hand_edit_counts_as_another_host(self):
+        doc = with_host(doc_with(f"owner_session_pid: {DEAD_PID}\n"), "5")
+        self.assertEqual(doc.keys["owner_host"], 5)
+        self.assertTrue(liveness.owner_is_alive(doc))
+
+
 class ReleaseTest(ProcCase):
     def setUp(self):
         super().setUp()
@@ -202,6 +241,13 @@ class ReleaseTest(ProcCase):
     def test_a_reclaim_between_check_and_write_wins(self):
         self.assertEqual(self.race({"owner_session": "new-2", "owner_session_id": "id-b", "owner_session_pid": LIVE_PID}),
                          ("new-2", "id-b", LIVE_PID))
+
+    def test_a_doc_owned_on_another_host_is_never_released(self):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=DEAD_PID).replace("updated:", f"owner_host: {OTHER_HOST}\nupdated:"))
+        doc = parse.load(self.path)
+        self.assertEqual(liveness.release_dead_owners([doc]), ([doc], []))
+        self.assertEqual(self.owner_values(), ("gone-1", "id-a", DEAD_PID))
 
     def test_the_same_name_with_a_new_pid_or_id_wins(self):
         self.assertEqual(self.race({"owner_session_pid": LIVE_PID}), ("gone-1", "id-a", LIVE_PID))
@@ -304,6 +350,46 @@ class TakeBackTest(ProcCase):
         with mock.patch.object(store, "update", handoff_first):
             self.assertEqual(liveness.take_back([doc], "id-a", LIVE_PID), [])
         self.assertEqual(parse.load(self.path).keys["owner_session_pid"], DEAD_PID)
+
+
+class TakeBackHostTest(ProcCase):
+    """A take-back is a claim, so it writes this host, and it never touches a doc another host owns."""
+
+    write_free = TakeBackTest.write_free
+
+    def setUp(self):
+        super().setUp()
+        plans = os.path.join(os.path.dirname(self.proc), ".plans", "proj")
+        os.makedirs(plans)
+        self.path = os.path.join(plans, "demo.md")
+        patcher = mock.patch.object(liveness.socket, "gethostname", return_value="laptop")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def write_owned(self, pid, host):
+        with open(self.path, "w", encoding="utf-8") as handle:
+            handle.write(DOC.format(pid=pid).replace("updated:", f"owner_host: {host}\nupdated:"))
+        return parse.load(self.path)
+
+    def test_a_doc_owned_on_another_host_is_left_alone_even_when_the_id_or_pid_matches(self):
+        for session_id, pid, cleared in (("id-a", LIVE_PID, False), ("id-new", LIVE_PID, True)):
+            with self.subTest(session_id=session_id, cleared=cleared):
+                doc = self.write_owned(LIVE_PID if cleared else DEAD_PID, OTHER_HOST)
+                before = doc.text
+                self.assertEqual(liveness.take_back([doc], session_id, pid, cleared=cleared), [])
+                with open(self.path, encoding="utf-8") as handle:
+                    self.assertEqual(handle.read(), before)
+
+    def test_each_take_back_writes_this_host(self):
+        doc = self.write_free()
+        liveness.take_back([doc], "id-a", LIVE_PID)
+        self.assertEqual(parse.load(self.path).keys["owner_host"], "laptop")
+        doc = self.write_owned(DEAD_PID, '""')
+        liveness.take_back([doc], "id-a", LIVE_PID)
+        self.assertEqual(parse.load(self.path).keys["owner_host"], "laptop")
+        doc = self.write_owned(LIVE_PID, '""')
+        liveness.take_back([doc], "id-new", LIVE_PID, cleared=True)
+        self.assertEqual(parse.load(self.path).keys["owner_host"], "laptop")
 
 
 class OwnClaudePidTest(ProcCase):
