@@ -53,14 +53,14 @@
           border-left: 3px solid var(--dim); border-radius: 4px; cursor: default; user-select: none; }
   .card.selected { outline: 2px solid var(--accent); }
   .card.waiting { border-left-color: var(--warn); }
-  /* Outside the filters and the repo pick: a conflict copy is a lost edit, so no view hides it. */
-  #conflicts div { margin: 4px 8px 0; padding: 4px 8px; background: #3a2a2e; border-left: 3px solid var(--bad);
-                   font-size: 12px; word-break: break-all; }
   .card.problem { border-left-color: var(--bad); background: #3a2a2e; }
   .card .id { font-weight: 600; word-break: break-all; }
   .card .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; color: var(--dim); font-size: 11px; }
   .card .waiting-on { margin-top: 3px; color: var(--warn); font-size: 12px; }
   .card .error { margin-top: 3px; color: #f0b8bd; font-size: 11px; word-break: break-word; }
+  /* Outside the filters and the repo pick: a conflict copy is a lost edit, so no view hides it. */
+  .conflict { margin: 4px 8px 0; padding: 4px 8px; background: #3a2a2e; border-left: 3px solid var(--bad);
+              font-size: 12px; word-break: break-all; }
   .badge { padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; }
   .badge.depends { color: var(--accent); }
   a { color: var(--accent); }

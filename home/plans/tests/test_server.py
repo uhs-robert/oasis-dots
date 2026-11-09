@@ -226,13 +226,15 @@ class BoardJsonTest(unittest.TestCase):
         copy = os.path.join(os.path.dirname(doc), "good.sync-conflict-20261109-101500-ABCDEFG.md")
         with open(doc, encoding="utf-8") as source, open(copy, "w", encoding="utf-8") as target:
             target.write(source.read())
+        with open(copy, encoding="utf-8") as handle:
+            copy_text = handle.read()
         self.fixture.start()
         web = next(repo for repo in self.fixture.board_json()["repos"] if repo["root"] == self.web)
         self.assertEqual([doc["id"] for doc in web["docs"]], ["good"])
         self.assertEqual(web["problems"], [])
         self.assertEqual(web["conflicts"], [{"path": copy, "message": "merge good.md by hand, then delete the copy"}])
         with open(copy, encoding="utf-8") as handle:
-            self.assertIn("id: good", handle.read())
+            self.assertEqual(handle.read(), copy_text)
 
     def test_the_signature_changes_when_a_conflict_copy_appears_and_goes(self):
         doc = self.fixture.add(self.web, "good", 10)
