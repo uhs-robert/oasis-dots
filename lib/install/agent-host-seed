@@ -29,7 +29,13 @@ copy .local/state/hypr --include='*.json' --include=theme --exclude='*'
 # sits at the same path under its home as this one (AGENT_HOST_CHECKOUT overrides the main checkout used here).
 checkout=${AGENT_HOST_CHECKOUT:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir | sed 's|/\.git$||')}
 if [[ $checkout == "$HOME"/* ]]; then
-  copy "${checkout#"$HOME"/}/home/quickshell/.config/quickshell/features/lock/skins/ff7/audio"
+  # The remote mkdir would otherwise leave a stray tree where a later clone has to go.
+  # shellcheck disable=SC2086  # $rsh is a command with options
+  if $rsh "$host" "test -d '${checkout#"$HOME"/}/.git'"; then
+    copy "${checkout#"$HOME"/}/home/quickshell/.config/quickshell/features/lock/skins/ff7/audio"
+  else
+    echo "skip the FF7 audio: $host has no checkout at ~/${checkout#"$HOME"/}; clone it there and run this again"
+  fi
 else
   echo "skip the FF7 audio: $checkout is not under $HOME, so the host path is unknown"
 fi
