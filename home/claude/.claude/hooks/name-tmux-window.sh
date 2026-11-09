@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Names the tmux window after the Claude session. Usage: name-tmux-window.sh <start|end>, with the hook input on stdin.
 #   start (SessionStart: startup, resume, clear): renames the window of $TMUX_PANE to the session name. With several
-#     Claude panes in one window, the last to start wins.
+#     Claude panes in one window, the last to start wins. A window already named <name>, <name>-next, <name>-prev or
+#     <name>-done keeps its name.
 #   end (SessionEnd): turns automatic-rename back on for that window, so it shows what runs there again. A window
 #     labelled <name>-next, <name>-prev or <name>-done by the orchestrator handoff keeps its label.
 # The session name comes from ~/.claude/sessions/<pid>.json, an undocumented file, so every miss means do nothing.
