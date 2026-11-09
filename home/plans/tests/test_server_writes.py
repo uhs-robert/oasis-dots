@@ -14,7 +14,7 @@ from test_server import PHONE, PHONE_HOST, REMOTE, Fixture, wait_until  # noqa: 
 
 from test_retire import FakeTools  # noqa: E402
 
-from plans import parse, retire, server, store  # noqa: E402
+from plans import cli, parse, retire, server, store  # noqa: E402
 
 WRITE = {"Content-Type": "application/json", server.WRITE_HEADER: "1"}
 # Agent edits go through this, so a test that wraps store.update to step in mid-write does not see them.
@@ -539,6 +539,201 @@ class RemoteOwnedWriteTest(WriteTest):
         self.assertEqual([skip["id"] for skip in data["skipped"]], ["b", "far"])
         self.assertEqual([self.key(paths[doc_id], "rank") for doc_id in "adbc"], [10, 20, 2, 40])
         self.assertEqual((self.key(self.far, "rank"), self.key(self.near, "rank")), (10, 60))
+
+
+BODY = """# demo
+
+## Goal
+
+- [ ] ship it
+- [x] write it
+- [ ] ship it
+
+## Plan
+
+Old plan.
+
+```
+## not a heading
+```
+
+## Open questions
+
+"""
+
+
+class BodyEditTest(WriteTest):
+    """Checkbox taps and section edits: each finds its target in the body as on disk, under the store lock."""
+
+    def setUp(self):
+        super().setUp()
+        self.path = self.add("demo", 10)
+        AGENT_UPDATE(parse.load(self.path), {parse.BODY: BODY})
+
+    def read(self):
+        with open(self.path, encoding="utf-8", newline="") as handle:
+            return handle.read()
+
+    def body(self):
+        return parse.load(self.path).body
+
+    def toggle(self, line, nth, to, headers=None):
+        return self.post("toggle", {"path": self.path, "line": line, "nth": nth, "to": to}, headers)
+
+    def shown_section(self, title):
+        status, data = self.fixture.request("GET", f"/api/doc?path={self.path}")
+        self.assertEqual(status, 200)
+        return next(section["text"] for section in data["sections"] if section["title"] == title)
+
+    def edit(self, text, basis_text=None, title="Plan", headers=None):
+        basis = self.shown_section(title) if basis_text is None else basis_text
+        return self.post("section", {"path": self.path, "title": title, "basis_text": basis, "text": text}, headers)
+
+    def agent_notes(self, section, text):
+        with mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            self.assertEqual(cli.main(["note", "demo", "--section", section, text]), 0)
+
+    def test_a_toggle_changes_one_marker_only(self):
+        self.fixture.start()
+        status, data = self.toggle("- [ ] ship it", 1, True)
+        self.assertEqual(status, 200, data)
+        self.assertEqual(self.body(), BODY.replace("- [ ] ship it\n\n", "- [x] ship it\n\n"))
+        self.assertEqual(self.toggle("- [x] write it", 0, False)[0], 200)
+        self.assertIn("- [ ] write it\n", self.body())
+
+    def test_a_toggle_whose_line_is_gone_or_already_set_is_refused_and_writes_nothing(self):
+        self.fixture.start()
+        before = self.read()
+        for line, nth, to in (("- [ ] ship it", 2, True), ("- [ ] gone", 0, True), ("- [ ] write it", 0, True),
+                              ("## not a heading", 0, True)):
+            with self.subTest(line=line, nth=nth):
+                status, data = self.toggle(line, nth, to)
+                self.assertEqual((status, data.get("keys")), (409, ["body"]))
+        self.assertEqual(self.read(), before)
+
+    def test_a_toggle_with_a_bad_request_is_refused(self):
+        self.fixture.start()
+        before = self.read()
+        for line, nth, to in (("- [ ] ship it\n- [ ] x", 0, True), ("- [ ] ship it", -1, True),
+                              ("- [ ] ship it", True, True), ("- [ ] ship it", 0, "yes"), (None, 0, True)):
+            with self.subTest(line=line, nth=nth, to=to):
+                self.assertEqual(self.toggle(line, nth, to)[0], 400)
+        self.assertEqual(self.read(), before)
+
+    def test_a_note_between_page_load_and_tap_keeps_both(self):
+        self.fixture.start()
+        self.shown_section("Goal")
+        self.agent_notes("Plan", "an agent's note")
+        status, data = self.toggle("- [ ] ship it", 0, True)
+        self.assertEqual(status, 200, data)
+        body = self.body()
+        self.assertIn("## not a heading\n```\n- an agent's note\n", body)
+        self.assertTrue(body.startswith("# demo\n\n## Goal\n\n- [x] ship it\n"))
+
+    def test_a_toggle_reads_the_file_once_it_holds_the_lock(self):
+        self.fixture.start()
+        results = []
+        with store.locked(store.plans_dir_of(self.path)):
+            tap = threading.Thread(target=lambda: results.append(self.toggle("- [ ] ship it", 0, True)))
+            tap.start()
+            tap.join(0.3)
+            self.assertTrue(tap.is_alive(), "the toggle must wait for the lock")
+            # A writer that holds the lock moves the line down and adds one, as a note would.
+            text = self.read().replace("## Goal\n\n", "## Goal\n\n- [ ] new first\n")
+            with open(self.path, "w", encoding="utf-8") as handle:
+                handle.write(text)
+        tap.join(5)
+        self.assertEqual(results[0][0], 200, results)
+        self.assertIn("## Goal\n\n- [ ] new first\n- [x] ship it\n", self.body())
+
+    def test_a_section_edit_lands_and_keeps_the_rest(self):
+        self.fixture.start()
+        status, data = self.edit("New plan.\r\n\n### Steps\r\n- one\n")
+        self.assertEqual(status, 200, data)
+        old_plan = BODY.split("## Plan\n")[1].split("## Open questions")[0]
+        self.assertEqual(self.body(), BODY.replace(old_plan, "\nNew plan.\n\n### Steps\n- one\n\n"))
+        self.assertEqual(self.edit("")[0], 200)
+        self.assertIn("## Plan\n\n## Open questions", self.body())
+
+    def test_a_stale_section_is_refused_with_its_text_and_save_over_it_lands(self):
+        self.fixture.start()
+        shown = self.shown_section("Plan")
+        self.agent_notes("Plan", "an agent's note")
+        status, data = self.edit("Mine.", basis_text=shown)
+        self.assertEqual((status, data.get("keys")), (409, ["body"]))
+        self.assertIn("- an agent's note\n", data["current_text"])
+        self.assertIn("an agent's note", self.body())
+        status, _ = self.edit("Mine.", basis_text=data["current_text"])
+        self.assertEqual(status, 200)
+        self.assertIn("## Plan\n\nMine.\n\n## Open questions", self.body())
+
+    def test_a_note_to_another_section_does_not_block_a_section_edit(self):
+        self.fixture.start()
+        shown = self.shown_section("Plan")
+        self.agent_notes("Goal", "an agent's note")
+        self.assertEqual(self.edit("Mine.", basis_text=shown)[0], 200)
+        self.assertIn("- an agent's note\n", self.body())
+
+    def test_a_section_edit_that_breaks_the_sections_is_refused(self):
+        self.fixture.start()
+        before = self.read()
+        refused = {
+            "a new section\n## Sneaky\n": 422,
+            "# Title\n": 422,
+            "```\nopen fence\n": 422,
+            "nul \u0000 here": 422,
+            "x" * (server.MAX_SECTION_BYTES + 1): 413,
+        }
+        for text, code in refused.items():
+            with self.subTest(text=text[:30]):
+                self.assertEqual(self.edit(text)[0], code)
+        self.assertEqual(self.edit("x", title="Nowhere", basis_text="")[0], 404)
+        self.assertEqual(self.read(), before)
+        self.assertEqual(self.edit("```\n## fenced is fine\n```\n" + "x" * 100)[0], 200)
+
+    def test_both_body_writes_work_from_the_phone_with_its_guard(self):
+        self.fixture.start(remote=REMOTE)
+        phone = {**PHONE, "Origin": f"https://{PHONE_HOST}"}
+        basis = self.shown_section("Plan")
+        for bad in ({server.WRITE_HEADER: ""}, {"Origin": "https://evil.example"}):
+            with self.subTest(headers=bad):
+                self.assertEqual(self.toggle("- [ ] ship it", 0, True, {**phone, **bad})[0], 403)
+                self.assertEqual(self.edit("Phone.", basis, headers={**phone, **bad})[0], 403)
+        self.assertEqual(self.toggle("- [ ] ship it", 0, True, phone)[0], 200)
+        self.assertEqual(self.edit("Phone.", basis, headers=phone)[0], 200)
+        self.assertIn("- [x] ship it", self.body())
+        self.assertIn("Phone.", self.body())
+
+    def test_a_doc_owned_on_another_host_refuses_both_and_a_local_owner_does_not(self):
+        self.agent_sets(self.path, owner_session="far-1", owner_session_pid=400, owner_host=OTHER_HOST)
+        self.fixture.start()
+        before = self.read()
+        basis = self.shown_section("Plan")
+        for status, data in (self.toggle("- [ ] ship it", 0, True), self.edit("Mine.", basis)):
+            self.assertEqual((status, data["error"]), (403, f"demo is owned on {OTHER_HOST}; edit it on that host's board"))
+        self.assertEqual(self.read(), before)
+        # A live session here owns it now.
+        self.agent_sets(self.path, owner_session="near-1", owner_session_id="id-a", owner_session_pid=100,
+                        owner_host=socket.gethostname())
+        self.assertTrue(wait_until(lambda: self.fixture.board_json()["repos"][0]["docs"][0]["remote_host"] == ""))
+        self.assertEqual(self.toggle("- [ ] ship it", 0, True)[0], 200)
+        self.assertEqual(self.edit("Mine.", self.shown_section("Plan"))[0], 200)
+        self.assertEqual(self.key(self.path, "owner_session"), "near-1")
+
+    def test_a_claim_from_another_host_during_a_body_write_refuses_it(self):
+        self.fixture.start()
+        real_update_body = store.update_body
+        basis = self.shown_section("Plan")
+
+        def claim_then_write(doc, transform, **kwargs):
+            AGENT_UPDATE(parse.load(self.path), {"owner_session": "far-1", "owner_host": OTHER_HOST})
+            return real_update_body(doc, transform, **kwargs)
+
+        for request in (lambda: self.toggle("- [ ] ship it", 0, True), lambda: self.edit("Mine.", basis)):
+            with mock.patch.object(server.store, "update_body", claim_then_write):
+                self.assertEqual(request()[0], 403)
+            AGENT_UPDATE(parse.load(self.path), {"owner_session": "none", "owner_host": ""})
+        self.assertEqual(self.body(), BODY)
 
 
 class CancelEndpointTest(WriteTest):

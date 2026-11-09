@@ -356,7 +356,7 @@ def run_note(args):
     sections = {title.lower(): (title, start, content) for title, (start, content) in doc.sections().items()}
     if args.section.lower() not in sections:
         raise UsageError(f"{args.id} has no section {args.section!r}")
-    title, start, content = sections[args.section.lower()]
+    title, _, content = sections[args.section.lower()]
     if title == "Decisions":
         bullet = f"- {store.today()} {text}\n"
     elif title == "Open questions":
@@ -364,18 +364,12 @@ def run_note(args):
         bullet = f"{text}\n" if validate.CHECKLIST_ITEM.fullmatch(text) else f"- [ ] {text}\n"
     else:
         bullet = f"- {text}\n"
-    lines = doc.body.splitlines(keepends=True)
-    first = start - doc.body_first_line
-    old = lines[first:first + len(content.splitlines(keepends=True))]
-    # Blank lines at the end of a section separate it from the next heading, so the bullet goes above them.
-    gap = 0
-    while gap < len(old) and old[len(old) - 1 - gap].strip() == "":
-        gap += 1
-    kept = old[:len(old) - gap] or ["\n"]
+    # The bullet goes above the blank lines that end the section, which replace_section keeps.
+    kept = parse.without_end_gap(content.splitlines(keepends=True)) or ["\n"]
     if not kept[-1].endswith("\n"):
         kept[-1] += "\n"
-    lines[first:first + len(old)] = kept + [bullet] + ["\n"] * gap
-    store.update(doc, {parse.BODY: "".join(lines)}, check_under_lock=lambda fresh: refuse_remote_owned(fresh, args.force))
+    body = parse.replace_section(doc.body, title, "".join(kept) + bullet)
+    store.update(doc, {parse.BODY: body}, check_under_lock=lambda fresh: refuse_remote_owned(fresh, args.force))
 
 
 def parse_pair(pair):

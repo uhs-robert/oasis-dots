@@ -20,13 +20,15 @@ const ALLOWED_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol
 const ALLOWED_ATTRIBUTES = {
   href: /^https?:\/\/[^"<>]*$/i, target: /^_blank$/, rel: /^noopener noreferrer$/, class: /^(task|front-matter|table)$/,
   type: /^checkbox$/, disabled: null, checked: null, start: /^[0-9]+$/, colspan: /^2$/,
+  // Escaped doc text: the attribute value can hold no quote, so nothing ends it early.
+  "data-line": /^[^"<>]*$/, "data-section": /^[^"<>]*$/, "data-nth": /^[0-9]+$/,
 };
 
 function assert_inert(output, input) {
   const context = `input: ${JSON.stringify(input)}\noutput: ${output}`;
-  const text = output.replace(/<\/?([a-z0-9]+)((?:\s+[a-z]+(?:="[^"]*")?)*)\s*>/g, (tag, name, attributes) => {
+  const text = output.replace(/<\/?([a-z0-9]+)((?:\s+[a-z-]+(?:="[^"]*")?)*)\s*>/g, (tag, name, attributes) => {
     assert.ok(ALLOWED_TAGS.has(name), `tag <${name}> is not allowed\n${context}`);
-    for (const [, key, value] of attributes.matchAll(/\s+([a-z]+)(?:="([^"]*)")?/g)) {
+    for (const [, key, value] of attributes.matchAll(/\s+([a-z-]+)(?:="([^"]*)")?/g)) {
       assert.ok(key in ALLOWED_ATTRIBUTES, `attribute ${key} is not allowed\n${context}`);
       const rule = ALLOWED_ATTRIBUTES[key];
       if (rule) assert.ok(value !== undefined && rule.test(value), `attribute ${key}="${value}" is not allowed\n${context}`);
@@ -39,6 +41,11 @@ function assert_inert(output, input) {
 
 const check = (input) => {
   const output = render(input);
+  assert_inert(output, input);
+  return output;
+};
+const check_editable = (input) => {
+  const output = render_markdown(input, { issue_href, editable: true });
   assert_inert(output, input);
   return output;
 };
@@ -68,6 +75,25 @@ assert.equal(check("a\n\n---\n\nb"), "<p>a</p>\n<hr>\n<p>b</p>");
 assert.equal(check("| a | b |\n|---|---|"), '<pre class="table">| a | b |\n|---|---|</pre>', "a table stays text");
 assert.equal(check("> quoted"), "<p>&gt; quoted</p>", "anything else stays text");
 assert.equal(check("line one\nline two"), "<p>line one\nline two</p>");
+
+// The editable doc view: enabled checkboxes that name their line, and section titles on ## headings.
+assert.equal(check_editable("- [ ] a\n- [x] a\n  - [ ] b"),
+  '<ul>\n<li class="task" data-line="- [ ] a" data-nth="0"><input type="checkbox"> a\n</li>\n'
+  + '<li class="task" data-line="- [x] a" data-nth="1"><input type="checkbox" checked> a\n'
+  + '<ul>\n<li class="task" data-line="  - [ ] b" data-nth="0"><input type="checkbox"> b\n</li></ul>\n</li></ul>',
+  "nth counts the lines that read the same apart from the box");
+assert.equal(check_editable("## Plan\n### Steps\n# Title\n## Plan\n##\tTabbed"),
+  '<h2 data-section="Plan">Plan</h2>\n<h3>Steps</h3>\n<h1>Title</h1>\n<h2>Plan</h2>\n<h2>Tabbed</h2>',
+  "only the first ## heading of a title, as parse reads it, is a section");
+assert.equal(check_editable("```\n- [ ] in code\n## not a section\n```"), "<pre><code>- [ ] in code\n## not a section</code></pre>");
+assert.ok(!check_editable("- [ ] x").includes("disabled"), "editable enables the checkboxes");
+assert.ok(check("- [ ] x").includes("disabled") && !check("- [ ] x").includes("data-"), "the default stays read-only");
+assert.equal(check_editable('## "><script>alert(1)</script>'),
+  '<h2 data-section="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;">&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;</h2>',
+  "a hostile title is escaped in the attribute");
+assert.equal(check_editable("- [ ] \" onclick=\"x"),
+  '<ul>\n<li class="task" data-line="- [ ] &quot; onclick=&quot;x" data-nth="0"><input type="checkbox"> &quot; onclick=&quot;x\n</li></ul>',
+  "a hostile task line is escaped in the attribute");
 
 // Links.
 const link = (href, label) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
@@ -114,6 +140,7 @@ const hostile = [
   "&lt;script&gt; &amp; &#60;",
 ];
 for (const input of hostile) {
+  check_editable(input);
   const output = check(input);
   // An event handler stays as text: assert_inert already refused it as an attribute.
   assert.ok(!/<script|<img|<div|<b |href="(?!https?:)/i.test(output), `${input} -> ${output}`);
@@ -131,13 +158,14 @@ const random = () => {
   return seed / 2147483648;
 };
 const pieces = ["<", ">", '"', "'", "&", "&amp;", "&#39;", "[", "]", "(", ")", "`", "```", "*", "**", "_", "__", "#",
-  "#12", "-", "- ", "1. ", "- [ ] ", "  ", "\n", "\n\n", "---", "|", "x", "a b", "https://", "http://a.org/",
+  "#12", "-", "- ", "1. ", "- [ ] ", "- [x] ", "## ", "  ", "\n", "\n\n", "---", "|", "x", "a b", "https://", "http://a.org/",
   "javascript:", "data:", "onerror=", "<script>", "/", "=", "\u0000", "\t", ".", ":"];
 for (let round = 0; round < 3000; round += 1) {
   let input = "";
   const length = 1 + Math.floor(random() * 30);
   for (let index = 0; index < length; index += 1) input += pieces[Math.floor(random() * pieces.length)];
   check(input);
+  check_editable(input);
 }
 
 console.log("markdown tests passed");

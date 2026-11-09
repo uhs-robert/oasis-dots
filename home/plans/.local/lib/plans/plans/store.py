@@ -74,6 +74,21 @@ def update(doc, changes, date=None, check_under_lock=None):
     return updated
 
 
+def update_body(doc, transform, date=None, check_under_lock=None):
+    """Write `transform(body)` as the doc's body and return the new Doc. The transform gets the body as on disk while
+    the lock is held, so it edits the newest text, and it raises to refuse the write. Unlike `update` this compares
+    nothing itself: the transform decides what counts as stale. `check_under_lock` works as in `update`."""
+    with locked(plans_dir_of(doc.path)):
+        fresh = load_fresh(doc)
+        if check_under_lock:
+            check_under_lock(fresh)
+        updated = parse.Doc(doc.path, fresh.render({parse.BODY: transform(fresh.body), UPDATED: date or today()}))
+        if updated.errors:
+            raise parse.ParseError(doc.path, updated.errors)
+        replace_atomically(doc.path, updated.text)
+    return updated
+
+
 def refuse_changed(fresh, doc, keys):
     """Raise Conflict when a key in `keys` holds another value on disk (`fresh`) than in `doc`, the copy the caller read."""
     conflicting = [key for key in keys if key != UPDATED and not same_value(fresh.value(key), doc.value(key))]

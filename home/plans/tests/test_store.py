@@ -141,6 +141,37 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(caught.exception.keys, [parse.BODY])
         self.assertEqual(self.contents(), before)
 
+    def test_update_body_transforms_the_body_on_disk_not_the_one_read(self):
+        stale = parse.load(self.path)
+        store.update(parse.load(self.path), {parse.BODY: stale.body + "\nAn agent's line.\n", "status": "building"})
+        seen = []
+
+        def append(body):
+            seen.append(body)
+            return body + "The board's line.\n"
+
+        updated = store.update_body(stale, append, "2026-11-09")
+        self.assertEqual(seen, [stale.body + "\nAn agent's line.\n"])
+        self.assertTrue(updated.body.endswith("An agent's line.\nThe board's line.\n"))
+        self.assertEqual((updated.keys["status"], updated.keys["updated"]), ("building", "2026-11-09"))
+        self.assertEqual(parse.load(self.path).text, updated.text)
+
+    def test_update_body_writes_nothing_when_the_transform_refuses(self):
+        def refuse(body):
+            raise ValueError("stale")
+
+        with self.assertRaises(ValueError):
+            store.update_body(parse.load(self.path), refuse)
+        self.assertEqual(self.contents(), ORIGINAL.encode())
+        self.assertEqual(self.leftovers(), [])
+
+    def test_update_body_raises_vanished_for_a_deleted_doc(self):
+        doc = parse.load(self.path)
+        os.unlink(self.path)
+        with self.assertRaises(store.Vanished):
+            store.update_body(doc, lambda body: body)
+        self.assertFalse(os.path.exists(self.path))
+
     def test_writes_to_different_keys_from_one_read_all_land(self):
         first, second, third = (parse.load(self.path) for _ in range(3))
         store.update(first, {"status": "building"}, "2026-11-06")

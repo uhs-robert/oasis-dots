@@ -126,5 +126,33 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(doc(front("a: x"), "/r/.plans/p/file-name.md").id, "file-name")
 
 
+    def test_toggle_line_flips_the_nth_line_that_reads_the_same(self):
+        body = "- [ ] a\n- [x] a\n- [ ] a\r\n- [ ] b\n"
+        self.assertEqual(parse.toggle_line(body, "- [ ] a", 2, True), "- [ ] a\n- [x] a\n- [x] a\r\n- [ ] b\n")
+        # The marker the page showed does not matter. The line it finds must not show `to` already.
+        self.assertEqual(parse.toggle_line(body, "- [ ] a", 1, False), "- [ ] a\n- [ ] a\n- [ ] a\r\n- [ ] b\n")
+        self.assertIsNone(parse.toggle_line(body, "- [ ] a", 1, True))
+        self.assertIsNone(parse.toggle_line(body, "- [ ] a", 3, True))
+        self.assertIsNone(parse.toggle_line(body, "- [ ] c", 0, True))
+        self.assertIsNone(parse.toggle_line(body, "plain text", 0, True))
+
+    def test_toggle_line_skips_a_line_inside_a_fence(self):
+        body = "```\n- [ ] a\n```\n  1. [ ] a\n- [ ] a\n"
+        self.assertEqual(parse.toggle_line(body, "- [ ] a", 0, True), "```\n- [ ] a\n```\n  1. [ ] a\n- [x] a\n")
+        self.assertEqual(parse.toggle_line(body, "  1. [ ] a", 0, True), "```\n- [ ] a\n```\n  1. [x] a\n- [ ] a\n")
+        self.assertIsNone(parse.toggle_line(body, "- [ ] a", 1, True))
+
+    def test_replace_section_keeps_the_blank_lines_before_the_next_heading(self):
+        body = "# demo\n\n## Goal\n\nOld.\nMore.\n\n\n## Plan\n\nKeep.\n"
+        self.assertEqual(parse.replace_section(body, "Goal", "\nNew.\n"), "# demo\n\n## Goal\n\nNew.\n\n\n## Plan\n\nKeep.\n")
+        self.assertEqual(parse.replace_section(body, "Plan", "\nLast.\n"), "# demo\n\n## Goal\n\nOld.\nMore.\n\n\n## Plan\n\nLast.\n")
+        self.assertEqual(parse.replace_section(body, "Goal", ""), "# demo\n\n## Goal\n\n\n## Plan\n\nKeep.\n")
+        self.assertIsNone(parse.replace_section(body, "Nowhere", "x\n"))
+
+    def test_replace_section_edits_only_the_first_of_two_titles(self):
+        body = "## Plan\n\nfirst\n\n## Plan\n\nsecond\n"
+        self.assertEqual(parse.replace_section(body, "Plan", "\nnew\n"), "## Plan\n\nnew\n\n## Plan\n\nsecond\n")
+
+
 if __name__ == "__main__":
     unittest.main()

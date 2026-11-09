@@ -40,8 +40,10 @@ FALLBACK_EDITOR = "nvim"
 # `tailscale serve` sets this to the login of the tailnet user behind each request, after it drops any value the
 # client sent. It leaves the header out for a tagged node, a Funnel request and a request from outside the tailnet.
 LOGIN_HEADER = "Tailscale-User-Login"
-# The phone may change status, owner and rank. Opening the editor and cancelling stay on the laptop.
-REMOTE_ACTIONS = ("/api/update", "/api/move")
+# The phone may change status, owner, rank and the body. Opening the editor and cancelling stay on the laptop.
+REMOTE_ACTIONS = ("/api/update", "/api/move", "/api/toggle", "/api/section")
+# A section edit from the board holds at most this much text. A plan doc section is far smaller.
+MAX_SECTION_BYTES = 16 * 1024
 
 
 class Remote(NamedTuple):
@@ -365,7 +367,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
         if self.is_remote() and self.path not in REMOTE_ACTIONS:
             return self.send_json(403, {"error": f"{self.path} works on the laptop only"})
-        actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc, "/api/cancel": cancel_doc}
+        actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc, "/api/cancel": cancel_doc,
+                   "/api/toggle": toggle_task, "/api/section": edit_section}
         action = actions.get(self.path)
         if action is None:
             return self.send_json(404, {"error": f"no action {self.path}"})
@@ -403,7 +406,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         doc = self.board.find_any_doc(path)
         if doc is None:
             return self.send_json(404, {"error": f"no doc on the board at {path!r}; reload the board"})
-        return self.send_json(200, {"path": doc.path, "text": doc.text})
+        answer = {"path": doc.path, "text": doc.text}
+        if self.board.find_doc(path)[1] is not None:
+            # The section editor's starting text and basis. The page cannot cut sections out of the text itself
+            # without copying the heading and fence rules of parse.
+            answer["sections"] = [{"title": title, "text": text} for title, (_, text) in doc.sections().items()]
+        return self.send_json(200, answer)
 
     def send_page(self):
         with open(PAGE, "rb") as handle:
@@ -605,6 +613,73 @@ def renumber(order, moved, moved_basis, status):
             # As in run_action: the new rank may have landed, so this doc is neither renumbered nor skipped.
             uncertain.append({"path": doc.path, "id": doc.id, "error": str(error)})
     return {"renumbered": renumbered, "skipped": skipped, "uncertain": uncertain}
+
+
+def toggle_task(board, request):
+    """Tick or clear one checkbox in the body. Request: {path, line: the task line as shown, nth: which of the lines
+    that read the same (from 0), to: true to tick}. The line is found in the body as on disk, so an edit elsewhere in
+    the doc since the page loaded does not refuse the tap. A line that is gone or already shows `to` is a 409."""
+    _, doc = board_doc(board, request)
+    line, nth, to = request.get("line"), request.get("nth"), request.get("to")
+    if not isinstance(line, str) or "\n" in line or "\r" in line:
+        raise Refused(400, "line must be the one task line the page showed")
+    if isinstance(nth, bool) or not isinstance(nth, int) or nth < 0 or not isinstance(to, bool):
+        raise Refused(400, "nth must be a whole number from 0 and to a true or false")
+
+    def flip(body):
+        toggled = parse.toggle_line(body, line, nth, to)
+        if toggled is None:
+            raise Refused(409, f"{doc.id}: that checkbox changed since the board read it", path=doc.path, keys=[parse.BODY])
+        return toggled
+
+    store.update_body(doc, flip, check_under_lock=refuse_remote_owned)
+
+
+def edit_section(board, request):
+    """Replace the content of one `## ` section. Request: {path, title, basis_text: the section as the page read it,
+    text: the new content}. A section that differs from basis_text on disk is a 409 that carries `current_text`, so
+    the page can show it beside the owner's text. The text cannot add or remove a section."""
+    _, doc = board_doc(board, request)
+    title, basis_text, text = (request.get(key) for key in ("title", "basis_text", "text"))
+    if not all(isinstance(value, str) for value in (title, basis_text, text)):
+        raise Refused(400, "title, basis_text and text must be strings")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if len(text.encode("utf-8")) > MAX_SECTION_BYTES:
+        raise Refused(413, f"a section holds at most {MAX_SECTION_BYTES // 1024} KiB")
+    problem = section_text_problem(text)
+    if problem:
+        raise Refused(422, problem)
+    # One blank line after the heading and a line break at the end, however the page trimmed the text.
+    content = "\n" + text.strip("\n") + "\n" if text.strip() else ""
+
+    def replace(body):
+        sections = parse.body_sections(body)
+        if title not in sections:
+            raise Refused(404, f"{doc.id} has no section {title!r} any more; reload the doc")
+        current = sections[title][1]
+        if current != basis_text:
+            raise Refused(409, f"{doc.id}: the section {title} changed since you opened it", path=doc.path,
+                          keys=[parse.BODY], current_text=current)
+        replaced = parse.replace_section(body, title, content)
+        if list(parse.body_sections(replaced)) != list(sections):
+            raise Refused(422, "the edit would add or remove a section")
+        return replaced
+
+    store.update_body(doc, replace, check_under_lock=refuse_remote_owned)
+
+
+def section_text_problem(text):
+    """Why `text` cannot be one section's content, or None. A `#` or `##` heading would start or end a section, and an
+    open fence would hide every heading after it."""
+    if "\0" in text:
+        return "the text holds a NUL character"
+    in_fence = False
+    for line in text.splitlines():
+        if parse.FENCE.match(line):
+            in_fence = not in_fence
+        elif not in_fence and parse.HEADING.fullmatch(line):
+            return f"a # or ## heading would split the section: {line!r}; use ### inside a section"
+    return "a code fence is left open" if in_fence else None
 
 
 def cancel_doc(board, request):
