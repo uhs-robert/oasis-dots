@@ -78,11 +78,16 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 ---- [LATE MONITORS] ----
 -- Hyprland 0.57 aborts when a dock monitor comes up before the dock has settled (hyprwm/Hyprland#16727): building its
 -- framebuffer asserts on a zero size, and a disabled monitor is skipped there. So each GREETER_HELD monitor starts
--- disabled and a timer turns them on. The rule must say `disabled = false`, because hl.monitor() keeps the fields a new
--- rule leaves out, and it lands only on another monitor's next frame. With nothing else lit, the timer reloads the
--- config instead, which applies rules directly; the marker makes that reload skip the hold.
+-- disabled.
+--
+-- The hold also keeps the dock dark for the greeter's whole life. Every dock modeset makes the MST hub reset its link, and
+-- each reset risks a boot with both dock monitors on "No signal", so the session should be the one modeset. The timer
+-- lights the dock only when no other monitor is lit (undocked, lid closed, HDMI off), because the login screen would
+-- otherwise be blank. It does that by reloading the config, which applies the rules directly; the marker makes that
+-- reload skip the hold. A plain hl.monitor() rule is no use here: it lands only on another monitor's next frame.
 local released_marker = RUNTIME_DIR .. "/hypr/" .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "") .. "/greeter-monitors-released"
 local handed_off = false
+local dock_released = false
 
 local function released_before()
 	local file = io.open(released_marker, "r")
@@ -92,26 +97,34 @@ local function released_before()
 	return file ~= nil
 end
 
--- One timer at the longest delay releases them all: a release that has to reload would otherwise end every other
--- monitor's hold early.
+-- Matches by description like the rules do, never by connector name, which gets recycled. Skipping held monitors also
+-- keeps the count right if Hyprland lists a disabled monitor.
+local function lit_non_dock_count()
+	local held_outputs = {}
+	for _, held in ipairs(GREETER_HELD) do
+		held_outputs[held.rule.output] = true
+	end
+	local count = 0
+	for _, monitor in ipairs(hl.get_monitors() or {}) do
+		if not (held_outputs["desc:" .. tostring(monitor.description)] or held_outputs[monitor.name]) then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+-- One timer at the longest delay decides for every held monitor at once: a release reloads the config, which would
+-- otherwise end the hold of the others early.
 local function release_all()
-	if handed_off then
+	if handed_off or lit_non_dock_count() > 0 then
 		return
 	end
-	for _, held in ipairs(GREETER_HELD) do
-		local enabled = { disabled = false }
-		for key, value in pairs(held.rule) do
-			enabled[key] = value
-		end
-		hl.monitor(enabled)
+	dock_released = true
+	local file = io.open(released_marker, "w")
+	if file then
+		file:close()
 	end
-	if #(hl.get_monitors() or {}) == 0 then
-		local file = io.open(released_marker, "w")
-		if file then
-			file:close()
-		end
-		hl.dispatch(hl.dsp.reload_config())
-	end
+	hl.dispatch(hl.dsp.reload_config())
 end
 
 local holding, longest_delay = not released_before(), 0
@@ -128,9 +141,13 @@ if longest_delay > 0 then
 end
 
 -- Called right before the greeter exits. After a forced teardown of the dock on exit, amdgpu left those monitors on
--- "No signal" in the session that starts next. The flag stops a timer still pending from turning them back on.
+-- "No signal" in the session that starts next. The flag stops a timer still pending from turning them back on. A dock
+-- that was never lit needs no teardown, and disabling it again would only cost another modeset.
 function GREETER_HANDOFF()
 	handed_off = true
+	if not dock_released then
+		return
+	end
 	for _, held in ipairs(GREETER_HELD) do
 		hl.monitor({ output = held.rule.output, disabled = true })
 	end
