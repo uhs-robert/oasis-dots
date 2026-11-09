@@ -115,7 +115,7 @@ Each write goes through the same safe write path as `plans set`, and the board c
 
 `o` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; if it should differ, run `systemctl --user set-environment EDITOR=...`, then `systemctl --user restart plans-serve`, because the setting reaches only processes that start later. `VISUAL` wins over `EDITOR`, so set `VISUAL` instead if the manager already has one.
 
-The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port. A write also needs the board's own request header, so a page on another site cannot write.
+The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port, unless `remote.json` opens the phone host (see [On the phone](#on-the-phone)). A write also needs the board's own request header, so a page on another site cannot write.
 
 ### On the phone
 

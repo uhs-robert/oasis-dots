@@ -321,10 +321,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         logins = self.headers.get_all(LOGIN_HEADER) or []
         return host in {remote.host, f"{remote.host}:443"} and logins == [remote.login]
 
-    def host_is_allowed(self):
+    def host_refusal(self):
+        """The 403 message for a request the Host check turns away, or None when the Host and login pass."""
         # A page on another site can point its own host name at 127.0.0.1 (DNS rebinding). Its requests then carry
         # that name in Host, so checking Host keeps such a page from reading the board.
-        return self.headers.get("Host") in self.local_hosts() or self.is_remote()
+        if self.headers.get("Host") in self.local_hosts() or self.is_remote():
+            return None
+        host = (self.headers.get("Host") or "").lower()
+        if self.remote and host in {self.remote.host, f"{self.remote.host}:443"}:
+            return f"this host needs the tailnet login named in remote.json ({LOGIN_HEADER} through tailscale serve)"
+        return "Host must be 127.0.0.1 or localhost"
 
     def allowed_origins(self):
         if self.is_remote():
@@ -332,8 +338,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return {f"http://{host}" for host in self.local_hosts()}
 
     def do_GET(self):  # noqa: N802 - the base class names it so
-        if not self.host_is_allowed():
-            return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
+        refusal = self.host_refusal()
+        if refusal:
+            return self.send_json(403, {"error": refusal})
         url = urllib.parse.urlsplit(self.path)
         if self.path == "/":
             return self.send_page()
@@ -346,8 +353,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return self.send_json(404, {"error": f"no page {self.path}"})
 
     def do_POST(self):  # noqa: N802
-        if not self.host_is_allowed():
-            return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
+        refusal = self.host_refusal()
+        if refusal:
+            return self.send_json(403, {"error": refusal})
         if not self.write_is_from_board():
             return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
         if self.is_remote() and self.path not in REMOTE_ACTIONS:
