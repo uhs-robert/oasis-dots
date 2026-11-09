@@ -131,7 +131,7 @@ fn the_clip_prints_one_score_line_per_frame_and_exits_0_without_a_wake_json() {
     for (index, (line, want)) in lines.iter().zip(&expected).enumerate() {
         let (frame, score) = line.split_once(' ').unwrap();
         assert_eq!(frame.parse::<usize>().unwrap(), index);
-        // The line has 4 decimals.
+        // The line has 6 decimals.
         assert!(
             (score.parse::<f32>().unwrap() - want).abs() < 1e-3,
             "{line} against {want}"

@@ -597,11 +597,11 @@ fn run_pcm(file: &Path, mut scorer: Box<dyn Scorer>, mut decider: Decider) -> Re
     while let Ok(Some(frame)) = source.next_frame(Duration::ZERO) {
         let score = scorer.score(&frame);
         // A closed pipe is the reader's choice.
-        if writeln!(out, "{index} {score:.4}").is_err() {
+        if writeln!(out, "{index} {score:.6}").is_err() {
             return Ok(());
         }
         if decider.update(score, index as f64 * FRAME_SECS) {
-            let _ = writeln!(out, "trigger {index} {score:.4}");
+            let _ = writeln!(out, "trigger {index} {score:.6}");
         }
         index += 1;
     }
