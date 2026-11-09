@@ -1096,7 +1096,6 @@ function open_section_editor(edit) {
     save_section();
   });
   cancel.addEventListener("click", cancel_section_edit);
-  store_draft();
   show_section_conflict();
   fit();
   sync_body_controls();
@@ -1137,6 +1136,14 @@ async function save_section() {
   const edit = section_edit;
   if (!edit || section_saving) return;
   section_saving = true;
+  // Text typed during the request is not in the save, and a landed save closes the editor and drops it.
+  const editor = element("sheet-doc").querySelector(".section-editor");
+  const lock_editor = (locked) => {
+    if (!editor) return;
+    editor.querySelector("textarea").readOnly = locked;
+    editor.querySelector(".save").disabled = locked || section_bytes(edit.text) > MAX_SECTION_BYTES;
+  };
+  lock_editor(true);
   let response;
   let answer;
   try {
@@ -1150,7 +1157,10 @@ async function save_section() {
     return;
   } finally {
     section_saving = false;
+    lock_editor(false);
   }
+  // The draft goes even when the owner moved to another card meanwhile, or it comes back over the saved text.
+  if (response.ok) drop_draft(edit);
   if (section_edit !== edit) return;
   if (response.ok) {
     close_section_editor();
