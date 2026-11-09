@@ -537,7 +537,7 @@ const row_observer = new ResizeObserver(measure_heads);
 new ResizeObserver(measure_heads).observe(document.querySelector("header"));
 
 function render_conflicts() {
-  element("conflicts").replaceChildren(...board.repos.flatMap((repo) => repo.conflicts.map(
+  element("conflicts").replaceChildren(...board.repos.flatMap((repo) => (repo.conflicts ?? []).map(
     (conflict) => make("div", "conflict", `conflict: ${conflict.message} (${conflict.path})`))));
 }
 
