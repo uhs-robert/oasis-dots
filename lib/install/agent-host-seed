@@ -6,11 +6,13 @@
 set -euo pipefail
 
 host=${1:?usage: agent-host-seed <host>}
-# The laptop's ssh config runs a RemoteCommand (a tmux attach) for interactive logins; rsync needs a plain connection.
-rsh='ssh -o RemoteCommand=none'
+# The laptop's ssh config runs a RemoteCommand (a tmux attach) and may request a tty; rsync needs a plain connection.
+rsh='ssh -o RemoteCommand=none -o RequestTTY=no'
 
-# Copies a directory's contents into the same place under the host's home. The remote mkdir comes first because rsync
-# makes no parent directories before 3.2.3.
+# What the shadow bar reads (.claude/skills/shadow/shadow.sh seed_home and its font config): the state JSON of the bar and
+# Hyprland, Hyprland's `theme` file, the user fonts, and the gitignored FF7 audio from the dotfiles checkout.
+# Copies a directory's contents to the same place under the host's home. The remote mkdir comes first because rsync makes
+# no parent directories before 3.2.3.
 copy() {
   local dir=$1
   shift
@@ -22,9 +24,14 @@ copy() {
 }
 
 copy .local/state/quickshell --include='*.json' --exclude='*'
-copy .local/state/hypr --include='*.json' --exclude='*'
-# The part of the theme directory that the theme switcher generates; the rest is stowed from the repo.
-copy .config/hypr/theme --include=.current_theme --exclude='*'
-copy .config/quickshell/features/lock/skins/ff7/audio
+copy .local/state/hypr --include='*.json' --include=theme --exclude='*'
+# The shadow reads the audio from the checkout, not ~/.config, and --server does not stow quickshell. The host's checkout
+# sits at the same path under its home as this one (AGENT_HOST_CHECKOUT overrides the main checkout used here).
+checkout=${AGENT_HOST_CHECKOUT:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir | sed 's|/\.git$||')}
+if [[ $checkout == "$HOME"/* ]]; then
+  copy "${checkout#"$HOME"/}/home/quickshell/.config/quickshell/features/lock/skins/ff7/audio"
+else
+  echo "skip the FF7 audio: $checkout is not under $HOME, so the host path is unknown"
+fi
 # The shadow reads fonts here, and install_fonts is skipped under --server.
 copy .local/share/fonts
