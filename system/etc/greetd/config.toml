@@ -8,9 +8,9 @@ vt = "next"
 # command = "/usr/local/bin/tuigreet-oasis"
 # The greeter Hyprland's log is kept for this boot and the one before. The first greeter of a boot moves the old log to .1,
 # found by the boot id stored beside the log; later greeters of the boot (after a logout) append. The output is dropped
-# as before when the log cannot be opened (no dir yet, since greeter-sync creates it, or a file the greeter cannot write),
+# as before when the log cannot be opened (no dir yet, since greeter-sync creates it, or a log the greeter cannot open for append),
 # so the log never stops the login screen.
-command = 'd=/var/lib/greetd/log; l=$d/hyprland.log; b=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null); if [ -w "$d" ]; then [ "$(cat "$d/boot_id" 2>/dev/null)" = "$b" ] || { mv -f "$l" "$l.1"; printf %s "$b" >"$d/boot_id"; } 2>/dev/null; { [ ! -e "$l" ] || [ -w "$l" ]; } || l=/dev/null; else l=/dev/null; fi; exec dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua >>"$l" 2>&1'
+command = 'd=/var/lib/greetd/log; l=$d/hyprland.log; b=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null); if [ -w "$d" ]; then [ "$(cat "$d/boot_id" 2>/dev/null)" = "$b" ] || { mv -f "$l" "$l.1"; printf %s "$b" >"$d/boot_id"; } 2>/dev/null; ( : >>"$l" ) 2>/dev/null || l=/dev/null; else l=/dev/null; fi; exec dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua >>"$l" 2>&1'
 
 # The user to run the command as. The privileges this user must have depends
 # on the greeter. A graphical greeter may for example require the user to be
