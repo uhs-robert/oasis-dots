@@ -190,7 +190,8 @@
            aria-autocomplete="list" autocomplete="off" placeholder="any kind" title="kind">
     <ul id="kind-list" class="combo-list" role="listbox"></ul>
   </div>
-  <label><input id="waiting" type="checkbox"> waiting on owner</label>
+  <label title="Only cards waiting on the owner"><input id="waiting" type="checkbox"> Waiting</label>
+  <label title="Only cards with an owner session"><input id="assigned" type="checkbox"> Assigned</label>
   <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo</span>
 </header>
 <nav id="tabs"></nav>
@@ -205,7 +206,7 @@
 const ALL = "";
 let board = null;
 let selected_path = null;
-const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
+const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false, assigned: false };
 const element = (id) => document.getElementById(id);
 
 function make(tag, class_name, text) {
@@ -486,17 +487,19 @@ function scoped_docs() {
 }
 
 function fill_filter_choices() {
+  // First, so a vanished repo pick resets to ALL before the lists are scoped by it.
+  combos.repo.set_choices(board.repos.filter((repo) => repo.docs.length || repo.problems.length)
+    .map((repo) => ({ ...repo, value: repo.root })));
   const docs = scoped_docs();
+  const all_docs = board.repos.flatMap((repo) => repo.docs);
   const board_order = { status: board.statuses, kind: board.kinds };
   const choices_for = (filter) => {
-    const values = facet_choices(docs, filters, filter, filter_value);
+    const values = facet_choices(docs, filters, filter, filter_value, all_docs);
     const order = board_order[filter];
     // Status and kind keep the board's own order. A picked value off that list sorts last.
     if (order) values.sort((a, b) => (order.indexOf(a) + 1 || Infinity) - (order.indexOf(b) + 1 || Infinity));
     return values.map((value) => ({ value, label: value === UNSET ? "(none)" : value }));
   };
-  combos.repo.set_choices(board.repos.filter((repo) => repo.docs.length || repo.problems.length)
-    .map((repo) => ({ ...repo, value: repo.root })));
   for (const filter of Object.keys(SELECT_FILTER_KEYS)) combos[filter].set_choices(choices_for(filter));
 }
 
@@ -507,7 +510,7 @@ function doc_is_shown(doc) {
 // An unreadable doc has no keys to filter on, so any select filter hides it.
 function problem_is_shown() {
   const select_filter_set = Object.keys(SELECT_FILTER_KEYS).some((filter) => filters[filter] !== ALL);
-  return !select_filter_set && !filters.waiting;
+  return !select_filter_set && !filters.waiting && !filters.assigned;
 }
 
 function pr_link(repo, pr) {
@@ -722,7 +725,10 @@ function apply_layout() {
   document.documentElement.classList.toggle("phone", is_phone());
   element("board").style.gridTemplateColumns = "";
   // The tabs replace the status filter, which the phone hides.
-  if (is_phone() && filters.status !== ALL) combos.status.reset();
+  if (is_phone() && filters.status !== ALL) {
+    combos.status.reset();
+    if (board) fill_filter_choices();
+  }
   mark_panel_open();
   if (board) render();
 }
@@ -1238,15 +1244,20 @@ const SELECT_FILTERS = ["owner", "project", "status", "kind"];
 function doc_passes(doc, filters, skip_filter, value_of) {
   const select_matches = SELECT_FILTERS.every((filter) => filter === skip_filter || filters[filter] === "" ||
     value_of(doc, filter) === filters[filter]);
-  return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
+  const owner = value_of(doc, "owner");
+  const assigned = owner !== "none" && owner !== "\u0000unset";
+  return select_matches && (!filters.waiting || Boolean(doc.waiting_on)) && (!filters.assigned || assigned);
 }
 
 // The values for one select filter's list: those on docs that pass every other filter, plus its own pick so it can
-// be cleared. Callers scope docs to the picked repo.
-function facet_choices(docs, filters, filter, value_of) {
+// be cleared. Callers scope docs to the picked repo. A pick no doc in all_docs has any more is dropped, so the
+// combo resets it instead of leaving an empty board.
+function facet_choices(docs, filters, filter, value_of, all_docs = docs) {
   const values = new Set(docs.filter((doc) => doc_passes(doc, filters, filter, value_of))
     .map((doc) => value_of(doc, filter)));
-  if (filters[filter] !== "") values.add(filters[filter]);
+  if (filters[filter] !== "" && all_docs.some((doc) => value_of(doc, filter) === filters[filter])) {
+    values.add(filters[filter]);
+  }
   return [...values].sort();
 }
 // fuzzy:end
@@ -1691,6 +1702,13 @@ document.addEventListener("keydown", (event) => {
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
+  fill_filter_choices();
+  render();
+});
+
+element("assigned").addEventListener("change", () => {
+  filters.assigned = element("assigned").checked;
+  element("assigned").blur();
   fill_filter_choices();
   render();
 });
