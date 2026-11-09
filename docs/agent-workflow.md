@@ -26,7 +26,7 @@ The `status` key of a plan doc follows this path:
 
 A piece can also be `blocked` or `parked`, on the owner's word. While a question waits for the owner, `waiting_on` holds `owner: <question>`, and the orchestrator clears it after the answer.
 
-The doc is for active work only, and GitHub issues stay the backlog of problems. Each repo orders its open issues: a doc ranks the issue it covers, and the `follow-ups` doc ranks the rest. `plans next` asks the owner about each open issue that no doc ranks and each ranked issue that is closed, and the `issue-descriptions` skill has a session propose a rank when it files an issue. The rule is in [Issue ranks](../home/plans/README.md#issue-ranks). Before the doc is deleted, the PR moves anything lasting into the repo. The rule is in the Docs section of [`AGENTS.md`](../AGENTS.md).
+The doc is for active work only, and GitHub issues stay the backlog of problems. Each repo orders its open issues: a doc ranks the issue it covers, and an issue with no doc gets its own parked doc. `plans next` asks the owner about each open issue that no doc ranks and each ranked issue that is closed, and the `issue-descriptions` skill has a session propose a rank when it files an issue. The rule is in [Issue ranks](../home/plans/README.md#issue-ranks). Before the doc is deleted, the PR moves anything lasting into the repo. The rule is in the Docs section of [`AGENTS.md`](../AGENTS.md).
 
 `.logs/<project>/<id>/` holds the evidence of a piece: check output, review notes and PR bodies. Agent reports stay short and point to files there.
 
