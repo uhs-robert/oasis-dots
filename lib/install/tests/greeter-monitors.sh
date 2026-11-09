@@ -206,7 +206,12 @@ end
 hl = setmetatable({
   monitor = record,
   timer = function(fn, opts) timers[#timers + 1] = fn print("timer " .. opts.timeout) end,
-  get_monitors = function() local list = {} for i = 1, lit do list[i] = {} end return list end,
+  get_monitors = function()
+    local list = {}
+    for i = 1, lit do list[i] = { name = "X-" .. i, description = "Panel " .. i } end
+    if arg[4] == "dock_listed" then list[#list + 1] = { name = "DP-1", description = "Dock A" } end
+    return list
+  end,
   dispatch = function() reloads = reloads + 1 end,
 }, { __index = function() return function() end end })
 hl.dsp = proxy
@@ -214,28 +219,44 @@ dofile(arg[1])
 print("-- " .. arg[3])
 if arg[3] == "handoff" then GREETER_HANDOFF() end
 for _, fn in ipairs(timers) do fn() end
+if arg[3] == "release_handoff" then GREETER_HANDOFF() end
 print("reloads=" .. reloads)
 LUA
 late() { HYPRLAND_INSTANCE_SIGNATURE=test XDG_RUNTIME_DIR=$scratch/run lua "$scratch/late_monitors.lua" "$scratch/hyprland.lua" "$@" 2>&1 </dev/null | grep -v '^desc:Panel\|^desc:Dock C'; }
 mkdir -p "$scratch/run/hypr/test"
 
-case_name='held monitors start disabled and one timer turns them all on with their full rules'
+case_name='held monitors start disabled, and with another monitor lit the timer leaves them dark'
 expect_eq "$(late 1 timers)" 'desc:Dock A disabled=true mode=nil
 DP-5 disabled=true mode=nil
 timer 3000
 -- timers
-desc:Dock A disabled=false mode=1920x1080@60
-DP-5 disabled=false mode=preferred
 reloads=0'
+[[ ! -e $scratch/run/hypr/test/greeter-monitors-released ]] || fail 'a marker was written without a release'
 
-case_name='the handoff turns them off, and a timer still pending does not turn them back on'
+case_name='a held monitor Hyprland lists does not count as lit, so the timer still falls back to the dock'
+result=$(late 0 timers dock_listed)
+[[ $result == *"reloads=1"* ]] || fail "expected one reload: [$result]"
+rm -f "$scratch/run/hypr/test/greeter-monitors-released"
+
+case_name='the handoff after a dark-dock greeter disables nothing, and a pending timer does not light them'
 expect_eq "$(late 1 handoff)" 'desc:Dock A disabled=true mode=nil
 DP-5 disabled=true mode=nil
 timer 3000
 -- handoff
-desc:Dock A disabled=true mode=nil
-DP-5 disabled=true mode=nil
 reloads=0'
+
+case_name='the handoff before an undocked fallback release lights nothing'
+expect_eq "$(late 0 handoff)" 'desc:Dock A disabled=true mode=nil
+DP-5 disabled=true mode=nil
+timer 3000
+-- handoff
+reloads=0'
+
+case_name='the handoff after a fallback release still disables the dock'
+rm -f "$scratch/run/hypr/test/greeter-monitors-released"
+result=$(late 0 release_handoff)
+[[ $result == *"-- release_handoff"*"desc:Dock A disabled=true"*"reloads=1"* ]] || fail "unexpected: [$result]"
+rm -f "$scratch/run/hypr/test/greeter-monitors-released"
 
 case_name='with no other monitor lit, the release reloads once, and the reload applies the rules without a hold'
 result=$(late 0 timers)

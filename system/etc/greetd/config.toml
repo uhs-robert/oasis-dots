@@ -6,7 +6,10 @@ vt = "next"
 # The default session, also known as the greeter.
 [default_session]
 # command = "/usr/local/bin/tuigreet-oasis"
-command = "dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua >/dev/null 2>&1"
+# The greeter Hyprland's log is kept for this boot and the one before: the first greeter of a boot moves the old log aside
+# (the log is older than PID 1), later greeters of the boot (after a logout) append. Without a writable log dir (greeter-sync
+# creates it) the output is dropped as before, so a missing dir never stops the login screen.
+command = 'd=/var/lib/greetd/log; l=$d/hyprland.log; if [ -w "$d" ]; then [ "$l" -ot /proc/1 ] && mv -f "$l" "$l.1" 2>/dev/null; else l=/dev/null; fi; exec dbus-run-session start-hyprland -- -c /etc/greetd/hyprland.lua >>"$l" 2>&1'
 
 # The user to run the command as. The privileges this user must have depends
 # on the greeter. A graphical greeter may for example require the user to be

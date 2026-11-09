@@ -7,6 +7,8 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../common/greeter-files.sh"
 
 GREETER_DEST=/etc/greetd/quickshell
 GREETER_MONITORS=/etc/greetd/monitors.lua
+# The greeter Hyprland's own log (hyprland.log and the boot before it, hyprland.log.1); /etc/greetd/config.toml writes it.
+GREETER_HYPRLAND_LOG_DIR=/var/lib/greetd/log
 GREETER_MONITORS_GENERATOR="$(dirname "${BASH_SOURCE[0]:-$0}")/greeter-monitors.lua"
 # Data only (greeter.json, theme.json), owned by the installing user and readable by group greeter; the bar keeps it current.
 GREETER_DATA=/var/lib/qs-greeter
@@ -113,6 +115,7 @@ greeter_install_cmds() {
     "sudo install -Dm644 '$stage/monitors.lua' '$GREETER_MONITORS'" \
     "printf '%s\\n' '${GREETER_USER:-$USER}' | sudo tee /etc/greetd/admin_user >/dev/null" \
     "sudo install -d -m 2750 -o '$USER' -g greeter '$GREETER_DATA'" \
+    "sudo install -d -m 755 -o greeter -g greeter '$GREETER_HYPRLAND_LOG_DIR'" \
     "sudo touch '$GREETER_LOG' && sudo chown greeter:\"\$(id -gn)\" '$GREETER_LOG' && sudo chmod 640 '$GREETER_LOG'" \
     "if levels=\$(jq -c '{music_volume, output_volume} | with_entries(select(.value | type == \"string\"))' '$GREETER_DATA/greeter.json' 2>/dev/null); then jq --argjson levels \"\$levels\" '. + \$levels' '$stage/greeter.json' >'$GREETER_DATA/.greeter.json.new' && chmod 640 '$GREETER_DATA/.greeter.json.new' && mv -f '$GREETER_DATA/.greeter.json.new' '$GREETER_DATA/greeter.json'; else install -m 640 '$stage/greeter.json' '$GREETER_DATA/greeter.json'; fi" \
     "$seed_theme" \
