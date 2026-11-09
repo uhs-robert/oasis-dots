@@ -240,6 +240,8 @@ def apply_changes(changes, out):
     done = skipped = 0
     for folder in dict.fromkeys(change[1] for change in changes):
         mine = [change for change in changes if change[1] == folder]
+        # A new machine has the repo but no .plans/ yet, and the lock needs the folder.
+        os.makedirs(folder, exist_ok=True)
         lock = store.locked(folder) if os.path.basename(folder) == ".plans" else contextlib.nullcontext()
         with lock:
             for source, _, rel, _, before in mine:

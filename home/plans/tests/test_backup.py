@@ -161,6 +161,13 @@ class TestBackup(BackupCase):
         self.notify.assert_not_called()
         self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "forget"])
 
+    def test_any_failure_notifies_not_only_restic_errors(self):
+        with mock.patch.object(backup, "backup_paths", side_effect=OSError("roots unreadable")):
+            code, _, err = self.run_cli("backup")
+        self.assertEqual(code, 1)
+        self.assertIn("roots unreadable", err)
+        self.notify.assert_called_once()
+
     def test_refuses_a_password_file_others_can_read(self):
         os.chmod(self.password, 0o644)
         code, _, err = self.run_cli("backup")
@@ -229,6 +236,12 @@ class TestRestore(BackupCase):
         self.assertEqual(read(os.path.join(plans, "two.md")), "alpha two\n")
         self.assertEqual(read(os.path.join(plans, "later.md")), "made after the snapshot\n")
         self.assertEqual([n for n in os.listdir(plans) if "restore-tmp" in n], [])
+
+    def test_apply_into_a_repo_with_no_plans_folder(self):
+        shutil.rmtree(os.path.join(self.alpha, ".plans"))
+        code, out, _ = self.run_cli("restore", "latest", "--apply")
+        self.assertEqual(code, 0)
+        self.assertEqual(read(os.path.join(self.alpha, ".plans", "p", "one.md")), "alpha one\n")
 
     def test_repo_by_name_touches_only_that_repo(self):
         write(os.path.join(self.beta, ".plans", "p", "one.md"), "beta edited\n")

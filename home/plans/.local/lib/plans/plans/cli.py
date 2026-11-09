@@ -591,11 +591,14 @@ def run_backup(args):
             backup.init(print)
         else:
             backup.backup(print)
-    except backup.BackupError as error:
-        # A timer run has nobody watching the terminal.
+    except Exception as error:
+        # A timer run has nobody watching the terminal. Any failure notifies, since systemd skips its own notice for
+        # an exit-code failure.
         if not args.init:
-            backup.notify_failure(str(error))
-        raise
+            backup.notify_failure(str(error) or type(error).__name__)
+        if isinstance(error, backup.BackupError):
+            raise
+        raise Refused(f"backup failed: {type(error).__name__}: {error}") from error
 
 
 def run_restore(args):
