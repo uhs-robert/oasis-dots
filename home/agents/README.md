@@ -21,7 +21,7 @@ Check that a session is capped with `systemctl --user status agents.slice`. Its 
 | --- | --- | --- |
 | `MemoryHigh` | `75%` | Above this share of RAM the kernel throttles the agents and reclaims their memory. |
 | `MemoryMax` | `85%` | At this share the kernel kills a process inside the slice. |
-| `CPUWeight` | `50` | The agents' share of contended CPU against other apps under your user manager (terminals, browsers), which have the default of 100. Hyprland runs in the login session, a sibling of the user manager: `just system-apply` or the installer and `just system-apply` (which then reloads systemd) ship a drop-in (`system/etc/systemd/system/user@.service.d/50-cpuweight.conf`, `CPUWeight=50`) that ranks the whole user manager, agents included, below the session. |
+| `CPUWeight` | `50` | The agents' share of contended CPU against other apps under your user manager (terminals, browsers), which have the default of 100. Hyprland runs in the login session, a sibling of the user manager: the installer or `just system-apply` (both reload systemd) ship a drop-in (`system/etc/systemd/system/user@.service.d/50-cpuweight.conf`, `CPUWeight=50`) that ranks the whole user manager, agents included, below the session. |
 | `X-UnlockedCPUQuota` | `87%` | The CPU cap while the screen is unlocked, as a share of all threads (87% is 14 of 16). systemd ignores this key. The lock screen reads it. An empty value leaves the slice uncapped while unlocked. |
 | `X-LockedCPUQuota` | `62%` | The CPU cap while the screen is locked, as a share of all threads (62% is 10 of 16). systemd ignores this key. The lock screen reads it. |
 
