@@ -68,7 +68,7 @@ Every open GitHub issue of a repo needs a rank. A doc ranks an issue when its `i
 
 ```
 ask	#1465	rank: plain-writing lint: rare shell forms still hide or invent PR bodies
-ask	#94	closed: drop it from some-doc
+ask	#94	closed: drop it from cursor-drag-reenter
 ```
 
 A `rank` line is an open issue that no doc ranks. A `closed` line names the first doc by rank that still ranks a closed issue. With `--json`, these rows carry `"issue": N`, and `path` is the doc, or null. The check only reports. It never edits a doc.
