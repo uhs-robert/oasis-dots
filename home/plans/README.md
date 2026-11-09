@@ -91,7 +91,7 @@ The service is wanted by `graphical-session.target`, so it starts and stops with
 
 The service does not see a `GITHUB_DIR` that only the shell exports. Without the roots file (`~/.config/plans/roots`, one directory per line) it uses the default roots and can miss repos that `plans ls --all` finds. The file replaces the defaults, so list every root in it, including the dotfiles checkout.
 
-The board has a column per status and a lane per repo, then per project. The header holds a repo search box and filters for the id, owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
+The board has a column per status and a lane per repo, then per project. The header holds a repo search box and filters for the owner, project, status, kind and waiting on the owner. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
 
 | Key | Action |
 | --- | --- |
@@ -100,12 +100,14 @@ The board has a column per status and a lane per repo, then per project. The hea
 | `h` `l` | the nearest card in the column to the left or right |
 | `H` `L` | move the card one status column; a move to blocked or done asks `y` / `n` |
 | `J` `K` | move the card one place down or up in its cell (its rank) |
-| `e` | edit the owner: a session name or `none` |
-| `x` | cancel the card: the prompt lists every change (PR, issue, worktree, files) and `y` runs it. A card that a session owns is refused: set the owner to none with `e` first. There is no board key for `close` |
-| `o`, Enter | open the doc in `$EDITOR` in a new terminal |
+| `o`, Enter | open the doc view of the card; Esc closes it |
 | double-click a card | the same as `o` (not on the owner badge or a link) |
-| `/` | the id filter; Esc goes back to the board |
-| `r` | the repo search box |
+| `e` | open the doc in `$EDITOR` in a new terminal |
+| `a` | edit the owner: a session name or `none` |
+| `x` | cancel the card: the prompt lists every change (PR, issue, worktree, files) and `y` runs it. A card that a session owns is refused: set the owner to none with `a` first. There is no board key for `close` |
+| `/` | the repo search box |
+
+The doc view is a side panel on the right. It shows the rendered doc and the phone sheet's status buttons, rank buttons and owner field. The board stays in view, and the panel follows the selection as the keys move it. Every key above works with the panel open. The doc is read-only: `e` opens the editor. An unreadable doc shows its error and its raw text. The renderer covers the markdown that plan docs use: headings, nested lists, `- [ ]` items, code, bold, italic, http(s) links and `#12` issue links. It shows the front matter as a table, and anything else as plain text. The doc text is escaped before any markup goes in, so HTML in a doc shows as text.
 
 The repo search box lists the repos that have plan docs, with all repos first. Typing keeps the repos whose `owner/name` label or folder name holds the letters in order, best match first, and a hit at a word start or in a run ranks higher. Arrow keys move the highlight, Enter or a click picks, Esc closes the list, and Tab leaves without a pick. Pick all repos, or empty the box and press Esc, to clear the filter. The pick does not survive a page reload. The matcher has a node test: `node home/plans/tests/fuzzy.test.mjs`. `tests/test_board_fuzzy.py` runs it in the `plans` check step.
 
@@ -113,7 +115,7 @@ A drag moves a card within its lane, to another status, another place or both. A
 
 Each write goes through the same safe write path as `plans set`, and the board compares against the values it showed. If an agent changed one of those keys since the board last loaded, the write is refused. The card snaps back and a message names the keys. A renumber skips a doc that an agent re-ranked meanwhile, keeps the agent's rank and says which doc it skipped. Status and owner follow the rules of `plans set`. The other keys are read-only on the board.
 
-`o` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; if it should differ, run `systemctl --user set-environment EDITOR=...`, then `systemctl --user restart plans-serve`, because the setting reaches only processes that start later. `VISUAL` wins over `EDITOR`, so set `VISUAL` instead if the manager already has one.
+`e` uses the terminal launcher that the Hyprland config writes (`~/.local/state/hypr/bin/term`), else `$TERMINAL`. The editor is `$VISUAL`, then `$EDITOR`, then `nvim`. The user service does not see the shell's `$EDITOR`; if it should differ, run `systemctl --user set-environment EDITOR=...`, then `systemctl --user restart plans-serve`, because the setting reaches only processes that start later. `VISUAL` wins over `EDITOR`, so set `VISUAL` instead if the manager already has one.
 
 The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port, unless `remote.json` opens the phone host (see [On the phone](#on-the-phone)). A write also needs the board's own request header, so a page on another site cannot write.
 
@@ -136,7 +138,7 @@ Without `remote.json` the board answers on 127.0.0.1 and `localhost` only, as be
 
 The board serves the phone host only when the request carries a `Tailscale-User-Login` header equal to `login`. `tailscale serve` sets that header itself and drops any copy the client sent, and it sends none for a tagged device or a Funnel request. So another tailnet user, a shared device or the open internet gets a 403. The board still listens on 127.0.0.1 only, so nothing but `tailscale serve` and local programs reach it. A local program can send any header, as it can already use the board today. A write from the phone needs the same board header, with the phone page's own origin.
 
-Below 600 pixels wide, the board shows one status at a time. A tab per status holds a count, and a sideways swipe moves to the next or previous tab. It opens on building. A tap on a card opens a sheet with the status buttons, rank up and down, the owner field, and the doc text, read-only. Each button writes through the same path as the desktop keys, with the same refusals and the same question before blocked or done. The phone has no cancel and no editor, and the server refuses both from the phone host.
+Below 600 pixels wide, the board shows one status at a time. A tab per status holds a count, and a sideways swipe moves to the next or previous tab. It opens on building. A tap on a card opens a sheet with the status buttons, rank up and down, the owner field, and the rendered doc, read-only. Each button writes through the same path as the desktop keys, with the same refusals and the same question before blocked or done. The phone has no cancel and no editor, and the server refuses both from the phone host.
 
 ## Backup
 
@@ -219,9 +221,9 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
 - `liveness.py`: the dead-owner check on the stored pid, the release write every read runs, and the take-back that `reclaim` runs.
 - `cli.py`: argument parsing and output only.
-- `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream, and the phone check (`remote.json`, `Handler.is_remote`). `board.html` is the whole page, plain JavaScript with no build step. Its phone layout starts at `render_phone`.
+- `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream, and the phone check (`remote.json`, `Handler.is_remote`). `board.html` is the whole page, plain JavaScript with no build step. Its phone layout starts at `render_phone`, and the sheet there is also the desktop doc view. The markdown renderer sits between the `markdown:start` and `markdown:end` markers.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
 `.config/systemd/user/plans-backup.service` and `plans-backup.timer` run `plans backup` hourly, and `plans-backup-notify.service` notifies when systemd kills a run. `test_backup.py` drives backup and restore with a stub `restic` on PATH.
 
-`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `test_server.py` covers the board's reads, the phone host and login check, the doc text, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts, from the laptop and the phone. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `markdown.test.mjs` feeds the renderer hostile and random docs and checks that only its own tags come out, and `test_board_markdown.py` runs it, as `test_board_fuzzy.py` runs `fuzzy.test.mjs`. `test_server.py` covers the board's reads, the phone host and login check, the doc text, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts, from the laptop and the phone. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.
