@@ -131,6 +131,7 @@ rebuild_crates() {
   while IFS= read -r recipe; do
     if (cd "$repo" && just "$recipe") 9>&-; then
       echo "ship-batch: ran just $recipe (the merge changed its crate)"
+      # shellcheck disable=SC2034 # read by post-merge.sh
       [[ $recipe != voxcmd-build ]] || voxcmd_rebuilt=true
     else
       echo "ship-batch: WARNING: just $recipe failed; the installed binary is stale. Fix it and run: just $recipe" >&2
