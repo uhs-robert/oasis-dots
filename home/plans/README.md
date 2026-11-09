@@ -24,6 +24,8 @@ plans cancel <id> [--as S] [--force] [--dry-run]   # close, plus the PR, the iss
 plans lint [--gh] [--all]
 plans reclaim                         # for a SessionStart hook: take back this session's docs
 plans serve [--port N]                # the web board, see below
+plans backup [--init]                 # restic snapshot of every repo's .plans/ and .logs/, see Backup
+plans restore --list | <snapshot> [--repo R] [--apply]   # see Backup
 ```
 
 A line holds tab-separated columns: the repo (only with `--all`), id, status, owner, rank and waiting_on. `--json` prints the full front matter of each doc, plus its `path`.
@@ -115,6 +117,30 @@ Each write goes through the same safe write path as `plans set`, and the board c
 
 The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port. A write also needs the board's own request header, so a page on another site cannot write.
 
+## Backup
+
+`.plans/` and `.logs/` are git-ignored, so git holds no copy. `plans backup` snapshots both folders of every repo under the roots (the same repos as `--all`) with restic, encrypted, into the rclone remote `gdrive:backups/plans`. After each snapshot it prunes with keep-hourly 48 and keep-daily 30. Set `PLANS_BACKUP_REPO` or `PLANS_BACKUP_PASSWORD_FILE` to use another restic repo or password file.
+
+One-time setup:
+
+1. `rclone config`: make a Google Drive remote named `gdrive`.
+2. `plans backup --init`: writes a random password to `~/.config/plans/backup-password` (mode 600, never tracked) and creates the restic repo. It never overwrites an existing password file.
+3. Copy that password into the password manager. Without it the backups cannot be read.
+4. `systemctl --user enable --now plans-backup.timer`. `just stow plans` installs the units, but nothing enables them. The timer runs `plans-backup.service` hourly and catches up after a missed run (`Persistent=true`). The service reads the roots like the board service does, so list every root in `~/.config/plans/roots`.
+
+A failed run sends a desktop notification and exits 1. `journalctl --user -u plans-backup` has the restic error.
+
+Restore, for example on a new machine after you clone the repos:
+
+```bash
+plans restore --list                         # snapshot id, time, host, repo count
+plans restore latest                         # dry run: restores to a temp folder, lists new and differing files
+plans restore latest --repo dotfiles         # only one repo: a path under the roots, or its folder name
+plans restore latest --apply                 # copy the restored files into place
+```
+
+Without `--apply` nothing changes. `--apply` overwrites differing files and adds missing ones, and it never deletes a file the snapshot lacks. It skips and reports (exit 1) a snapshot repo that is not under the roots or not cloned here, and refuses a `--repo` path outside the roots. It never writes outside a repo's `.plans/` or `.logs/`, even through a symlink.
+
 ## Front matter
 
 ```yaml
@@ -166,6 +192,7 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `validate.py`: the lint rules and the old-layout detection.
 - `query.py`: a repo's docs by glob (there is no index file), and the `ls`, `next`, `waiting` and `questions` queries.
 - `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
+- `backup.py`: `plans backup` and `plans restore`: the restic calls, the path selection from `roots.py`, the restore diff and the guarded copy.
 - `gh.py`: the `lint --gh` checks, and the `gh` runner.
 - `retire.py`: `close` and `cancel`: the step list (the dry run and the board's prompt) and the ordered apply.
 - `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
@@ -174,5 +201,6 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
+`.config/systemd/user/plans-backup.service` and `plans-backup.timer` run `plans backup` hourly. `test_backup.py` drives backup and restore with a stub `restic` on PATH.
 
 `tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.

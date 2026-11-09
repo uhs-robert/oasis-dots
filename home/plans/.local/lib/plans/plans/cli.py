@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import gh, issues, liveness, parse, query, retire, roots, server, store, validate
+from . import backup, gh, issues, liveness, parse, query, retire, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -34,7 +34,7 @@ def main(argv=None):
         return fail(f"{error}; read it again and retry", STALE)
     except store.Vanished as error:
         return fail(str(error), FINDINGS)
-    except (Refused, retire.Refused) as error:
+    except (Refused, retire.Refused, backup.BackupError) as error:
         return fail(str(error), FINDINGS)
     except (UsageError, roots.NotInRepo, parse.ParseError, gh.GhMissing) as error:
         return fail(str(error), USAGE)
@@ -55,6 +55,17 @@ def build_parser():
     ls.add_argument("--status", help="one status, or several separated by commas")
     add_scope_options(ls)
     ls.set_defaults(run=run_ls)
+
+    backup_ = commands.add_parser("backup", help="back up every repo's .plans/ and .logs/ with restic")
+    backup_.add_argument("--init", action="store_true", help="create the password file and the restic repo, once")
+    backup_.set_defaults(run=run_backup)
+
+    restore = commands.add_parser("restore", help="list snapshots, or restore one (a dry run without --apply)")
+    restore.add_argument("snapshot", nargs="?", help="a snapshot id, or latest")
+    restore.add_argument("--list", action="store_true", help="list the snapshots")
+    restore.add_argument("--repo", help="only this repo: a path under the roots, or its folder name")
+    restore.add_argument("--apply", action="store_true", help="copy the restored files into place")
+    restore.set_defaults(run=run_restore)
 
     next_ = commands.add_parser("next", help="the ask lines, then the work line, for this session")
     add_session_option(next_)
@@ -572,3 +583,25 @@ def run_serve(args):
         return server.serve(args.port)
     except OSError as error:
         raise UsageError(f"cannot serve on {server.HOST}:{args.port}: {error.strerror or error}") from None
+
+
+def run_backup(args):
+    try:
+        if args.init:
+            backup.init(print)
+        else:
+            backup.backup(print)
+    except backup.BackupError as error:
+        # A timer run has nobody watching the terminal.
+        if not args.init:
+            backup.notify_failure(str(error))
+        raise
+
+
+def run_restore(args):
+    if args.list == bool(args.snapshot):
+        raise UsageError("give --list, or a snapshot to restore")
+    if args.list:
+        backup.list_snapshots(print)
+        return OK
+    return OK if backup.restore(args.snapshot, args.repo, args.apply, print) else FINDINGS
