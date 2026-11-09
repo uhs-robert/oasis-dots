@@ -56,29 +56,41 @@ assert.equal(rank_choices("dra", statuses)[0].value, "v-draft", "keeps the whole
 assert.deepEqual(choice_labels("b", [choice("b1"), choice("b2")]), ["b1", "b2"], "ties keep the input order");
 
 // Linked filter lists. Each list holds the values on docs that pass the other filters.
-const value_of = (doc, filter) => doc[filter] ?? "";
+const UNSET = "\u0000unset";
+const value_of = (doc, filter) => (doc[filter] ?? "") === "" ? UNSET : String(doc[filter]);
 const no_filters = { owner: "", project: "", status: "", kind: "", waiting: false };
 const docs = [
   { owner: "a", project: "p1", status: "building", kind: "feature", waiting_on: "" },
   { owner: "a", project: "p2", status: "review", kind: "fix", waiting_on: "owner" },
   { owner: "b", project: "p2", status: "review", kind: "feature", waiting_on: "" },
-  { owner: "", project: "p3", status: "done", kind: "fix", waiting_on: "" },
+  { owner: null, project: "p3", status: "done", kind: "fix", waiting_on: "" },
 ];
-const facet = (filters, filter, scope = docs) => facet_choices(scope, { ...no_filters, ...filters }, filter, value_of);
+const facet = (filters, filter, scope = docs, all_docs = scope) =>
+  facet_choices(scope, { ...no_filters, ...filters }, filter, value_of, all_docs);
 
-assert.deepEqual(facet({}, "owner"), ["", "a", "b"], "no filter lists every value, including the empty one");
+assert.deepEqual(facet({}, "owner"), [UNSET, "a", "b"], "no filter lists every value, including the unset stand-in");
 assert.deepEqual(facet({ project: "p2" }, "owner"), ["a", "b"], "another filter narrows a list");
 assert.deepEqual(facet({ project: "p1" }, "status"), ["building"], "status keeps only values on matching cards");
-assert.deepEqual(facet({ owner: "a" }, "owner"), ["", "a", "b"], "a filter's own pick does not narrow its own list");
-assert.deepEqual(facet({ owner: "b", kind: "fix" }, "owner"), ["", "a", "b"], "the pick stays beside the other-filter match");
+assert.deepEqual(facet({ owner: "a" }, "owner"), [UNSET, "a", "b"], "a filter's own pick does not narrow its own list");
+assert.deepEqual(facet({ owner: "b", kind: "fix" }, "owner"), [UNSET, "a", "b"], "the pick stays beside the other-filter match");
 assert.deepEqual(facet({ owner: "b", kind: "fix" }, "project"), [], "the narrowed list can be empty");
 assert.deepEqual(facet({ project: "p1", status: "done" }, "status"), ["building", "done"], "a pick that matches nothing stays listed");
 assert.deepEqual(facet({ waiting: true }, "owner"), ["a"], "the waiting box narrows the lists");
 assert.deepEqual(facet({ waiting: true, owner: "b" }, "project"), [], "waiting and a pick narrow together");
-assert.deepEqual(facet({}, "owner", docs.slice(2)), ["", "b"], "the scope the caller passes bounds the list");
+assert.deepEqual(facet({}, "owner", docs.slice(2)), [UNSET, "b"], "the scope the caller passes bounds the list");
 assert.deepEqual(facet({}, "kind", []), [], "no docs gives an empty list");
 assert.ok(doc_passes(docs[0], no_filters, null, value_of), "no filters pass every doc");
 assert.ok(!doc_passes(docs[0], { ...no_filters, owner: "b" }, null, value_of), "a pick hides other docs");
 assert.ok(doc_passes(docs[0], { ...no_filters, owner: "b" }, "owner", value_of), "the skipped filter is ignored");
 
+assert.deepEqual(facet({ owner: UNSET }, "project"), ["p3"], "picking (none) narrows the other lists");
+assert.deepEqual(facet({ owner: UNSET }, "owner"), [UNSET, "a", "b"], "the (none) pick stays in its own list");
+assert.deepEqual(facet({ owner: "gone" }, "owner"), [UNSET, "a", "b"], "a pick no doc has is dropped, so the combo resets it");
+assert.deepEqual(facet({ owner: "b" }, "owner", docs.slice(0, 2), docs), ["a", "b"], "a pick in another repo stays listed");
+assert.deepEqual(facet({ assigned: true }, "project"), ["p1", "p2"], "assigned drops cards with no owner");
+assert.deepEqual(facet({ assigned: true }, "owner"), ["a", "b"], "assigned narrows the owner list");
+const with_none = [...docs, { owner: "none", project: "p4", status: "review", kind: "fix", waiting_on: "" }];
+assert.deepEqual(facet({ assigned: true }, "project", with_none), ["p1", "p2"], "the none marker is not assigned");
+assert.ok(!doc_passes(docs[3], { ...no_filters, assigned: true }, null, value_of), "assigned hides an unset owner");
+assert.ok(doc_passes(docs[0], { ...no_filters, assigned: true }, null, value_of), "assigned keeps an owned card");
 console.log("fuzzy tests passed");
