@@ -219,7 +219,12 @@ dofile(arg[1])
 print("-- " .. arg[3])
 if arg[3] == "handoff" then GREETER_HANDOFF() end
 for _, fn in ipairs(timers) do fn() end
-if arg[3] == "release_handoff" then GREETER_HANDOFF() end
+if arg[3] == "release_handoff" then
+  -- The release reloads the config, which runs hyprland.lua again in the same Lua state.
+  dofile(arg[1])
+  print("-- handoff")
+  GREETER_HANDOFF()
+end
 print("reloads=" .. reloads)
 LUA
 late() { HYPRLAND_INSTANCE_SIGNATURE=test XDG_RUNTIME_DIR=$scratch/run lua "$scratch/late_monitors.lua" "$scratch/hyprland.lua" "$@" 2>&1 </dev/null | grep -v '^desc:Panel\|^desc:Dock C'; }
@@ -255,7 +260,7 @@ reloads=0'
 case_name='the handoff after a fallback release still disables the dock'
 rm -f "$scratch/run/hypr/test/greeter-monitors-released"
 result=$(late 0 release_handoff)
-[[ $result == *"-- release_handoff"*"desc:Dock A disabled=true"*"reloads=1"* ]] || fail "unexpected: [$result]"
+[[ $result == *"-- handoff"*"desc:Dock A disabled=true"*"reloads=1"* ]] || fail "unexpected: [$result]"
 rm -f "$scratch/run/hypr/test/greeter-monitors-released"
 
 case_name='with no other monitor lit, the release reloads once, and the reload applies the rules without a hold'
