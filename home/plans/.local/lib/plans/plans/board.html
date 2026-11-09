@@ -17,16 +17,18 @@
   header select, header input { background: var(--card); color: var(--text); border: 1px solid var(--line);
                                 border-radius: 4px; padding: 3px 6px; font: inherit; }
   header input[type=text] { width: 14em; }
-  #repo-picker { position: relative; }
+  .combo-picker { position: relative; }
+  header input.combo { width: 11em; }
   #repo { width: 16em; }
-  #repo-list { position: absolute; top: 100%; left: 0; z-index: 8; display: none; min-width: 100%; max-height: 50vh;
-               overflow-y: auto; margin: 2px 0 0; padding: 2px 0; list-style: none; background: var(--card);
-               border: 1px solid var(--line); border-radius: 4px; }
-  #repo-list.open { display: block; }
-  #repo-list li { padding: 3px 8px; white-space: nowrap; cursor: pointer; }
-  #repo-list li.active { background: var(--line); color: var(--accent); }
-  #repo-list li.chosen { font-weight: 600; }
-  #repo-list li.none { color: var(--dim); cursor: default; }
+  #status, #kind { width: 9em; }
+  .combo-list { position: absolute; top: 100%; left: 0; z-index: 8; display: none; min-width: 100%; max-height: 50vh;
+                overflow-y: auto; margin: 2px 0 0; padding: 2px 0; list-style: none; background: var(--card);
+                border: 1px solid var(--line); border-radius: 4px; }
+  .combo-list.open { display: block; }
+  .combo-list li { padding: 3px 8px; white-space: nowrap; cursor: pointer; }
+  .combo-list li.active { background: var(--line); color: var(--accent); }
+  .combo-list li.chosen { font-weight: 600; }
+  .combo-list li.none { color: var(--dim); cursor: default; }
   header label { color: var(--dim); }
   #keys { margin-left: auto; color: var(--dim); font-size: 12px; }
   #message { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: none;
@@ -78,9 +80,10 @@
   #tabs, #sheet, #confirm .phone-only { display: none; }
   html.phone { scroll-padding-top: var(--tabs-h, 40px); }
   html.phone header { position: static; }
-  html.phone #keys, html.phone #status { display: none; }
+  html.phone #keys { display: none; }
   html.phone #repo-picker { flex: 1 1 100%; }
   html.phone #repo { width: 100%; }
+  html.phone #status-picker { display: none; }
   html.phone #tabs { display: flex; position: sticky; top: 0; z-index: 5; overflow-x: auto; scrollbar-width: none;
                      background: var(--panel); border-bottom: 1px solid var(--line); }
   #tabs button { flex: none; padding: 11px 10px 9px; background: none; border: 0; border-bottom: 2px solid transparent;
@@ -149,15 +152,31 @@
 <body>
 <header>
   <h1>plans</h1>
-  <div id="repo-picker">
-    <input id="repo" type="text" role="combobox" aria-expanded="false" aria-controls="repo-list"
+  <div class="combo-picker" id="repo-picker">
+    <input id="repo" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="repo-list"
            aria-autocomplete="list" autocomplete="off" placeholder="all repos" title="repo (/)">
-    <ul id="repo-list" role="listbox"></ul>
+    <ul id="repo-list" class="combo-list" role="listbox"></ul>
   </div>
-  <select id="owner" title="owner"></select>
-  <select id="project" title="project"></select>
-  <select id="status" title="status"></select>
-  <select id="kind" title="kind"></select>
+  <div class="combo-picker" id="owner-picker">
+    <input id="owner" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="owner-list"
+           aria-autocomplete="list" autocomplete="off" placeholder="any owner" title="owner">
+    <ul id="owner-list" class="combo-list" role="listbox"></ul>
+  </div>
+  <div class="combo-picker" id="project-picker">
+    <input id="project" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="project-list"
+           aria-autocomplete="list" autocomplete="off" placeholder="any project" title="project">
+    <ul id="project-list" class="combo-list" role="listbox"></ul>
+  </div>
+  <div class="combo-picker" id="status-picker">
+    <input id="status" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="status-list"
+           aria-autocomplete="list" autocomplete="off" placeholder="any status" title="status">
+    <ul id="status-list" class="combo-list" role="listbox"></ul>
+  </div>
+  <div class="combo-picker" id="kind-picker">
+    <input id="kind" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="kind-list"
+           aria-autocomplete="list" autocomplete="off" placeholder="any kind" title="kind">
+    <ul id="kind-list" class="combo-list" role="listbox"></ul>
+  </div>
   <label><input id="waiting" type="checkbox"> waiting on owner</label>
   <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo</span>
 </header>
@@ -438,30 +457,29 @@ async function load_board() {
   render();
 }
 
-function fill_select(id, label, values) {
-  const select = element(id);
-  const current = select.value;
-  select.replaceChildren(new Option(label, ALL), ...values.map((value) => new Option(value, value)));
-  select.value = values.includes(current) ? current : ALL;
-  filters[id] = select.value;
-}
+// An owner or project can be the empty string, which is ALL. This stand-in keeps that doc pickable.
+const UNSET = "\u0000unset";
+const doc_value = (doc, key) => String(doc[key]) || UNSET;
 
 function fill_filter_choices() {
   const docs = board.repos.flatMap((repo) => repo.docs);
-  const distinct = (key) => [...new Set(docs.map((doc) => String(doc[key])))].sort();
-  refresh_repo_choices();
-  fill_select("owner", "any owner", distinct("owner_session"));
-  fill_select("project", "any project", distinct("project"));
-  fill_select("status", "any status", board.statuses.slice());
-  fill_select("kind", "any kind", board.kinds.slice());
+  const distinct = (key) => [...new Set(docs.map((doc) => doc_value(doc, key)))].sort()
+    .map((value) => ({ value, label: value === UNSET ? "(none)" : value }));
+  const plain = (values) => values.map((value) => ({ value, label: value }));
+  combos.repo.set_choices(board.repos.filter((repo) => repo.docs.length || repo.problems.length)
+    .map((repo) => ({ ...repo, value: repo.root })));
+  combos.owner.set_choices(distinct("owner_session"));
+  combos.project.set_choices(distinct("project"));
+  combos.status.set_choices(plain(board.statuses));
+  combos.kind.set_choices(plain(board.kinds));
 }
 
-// Each filter select and the front matter key it compares.
+// Each filter combo and the front matter key it compares.
 const SELECT_FILTER_KEYS = { owner: "owner_session", project: "project", status: "status", kind: "kind" };
 
 function doc_is_shown(doc) {
   const select_matches = Object.entries(SELECT_FILTER_KEYS)
-    .every(([filter, key]) => filters[filter] === ALL || String(doc[key]) === filters[filter]);
+    .every(([filter, key]) => filters[filter] === ALL || doc_value(doc, key) === filters[filter]);
   return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
 }
 
@@ -683,7 +701,7 @@ function apply_layout() {
   document.documentElement.classList.toggle("phone", is_phone());
   element("board").style.gridTemplateColumns = "";
   // The tabs replace the status filter, which the phone hides.
-  if (is_phone() && filters.status !== ALL) { filters.status = ALL; element("status").value = ALL; }
+  if (is_phone() && filters.status !== ALL) combos.status.reset();
   mark_panel_open();
   if (board) render();
 }
@@ -948,20 +966,31 @@ function fuzzy_score(query, text) {
   return score - text.length * 0.01;
 }
 
-// A repo matches on its owner/name label or its folder name. The folder gets a small bonus so a typed folder name
-// finds its repo first. The result keeps the input order among equal scores, so a sorted input stays A to Z.
-function rank_repos(query, repos) {
-  if (!query) return repos.slice();
+// Keeps the items whose score is a match, best first. Equal scores keep the input order, so a sorted input stays A to Z.
+function rank_by(query, items, score_of) {
+  if (!query) return items.slice();
   const scored = [];
-  for (const repo of repos) {
-    const folder = repo.root.split("/").filter(Boolean).pop() || "";
-    const folder_score = fuzzy_score(query, folder);
-    const best = Math.max(fuzzy_score(query, repo.label), folder_score + 2);
-    if (best > -Infinity) scored.push({ repo, best });
+  for (const item of items) {
+    const best = score_of(item);
+    if (best > -Infinity) scored.push({ item, best });
   }
   return scored.map((entry, index) => ({ ...entry, index }))
     .sort((a, b) => b.best - a.best || a.index - b.index)
-    .map((entry) => entry.repo);
+    .map((entry) => entry.item);
+}
+
+// A repo matches on its owner/name label or its folder name. The folder gets a small bonus so a typed folder name
+// finds its repo first.
+function rank_repos(query, repos) {
+  return rank_by(query, repos, (repo) => {
+    const folder = repo.root.split("/").filter(Boolean).pop() || "";
+    return Math.max(fuzzy_score(query, repo.label), fuzzy_score(query, folder) + 2);
+  });
+}
+
+// The other filters match on the label alone.
+function rank_choices(query, choices) {
+  return rank_by(query, choices, (choice) => fuzzy_score(query, choice.label));
 }
 // fuzzy:end
 
@@ -1115,132 +1144,144 @@ function render_markdown(text, options = {}) {
 }
 // markdown:end
 
-// The repo picker is a combobox. A repo with no plan docs and no unreadable docs has nothing to show, so it is
-// not listed. The row with root ALL stands for all repos.
-let repo_choices = [];
-let repo_list_open = false;
-let repo_query_typed = false;
-let repo_active_root = null;
+// A filter combobox: type to fuzzy-narrow the list, Up/Down move, Enter picks, Esc closes (or clears on an empty box),
+// a click picks. Choices are {value, label}. The row with value ALL stands for "no filter" and comes first until the
+// owner types. Each instance keeps its own open, typed and highlight state, and writes its pick to filters[id].
+const combos = {};
 
-function repo_label_for(root) {
-  const repo = repo_choices.find((choice) => choice.root === root);
-  return repo ? repo.label : "";
-}
+function make_combo({ id, all_label, none_label, get_choices_rank }) {
+  const input = element(id);
+  const list = element(`${id}-list`);
+  const combo = { choices: [], list_open: false, query_typed: false, active_value: null };
 
-function repo_rows() {
-  const query = repo_query_typed ? element("repo").value.trim() : "";
-  const matches = rank_repos(query, repo_choices);
-  return query ? matches : [{ root: ALL, label: "all repos" }, ...matches];
-}
+  const label_for = (value) => combo.choices.find((choice) => choice.value === value)?.label ?? "";
+  // The empty box means ALL, so the placeholder carries the "all" wording instead of text that would need clearing.
+  const picked_text = () => (filters[id] === ALL ? "" : label_for(filters[id]));
 
-function render_repo_list() {
-  const list = element("repo-list");
-  const input = element("repo");
-  const rows = repo_rows();
-  if (!rows.some((row) => row.root === repo_active_root)) repo_active_root = rows.length ? rows[0].root : null;
-  list.classList.toggle("open", repo_list_open);
-  input.setAttribute("aria-expanded", String(repo_list_open));
-  input.removeAttribute("aria-activedescendant");
-  if (!repo_list_open) return;
-  const items = rows.map((row, index) => {
-    const item = make("li", "", row.label);
-    item.id = `repo-option-${index}`;
-    item.setAttribute("role", "option");
-    item.dataset.root = row.root;
-    const is_active = row.root === repo_active_root;
-    item.setAttribute("aria-selected", String(is_active));
-    item.classList.toggle("active", is_active);
-    item.classList.toggle("chosen", row.root === filters.repo);
-    if (is_active) input.setAttribute("aria-activedescendant", item.id);
-    return item;
-  });
-  if (!items.length) {
-    const none = make("li", "none", "no repo matches");
-    none.setAttribute("role", "option");
-    none.setAttribute("aria-disabled", "true");
-    items.push(none);
+  function rows() {
+    const query = combo.query_typed ? input.value.trim() : "";
+    const matches = get_choices_rank(query, combo.choices);
+    return query ? matches : [{ value: ALL, label: all_label }, ...matches];
   }
-  list.replaceChildren(...items);
-  list.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+
+  function render_list() {
+    const shown = rows();
+    if (!shown.some((row) => row.value === combo.active_value)) combo.active_value = shown.length ? shown[0].value : null;
+    list.classList.toggle("open", combo.list_open);
+    input.setAttribute("aria-expanded", String(combo.list_open));
+    input.removeAttribute("aria-activedescendant");
+    if (!combo.list_open) return;
+    const items = shown.map((row, index) => {
+      const item = make("li", "", row.label);
+      item.id = `${id}-option-${index}`;
+      item.setAttribute("role", "option");
+      item.dataset.value = row.value;
+      const is_active = row.value === combo.active_value;
+      item.setAttribute("aria-selected", String(is_active));
+      item.classList.toggle("active", is_active);
+      item.classList.toggle("chosen", row.value === filters[id]);
+      if (is_active) input.setAttribute("aria-activedescendant", item.id);
+      return item;
+    });
+    if (!items.length) {
+      const none = make("li", "none", none_label);
+      none.setAttribute("role", "option");
+      none.setAttribute("aria-disabled", "true");
+      items.push(none);
+    }
+    list.replaceChildren(...items);
+    list.querySelector(".active")?.scrollIntoView({ block: "nearest" });
+  }
+
+  function open_list() {
+    combo.list_open = true;
+    render_list();
+  }
+
+  function close_list() {
+    combo.list_open = false;
+    combo.query_typed = false;
+    combo.active_value = filters[id];
+    input.value = picked_text();
+    render_list();
+  }
+
+  function pick(value) {
+    filters[id] = value;
+    close_list();
+    input.blur();
+    render();
+  }
+
+  function move_highlight(offset) {
+    const shown = rows();
+    if (!shown.length) return;
+    const current = shown.findIndex((row) => row.value === combo.active_value);
+    combo.active_value = shown[(current + offset + shown.length) % shown.length].value;
+    render_list();
+  }
+
+  const KEYS = {
+    ArrowDown: () => { if (!combo.list_open) open_list(); else move_highlight(1); },
+    ArrowUp: () => { if (!combo.list_open) open_list(); else move_highlight(-1); },
+    Enter: () => {
+      if (!combo.list_open) return open_list();
+      if (rows().some((row) => row.value === combo.active_value)) pick(combo.active_value);
+    },
+    Escape: (event) => {
+      if (input.value === "") return pick(ALL);
+      if (!combo.list_open) return;
+      event.stopPropagation();
+      close_list();
+    },
+  };
+
+  input.addEventListener("keydown", (event) => {
+    const action = KEYS[event.key];
+    if (!action || event.ctrlKey || event.metaKey || event.altKey) return;
+    event.preventDefault();
+    action(event);
+  });
+  input.addEventListener("focus", () => {
+    input.select();
+    combo.active_value = filters[id];
+    open_list();
+  });
+  input.addEventListener("click", () => { if (!combo.list_open) open_list(); });
+  input.addEventListener("input", () => {
+    combo.query_typed = true;
+    combo.active_value = null;
+    open_list();
+  });
+  input.addEventListener("blur", close_list);
+  // mousedown rather than click: the blur that a click causes would close the list before the click lands.
+  list.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    const item = event.target.closest("li[data-value]");
+    if (item) pick(item.dataset.value);
+  });
+
+  // Runs on every board load. It never writes the box text while the box has focus, so a reload does not wipe what
+  // the owner is typing, close the list or move the highlight. A pick that left the choices falls back to ALL.
+  combo.set_choices = (choices) => {
+    combo.choices = choices;
+    if (filters[id] !== ALL && !choices.some((choice) => choice.value === filters[id])) filters[id] = ALL;
+    if (document.activeElement !== input) input.value = picked_text();
+    render_list();
+  };
+  combo.reset = () => {
+    filters[id] = ALL;
+    close_list();
+  };
+  combos[id] = combo;
+  return combo;
 }
 
-function open_repo_list() {
-  repo_list_open = true;
-  render_repo_list();
+// A repo with no plan docs and no unreadable docs has nothing to show, so it is not listed.
+make_combo({ id: "repo", all_label: "all repos", none_label: "no repo matches", get_choices_rank: rank_repos });
+for (const name of ["owner", "project", "status", "kind"]) {
+  make_combo({ id: name, all_label: `any ${name}`, none_label: `no ${name} matches`, get_choices_rank: rank_choices });
 }
-
-function close_repo_list() {
-  repo_list_open = false;
-  repo_query_typed = false;
-  repo_active_root = filters.repo;
-  element("repo").value = repo_label_for(filters.repo);
-  render_repo_list();
-}
-
-function pick_repo(root) {
-  filters.repo = root;
-  close_repo_list();
-  element("repo").blur();
-  render();
-}
-
-// Runs on every board load. It never writes the box text while the box has focus, so a reload does not wipe what
-// the owner is typing, close the list or move the highlight. A pick whose repo lost its docs falls back to all
-// repos.
-function refresh_repo_choices() {
-  repo_choices = board.repos.filter((repo) => repo.docs.length || repo.problems.length);
-  if (filters.repo !== ALL && !repo_choices.some((repo) => repo.root === filters.repo)) filters.repo = ALL;
-  if (document.activeElement !== element("repo")) element("repo").value = repo_label_for(filters.repo);
-  render_repo_list();
-}
-
-function move_repo_highlight(offset) {
-  const rows = repo_rows();
-  if (!rows.length) return;
-  const current = rows.findIndex((row) => row.root === repo_active_root);
-  repo_active_root = rows[(current + offset + rows.length) % rows.length].root;
-  render_repo_list();
-}
-
-const REPO_KEYS = {
-  ArrowDown: () => { if (!repo_list_open) open_repo_list(); else move_repo_highlight(1); },
-  ArrowUp: () => { if (!repo_list_open) open_repo_list(); else move_repo_highlight(-1); },
-  Enter: () => {
-    if (!repo_list_open) return open_repo_list();
-    if (repo_rows().some((row) => row.root === repo_active_root)) pick_repo(repo_active_root);
-  },
-  Escape: (event) => {
-    if (element("repo").value === "") return pick_repo(ALL);
-    if (!repo_list_open) return;
-    event.stopPropagation();
-    close_repo_list();
-  },
-};
-
-element("repo").addEventListener("keydown", (event) => {
-  const action = REPO_KEYS[event.key];
-  if (!action || event.ctrlKey || event.metaKey || event.altKey) return;
-  event.preventDefault();
-  action(event);
-});
-element("repo").addEventListener("focus", (event) => {
-  event.target.select();
-  repo_active_root = filters.repo;
-  open_repo_list();
-});
-element("repo").addEventListener("click", () => { if (!repo_list_open) open_repo_list(); });
-element("repo").addEventListener("input", () => {
-  repo_query_typed = true;
-  repo_active_root = null;
-  open_repo_list();
-});
-element("repo").addEventListener("blur", close_repo_list);
-// mousedown rather than click: the blur that a click causes would close the list before the click lands.
-element("repo-list").addEventListener("mousedown", (event) => {
-  event.preventDefault();
-  const item = event.target.closest("li[data-root]");
-  if (item) pick_repo(item.dataset.root);
-});
 
 // Drag by pointer events rather than HTML drag and drop: the card can only land in its own lane, and the marker
 // shows the slot the drop takes.
@@ -1368,10 +1409,7 @@ document.addEventListener("keydown", (event) => {
   action();
 });
 
-// A select or checkbox gives focus back after a pick, so the vim keys work again at once.
-for (const id of ["owner", "project", "status", "kind"]) {
-  element(id).addEventListener("change", () => { filters[id] = element(id).value; element(id).blur(); render(); });
-}
+// A checkbox gives focus back after a change, so the vim keys work again at once.
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
