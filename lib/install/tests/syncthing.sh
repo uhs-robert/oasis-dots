@@ -68,6 +68,21 @@ check test ! -e "$XDG_CONFIG_HOME/systemd"
 check test -z "$(grep -vE "^tailscale " "$calls")"
 rm "$scratch/tailscale-down"
 
+case_name='a failing tailscale under set -euo pipefail warns and skips'
+for code in 1 127; do
+  stub tailscale "exit $code"
+  : >"$calls"
+  out=$( (
+    set -euo pipefail
+    setup_syncthing <<<y 2>&1
+    echo reached-end
+  ))
+  check test "$?" -eq 0
+  check test "$(tail -n 1 <<<"$out")" = reached-end
+  check test ! -e "$config"
+done
+stub tailscale '[[ -e $scratch/tailscale-down ]] || echo 100.64.0.7'
+
 case_name='under --yes it is skipped'
 OPT_YES=1 setup_syncthing >/dev/null 2>&1
 check test ! -e "$config"
@@ -144,6 +159,15 @@ bad=$(grep -oE 'tcp://[^<]+' "$config" | grep -vE '^tcp://100\.64\.0\.[0-9]+:220
 check test -z "$bad"
 check lacks 'relays.syncthing.net' "$config"
 check lacks 'announce.syncthing.net' "$config"
+
+case_name='no repos found adds nothing and says so'
+echo "$scratch/empty" >"$XDG_CONFIG_HOME/plans/roots"
+mkdir -p "$scratch/empty"
+out=$(syncthing_add_folders 2>&1)
+check test "$?" -eq 0
+check test "${out#*no repos}" != "$out"
+check test "${out#*folders set}" = "$out"
+echo "$scratch/dev" >"$XDG_CONFIG_HOME/plans/roots"
 
 case_name='a failed config edit still starts the service again'
 cp "$config" "$scratch/config.good"

@@ -23,7 +23,8 @@ syncthing_home() {
   fi
 }
 
-syncthing_tailscale_ip() { tailscale ip -4 2>/dev/null | head -n 1; }
+# Empty output when tailscale is missing, stopped or logged out: callers run under set -e and pipefail and warn on empty.
+syncthing_tailscale_ip() { { tailscale ip -4 2>/dev/null || true; } | head -n 1; }
 
 # Prints "changed" or "unchanged". Args: config.xml, then the mode and its values (see the cases below).
 syncthing_edit_config() {
@@ -183,7 +184,8 @@ syncthing_repos() {
 import sys
 sys.path.insert(0, sys.argv[1])
 from plans import roots
-print("\n".join(roots.all_repos()))' "$DOTFILES_DIR/home/plans/.local/lib/plans"
+for repo in roots.all_repos():
+    print(repo)' "$DOTFILES_DIR/home/plans/.local/lib/plans"
 }
 
 # Adds both folders for each repo. Takes the repos as arguments.
@@ -215,8 +217,13 @@ syncthing_add_folders() {
   local home
   home=$(syncthing_home)
   [[ -e $home/config.xml ]] || die "No Syncthing config at $home; run: just syncthing"
-  local repos
-  mapfile -t repos < <(syncthing_repos)
+  local repos repo_lines
+  repo_lines=$(syncthing_repos) || die "Could not list the repos; is plans broken?"
+  if [[ -z $repo_lines ]]; then
+    warn "plans found no repos; nothing to add"
+    return 0
+  fi
+  mapfile -t repos <<<"$repo_lines"
   syncthing_while_stopped syncthing_edit_folders "$home" "${repos[@]}" || die "Adding the folders failed; the service was started again"
   success "Syncthing folders set for ${#repos[@]} repos; share them from the laptop first, in the GUI at $SYNCTHING_GUI"
 }
