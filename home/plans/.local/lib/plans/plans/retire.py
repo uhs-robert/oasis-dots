@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from typing import Callable, NamedTuple
 
-from . import gh, parse, query, store, validate
+from . import gh, liveness, parse, query, store, validate
 
 PR_COMMENT = "Closed unmerged: the plan for this PR was cancelled. The branch stays, so the PR can be reopened."
 # A number, `#number`, or a GitHub PR or issue URL. Anything else is refused, so a value can never pass for a gh flag.
@@ -64,6 +64,9 @@ def plan(root, doc, cancel):
         steps += github_steps(root, doc, notes)
         steps += worktree_steps(root, doc, notes)
     steps += local_steps(root, doc, project, others)
+    remote = [other.id for other in others if doc.id in depends_of(other) and liveness.is_remote_owned(other)]
+    if remote:
+        notes.append(f"depends_on of {', '.join(remote)}: owned on another host, drop {doc.id} there")
     return Plan(steps, notes)
 
 
@@ -229,7 +232,7 @@ def remove_worktree(root, branch):
 
 def local_steps(root, doc, project, others):
     """The dependents' edits, the log folder, then the doc itself last."""
-    listing = [other.id for other in others if doc.id in depends_of(other)]
+    listing = [other.id for other in others if doc.id in depends_of(other) and not liveness.is_remote_owned(other)]
     # The step reads the dependents again when it runs: the PR and worktree steps before it are slow, and a doc may
     # have gained the dependency meanwhile.
     text = f"drop {doc.id} from depends_on of {', '.join(listing)}" if listing else f"drop {doc.id} from every depends_on (none lists it now)"
@@ -250,7 +253,8 @@ def depends_of(doc):
 
 def drop_dependencies(root, doc):
     store.check_unchanged(doc, GUARDED_KEYS)
-    dependents = [other for other in query.read_repo(root).docs if other.path != doc.path and doc.id in depends_of(other)]
+    dependents = [other for other in query.read_repo(root).docs if other.path != doc.path and doc.id in depends_of(other)
+                  and not liveness.is_remote_owned(other)]
     for other in dependents:
         drop_dependency(doc.id, other)
     if not dependents:
@@ -264,8 +268,10 @@ def drop_dependency(doc_id, other):
             remaining = [item for item in depends_of(current) if item != doc_id]
             if len(remaining) == len(depends_of(current)):
                 return f"{other.id} no longer lists {doc_id}"
-            store.update(current, {"depends_on": remaining})
+            store.update(current, {"depends_on": remaining}, check_under_lock=refuse_remote_owned)
             return None
+        except RemoteOwned:
+            return f"{other.id} is owned on another host"
         except FileNotFoundError:
             return f"{other.id} was deleted meanwhile"
         except store.Vanished:
@@ -273,6 +279,15 @@ def drop_dependency(doc_id, other):
         except store.Conflict:
             continue
     raise StepFailed(f"{other.id} kept changing depends_on; run the command again")
+
+
+class RemoteOwned(Exception):
+    """Raised under the store lock to skip a dependent that another host claimed meanwhile. Only that host writes it."""
+
+
+def refuse_remote_owned(fresh):
+    if liveness.is_remote_owned(fresh):
+        raise RemoteOwned(fresh.path)
 
 
 def delete_logs(root, project, logs, doc):

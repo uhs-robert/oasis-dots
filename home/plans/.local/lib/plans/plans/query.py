@@ -6,7 +6,7 @@ import re
 
 from typing import NamedTuple
 
-from . import parse, validate
+from . import liveness, parse, validate
 
 # `next` walks only these, in rank order.
 ACTIVE_STATUSES = ("planned", "approved", "building")
@@ -158,7 +158,8 @@ def next_steps(docs, caller=None, unreadable_ids=(), skip=(), all=False):
 def owned_by_other(doc, caller):
     if isinstance(caller, str):
         caller = validate.Caller(caller)
-    return validate.owner_of(doc) is not None and not validate.is_owned_by(doc, caller)
+    # A session on another host can share the caller's name, and a shell caller matches by name alone.
+    return validate.owner_of(doc) is not None and (liveness.is_remote_owned(doc) or not validate.is_owned_by(doc, caller))
 
 
 def first_unfinished_dependency(doc, by_id, unreadable_ids=()):

@@ -134,6 +134,22 @@ class CloseTest(RetireTest):
         self.assertIn("done: delete .plans/proj/done-piece.md", result.stdout)
         self.assertEqual(self.tools.calls(), [], "close makes no GitHub or git change")
 
+    def test_close_leaves_the_depends_on_of_a_doc_owned_on_another_host(self):
+        self.add("done-piece", 10, status="done")
+        far = self.add("far", 20, depends_on="[done-piece]")
+        store.update(parse.load(far), {"owner_session": "far-1", "owner_host": "nightshift.invalid"})
+        near = self.add("near", 30, depends_on="[done-piece]")
+        later = self.add("later", 40)
+        doc = parse.load(os.path.join(self.repo, ".plans", "proj", "done-piece.md"))
+        plan = retire.plan(self.repo, doc, cancel=False)
+        self.assertIn("depends_on of far: owned on another host, drop done-piece there", plan.notes)
+        self.assertIn("drop done-piece from depends_on of near", plan.steps[0].text)
+        # A claim synced in after the plan: the step skips that doc too.
+        store.update(parse.load(later), {"depends_on": ["done-piece"], "owner_session": "far-2", "owner_host": "nightshift.invalid"})
+        outcome = retire.apply(doc, plan.steps)
+        self.assertFalse(outcome.failed)
+        self.assertEqual([self.depends_on(path) for path in (far, near, later)], [["done-piece"], [], ["done-piece"]])
+
     def test_dry_run_prints_the_changes_and_makes_none(self):
         target = self.add("done-piece", 10, pr="6", issue="8", branch="feat/x")
         waiting = self.add("next-piece", 20, depends_on="[done-piece]")

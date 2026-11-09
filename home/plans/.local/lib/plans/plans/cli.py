@@ -91,12 +91,14 @@ def build_parser():
     set_ = commands.add_parser("set", help="set front matter keys: plans set <id> key=value...")
     set_.add_argument("id")
     set_.add_argument("pairs", nargs="+", metavar="key=value")
+    add_remote_force_option(set_)
     set_.set_defaults(run=run_set)
 
     note = commands.add_parser("note", help="append a bullet to a body section: plans note <id> --section NAME text")
     note.add_argument("id")
     note.add_argument("--section", required=True)
     note.add_argument("text")
+    add_remote_force_option(note)
     note.set_defaults(run=run_note)
 
     claim = commands.add_parser("claim", help="set owner_session to this session")
@@ -144,6 +146,10 @@ def build_parser():
 def add_scope_options(parser):
     parser.add_argument("--all", action="store_true", help="every repo under ~/.config/plans/roots")
     parser.add_argument("--json", action="store_true")
+
+
+def add_remote_force_option(parser):
+    parser.add_argument("--force", action="store_true", help="write a doc owned on another host")
 
 
 def add_session_option(parser):
@@ -327,6 +333,7 @@ def run_show(args):
 def run_set(args):
     caller = unnamed_caller()
     doc = load_doc(roots.main_checkout(), args.id)
+    refuse_remote_owned(doc, args.force)
     changes = dict(parse_pair(pair) for pair in args.pairs)
     if changes.get("owner_session", doc.keys.get("owner_session")) != doc.keys.get("owner_session"):
         owner_values = validate.cleared_owner_values()
@@ -337,11 +344,12 @@ def run_set(args):
         owner_values = validate.owner_value_changes(doc, caller)
     else:
         owner_values = {}
-    store.update(doc, {**changes, **owner_values})
+    store.update(doc, {**changes, **owner_values}, check_under_lock=lambda fresh: refuse_remote_owned(fresh, args.force))
 
 
 def run_note(args):
     doc = load_doc(roots.main_checkout(), args.id)
+    refuse_remote_owned(doc, args.force)
     text = args.text.strip()
     if not text or "\n" in text or "\r" in text:
         raise UsageError("the note must be one non-empty line")
@@ -367,7 +375,7 @@ def run_note(args):
     if not kept[-1].endswith("\n"):
         kept[-1] += "\n"
     lines[first:first + len(old)] = kept + [bullet] + ["\n"] * gap
-    store.update(doc, {parse.BODY: "".join(lines)})
+    store.update(doc, {parse.BODY: "".join(lines)}, check_under_lock=lambda fresh: refuse_remote_owned(fresh, args.force))
 
 
 def parse_pair(pair):
@@ -398,6 +406,13 @@ def coerce(key, raw):
     if key in ("issue", "pr") and parse.INTEGER.fullmatch(raw):
         return int(raw)
     return raw
+
+
+def refuse_remote_owned(doc, force):
+    """Only the owner's host writes a doc, or the two hosts' copies clash in sync. The write path calls this before
+    and again under the store lock, where a claim synced in since the read shows."""
+    if not force and liveness.is_remote_owned(doc):
+        raise Refused(f"{doc.id} is owned on {liveness.owner_host_of(doc)}; write it there, or use --force")
 
 
 def refuse_name_clash(doc, caller, verb):
