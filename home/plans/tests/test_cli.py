@@ -608,11 +608,41 @@ class CliTest(unittest.TestCase):
                 self.reclaim("id-a", 300)
                 self.assertEqual((self.owner_state(path)[:3], self.host_of(path)), (("me-1", "id-a", 300), socket.gethostname()))
 
-    def test_a_set_never_moves_a_doc_owned_on_another_host_to_this_session(self):
-        # The pid can match by chance across hosts.
+    def test_set_and_note_refuse_a_doc_owned_on_another_host_without_force(self):
         path = self.add_owned_on("far", 10, "me-1", "id-z", 100, OTHER_HOST)
-        self.plans("set", "far", "status=building", env=SESSION_A)
-        self.assertEqual((self.proof(path), self.host_of(path)), (("id-z", 100), OTHER_HOST))
+        before = self.read(path)
+        for args in (("set", "far", "status=building"), ("set", "far", "owner_session=none"),
+                     ("note", "far", "--section", "Plan", "x")):
+            with self.subTest(args=args):
+                self.assertIn(f"far is owned on {OTHER_HOST}", self.plans(*args, env=SESSION_A, code=1).stderr)
+        self.assertEqual(self.read(path), before)
+        # The pid matches by chance, and a forced set still leaves the other host's owner values alone.
+        self.plans("set", "far", "status=building", "--force", env=SESSION_A)
+        self.plans("note", "far", "--section", "Plan", "x", "--force")
+        self.assertEqual((self.proof(path), self.host_of(path), parse.load(path).keys["status"]),
+                         (("id-z", 100), OTHER_HOST, "building"))
+
+    def test_a_set_that_loses_a_race_to_a_synced_claim_leaves_the_file(self):
+        path = self.add("demo", 10)
+        real_load = cli.load_doc
+        raced = []
+
+        def load_then_sync(root, doc_id):
+            doc = real_load(root, doc_id)
+            self.write(".plans/proj/demo.md", self.read(path).replace("updated:", f"owner_host: {OTHER_HOST}\nupdated:"))
+            raced.append(self.read(path))
+            return doc
+
+        with mock.patch.object(cli, "load_doc", load_then_sync), mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            with redirect_stderr(io.StringIO()):
+                code = cli.main(["set", "demo", "status=building"])
+        self.assertEqual(code, 1)
+        self.assertEqual(self.read(path), raced[0])
+
+    def test_next_from_a_shell_skips_a_doc_its_name_owns_on_another_host(self):
+        self.add_owned_on("far", 10, "me-1", "id-z", 100, OTHER_HOST)
+        self.add("free", 20)
+        self.assertEqual(self.plans("next", "--as", "me-1").stdout, "work\tfree\tplanned\n")
 
     def test_a_claim_after_a_stale_read_of_the_values_leaves_the_file(self):
         path = self.add_owned("demo", 10, "me-1", "id-a", 100)
