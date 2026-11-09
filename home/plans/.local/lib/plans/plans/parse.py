@@ -31,6 +31,8 @@ BARE_START_FORBIDDEN = set("-?:,[]{}#&*!|>'\"%@`")
 BARE_FORBIDDEN = set('"[]{}\t\r\n')
 HEADING = re.compile(r"(#{1,2}) +(.*?) *$")
 FENCE = re.compile(r" {0,3}(```|~~~)")
+# A list item with a checkbox. The groups split the line around its one marker character.
+TASK = re.compile(r"(\s*(?:[-*+]|[0-9]+[.)])\s+\[)([ xX])(\]\s+.*)")
 
 
 class ParseError(Exception):
@@ -103,25 +105,8 @@ class Doc:
         self.key_lines[key] = index
 
     def sections(self):
-        """Each `## ` section of the body, in order: title -> (first file line of its content, content text). Headings
-        inside code fences do not count, and a `# ` heading ends a section."""
-        found = {}
-        title, start, content = None, 0, []
-        in_fence = False
-        for offset, line in enumerate(self.body.splitlines(keepends=True)):
-            if FENCE.match(line):
-                in_fence = not in_fence
-            heading = None if in_fence else HEADING.fullmatch(line.rstrip("\n"))
-            if heading:
-                if title is not None and title not in found:
-                    found[title] = (start, "".join(content))
-                title = heading.group(2) if heading.group(1) == "##" else None
-                start, content = self.body_first_line + offset + 1, []
-            elif title is not None:
-                content.append(line)
-        if title is not None and title not in found:
-            found[title] = (start, "".join(content))
-        return found
+        """Each `## ` section of the body, in order: title -> (first file line of its content, content text)."""
+        return body_sections(self.body, self.body_first_line)
 
     def render(self, changes):
         """The file text with `changes` (key -> value, BODY for the body) applied. Only the changed front matter lines
@@ -137,6 +122,82 @@ class Doc:
                 head.append(line)
         body = changes.get(BODY, self.body)
         return "---\n" + "".join(head) + "---\n" + body
+
+
+def body_sections(body, first_line=0):
+    """Each `## ` section of `body`, in order: title -> (line of its first content line, content text). Lines count
+    from `first_line` for the body's first line. Headings inside code fences do not count, a `# ` heading ends a
+    section, and of two sections with one title the first wins."""
+    found = {}
+    title, start, content = None, 0, []
+    for offset, line, in_fence in body_lines(body):
+        heading = None if in_fence else HEADING.fullmatch(line.rstrip("\n"))
+        if heading:
+            if title is not None and title not in found:
+                found[title] = (start, "".join(content))
+            title = heading.group(2) if heading.group(1) == "##" else None
+            start, content = first_line + offset + 1, []
+        elif title is not None:
+            content.append(line)
+    if title is not None and title not in found:
+        found[title] = (start, "".join(content))
+    return found
+
+
+def body_lines(body):
+    """(index, line with its ending, inside a fence) for each line. A fence line itself counts as inside."""
+    in_fence = False
+    for offset, line in enumerate(body.splitlines(keepends=True)):
+        if FENCE.match(line):
+            in_fence = not in_fence
+        yield offset, line, in_fence or bool(FENCE.match(line))
+
+
+def toggle_line(body, line, nth, to):
+    """`body` with the checkbox of the `nth` task line (from 0) that reads `line` checked (`to` true) or cleared, or
+    None when there is no such line or its box already shows `to`. The marker is left out of the comparison, so a
+    line someone else ticked meanwhile is still found, and then refused as already set."""
+    wanted = TASK.fullmatch(line)
+    if wanted is None:
+        return None
+    lines = body.splitlines(keepends=True)
+    seen = 0
+    for offset, text, in_fence in body_lines(body):
+        stripped = text.rstrip("\r\n")
+        task = None if in_fence else TASK.fullmatch(stripped)
+        if task is None or (task.group(1), task.group(3)) != (wanted.group(1), wanted.group(3)):
+            continue
+        if seen < nth:
+            seen += 1
+            continue
+        if (task.group(2) != " ") == to:
+            return None
+        lines[offset] = task.group(1) + ("x" if to else " ") + task.group(3) + text[len(stripped):]
+        return "".join(lines)
+    return None
+
+
+def replace_section(body, title, text):
+    """`body` with the content of section `title` replaced by `text`, or None when there is no such section. `text`
+    ends with a line break unless it is empty. The section's last blank lines stay, since they separate it from the
+    next heading."""
+    sections = body_sections(body)
+    if title not in sections:
+        return None
+    start, content = sections[title]
+    lines = body.splitlines(keepends=True)
+    old = content.splitlines(keepends=True)
+    gap = len(old) - len(without_end_gap(old))
+    lines[start:start + len(old)] = [text] + old[len(old) - gap:]
+    return "".join(lines)
+
+
+def without_end_gap(lines):
+    """`lines` without the blank lines at the end."""
+    end = len(lines)
+    while end and lines[end - 1].strip() == "":
+        end -= 1
+    return lines[:end]
 
 
 def parse_value(raw):

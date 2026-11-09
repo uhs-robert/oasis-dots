@@ -122,7 +122,20 @@
   #sheet-doc p { margin: 6px 0; }
   #sheet-doc ul, #sheet-doc ol { margin: 4px 0; padding-left: 22px; }
   #sheet-doc li.task { list-style: none; margin-left: -18px; }
-  #sheet-doc li.task input { margin: 0 4px 0 0; vertical-align: -1px; }
+  #sheet-doc li.task input { margin: 0 4px 0 0; vertical-align: -1px; accent-color: var(--accent); }
+  /* A 32px box, so a finger hits it. */
+  html.phone #sheet-doc li.task input { width: 32px; height: 32px; margin: 2px 6px 2px -6px; vertical-align: middle; }
+  #sheet-doc h2 .section-edit { margin-left: 8px; padding: 1px 8px; font-size: 12px; font-weight: 400; }
+  /* 16px text: iOS zooms the page into any smaller input. */
+  .section-editor textarea { width: 100%; min-height: 8em; padding: 6px; background: var(--card); color: var(--text);
+                             border: 1px solid var(--accent); border-radius: 4px; font: 16px/1.4 ui-monospace, monospace; }
+  .section-conflict { margin: 6px 0; }
+  .section-conflict .banner { color: var(--warn); }
+  .section-conflict pre { white-space: pre-wrap; }
+  .section-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0;
+                 background: var(--bg); }
+  .section-bar .count { flex: 1; color: var(--dim); font-size: 12px; }
+  .section-bar .count.over { color: var(--bad); }
   #sheet-doc code { padding: 0 3px; background: var(--card); border-radius: 3px; font: 12px ui-monospace, monospace; }
   #sheet-doc pre { margin: 6px 0; padding: 8px; overflow-x: auto; background: var(--card); border-radius: 4px;
                    font: 12px/1.4 ui-monospace, monospace; }
@@ -878,6 +891,8 @@ function build_sheet() {
   const doc_text = make("div", "", "Loading...");
   doc_text.id = "sheet-doc";
   shown_doc_text = null;
+  // The editor leaves with the box. Its draft stays in localStorage and comes back with the doc.
+  section_edit = null;
   panel.append(make("h3", "", "Doc"), doc_text);
   panel.scrollTop = 0;
 }
@@ -918,31 +933,237 @@ function refresh_sheet() {
 
 // The text the doc box shows, so a board update that leaves the doc as it was keeps the box and its scroll.
 let shown_doc_text = null;
+// The doc's sections as the server read them, title -> content: the editor's first text and its basis.
+let shown_sections = new Map();
 
 async function load_sheet_doc(path) {
-  let text;
+  let answer = {};
   let readable = false;
   try {
     const response = await fetch(`/api/doc?path=${encodeURIComponent(path)}`, { cache: "no-store" });
-    const answer = await response.json();
+    answer = await response.json();
     readable = response.ok;
-    text = response.ok ? answer.text : `Cannot read the doc: ${answer.error}`;
+    if (!readable) answer = { text: `Cannot read the doc: ${answer.error}` };
   } catch {
-    text = "Cannot reach the server.";
+    answer = { text: "Cannot reach the server." };
   }
+  const text = answer.text;
   // The sheet can have moved to another card while the request ran.
   if (path !== sheet_path) return;
+  // An open editor keeps the whole box as it is, so a board update never takes the owner's text away.
+  if (section_edit) return sync_body_controls();
   // An unreadable doc shows its raw text, since the parse that failed is what the owner needs to see.
   const doc = readable ? doc_by_path(path) : null;
   const shown = `${Boolean(doc)}\n${text}`;
-  if (shown === shown_doc_text) return;
+  if (shown === shown_doc_text) return sync_body_controls();
   shown_doc_text = shown;
   const box = element("sheet-doc");
   if (!doc) return box.replaceChildren(make("pre", "raw", text));
   const repo = board.repos.find((repo) => repo.docs.includes(doc));
   const issue_href = (number) => (repo.web_url ? `${repo.web_url}/issues/${number}` : null);
+  shown_sections = new Map((answer.sections || []).map((section) => [section.title, section.text]));
   // Safe as innerHTML: render_markdown escapes the doc text before it adds any markup (see markdown:start).
-  box.innerHTML = render_markdown(text, { issue_href });
+  box.innerHTML = render_markdown(text, { issue_href, editable: true });
+  for (const heading of box.querySelectorAll("h2[data-section]")) {
+    const title = heading.dataset.section;
+    if (!shown_sections.has(title)) continue;
+    const edit_button = make("button", "section-edit", "Edit");
+    edit_button.title = `Edit the ${title} section`;
+    edit_button.addEventListener("click", () => open_section_editor({ path, title, basis_text: shown_sections.get(title), text: null }));
+    heading.append(edit_button);
+  }
+  sync_body_controls();
+  restore_section_draft(path);
+}
+
+// Body edits: a checkbox tap and the section editor. Both are off for a doc owned on another host and while the
+// board has lost the server.
+const MAX_SECTION_BYTES = 16 * 1024;
+// False while the event stream is down, which is when the board counts as offline.
+let events_open = false;
+// The open editor: { path, title, basis_text, text, current_text }. current_text is set after the server refused
+// the save because the section changed, and holds the section as it is now.
+let section_edit = null;
+let section_saving = false;
+
+function body_editable() {
+  const doc = doc_by_path(sheet_path);
+  return Boolean(doc) && !doc.remote_host && !server_lost && events_open;
+}
+
+function sync_body_controls() {
+  const box = element("sheet-doc");
+  if (!box) return;
+  const editable = body_editable();
+  for (const input of box.querySelectorAll("li.task > input")) input.disabled = !editable;
+  for (const edit_button of box.querySelectorAll(".section-edit")) edit_button.classList.toggle("hidden", !editable || Boolean(section_edit));
+}
+
+element("sheet").addEventListener("change", async (event) => {
+  const input = event.target;
+  if (!input.matches("#sheet-doc li.task > input")) return;
+  const doc = doc_by_path(sheet_path);
+  const to = input.checked;
+  const item = input.parentElement;
+  const done = doc && !refuse_read_only(doc)
+    && await write("toggle", { path: doc.path, line: item.dataset.line, nth: Number(item.dataset.nth), to });
+  // A refusal that leaves the doc text as it was redraws nothing, so the box goes back by hand.
+  if (!done) input.checked = !to;
+});
+
+// The localStorage copy outlives a page reload or a closed sheet. A save or a cancel removes it.
+function draft_key(path, title) { return `${path}#${title}`; }
+
+function store_draft() {
+  const { path, title, basis_text, text, current_text } = section_edit;
+  try {
+    localStorage.setItem(draft_key(path, title), JSON.stringify({ path, title, basis_text, text, current_text }));
+  } catch {
+    // Storage full or blocked: the draft lives in memory only.
+  }
+}
+
+function drop_draft(edit) {
+  try { localStorage.removeItem(draft_key(edit.path, edit.title)); } catch { /* as in store_draft */ }
+}
+
+function stored_drafts(path) {
+  const drafts = [];
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key.startsWith(`${path}#`)) drafts.push(JSON.parse(localStorage.getItem(key)));
+    }
+  } catch {
+    // Blocked storage or a broken entry: no draft to restore.
+  }
+  return drafts;
+}
+
+function restore_section_draft(path) {
+  if (section_edit || !body_editable()) return;
+  const draft = stored_drafts(path).find((draft) => draft && draft.path === path && shown_sections.has(draft.title));
+  if (!draft) return;
+  open_section_editor(draft);
+  show_message(`Restored your unsaved edit of ${draft.title}.`, "info");
+}
+
+// Shown without the blank lines around it. The server puts one blank line after the heading on save.
+function trimmed_section(text) {
+  return text.replace(/\r\n?/g, "\n").replace(/^\s*\n/, "").replace(/\s+$/, "");
+}
+
+function section_bytes(text) { return new TextEncoder().encode(text).length; }
+
+function open_section_editor(edit) {
+  if (section_edit) return show_message("Save or cancel the open edit first.", "info");
+  const box = element("sheet-doc");
+  const heading = [...box.querySelectorAll("h2[data-section]")].find((node) => node.dataset.section === edit.title);
+  if (!heading) return;
+  section_edit = { ...edit, text: edit.text ?? trimmed_section(edit.basis_text) };
+  for (let node = heading.nextElementSibling; node && !/^H[12]$/.test(node.tagName); node = node.nextElementSibling) {
+    node.classList.add("hidden");
+  }
+  const editor = make("div", "section-editor");
+  const area = make("textarea");
+  area.value = section_edit.text;
+  area.spellcheck = false;
+  area.setAttribute("autocapitalize", "off");
+  const conflict = make("div", "section-conflict hidden");
+  const bar = make("div", "section-bar");
+  const count = make("span", "count");
+  const save = make("button", "save", "Save");
+  const cancel = make("button", "", "Cancel");
+  bar.append(count, save, cancel);
+  editor.append(area, conflict, bar);
+  heading.after(editor);
+  const fit = () => {
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight}px`;
+    const bytes = section_bytes(area.value);
+    count.textContent = `${bytes} of ${MAX_SECTION_BYTES} bytes`;
+    count.classList.toggle("over", bytes > MAX_SECTION_BYTES);
+    save.disabled = bytes > MAX_SECTION_BYTES;
+  };
+  area.addEventListener("input", () => {
+    section_edit.text = area.value;
+    store_draft();
+    fit();
+  });
+  save.addEventListener("click", () => {
+    // After a refusal the owner has seen the section as it is now, so it becomes the basis.
+    if (section_edit.current_text != null) section_edit.basis_text = section_edit.current_text;
+    save_section();
+  });
+  cancel.addEventListener("click", cancel_section_edit);
+  store_draft();
+  show_section_conflict();
+  fit();
+  sync_body_controls();
+  area.focus();
+}
+
+function show_section_conflict() {
+  const editor = element("sheet-doc").querySelector(".section-editor");
+  const current = section_edit.current_text;
+  const conflict = editor.querySelector(".section-conflict");
+  conflict.classList.toggle("hidden", current == null);
+  editor.querySelector(".save").textContent = current == null ? "Save" : "Save over it";
+  if (current == null) return;
+  const shown = trimmed_section(current);
+  conflict.replaceChildren(
+    make("div", "banner", "The section changed since you opened it. Your text is above, the section as it is now below."),
+    make("pre", "", shown || "(empty)"));
+}
+
+function close_section_editor() {
+  drop_draft(section_edit);
+  section_edit = null;
+  // Redraw from the disk, which may have changed while the editor held the box.
+  shown_doc_text = null;
+  if (sheet_path) load_sheet_doc(sheet_path);
+}
+
+function cancel_section_edit() {
+  const edit = section_edit;
+  if (!edit) return;
+  const changed = edit.text !== trimmed_section(edit.basis_text);
+  if (changed) ask(`Drop your edit of ${edit.title}?`, () => { if (section_edit === edit) close_section_editor(); });
+  else close_section_editor();
+}
+
+// A refusal keeps the editor open with the owner's text. Only a save that landed closes it.
+async function save_section() {
+  const edit = section_edit;
+  if (!edit || section_saving) return;
+  section_saving = true;
+  let response;
+  let answer;
+  try {
+    response = await fetch("/api/section", { method: "POST", headers: WRITE_HEADERS, body: JSON.stringify(
+      { path: edit.path, title: edit.title, basis_text: edit.basis_text, text: edit.text }) });
+    answer = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+  } catch {
+    server_lost = true;
+    sync_body_controls();
+    show_message("Server unreachable: the section may have saved. Your text stays here; save again once the board is back.");
+    return;
+  } finally {
+    section_saving = false;
+  }
+  if (section_edit !== edit) return;
+  if (response.ok) {
+    close_section_editor();
+    await load_board();
+    return;
+  }
+  if (response.status === 409 && typeof answer.current_text === "string") {
+    edit.current_text = answer.current_text;
+    store_draft();
+    show_section_conflict();
+    return;
+  }
+  show_message(`Refused: ${answer.error}. Your text stays in the editor.`);
 }
 
 phone_query.addEventListener("change", apply_layout);
@@ -1053,10 +1274,15 @@ const MD_HEADING = /^(#{1,6})\s+(.*?)(\s+#+)?\s*$/;
 const MD_RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
 const MD_ITEM = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 const MD_TASK = /^\[([ xX])\]\s+(.*)$/;
+// A section heading as parse.HEADING reads it, which is narrower than MD_HEADING. Only these get an edit button.
+const MD_SECTION = /^## +(.*?) *$/;
+const MD_TASK_MARK = /^(\s*(?:[-*+]|\d+[.)])\s+\[)[xX]/;
 const MD_TABLE = /^\s*\|/;
 
-// Headings, nested bullet and numbered lists, task items as disabled checkboxes, fenced code, rules, and the front
-// matter as a key/value table. A table stays its plain text in a pre block.
+// Headings, nested bullet and numbered lists, task items as checkboxes, fenced code, rules, and the front matter as a
+// key/value table. A table stays its plain text in a pre block. Checkboxes are disabled unless options.editable is
+// set. Then each task item carries its source line and which of the lines that read the same it is (data-line,
+// data-nth), the way the server finds it, and each section heading carries its title (data-section).
 function render_markdown(text, options = {}) {
   const inline = (line) => md_inline(escape_html(line), options.issue_href);
   const lines = String(text).replace(/\u0000/g, "�").replace(/\r\n?/g, "\n").split("\n");
@@ -1071,6 +1297,8 @@ function render_markdown(text, options = {}) {
   }
   let paragraph = [];
   const lists = [];
+  const task_counts = new Map();
+  const section_titles = new Set();
   const flush_paragraph = () => {
     if (paragraph.length) out.push(`<p>${paragraph.map(inline).join("\n")}</p>`);
     paragraph = [];
@@ -1095,7 +1323,12 @@ function render_markdown(text, options = {}) {
     const heading = MD_HEADING.exec(line);
     if (heading) {
       end_block();
-      out.push(`<h${heading[1].length}>${inline(heading[2])}</h${heading[1].length}>`);
+      const section = options.editable && MD_SECTION.exec(line);
+      // The server edits the first section of a title, so a repeat gets no button.
+      const title = section && !section_titles.has(section[1]) ? section[1] : null;
+      if (title !== null) section_titles.add(title);
+      const attribute = title !== null ? ` data-section="${escape_html(title)}"` : "";
+      out.push(`<h${heading[1].length}${attribute}>${inline(heading[2])}</h${heading[1].length}>`);
       continue;
     }
     if (MD_RULE.test(line)) { end_block(); out.push("<hr>"); continue; }
@@ -1126,7 +1359,15 @@ function render_markdown(text, options = {}) {
       const task = MD_TASK.exec(item[3]);
       if (task) {
         const checked = task[1] === " " ? "" : " checked";
-        out.push(`<li class="task"><input type="checkbox" disabled${checked}> ${inline(task[2])}`);
+        if (options.editable) {
+          // The marker is left out of the key, as the server leaves it out of its match.
+          const key = line.replace(MD_TASK_MARK, "$1 ");
+          const nth = task_counts.get(key) || 0;
+          task_counts.set(key, nth + 1);
+          out.push(`<li class="task" data-line="${escape_html(line)}" data-nth="${nth}"><input type="checkbox"${checked}> ${inline(task[2])}`);
+        } else {
+          out.push(`<li class="task"><input type="checkbox" disabled${checked}> ${inline(task[2])}`);
+        }
       } else {
         out.push(`<li>${inline(item[3])}`);
       }
@@ -1424,6 +1665,8 @@ const events = new EventSource("/api/events");
 events.addEventListener("version", (event) => {
   if (!board || server_lost || Number(event.data) !== board.version) load_board();
 });
+events.addEventListener("open", () => { events_open = true; sync_body_controls(); });
+events.addEventListener("error", () => { events_open = false; sync_body_controls(); });
 </script>
 </body>
 </html>

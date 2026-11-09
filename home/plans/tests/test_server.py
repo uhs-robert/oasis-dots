@@ -450,7 +450,8 @@ class DocEndpointTest(unittest.TestCase):
         self.fixture.start()
         status, data = self.doc(path)
         self.assertEqual(status, 200)
-        self.assertEqual(data, {"path": path, "text": doc_text("demo", 10)})
+        self.assertEqual(data, {"path": path, "text": doc_text("demo", 10),
+                                "sections": [{"title": "Goal", "text": "\nBody.\n"}]})
 
     def test_an_error_card_returns_its_text_too(self):
         path = os.path.join(self.repo, ".plans", "proj", "broken.md")
