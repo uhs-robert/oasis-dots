@@ -53,6 +53,9 @@
           border-left: 3px solid var(--dim); border-radius: 4px; cursor: default; user-select: none; }
   .card.selected { outline: 2px solid var(--accent); }
   .card.waiting { border-left-color: var(--warn); }
+  /* Outside the filters and the repo pick: a conflict copy is a lost edit, so no view hides it. */
+  #conflicts div { margin: 4px 8px 0; padding: 4px 8px; background: #3a2a2e; border-left: 3px solid var(--bad);
+                   font-size: 12px; word-break: break-all; }
   .card.problem { border-left-color: var(--bad); background: #3a2a2e; }
   .card .id { font-weight: 600; word-break: break-all; }
   .card .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; color: var(--dim); font-size: 11px; }
@@ -158,6 +161,7 @@
   <span id="keys">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo</span>
 </header>
 <nav id="tabs"></nav>
+<div id="conflicts"></div>
 <div id="board"></div>
 <div id="sheet"><div id="sheet-panel"></div></div>
 <div id="message"></div>
@@ -532,7 +536,13 @@ function measure_heads() {
 const row_observer = new ResizeObserver(measure_heads);
 new ResizeObserver(measure_heads).observe(document.querySelector("header"));
 
+function render_conflicts() {
+  element("conflicts").replaceChildren(...board.repos.flatMap((repo) => repo.conflicts.map(
+    (conflict) => make("div", "conflict", `conflict: ${conflict.message} (${conflict.path})`))));
+}
+
 function render() {
+  render_conflicts();
   if (is_phone()) return render_phone();
   const container = element("board");
   const statuses = board.statuses;
