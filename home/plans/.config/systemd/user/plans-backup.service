@@ -2,9 +2,11 @@
 Description=plans backup: restic snapshot of every repo's .plans/ and .logs/ to Google Drive
 Documentation=https://github.com/uhs-robert/oasis-dots/blob/main/home/plans/README.md
 
-# `plans backup` sends the desktop notification on a failed run itself.
+# `plans backup` sends the desktop notification on its own error. A run that systemd kills goes through OnFailure.
 # It needs ~/.config/plans/backup-password and the rclone remote `gdrive`: see the Backup section of the README.
 # Without ~/.config/plans/roots it uses the default roots, as the board service does.
+OnFailure=plans-backup-notify.service
+
 [Service]
 Type=oneshot
 # A hung rclone would hold the unit active forever: the timer skips an active unit, so every later backup stops. The
