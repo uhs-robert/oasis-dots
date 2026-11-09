@@ -164,5 +164,5 @@ TAILNET_UP=1 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "no file: opens local"
 stop_listener
 
-echo "$((14 + 2 + 1 - failures))/17 passed"
+echo "$((18 - failures))/18 passed"
 exit $((failures ? 1 : 0))
