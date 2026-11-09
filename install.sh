@@ -13,6 +13,7 @@ OPT_SERVICES=1
 OPT_YES=0
 OPT_DEV=0
 OPT_SERVER=0
+OPT_AGENT_HOST=0
 
 usage() {
   cat <<EOF
@@ -31,6 +32,7 @@ Options:
   --no-services        Skip service setup (shell, keyd, snapper, Steam, Nvidia, voxtype, calendar timer if stowed, SSH server)
   --dev                Clone repos into $GITHUB_DIR (default ~/Development) for editing and link them
   --server             Headless install: shell/CLI/dev packages and configs only
+  --agent-host         A --server install plus the nested-session packages, linger and a boot-time plans board
   -y, --yes            Auto-confirm all prompts
   -h, --help           Show this help message
 EOF
@@ -58,6 +60,12 @@ parse_args() {
       OPT_DEV=1
       ;;
     --server)
+      OPT_SERVER=1
+      OPT_CARGO=0
+      OPT_SYSTEM_FILES=0
+      ;;
+    --agent-host)
+      OPT_AGENT_HOST=1
       OPT_SERVER=1
       OPT_CARGO=0
       OPT_SYSTEM_FILES=0
@@ -147,6 +155,7 @@ main() {
     setup_snapper
     setup_tailnet_ssh
     setup_syncthing
+    if [[ $OPT_AGENT_HOST -eq 1 ]]; then setup_agent_host; fi
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
     install_greetd
     set_default_shell

@@ -439,6 +439,7 @@ async function cancel_card() {
 
 // The phone has no editor, and the server refuses the request from it.
 function open_in_editor() {
+  if (board.can_open_terminal === false) return show_message("This host has no desktop session to open a terminal in.");
   if (!is_phone() && can_open(selected_path)) write("open", { path: selected_path });
 }
 
@@ -469,6 +470,8 @@ function release_held_reload() {
   load_board();
 }
 
+const KEYS_HELP = element("keys").textContent;
+
 async function load_board() {
   if (board_is_busy()) { held_reload = true; return; }
   const response = await fetch("/api/board", { cache: "no-store" });
@@ -478,6 +481,7 @@ async function load_board() {
   if (board_is_busy()) { held_reload = true; return; }
   board = fresh;
   server_lost = false;
+  element("keys").textContent = KEYS_HELP.replace(board.can_open_terminal === false ? ", e editor" : "", "");
   fill_filter_choices();
   render();
 }

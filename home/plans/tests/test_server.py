@@ -162,6 +162,15 @@ class BoardJsonTest(unittest.TestCase):
         self.assertEqual(web["docs"][1]["pr"], 12)
         self.assertEqual(web["web_url"], "https://github.com/someone/web")
 
+    def test_the_board_says_whether_this_host_can_open_a_terminal(self):
+        self.fixture.start()
+        for display, expected in (("wayland-1", True), (None, False)):
+            env = {"WAYLAND_DISPLAY": display} if display else {}
+            with mock.patch.dict(os.environ, env):
+                if not display:
+                    os.environ.pop("WAYLAND_DISPLAY", None)
+                self.assertIs(self.fixture.board_json()["can_open_terminal"], expected)
+
     def test_a_dead_owner_is_freed_on_the_board(self):
         dead = self.fixture.add(self.web, "dead", 10, owner="gone-1")
         live = self.fixture.add(self.web, "live", 20, owner="other-1")

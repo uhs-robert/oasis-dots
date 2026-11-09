@@ -201,6 +201,8 @@ class Board:
             "version": version,
             "statuses": validate.STATUSES,
             "kinds": validate.KINDS,
+            # `e` opens a terminal, which needs the Wayland session; a headless host has none.
+            "can_open_terminal": bool(os.environ.get("WAYLAND_DISPLAY")),
             "repos": [view_json(view, labels[view.root]) for view in views],
         }
 
