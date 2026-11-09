@@ -235,6 +235,13 @@ fi
 [[ \$1 != voxcmd-build || -z \${STUB_VOXCMD_BUILD_STATUS:-} ]] || exit "\$STUB_VOXCMD_BUILD_STATUS"
 exit \${STUB_JUST_STATUS:-0}
 STUB
+# Logs each call with fd 9 checked; STUB_SYSTEMCTL_STATUS makes try-restart fail.
+cat >"$stubs/systemctl" <<STUB
+#!/usr/bin/env bash
+echo "systemctl \$* $lock_state" >>"$e2e/log"
+[[ ! -e /proc/\$\$/fd/9 ]] || echo "systemctl fd9 leaked" >>"$e2e/log"
+[[ \$2 != try-restart || -z \${STUB_SYSTEMCTL_STATUS:-} ]] || exit "\$STUB_SYSTEMCTL_STATUS"
+STUB
 cat >"$stubs/notify-send" <<STUB
 #!/usr/bin/env bash
 : "\${SHIP_LOCK:=$e2e/main/.git/ship-batch.lock}"
@@ -521,11 +528,12 @@ build_count() { grep -c '^just voxcmd-build' "$SHIP_LOG"; }
 migrate_ship home/voxcmd/src/paths.rs
 check "a source edit runs just voxcmd-build, under the lock" "[[ $? == 0 && \$(build_count) == 1 ]] && logged 'just voxcmd-build held' && grep -q 'ran just voxcmd-build' '$e2e/out'"
 check "without the ship lock's descriptor" "! logged 'just fd9 leaked'"
+check "then try-restarts the wake listener, under the lock and without its descriptor" "logged 'systemctl --user try-restart voxcmd-wake.service held' && [[ \$(line_of 'just voxcmd-build held') -lt \$(line_of 'systemctl --user try-restart voxcmd-wake.service held') ]] && ! logged 'systemctl fd9 leaked'"
 for path in home/voxcmd/Cargo.toml home/voxcmd/Cargo.lock; do
   migrate_ship "$path"
   check "$path runs it too" "[[ $? == 0 && \$(build_count) == 1 ]]"
 done
-for path in home/voxcmd/tests/run.sh home/voxcmd/.config/voxcmd/integrations/timers.sh home/voxcmd/.local/bin/voxcmd-wake home/voxcmdish/src/x.rs home/voxcmdish/src/y.rs; do
+for path in home/voxcmd/tests/run.sh home/voxcmd/.config/voxcmd/integrations/timers.sh home/voxcmd/.local/bin/voxcmd-autostop home/voxcmdish/src/x.rs home/voxcmdish/src/y.rs; do
   migrate_ship "$path"
   check "$path does not" "[[ $? == 0 && \$(build_count) == 0 ]]"
 done
@@ -543,6 +551,9 @@ check "a failing build does not fail the merge" "[[ $build_rc == 0 ]] && grep -q
 check "it warns loudly with the command to rerun" "grep -q 'WARNING: just voxcmd-build failed' '$e2e/out' && grep -q 'run: just voxcmd-build' '$e2e/out'"
 check "and sends a critical notification" "grep -q 'notify-send --urgency=critical.*just voxcmd-build failed' '$SHIP_LOG'"
 check "the rest of the run still happens: main recorded as applied, lock free" "[[ \$(applied_commit '$e2e/main') == \$(git -C '$e2e/main' rev-parse HEAD) ]] && flock -n '$SHIP_LOCK' true"
+check "a failed build does not restart the wake listener" "! grep -q 'try-restart voxcmd-wake' '$SHIP_LOG'"
+migrate_ship home/voxcmd/tests/run.sh
+check "a merge that rebuilds nothing does not restart the wake listener" "! grep -q 'try-restart voxcmd-wake' '$SHIP_LOG'"
 # stow -R removes ~/.local/bin/voxcmd when the merge deleted its package file, so a failed build would leave no voxcmd.
 mkdir -p "$fake_home/.local/bin" "$fake_home/rs/bin"
 printf '#!/bin/sh\n' >"$fake_home/rs/bin/voxcmd"
@@ -718,6 +729,22 @@ ship --skip-review-gate 1
 check "leading flags still parse" "[[ \$? == 0 ]] || { cat '$e2e/out'; false; }"
 check "the reviewer states were skipped by request" "grep -q 'reviewer states skipped by request' '$e2e/out' && ! grep -q -e '--wait-review' '$SHIP_LOG'"
 check "the merge got the flag and the PR" "grep -q '^merge --skip-review-gate 1 ' '$SHIP_LOG'"
+
+echo "== post-merge restarts the wake listener after a voxcmd rebuild"
+e2e_setup
+pm_commit home/voxcmd/src/paths.rs
+STUB_SYSTEMCTL_STATUS=1 pm
+check "a failing restart fails the run, names the command and leaves the record" "[[ \$? != 0 ]] && grep -q 'restarting voxcmd-wake failed; run: systemctl --user try-restart voxcmd-wake' '$e2e/out' && [[ \$(pm_applied) == '$e2e_base' ]]"
+pm
+check "the rerun rebuilds, restarts the listener once and records main" "[[ \$? == 0 && \$(grep -c 'systemctl --user try-restart voxcmd-wake.service' '$SHIP_LOG') == 2 ]] && [[ \$(pm_applied) == \$(pm_head) ]]"
+e2e_setup
+pm_commit home/voxcmd/src/paths.rs
+STUB_VOXCMD_BUILD_STATUS=1 pm
+check "a failed rebuild does not restart the listener, and the run still records main" "[[ \$? == 0 ]] && ! grep -q 'try-restart voxcmd-wake' '$SHIP_LOG' && [[ \$(pm_applied) == \$(pm_head) ]]"
+e2e_setup
+pm_commit home/voxcmd/tests/run.sh
+pm
+check "a change outside the crate restarts nothing" "[[ \$? == 0 ]] && ! grep -q 'try-restart voxcmd-wake' '$SHIP_LOG'"
 
 echo "$pass passed, $fail failed"
 ((fail == 0))

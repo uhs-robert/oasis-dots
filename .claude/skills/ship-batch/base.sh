@@ -123,11 +123,15 @@ keep_a_voxcmd() {
 
 # Runs each `just` recipe crate_rebuilds names, in the main checkout. The merge is already done, so a failure warns
 # (stderr, and a desktop notification when there is one) and never stops the run: the live binary is only stale.
+# voxcmd_rebuilt says whether the voxcmd build succeeded, for the caller that restarts what runs the old binary.
+voxcmd_rebuilt=false
 rebuild_crates() {
   local repo=$1 changed=$2 recipe
+  voxcmd_rebuilt=false
   while IFS= read -r recipe; do
     if (cd "$repo" && just "$recipe") 9>&-; then
       echo "ship-batch: ran just $recipe (the merge changed its crate)"
+      [[ $recipe != voxcmd-build ]] || voxcmd_rebuilt=true
     else
       echo "ship-batch: WARNING: just $recipe failed; the installed binary is stale. Fix it and run: just $recipe" >&2
       [[ $recipe != voxcmd-build ]] || keep_a_voxcmd

@@ -86,6 +86,12 @@ fi
 # After the restows (the rebuild reads the stowed checkout) and before any restart, a warning in the run's output rather
 # than a failure: the merge has landed either way.
 rebuild_crates "$repo" "$changed"
+# The wake listener is a long-running voxcmd process, so it keeps the old binary until restarted. Only after a build that
+# succeeded, and try-restart leaves a stopped listener stopped. A failure dies before the record, so the rerun retries it.
+if $voxcmd_rebuilt; then
+  systemctl --user try-restart voxcmd-wake.service 9>&- || die "restarting voxcmd-wake failed; run: systemctl --user try-restart voxcmd-wake"
+  echo "post-merge: restarted voxcmd-wake if it was running, onto the new voxcmd"
+fi
 # A pull that only edits files restows nothing, so a migration the merge added or changed would never run on its own. Run
 # before the restart and, when the bar is restarted, again with the old bar gone: a migration that deletes an old file
 # waits for a run with no bar up (see lib/install/migrate.sh), and the relaunched bar would count as one.
