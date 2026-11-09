@@ -212,6 +212,30 @@ ssh-server:
     source lib/install/load.sh
     setup_tailnet_ssh
 
+# Opt in to Syncthing for each repo's .plans and .logs, listening on Tailscale only
+syncthing:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    setup_syncthing
+
+# Add the other machine to Syncthing by device ID and Tailscale address (discovery is off)
+syncthing-peer id ip:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    syncthing_add_peer "{{id}}" "{{ip}}"
+
+# Add the -plans and -logs Syncthing folders (5 simple versions each) for every repo that plans finds
+syncthing-folders:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export DOTFILES_DIR="$PWD"
+    source lib/install/load.sh
+    syncthing_add_folders
+
 # Clone or link external repos into repos/ without a full install; pass --dev to use $GITHUB_DIR (default ~/Development)
 repos *ARGS:
     #!/usr/bin/env bash
