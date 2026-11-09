@@ -134,7 +134,7 @@ The board listens on 127.0.0.1 only and has no login. It refuses a request whose
 
 ### A second board on a headless host
 
-An agent host (`./install.sh --agent-host`, see [the installer](../../lib/install/README.md#agent-host)) runs its own `plans serve` from boot: linger is on and a drop-in wants the unit from `default.target`. Run `tailscale serve --bg --https=443 http://127.0.0.1:8765` there and write its `remote.json`, so the board has its own tailnet address. Each board edits only the docs owned on its own host and shows the others read-only. The host has no Wayland session, so the board reports that to the page and `e` is gone from the key hint and only says so when pressed.
+An agent host (`./install.sh --agent-host`, see [the installer](../../lib/install/README.md#agent-host)) runs its own `plans serve` from boot: linger is on and a drop-in wants the unit from `default.target`. Write its `remote.json`, then run `systemctl --user restart plans-serve` (the board reads the file only at startup, and the installer has already started it) and `tailscale serve --bg --https=443 http://127.0.0.1:8765`, so the board has its own tailnet address. Each board edits only the docs owned on its own host and shows the others read-only. The host has no Wayland session, so the board reports that to the page and `e` is gone from the key hint and only says so when pressed.
 
 ### On the phone
 

@@ -35,6 +35,7 @@ setup_agent_host() {
   systemctl --user enable --now plans-serve.service
   success "Agent host: plans-serve is running and starts at boot (linger is on); no desktop service is enabled"
   info "Next: write ${config_home}/plans/remote.json (this host's MagicDNS name and tailnet login), then run:"
+  info "  systemctl --user restart plans-serve   (the board reads remote.json only at startup)"
   info "  tailscale serve --bg --https=443 http://127.0.0.1:8765"
   info "Then run 'just agent-host-seed <this-host>' on the laptop"
 }
