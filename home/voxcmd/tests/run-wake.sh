@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The wake word listener: `voxcmd wake` against a stub systemctland the unit file,
-# unit, and `voxcmd wake listen` run in the background against a stub pw-record, inside the sandbox. The microphone is
+# The wake word listener: `voxcmd wake` against a stub systemctl and the unit file,
+# and `voxcmd wake listen` run in the background against a stub pw-record, inside the sandbox. The microphone is
 # never opened.
 #
 #   home/voxcmd/tests/run-wake.sh
