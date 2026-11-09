@@ -624,6 +624,24 @@ class CliTest(unittest.TestCase):
         self.assertEqual(self.plans("ls").stdout.count("\n"), 1)
         self.assertEqual(self.plans("ls", "--json").stderr, warning)
 
+    def test_ls_all_names_the_copy_without_repeating_the_repo(self):
+        self.add_conflict_pair()
+        copy = os.path.join(self.repo, ".plans/proj", self.COPY)
+        warning = f"plans: {copy}: conflict: merge good.md by hand, then delete the copy\n"
+        self.write(".config/plans/roots", f"{self.repo}\n", repo=self.home)
+        self.assertEqual(self.plans("ls", "--all", cwd=self.temp.name).stderr, warning)
+
+    def test_next_warns_and_skips_the_copy(self):
+        self.add_conflict_pair()
+        copy = os.path.join(self.repo, ".plans/proj", self.COPY)
+        result = self.plans("next")
+        self.assertEqual(result.stdout, "work\tgood\tplanned\n")
+        self.assertEqual(result.stderr, f"plans: {copy}: conflict: merge good.md by hand, then delete the copy\n")
+
+    def test_a_doc_and_its_copy_give_no_duplicate_id(self):
+        self.add_conflict_pair()
+        self.assertNotIn("duplicate-id", self.plans("lint", code=1).stdout)
+
     def test_lint_gh(self):
         self.add("merged", 10, pr="5", issue="8", branch="here")
         self.add("open", 20, pr="\"#6\"", issue="7", branch="gone")

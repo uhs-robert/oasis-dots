@@ -204,8 +204,8 @@ def warn_unlisted(repo, show_repo):
         print(f"plans: {where}old layout {layout}", file=sys.stderr)
     if repo.old_kind:
         print(f"plans: {where}{len(repo.old_kind)} docs on the old kind {'/'.join(validate.OLD_KINDS)} scheme; {validate.MIGRATE}", file=sys.stderr)
-    for path in query.conflict_paths(repo.root):
-        print(f"plans: {where}{path}: conflict: {validate.conflict_message(query.conflict_original(path))}", file=sys.stderr)
+    for finding in validate.conflict_findings(query.conflict_paths(repo.root)):
+        print(f"plans: {finding.path}: {finding.rule}: {finding.message}", file=sys.stderr)
     for doc in repo.unreadable:
         reason = f"cannot be read: {doc.unread_cause}" if doc.unread_cause else "outside the front matter subset; run plans lint"
         print(f"plans: {doc.path}: {reason}", file=sys.stderr)
@@ -546,7 +546,7 @@ def repo_lint_lines(repo, args):
     for doc in repo.unreadable + repo.old_kind + repo.docs:
         findings += validate.lint_doc(doc)
     findings += validate.lint_repo(repo.docs + repo.old_kind + repo.unreadable)
-    findings += validate.conflict_findings([(path, query.conflict_original(path)) for path in query.conflict_paths(repo.root)])
+    findings += validate.conflict_findings(query.conflict_paths(repo.root))
     if args.gh:
         findings += gh.check(repo.root, repo.docs)
     findings.sort(key=lambda finding: (finding.path, finding.line))

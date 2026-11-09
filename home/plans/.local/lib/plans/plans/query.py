@@ -14,8 +14,6 @@ FINISHED_STATUS = "done"
 UNCHECKED_ITEM = re.compile(r"- \[ \] (.*)")
 # Under `.plans/projects/` lies the old layout, never a project.
 OLD_PROJECTS_DIR = "projects"
-# Syncthing renames the losing side of a clash to `<doc>.sync-conflict-<date>-<time>-<device>.md`.
-CONFLICT_MARK = ".sync-conflict-"
 
 
 def plan_md_paths(repo):
@@ -27,18 +25,12 @@ def plan_md_paths(repo):
 
 def doc_paths(repo):
     """`.plans/<project>/<id>.md` under the repo, by glob: there is no index file. A conflict copy is no doc."""
-    return [path for path in plan_md_paths(repo) if CONFLICT_MARK not in os.path.basename(path)]
+    return [path for path in plan_md_paths(repo) if validate.CONFLICT_MARK not in os.path.basename(path)]
 
 
 def conflict_paths(repo):
     """The Syncthing conflict copies under the repo's `.plans/`. Read only: nothing merges or deletes them."""
-    return [path for path in plan_md_paths(repo) if CONFLICT_MARK in os.path.basename(path)]
-
-
-def conflict_original(path):
-    """The doc file name a conflict copy was split from."""
-    name = os.path.basename(path)
-    return name.split(CONFLICT_MARK, 1)[0] + ".md"
+    return [path for path in plan_md_paths(repo) if validate.CONFLICT_MARK in os.path.basename(path)]
 
 
 class Repo(NamedTuple):
