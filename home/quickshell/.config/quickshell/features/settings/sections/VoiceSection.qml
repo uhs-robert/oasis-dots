@@ -7,7 +7,7 @@ import qs.features.voice
 RowsSection {
     id: root
 
-    // voxcmd-wake exits 78 when openWakeWord or its models are missing; the unit does not retry that.
+    // voxcmd wake listen exits 78 when its models are missing or a setting is bad; the unit does not retry that.
     readonly property int exit_missing_setup: 78
     readonly property string unit: "voxcmd-wake.service"
 
@@ -62,7 +62,7 @@ RowsSection {
 
     rows: [{
             label: "Listener",
-            desc: "Hears \"Cortana\" and, once Whisper confirms the word, starts a voice command; wait for the bar's listening cue to speak. Holds the microphone while on. " + (root.listener_state === "setup" ? "Needs python-openwakeword and its models; see the voxcmd README." : "The first start downloads its feature models."),
+            desc: "Hears \"Cortana\" and, once Whisper confirms the word, starts a voice command; wait for the bar's listening cue to speak. Holds the microphone while on. " + (root.listener_state === "setup" ? "Needs its models; see the voxcmd README." : "The first start downloads its feature models."),
             values: () => ["on", "off"],
             text: v => v === (root.listener_state === "on" || root.listener_state === "starting" ? "on" : "off") ? root.listener_texts[root.listener_state] : (v === "on" ? "On" : "Off"),
             value: () => root.listener_state === "on" || root.listener_state === "starting" ? "on" : "off",

@@ -1,6 +1,6 @@
 //! `voxcmd wake listen --pcm` against the Python listener's scores on the owner's recorded takes
 //!
-//! The takes and the goldens (made by `wake_goldens.py`) are not committed: the owner decides whether the recordings
+//! The takes and the goldens (written by the Python listener, since deleted) are not committed: the owner decides whether the recordings
 //! are. They live in `.logs/voxcmd/voxcmd-wake-port/` of the main checkout, or in the directory named by
 //! `VOXCMD_WAKE_PARITY_DIR` (a `recordings/` of `.s16` takes beside a `goldens/` of `.json`). With either absent the
 //! test skips with a message. It asserts every frame score within 1e-4 and the triggers at all three levels, take

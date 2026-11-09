@@ -110,7 +110,6 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/firefox-fake-host", VOX_CLICK),
     ("home/voxcmd/tests/run-calendar.sh", VOX_REST),
     ("home/voxcmd/tests/run-wake.sh", VOX_REST),
-    ("home/voxcmd/tests/wake_test.py", VOX_REST),
     ("home/voxcmd/tests/run-firefox-extension.sh", VOX_REST),
     ("home/voxcmd/tests/firefox-host-test", VOX_REST),
     ("home/voxcmd/tests/firefox-background.test.js", VOX_REST),

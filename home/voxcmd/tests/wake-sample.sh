@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Samples the running voxcmd-wake listener every 10 s for N minutes (default 60) and prints its resident memory (MB)
+# Samples the running wake listener every 10 s for N minutes (default 60) and prints its resident memory (MB)
 # and CPU use over the window. Read-only from /proc: needs neither the sandbox nor a check slot, and the machine
 # should be idle so the numbers are the listener's own cost.
 #
 #   home/voxcmd/tests/wake-sample.sh [minutes]
 #
-# It finds the Python listener or `voxcmd wake listen` by its command line; WAKE_SAMPLE_PID names the process when both run.
+# It finds `voxcmd wake listen` by its command line; WAKE_SAMPLE_PID names the process when several run.
 set -euo pipefail
 
 minutes=${1:-60}
@@ -15,7 +15,7 @@ interval_s=10
   exit 2
 }
 
-pid=${WAKE_SAMPLE_PID:-$(pgrep -f '^[^ ]*python3 .*/voxcmd-wake$|(^|/)voxcmd wake listen$' | head -n 1 || true)}
+pid=${WAKE_SAMPLE_PID:-$(pgrep -f '(^|/)voxcmd wake listen$' | head -n 1 || true)}
 [ -n "$pid" ] || {
   echo 'wake-sample: voxcmd-wake is not running (voxcmd wake on)' >&2
   exit 1
