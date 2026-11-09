@@ -41,7 +41,6 @@ assert.ok(fuzzy_score("j", "my-long-project") > -Infinity, "a negative score is 
 assert.deepEqual(labels("j", [repo("me/my-long-project")]), ["me/my-long-project"], "a late short match is kept");
 assert.deepEqual(labels("j", long_repos), ["me/jam", "me/my-long-project"], "the early match still ranks first");
 
-console.log("fuzzy tests passed");
 
 // The generic ranker behind the owner, project, status and kind filters matches on the label alone.
 const choice = (label) => ({ value: `v-${label}`, label });
@@ -54,3 +53,4 @@ assert.equal(choice_labels("ap", statuses)[0], "approved", "a word-start run bea
 assert.deepEqual(choice_labels("zzz", statuses), [], "no match gives an empty list");
 assert.equal(rank_choices("dra", statuses)[0].value, "v-draft", "keeps the whole choice object");
 assert.deepEqual(choice_labels("b", [choice("b1"), choice("b2")]), ["b1", "b2"], "ties keep the input order");
+console.log("fuzzy tests passed");
