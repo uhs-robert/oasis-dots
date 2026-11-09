@@ -32,10 +32,18 @@
              max-width: 80vw; padding: 8px 14px; border-radius: 6px; background: var(--bad); color: #fff; }
   #message.info { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
   #board { display: grid; padding: 0 12px 40px; }
-  .column-head { position: sticky; top: 42px; z-index: 4; padding: 6px; background: var(--bg); color: var(--dim);
-                 font-weight: 600; text-transform: uppercase; font-size: 11px; border-bottom: 1px solid var(--line); }
-  .repo-head { grid-column: 1 / -1; margin-top: 14px; padding: 4px 0; font-size: 14px; font-weight: 600;
-               color: var(--accent); }
+  :root { --header-h: 42px; --column-row-h: 26px; }
+  /* Sticky only works against the whole board, so the column heads share one row spanning the grid. Subgrid keeps
+     the tracks identical to the cell rows below. */
+  #column-row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; position: sticky;
+                top: var(--header-h); z-index: 4; background: var(--bg); }
+  .column-head { padding: 6px; color: var(--dim); font-weight: 600; text-transform: uppercase; font-size: 11px;
+                 border-bottom: 1px solid var(--line); }
+  /* One section per repo: a sticky head stays pinned only inside its own section, so the next repo's head takes over. */
+  .repo-section { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+  /* Padding, not margin, for the gap above: a margin would leave the sticky box short and let cards show in it. */
+  .repo-head { grid-column: 1 / -1; position: sticky; top: calc(var(--header-h) + var(--column-row-h)); z-index: 3;
+               padding: 14px 0 4px; background: var(--bg); font-size: 14px; font-weight: 600; color: var(--accent); }
   .lane-head { grid-column: 1 / -1; padding: 2px 0 0 4px; color: var(--dim); font-size: 12px; }
   .cell { min-height: 34px; padding: 3px; border-right: 1px dashed var(--line); }
   .card { margin: 3px 0; padding: 5px 7px; background: var(--card); border: 1px solid var(--line);
@@ -416,26 +424,43 @@ function lane_cells(container, statuses, lane_key) {
   return cells;
 }
 
+function measure_heads() {
+  const root = document.documentElement.style;
+  root.setProperty("--header-h", `${document.querySelector("header").getBoundingClientRect().height}px`);
+  const row = element("column-row");
+  if (row) root.setProperty("--column-row-h", `${row.getBoundingClientRect().height}px`);
+}
+const row_observer = new ResizeObserver(measure_heads);
+new ResizeObserver(measure_heads).observe(document.querySelector("header"));
+
 function render() {
   const container = element("board");
   const statuses = board.statuses;
   container.style.gridTemplateColumns = `repeat(${statuses.length}, minmax(150px, 1fr))`;
-  container.replaceChildren(...statuses.map((status) => make("div", "column-head", status)));
+  const column_row = make("div");
+  column_row.id = "column-row";
+  column_row.append(...statuses.map((status) => make("div", "column-head", status)));
+  container.replaceChildren(column_row);
+  row_observer.disconnect();
+  row_observer.observe(column_row);
+  measure_heads();
   for (const repo of board.repos) {
     if (filters.repo !== ALL && repo.root !== filters.repo) continue;
     const docs = repo.docs.filter(doc_is_shown);
     if (!docs.length && !repo.problems.some(problem_is_shown)) continue;
-    container.append(make("div", "repo-head", repo.label));
+    const section = make("div", "repo-section");
+    container.append(section);
+    section.append(make("div", "repo-head", repo.label));
     const problems = repo.problems.filter(problem_is_shown);
     if (problems.length) {
-      container.append(make("div", "lane-head", "unreadable"));
-      const cells = lane_cells(container, statuses, `${repo.root}\n`);
+      section.append(make("div", "lane-head", "unreadable"));
+      const cells = lane_cells(section, statuses, `${repo.root}\n`);
       for (const problem of problems) cells[problem.status || statuses[0]].append(problem_node(problem));
     }
     const projects = [...new Set(docs.map((doc) => doc.project))].sort();
     for (const project of projects) {
-      container.append(make("div", "lane-head", project));
-      const cells = lane_cells(container, statuses, `${repo.root}\n${project}`);
+      section.append(make("div", "lane-head", project));
+      const cells = lane_cells(section, statuses, `${repo.root}\n${project}`);
       for (const doc of docs.filter((doc) => doc.project === project)) {
         cells[statuses.includes(doc.status) ? doc.status : statuses[0]].append(card_node(repo, doc));
       }
