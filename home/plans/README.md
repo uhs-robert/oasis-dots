@@ -128,7 +128,7 @@ One-time setup:
 3. Copy that password into the password manager. Without it the backups cannot be read.
 4. `systemctl --user enable --now plans-backup.timer`. `just stow plans` installs the units, but nothing enables them. The timer runs `plans-backup.service` hourly and catches up after a missed run (`Persistent=true`). The service reads the roots like the board service does, so list every root in `~/.config/plans/roots`.
 
-A failed run sends a desktop notification and exits 1. A run that exceeds 30 minutes is killed by systemd and shows only as a failed unit. Restic exit 3 (some files unreadable, snapshot made) is a warning, not a failure. `journalctl --user -u plans-backup` has the restic error.
+A failed run sends a desktop notification and exits 1. A run that exceeds 30 minutes is killed by systemd, and `plans-backup-notify.service` (via `OnFailure=`) sends the notification instead. Restic exit 3 (some files unreadable, snapshot made) is a warning, not a failure. `journalctl --user -u plans-backup` has the restic error.
 
 Restore, for example on a new machine after you clone the repos:
 
@@ -201,6 +201,6 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
-`.config/systemd/user/plans-backup.service` and `plans-backup.timer` run `plans backup` hourly. `test_backup.py` drives backup and restore with a stub `restic` on PATH.
+`.config/systemd/user/plans-backup.service` and `plans-backup.timer` run `plans backup` hourly, and `plans-backup-notify.service` notifies when systemd kills a run. `test_backup.py` drives backup and restore with a stub `restic` on PATH.
 
 `tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.

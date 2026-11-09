@@ -1,0 +1,9 @@
+[Unit]
+Description=plans backup: desktop notification for a run that systemd killed
+
+# plans-backup.service starts this through OnFailure=. `plans backup` already notifies on its own error (result
+# exit-code), so only a run it could not report itself gets a notice here: a timeout or a signal.
+[Service]
+Type=oneshot
+# `$$` is systemd's escape: the shell, not systemd, reads MONITOR_SERVICE_RESULT.
+ExecStart=/bin/sh -c '[ "$$MONITOR_SERVICE_RESULT" = exit-code ] || notify-send -u critical "plans backup failed" "$$MONITOR_SERVICE_RESULT; see journalctl --user -u plans-backup"'
