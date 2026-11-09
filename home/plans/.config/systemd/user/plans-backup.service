@@ -1,0 +1,10 @@
+[Unit]
+Description=plans backup: restic snapshot of every repo's .plans/ and .logs/ to Google Drive
+Documentation=https://github.com/uhs-robert/oasis-dots/blob/main/home/plans/README.md
+
+# `plans backup` sends the desktop notification on a failed run itself.
+# It needs ~/.config/plans/backup-password and the rclone remote `gdrive`: see the Backup section of the README.
+# Without ~/.config/plans/roots it uses the default roots, as the board service does.
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I %h/.local/bin/plans backup

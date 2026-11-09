@@ -1,0 +1,10 @@
+[Unit]
+Description=plans backup, hourly
+
+# Off unless asked for: `systemctl --user enable --now plans-backup.timer`. Nothing enables it on install.
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
