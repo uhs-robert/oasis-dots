@@ -32,7 +32,9 @@
              max-width: 80vw; padding: 8px 14px; border-radius: 6px; background: var(--bad); color: #fff; }
   #message.info { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
   #board { display: grid; padding: 0 12px 40px; }
-  :root { --header-h: 42px; --column-row-h: 26px; }
+  :root { --header-h: 42px; --column-row-h: 26px; --repo-head-h: 36px; }
+  /* Lets scrollIntoView clear all three pinned bars. */
+  html { scroll-padding-top: calc(var(--header-h) + var(--column-row-h) + var(--repo-head-h)); }
   /* Sticky only works against the whole board, so the column heads share one row spanning the grid. Subgrid keeps
      the tracks identical to the cell rows below. */
   #column-row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; position: sticky;
@@ -429,6 +431,8 @@ function measure_heads() {
   root.setProperty("--header-h", `${document.querySelector("header").getBoundingClientRect().height}px`);
   const row = element("column-row");
   if (row) root.setProperty("--column-row-h", `${row.getBoundingClientRect().height}px`);
+  const repo_head = document.querySelector(".repo-head");
+  if (repo_head) root.setProperty("--repo-head-h", `${repo_head.getBoundingClientRect().height}px`);
 }
 const row_observer = new ResizeObserver(measure_heads);
 new ResizeObserver(measure_heads).observe(document.querySelector("header"));
@@ -469,6 +473,7 @@ function render() {
   const cards = all_cards();
   if (!cards.some((card) => card.dataset.path === selected_path)) selected_path = cards.length ? cards[0].dataset.path : null;
   mark_selected();
+  measure_heads();
 }
 
 function all_cards() { return [...document.querySelectorAll("#board .card")]; }
@@ -493,7 +498,8 @@ function select_card(path, edge) {
   if (side.left < 0) window.scrollBy({ left: side.left });
   else if (side.right > view_width) window.scrollBy({ left: Math.min(side.right - view_width, side.left) });
   const rect = card.getBoundingClientRect();
-  const sticky_bottom = document.querySelector(".column-head").getBoundingClientRect().bottom;
+  const repo_head = card.closest(".repo-section").querySelector(".repo-head");
+  const sticky_bottom = document.querySelector(".column-head").getBoundingClientRect().bottom + repo_head.getBoundingClientRect().height;
   const view_bottom = document.documentElement.clientHeight;
   if (rect.top >= sticky_bottom && rect.bottom <= view_bottom) return;
   window.scrollBy({ top: edge === "top" ? rect.top - sticky_bottom : rect.bottom - view_bottom });
