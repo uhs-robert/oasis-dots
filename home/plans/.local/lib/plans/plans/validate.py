@@ -30,6 +30,8 @@ CHECKLIST_ITEM = re.compile(r"- \[[ xX]\] .*")
 # The keys whose value a write must take from a closed set.
 CLOSED_VALUES = {"kind": KINDS, "status": STATUSES}
 MIGRATE = "migrate this repo"
+# Syncthing renames the losing side of a clash to `<doc>.sync-conflict-<date>-<time>-<device>.md`.
+CONFLICT_MARK = ".sync-conflict-"
 
 
 class Finding(NamedTuple):
@@ -200,13 +202,10 @@ def lint_repo(docs):
     return findings
 
 
-def conflict_message(original):
-    return f"merge {original} by hand, then delete the copy"
-
-
 def conflict_findings(copies):
-    """One finding per Syncthing conflict copy, given as (path, original doc file name) pairs."""
-    return [Finding(path, 1, "conflict", conflict_message(original)) for path, original in copies]
+    """One finding per Syncthing conflict copy, given by path."""
+    return [Finding(path, 1, "conflict", f"merge {os.path.basename(path).split(CONFLICT_MARK, 1)[0]}.md by hand, then delete the copy")
+            for path in copies]
 
 
 def old_layouts(repo):

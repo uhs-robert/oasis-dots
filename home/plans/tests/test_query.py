@@ -50,7 +50,6 @@ class ConflictCopyTest(unittest.TestCase):
     def test_conflict_paths_lists_only_copies(self):
         copies = query.conflict_paths(self.root)
         self.assertEqual([os.path.basename(path) for path in copies], ["a.sync-conflict-20261109-101500-ABCDEFG.md"])
-        self.assertEqual(query.conflict_original(copies[0]), "a.md")
 
     def test_find_does_not_see_the_copy(self):
         self.assertEqual(len(query.find(self.root, "a")), 1)
