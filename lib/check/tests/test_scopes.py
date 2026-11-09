@@ -112,6 +112,7 @@ CASES = [
     # The user@ CPUWeight drop-in test reads the drop-in and uninstall.sh.
     ("system/etc/systemd/system/user@.service.d/50-cpuweight.conf", " install"),
     ("install.sh", " install"),
+    ("uninstall.sh", " install"),
     # The agent launcher shares the install scope.
     ("home/agents/.local/bin/agent-run", " install"),
     ("home/agents/.local/bin/agent-shims", " install"),

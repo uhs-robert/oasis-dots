@@ -13,6 +13,7 @@ system-diff:
 # Copy system/ into / for real, e.g. /etc, /usr/local/bin (needs sudo)
 system-apply:
     sudo rsync -rlptv --omit-dir-times --chown=root:root {{system_excludes}} system/ /
+    sudo systemctl daemon-reload
     @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config and Betterbird via install.sh"
 
 # Symlink one package from home/ into ~
