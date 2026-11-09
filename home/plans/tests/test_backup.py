@@ -29,6 +29,7 @@ with open(os.path.join(store, "log"), "a") as log:
                           "pw": os.environ.get("RESTIC_PASSWORD_FILE")}) + "\n")
 if os.environ.get("STUB_FAIL") == args[0]:
     sys.exit("restic: boom")
+exit_code = int(os.environ.get("STUB_EXIT", "0")) if args[0] == "backup" else 0
 snaps = os.path.join(store, "snaps")
 os.makedirs(snaps, exist_ok=True)
 names = sorted(os.listdir(snaps))
@@ -38,6 +39,7 @@ if args[0] == "backup":
     for path in paths:
         shutil.copytree(path, os.path.join(snaps, name, "data", path.lstrip("/")), symlinks=True)
     json.dump(paths, open(os.path.join(snaps, name, "paths.json"), "w"))
+    sys.exit(exit_code)
 elif args[0] == "snapshots":
     wanted = [a for a in args[2:]] if len(args) > 2 else []
     out = []
@@ -50,7 +52,7 @@ elif args[0] == "snapshots":
         out = out[-1:]
     print(json.dumps(out))
 elif args[0] == "restore":
-    name = args[1] if args[1] != "latest" else names[-1]
+    name = args[1][:-8] if args[1] != "latest" else names[-1]
     target = args[args.index("--target") + 1]
     includes = [args[i + 1] for i, a in enumerate(args) if a == "--include"]
     data = os.path.join(snaps, name, "data")
@@ -151,6 +153,14 @@ class TestBackup(BackupCase):
         self.notify.assert_called_once()
         self.assertEqual([c["args"][0] for c in self.calls()], ["backup"])  # no forget after a failed backup
 
+    def test_partial_snapshot_is_a_warning_and_still_prunes(self):
+        with mock.patch.dict(os.environ, {"STUB_EXIT": "3"}):
+            code, out, _ = self.run_cli("backup")
+        self.assertEqual(code, 0)
+        self.assertIn("warning", out)
+        self.notify.assert_not_called()
+        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "forget"])
+
     def test_refuses_a_password_file_others_can_read(self):
         os.chmod(self.password, 0o644)
         code, _, err = self.run_cli("backup")
@@ -225,6 +235,31 @@ class TestRestore(BackupCase):
         self.run_cli("restore", "latest", "--repo", "alpha", "--apply")
         self.assertEqual(read(os.path.join(self.alpha, ".plans", "p", "one.md")), "alpha one\n")
         self.assertEqual(read(os.path.join(self.beta, ".plans", "p", "one.md")), "beta edited\n")
+
+    def test_restore_call_gets_the_snapshot_id_not_latest(self):
+        self.run_cli("restore", "latest")
+        restore = [c["args"] for c in self.calls() if c["args"][0] == "restore"][0]
+        self.assertEqual(restore[1], "snap100000000")
+
+    def test_apply_skips_a_file_that_changed_after_the_diff(self):
+        racing = os.path.join(self.alpha, ".plans", "p", "one.md")
+        real = backup.fingerprint
+        calls = []
+
+        def writer_saves_after_diff(path):
+            result = real(path)
+            if path == racing:
+                calls.append(path)
+                if len(calls) == 1:
+                    write(racing, "a writer saved this after the diff\n")
+            return result
+
+        with mock.patch.object(backup, "fingerprint", writer_saves_after_diff):
+            code, out, _ = self.run_cli("restore", "latest", "--apply")
+        self.assertEqual(code, 1)
+        self.assertIn(f"skipped\t{racing}: changed since the diff", out)
+        self.assertEqual(read(racing), "a writer saved this after the diff\n")
+        self.assertEqual(read(os.path.join(self.alpha, ".plans", "p", "two.md")), "alpha two\n")
 
     def test_repo_by_path(self):
         code, out, _ = self.run_cli("restore", "latest", "--repo", self.alpha)

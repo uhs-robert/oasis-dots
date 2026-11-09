@@ -128,7 +128,7 @@ One-time setup:
 3. Copy that password into the password manager. Without it the backups cannot be read.
 4. `systemctl --user enable --now plans-backup.timer`. `just stow plans` installs the units, but nothing enables them. The timer runs `plans-backup.service` hourly and catches up after a missed run (`Persistent=true`). The service reads the roots like the board service does, so list every root in `~/.config/plans/roots`.
 
-A failed run sends a desktop notification and exits 1. `journalctl --user -u plans-backup` has the restic error.
+A failed run sends a desktop notification and exits 1. A run that exceeds 30 minutes is killed by systemd and shows only as a failed unit. Restic exit 3 (some files unreadable, snapshot made) is a warning, not a failure. `journalctl --user -u plans-backup` has the restic error.
 
 Restore, for example on a new machine after you clone the repos:
 
