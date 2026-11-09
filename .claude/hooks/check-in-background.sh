@@ -7,6 +7,8 @@ set -u
 input=$(cat)
 [[ $(jq -r '.tool_input.run_in_background // false' <<<"$input") == true ]] && exit 0
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
+# Bash drops a backslash-newline pair, so the next line continues this command and does not start a new one.
+cmd=${cmd//$'\\\n'/}
 [[ $cmd == *--plan* ]] && exit 0
 
 # Matches where a command starts (line start or after ; & | ( or a newline), past env assignments and
