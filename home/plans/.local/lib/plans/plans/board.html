@@ -457,9 +457,10 @@ async function load_board() {
   render();
 }
 
-// An owner or project can be the empty string, which is ALL. This stand-in keeps that doc pickable.
+// An owner or project can be the empty string, which is ALL, or null or missing. This stand-in keeps those docs
+// pickable under one "(none)" row. The text "none" is the explicit unowned marker and stays its own value.
 const UNSET = "\u0000unset";
-const doc_value = (doc, key) => String(doc[key]) || UNSET;
+const doc_value = (doc, key) => (doc[key] ?? "") === "" ? UNSET : String(doc[key]);
 
 function fill_filter_choices() {
   const docs = board.repos.flatMap((repo) => repo.docs);
