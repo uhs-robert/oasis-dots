@@ -3,7 +3,7 @@
 #   start (SessionStart: startup, resume, clear): renames the window of $TMUX_PANE to the session name. With several
 #     Claude panes in one window, the last to start wins.
 #   end (SessionEnd): turns automatic-rename back on for that window, so it shows what runs there again. A window
-#     labelled <name>-prev or <name>-done by the orchestrator handoff keeps its label.
+#     labelled <name>-next, <name>-prev or <name>-done by the orchestrator handoff keeps its label.
 # The session name comes from ~/.claude/sessions/<pid>.json, an undocumented file, so every miss means do nothing.
 #
 # Like the handoff scripts, a sanctioned change to the owner's tmux server: guard-tmux-socket.sh only checks agent
@@ -28,7 +28,7 @@ start)
   sessions=${CLAUDE_SESSIONS_DIR:-$HOME/.claude/sessions}
   name=$(jq -r '.name // empty' "$sessions/${CLAUDE_PID:-none}.json" 2>/dev/null)
   valid_session_name "$name" || exit 0
-  [[ $current == "$name" || $current == "$name-prev" || $current == "$name-done" ]] && exit 0
+  [[ $current == "$name" || $current == "$name-next" || $current == "$name-prev" || $current == "$name-done" ]] && exit 0
   tmux rename-window -t "$window" "$name" >/dev/null 2>&1
   ;;
 end)

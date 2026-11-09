@@ -56,7 +56,7 @@ check "a background pane's own window is renamed" test "$(wname "$pane")" = sess
 check "the active window keeps its name" test "$(wname "$main")" != sess-01
 
 # Handoff labels survive start
-for label in prev "done"; do
+for label in next prev "done"; do
   pane=$(new_window "sess-01-$label")
   hook "$pane" start 4242 >/dev/null
   check "start keeps the -$label label" test "$(wname "$pane")" = "sess-01-$label"
