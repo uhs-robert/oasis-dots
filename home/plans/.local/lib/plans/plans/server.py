@@ -214,7 +214,8 @@ def doc_texts(view):
 def docs_signature(root):
     """What the watcher compares between polls. ctime is in it so a chmod that makes a doc readable again counts."""
     signature = []
-    for path in query.doc_paths(root):
+    # A conflict copy is no doc, but its arrival or removal changes the board's warnings.
+    for path in query.doc_paths(root) + query.conflict_paths(root):
         try:
             stat = os.stat(path)
         except OSError:
@@ -274,6 +275,8 @@ def view_json(view, label):
         "web_url": view.web_url,
         "docs": [doc_json(doc) for doc in sorted(repo.docs, key=query.rank_order)],
         "problems": problem_docs,
+        "conflicts": [{"path": finding.path, "message": finding.message}
+                      for finding in validate.conflict_findings(query.conflict_paths(view.root))],
     }
 
 

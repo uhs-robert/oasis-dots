@@ -212,8 +212,8 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 
 - `parse.py`: the front matter subset and the body sections, read into a `Doc`. `Doc.render` writes changes back line by line. Start here.
 - `store.py`: the safe write path (`update`, `create`). Both the CLI and the board write only through it.
-- `validate.py`: the lint rules and the old-layout detection.
-- `query.py`: a repo's docs by glob (there is no index file), and the `ls`, `next`, `waiting` and `questions` queries.
+- `validate.py`: the lint rules, the old-layout detection and the finding for each Syncthing conflict copy.
+- `query.py`: a repo's docs by glob (there is no index file; a `*.sync-conflict-*` copy is no doc, and `conflict_paths` lists the copies), and the `ls`, `next`, `waiting` and `questions` queries.
 - `roots.py`: the main checkout from a worktree or a submodule, and the repos for `--all`.
 - `backup.py`: `plans backup` and `plans restore`: the restic calls, the path selection from `roots.py`, the restore diff and the guarded copy.
 - `gh.py`: the `lint --gh` checks, and the `gh` runner.
