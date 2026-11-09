@@ -146,6 +146,7 @@ main() {
     set_default_shell
     setup_snapper
     setup_tailnet_ssh
+    setup_syncthing
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
     install_greetd
     set_default_shell
@@ -159,6 +160,7 @@ main() {
     register_firefox_host --quiet
     install_firefox_extension_policy --quiet || warn "The Firefox extension policy was not installed; run: just firefox-extension"
     setup_tailnet_ssh
+    setup_syncthing
   fi
 
   print_manual_installs
