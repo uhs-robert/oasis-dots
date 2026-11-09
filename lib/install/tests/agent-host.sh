@@ -118,7 +118,7 @@ src="$HOME"
 # The paths are the ones .claude/skills/shadow/shadow.sh reads: state JSON and hypr/theme, the checkout's audio, user fonts.
 export AGENT_HOST_CHECKOUT="$src/dotfiles"
 audio_dir=dotfiles/home/quickshell/.config/quickshell/features/lock/skins/ff7/audio
-mkdir -p "$src/.local/state/quickshell" "$src/.local/state/hypr" "$src/$audio_dir" "$src/.local/share/fonts/MapleMono" \
+mkdir -p "$remote/dotfiles/.git" "$src/.local/state/quickshell" "$src/.local/state/hypr" "$src/$audio_dir" "$src/.local/share/fonts/MapleMono" \
   "$src/.config/quickshell/features/lock/skins/ff7/audio"
 echo '{}' >"$src/.local/state/quickshell/bars.json"
 echo '{"unit":"x"}' >"$src/.local/state/quickshell/weather.local.json"
@@ -146,6 +146,17 @@ check test -z "$(find "$remote" -name 'weather.local.json')"
 case_name='the seed connects with RemoteCommand=none and RequestTTY=no every time'
 check test "$(grep -c '^ssh ' "$calls")" -ge 4
 check test "$(grep '^ssh ' "$calls" | grep -vc 'RemoteCommand=none -o RequestTTY=no')" = 0
+
+case_name='no checkout on the host skips the audio and creates no tree'
+rm -rf "$remote" && mkdir -p "$remote"
+out=$("$repo_dir/lib/install/agent-host-seed" nightshift 2>&1)
+check test "$?" -eq 0
+check test "${out#*skip the FF7 audio}" != "$out"
+check test ! -e "$remote/dotfiles"
+check test -e "$remote/.local/state/hypr/apps.json"
+mkdir -p "$remote/dotfiles/.git"
+"$repo_dir/lib/install/agent-host-seed" nightshift >/dev/null 2>&1
+check test -e "$remote/$audio_dir/buzzer.wav"
 
 case_name='a rerun never overwrites what the host has since changed'
 echo kept >"$remote/.local/state/hypr/apps.json"
