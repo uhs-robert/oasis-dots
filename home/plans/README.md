@@ -117,6 +117,27 @@ Each write goes through the same safe write path as `plans set`, and the board c
 
 The board listens on 127.0.0.1 only and has no login. It refuses a request whose Host header is not `127.0.0.1` or `localhost` on its port. A write also needs the board's own request header, so a page on another site cannot write.
 
+### On the phone
+
+The board opens on a phone over Tailscale. `tailscale serve` takes HTTPS on the laptop's MagicDNS name and passes each request to the board on 127.0.0.1. Setup, once:
+
+1. In the [Tailscale admin console](https://login.tailscale.com/admin/dns), turn on MagicDNS and HTTPS certificates.
+2. Write `~/.config/plans/remote.json` with the laptop's MagicDNS name and your tailnet login. `tailscale status --json` shows both, under `Self.DNSName` and `User.<id>.LoginName`:
+
+   ```json
+   {"host": "uphill-arch-laptop.tail1234.ts.net", "login": "you@github"}
+   ```
+
+3. Restart the board: `systemctl --user restart plans-serve`. It reads the file at start and prints the phone address.
+4. Run `tailscale serve --bg --https=443 http://127.0.0.1:8765`. The setting survives reboots. `tailscale serve reset` removes it.
+5. Open `https://<host>` on the phone, with Tailscale on.
+
+Without `remote.json` the board answers on 127.0.0.1 and `localhost` only, as before. A broken file keeps it that way and says so in the journal.
+
+The board serves the phone host only when the request carries a `Tailscale-User-Login` header equal to `login`. `tailscale serve` sets that header itself and drops any copy the client sent, and it sends none for a tagged device or a Funnel request. So another tailnet user, a shared device or the open internet gets a 403. The board still listens on 127.0.0.1 only, so nothing but `tailscale serve` and local programs reach it. A local program can send any header, as it can already use the board today. A write from the phone needs the same board header, with the phone page's own origin.
+
+Below 600 pixels wide, the board shows one status at a time. A tab per status holds a count, and a sideways swipe moves to the next or previous tab. It opens on building. A tap on a card opens a sheet with the status buttons, rank up and down, the owner field, and the doc text, read-only. Each button writes through the same path as the desktop keys, with the same refusals and the same question before blocked or done. The phone has no cancel and no editor, and the server refuses both from the phone host.
+
 ## Backup
 
 `.plans/` and `.logs/` are git-ignored, so git holds no copy. `plans backup` snapshots both folders of every repo under the roots (the same repos as `--all`) with restic, encrypted, into the rclone remote `gdrive:backups/plans`. After each snapshot it prunes with keep-hourly 48 and keep-daily 30. Set `PLANS_BACKUP_REPO` or `PLANS_BACKUP_PASSWORD_FILE` to use another restic repo or password file.
@@ -198,9 +219,9 @@ The body has five `##` sections: Goal, Decisions, Plan, Open questions and Owner
 - `issues.py`: the issue check of `next`: the ranking rule, the GitHub calls and the cache.
 - `liveness.py`: the dead-owner check on the stored pid, the release write every read runs, and the take-back that `reclaim` runs.
 - `cli.py`: argument parsing and output only.
-- `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream. `board.html` is the whole page, plain JavaScript with no build step.
+- `server.py`: `plans serve`, the board's HTTP API, the mtime watcher and the event stream, and the phone check (`remote.json`, `Handler.is_remote`). `board.html` is the whole page, plain JavaScript with no build step. Its phone layout starts at `render_phone`.
 
 `.config/systemd/user/plans-serve.service` runs `plans serve`. `plans` is stowed unfolded (see [stowing](../../lib/install/README.md#stowing)), so the unit links in beside the other packages' units.
 `.config/systemd/user/plans-backup.service` and `plans-backup.timer` run `plans backup` hourly, and `plans-backup-notify.service` notifies when systemd kills a run. `test_backup.py` drives backup and restore with a stub `restic` on PATH.
 
-`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `test_server.py` covers the board's reads, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.
+`tests/` holds the unittest suite, which the `plans` check step runs (see [the check runner](../../lib/check/README.md)). `test_issues.py` drives the issue check with a stub `gh`. `test_store.py` races forked writers on one doc. `test_liveness.py` judges processes it spawns and a fake `/proc`, which the other tests use too. `test_server.py` covers the board's reads, the phone host and login check, the doc text, the watcher and shutdown, and `test_server_writes.py` its writes and conflicts, from the laptop and the phone. `test_retire.py` drives `close` and `cancel` with a fake `gh` and a `git` wrapper on PATH, so no test reaches GitHub or a real repo.

@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
 
 from typing import NamedTuple
 
@@ -36,6 +37,43 @@ RANK_STEP = 10
 # Hyprland writes this launcher for the terminal it opens. $TERMINAL is the fallback outside that desktop.
 HYPR_TERMINAL = os.path.join("hypr", "bin", "term")
 FALLBACK_EDITOR = "nvim"
+# `tailscale serve` sets this to the login of the tailnet user behind each request, after it drops any value the
+# client sent. It leaves the header out for a tagged node, a Funnel request and a request from outside the tailnet.
+LOGIN_HEADER = "Tailscale-User-Login"
+# The phone may change status, owner and rank. Opening the editor and cancelling stay on the laptop.
+REMOTE_ACTIONS = ("/api/update", "/api/move")
+
+
+class Remote(NamedTuple):
+    """The phone's way in: the board's MagicDNS name and the one tailnet login that may use it."""
+    host: str
+    login: str
+
+
+def remote_config_file():
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    return os.path.join(base, "plans", "remote.json")
+
+
+def load_remote(path=None):
+    """The Remote from remote.json, or None, which keeps the board local only. A broken file also keeps it local,
+    and says why on stderr, so a typo never opens the board wider than intended."""
+    path = path or remote_config_file()
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        print(f"plans serve: {path}: {error}; remote access stays off", file=sys.stderr)
+        return None
+    values = [data.get(key) if isinstance(data, dict) else None for key in ("host", "login")]
+    if not all(isinstance(value, str) and value.strip() for value in values):
+        print(f"plans serve: {path} needs a \"host\" and a \"login\" string; remote access stays off", file=sys.stderr)
+        return None
+    host, login = (value.strip() for value in values)
+    # `tailscale status --json` gives the name with the DNS root dot, which no Host header carries.
+    return Remote(host.rstrip(".").lower(), login)
 
 
 class Refused(Exception):
@@ -259,6 +297,7 @@ def problem_json(doc, error):
 class Handler(http.server.BaseHTTPRequestHandler):
     # Set per server by make_server.
     board = None
+    remote = None
     keepalive_seconds = KEEPALIVE_SECONDS
 
     def log_message(self, format, *args):  # noqa: A002 - the base class names it so
@@ -268,31 +307,51 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_error(self, format, *args):  # noqa: A002
         sys.stderr.write("plans serve: " + (format % args) + "\n")
 
-    def allowed_hosts(self):
+    def local_hosts(self):
         port = self.server.server_address[1]
         return {f"127.0.0.1:{port}", f"localhost:{port}"}
 
-    def host_is_local(self):
+    def is_remote(self):
+        """True for a request through `tailscale serve` from the owner's login. The bind is 127.0.0.1, so the header
+        only proves the login when nothing but tailscaled can reach the port, the same trust the local board has."""
+        remote = self.remote
+        if remote is None:
+            return False
+        host = (self.headers.get("Host") or "").lower()
+        logins = self.headers.get_all(LOGIN_HEADER) or []
+        return host in {remote.host, f"{remote.host}:443"} and logins == [remote.login]
+
+    def host_is_allowed(self):
         # A page on another site can point its own host name at 127.0.0.1 (DNS rebinding). Its requests then carry
         # that name in Host, so checking Host keeps such a page from reading the board.
-        return self.headers.get("Host") in self.allowed_hosts()
+        return self.headers.get("Host") in self.local_hosts() or self.is_remote()
+
+    def allowed_origins(self):
+        if self.is_remote():
+            return {f"https://{self.remote.host}"}
+        return {f"http://{host}" for host in self.local_hosts()}
 
     def do_GET(self):  # noqa: N802 - the base class names it so
-        if not self.host_is_local():
+        if not self.host_is_allowed():
             return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
+        url = urllib.parse.urlsplit(self.path)
         if self.path == "/":
             return self.send_page()
         if self.path == "/api/board":
             return self.send_json(200, self.board.as_json())
         if self.path == "/api/events":
             return self.send_events()
+        if url.path == "/api/doc":
+            return self.send_doc(urllib.parse.parse_qs(url.query).get("path", [None])[0])
         return self.send_json(404, {"error": f"no page {self.path}"})
 
     def do_POST(self):  # noqa: N802
-        if not self.host_is_local():
+        if not self.host_is_allowed():
             return self.send_json(403, {"error": "Host must be 127.0.0.1 or localhost"})
         if not self.write_is_from_board():
             return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
+        if self.is_remote() and self.path not in REMOTE_ACTIONS:
+            return self.send_json(403, {"error": f"{self.path} works on the laptop only"})
         actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc, "/api/cancel": cancel_doc}
         action = actions.get(self.path)
         if action is None:
@@ -308,9 +367,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def write_is_from_board(self):
         origin = self.headers.get("Origin")
-        origin_is_local = origin is None or origin in {f"http://{host}" for host in self.allowed_hosts()}
+        origin_is_allowed = origin is None or origin in self.allowed_origins()
         is_json = (self.headers.get("Content-Type") or "").split(";")[0].strip() == "application/json"
-        return self.headers.get(WRITE_HEADER) == "1" and is_json and origin_is_local
+        return self.headers.get(WRITE_HEADER) == "1" and is_json and origin_is_allowed
 
     def read_json(self):
         try:
@@ -324,6 +383,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return json.loads(self.rfile.read(length) or b"null")
         except ValueError:
             raise Refused(400, "the body is no JSON") from None
+
+    def send_doc(self, path):
+        """The text of a doc the board shows, error cards included. Any other path is a 404, so this reads no other
+        file."""
+        doc = self.board.find_any_doc(path)
+        if doc is None:
+            return self.send_json(404, {"error": f"no doc on the board at {path!r}; reload the board"})
+        return self.send_json(200, {"path": doc.path, "text": doc.text})
 
     def send_page(self):
         with open(PAGE, "rb") as handle:
@@ -576,15 +643,17 @@ class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
 
-def make_server(board, port=DEFAULT_PORT, keepalive_seconds=KEEPALIVE_SECONDS):
-    handler = type("BoardHandler", (Handler,), {"board": board, "keepalive_seconds": keepalive_seconds})
+def make_server(board, port=DEFAULT_PORT, keepalive_seconds=KEEPALIVE_SECONDS, remote=None):
+    handler = type("BoardHandler", (Handler,), {"board": board, "keepalive_seconds": keepalive_seconds,
+                                                "remote": remote})
     return Server((HOST, port), handler)
 
 
 def serve(port=DEFAULT_PORT, roots_file=None):
     """Run the board until SIGTERM or SIGINT, then return 0."""
     board = Board(roots_file)
-    httpd = make_server(board, port)
+    remote = load_remote()
+    httpd = make_server(board, port, remote=remote)
     board.poll(rescan=True)
     watcher = threading.Thread(target=board.watch, name="plans-watcher", daemon=True)
     watcher.start()
@@ -597,6 +666,8 @@ def serve(port=DEFAULT_PORT, roots_file=None):
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     print(f"plans serve: http://{HOST}:{httpd.server_address[1]}", file=sys.stderr, flush=True)
+    if remote:
+        print(f"plans serve: https://{remote.host} for {remote.login} through tailscale serve", file=sys.stderr, flush=True)
     try:
         httpd.serve_forever()
     finally:
