@@ -87,7 +87,6 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })
 -- reload skip the hold. A plain hl.monitor() rule is no use here: it lands only on another monitor's next frame.
 local released_marker = RUNTIME_DIR .. "/hypr/" .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "") .. "/greeter-monitors-released"
 local handed_off = false
-local dock_released = false
 
 local function released_before()
 	local file = io.open(released_marker, "r")
@@ -119,7 +118,6 @@ local function release_all()
 	if handed_off or lit_non_dock_count() > 0 then
 		return
 	end
-	dock_released = true
 	local file = io.open(released_marker, "w")
 	if file then
 		file:close()
@@ -142,10 +140,11 @@ end
 
 -- Called right before the greeter exits. After a forced teardown of the dock on exit, amdgpu left those monitors on
 -- "No signal" in the session that starts next. The flag stops a timer still pending from turning them back on. A dock
--- that was never lit needs no teardown, and disabling it again would only cost another modeset.
+-- that was never lit needs no teardown, and disabling it again would only cost another modeset. The release reloads this
+-- file, which resets every local, so only the marker still says whether the dock was lit.
 function GREETER_HANDOFF()
 	handed_off = true
-	if not dock_released then
+	if not released_before() then
 		return
 	end
 	for _, held in ipairs(GREETER_HELD) do
