@@ -113,6 +113,13 @@ class RepoRulesTest(unittest.TestCase):
         self.assertEqual([(f.rule, f.message.split(";")[0]) for f in findings], [("depends-on", "no doc 'gone'")])
 
 
+class ConflictFindingTest(unittest.TestCase):
+    def test_one_finding_per_copy(self):
+        findings = validate.conflict_findings([("/r/.plans/p/a.sync-conflict-1.md", "a.md")])
+        self.assertEqual(findings, [validate.Finding("/r/.plans/p/a.sync-conflict-1.md", 1, "conflict",
+                                                     "merge a.md by hand, then delete the copy")])
+
+
 class OldLayoutTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
