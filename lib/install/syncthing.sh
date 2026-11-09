@@ -110,6 +110,23 @@ syncthing_write_ignores() {
   done
 }
 
+# Runs a command with the unit stopped and starts it again even when the command fails, so a bad edit never leaves
+# sync down. Steps inside must end with `|| return`: callers run under set -e, which a function run in an `if` ignores.
+syncthing_while_stopped() {
+  local status=0
+  systemctl --user stop syncthing.service
+  "$@" || status=$?
+  systemctl --user start syncthing.service || status=$?
+  return "$status"
+}
+
+syncthing_generate_and_edit() {
+  local home=$1 address=$2
+  [[ -e $home/config.xml ]] || syncthing generate --home "$home" >/dev/null || return
+  syncthing_edit_config "$home/config.xml" tailscale "$address" "$SYNCTHING_GUI" "$SYNCTHING_PORT" >/dev/null || return
+  systemctl --user enable syncthing.service
+}
+
 setup_syncthing() {
   # Moving private files off this machine is never turned on by --yes; it needs an explicit answer.
   if [[ ${OPT_YES:-0} -eq 1 ]]; then
@@ -142,11 +159,10 @@ setup_syncthing() {
   home=$(syncthing_home)
   mkdir -p "$home"
   # A running Syncthing rewrites config.xml from memory, so stop it first. 2.x generates no default folder.
-  systemctl --user stop syncthing.service
-  [[ -e $home/config.xml ]] || syncthing generate --home "$home" >/dev/null
-  syncthing_edit_config "$home/config.xml" tailscale "$address" "$SYNCTHING_GUI" "$SYNCTHING_PORT" >/dev/null
-  systemctl --user enable syncthing.service
-  systemctl --user start syncthing.service
+  syncthing_while_stopped syncthing_generate_and_edit "$home" "$address" || {
+    warn "Syncthing setup failed; the service was started again"
+    return 1
+  }
   success "Syncthing listens on $address:$SYNCTHING_PORT only; no discovery, relays or NAT traversal; the GUI is at $SYNCTHING_GUI"
   info "Next: run 'just syncthing-peer <device-id> <peer-tailscale-ip>' with the other machine's ID, then 'just syncthing-folders'"
 }
@@ -156,9 +172,8 @@ syncthing_add_peer() {
   local device_id=${1:?device id} peer_ip=${2:?peer Tailscale address} home
   home=$(syncthing_home)
   [[ -e $home/config.xml ]] || die "No Syncthing config at $home; run: just syncthing"
-  systemctl --user stop syncthing.service
-  syncthing_edit_config "$home/config.xml" peer "$device_id" "$peer_ip" "$SYNCTHING_PORT" >/dev/null
-  systemctl --user start syncthing.service
+  syncthing_while_stopped syncthing_edit_config "$home/config.xml" peer "$device_id" "$peer_ip" "$SYNCTHING_PORT" >/dev/null ||
+    die "Adding the peer failed; the service was started again"
   success "Peer $device_id added at tcp://$peer_ip:$SYNCTHING_PORT"
 }
 
@@ -171,14 +186,11 @@ from plans import roots
 print("\n".join(roots.all_repos()))' "$DOTFILES_DIR/home/plans/.local/lib/plans"
 }
 
-syncthing_add_folders() {
-  local home
-  home=$(syncthing_home)
-  [[ -e $home/config.xml ]] || die "No Syncthing config at $home; run: just syncthing"
-  local repos repo name kind dir seen=" "
-  mapfile -t repos < <(syncthing_repos)
-  systemctl --user stop syncthing.service
-  for repo in "${repos[@]}"; do
+# Adds both folders for each repo. Takes the repos as arguments.
+syncthing_edit_folders() {
+  local home=$1 repo name kind dir seen=" "
+  shift
+  for repo in "$@"; do
     [[ -n $repo ]] || continue
     name=$(basename "$repo")
     if [[ $seen == *" $name "* ]]; then
@@ -188,15 +200,23 @@ syncthing_add_folders() {
     seen+="$name "
     for kind in plans logs; do
       dir="$repo/.$kind"
-      mkdir -p "$dir"
+      mkdir -p "$dir" || return
       if [[ $kind == logs ]]; then
-        syncthing_write_ignores "$dir/.stignore" "$SYNCTHING_TMP_IGNORE" "${SYNCTHING_LOGS_IGNORES[@]}"
+        syncthing_write_ignores "$dir/.stignore" "$SYNCTHING_TMP_IGNORE" "${SYNCTHING_LOGS_IGNORES[@]}" || return
       else
-        syncthing_write_ignores "$dir/.stignore" "$SYNCTHING_TMP_IGNORE"
+        syncthing_write_ignores "$dir/.stignore" "$SYNCTHING_TMP_IGNORE" || return
       fi
-      syncthing_edit_config "$home/config.xml" folder "$name-$kind" "$dir" "$SYNCTHING_KEEP_VERSIONS" >/dev/null
+      syncthing_edit_config "$home/config.xml" folder "$name-$kind" "$dir" "$SYNCTHING_KEEP_VERSIONS" >/dev/null || return
     done
   done
-  systemctl --user start syncthing.service
+}
+
+syncthing_add_folders() {
+  local home
+  home=$(syncthing_home)
+  [[ -e $home/config.xml ]] || die "No Syncthing config at $home; run: just syncthing"
+  local repos
+  mapfile -t repos < <(syncthing_repos)
+  syncthing_while_stopped syncthing_edit_folders "$home" "${repos[@]}" || die "Adding the folders failed; the service was started again"
   success "Syncthing folders set for ${#repos[@]} repos; share them from the laptop first, in the GUI at $SYNCTHING_GUI"
 }

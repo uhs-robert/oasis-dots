@@ -49,9 +49,15 @@ mkdir -p "$scratch/dev/alpha/.git" "$scratch/dev/beta/.git" "$XDG_CONFIG_HOME/pl
 echo "$scratch/dev" >"$XDG_CONFIG_HOME/plans/roots"
 
 case_name='the config dir follows the XDG variables'
-check test "$(unset SYNCTHING_HOME; XDG_STATE_HOME="$scratch/st" syncthing_home)" = "$scratch/st/syncthing"
+check test "$(
+  unset SYNCTHING_HOME
+  XDG_STATE_HOME="$scratch/st" syncthing_home
+)" = "$scratch/st/syncthing"
 mkdir -p "$scratch/cfg/syncthing" && touch "$scratch/cfg/syncthing/config.xml"
-check test "$(unset SYNCTHING_HOME; XDG_CONFIG_HOME="$scratch/cfg" XDG_STATE_HOME="$scratch/st" syncthing_home)" = "$scratch/cfg/syncthing"
+check test "$(
+  unset SYNCTHING_HOME
+  XDG_CONFIG_HOME="$scratch/cfg" XDG_STATE_HOME="$scratch/st" syncthing_home
+)" = "$scratch/cfg/syncthing"
 
 case_name='no tailscale address writes nothing'
 touch "$scratch/tailscale-down"
@@ -138,6 +144,18 @@ bad=$(grep -oE 'tcp://[^<]+' "$config" | grep -vE '^tcp://100\.64\.0\.[0-9]+:220
 check test -z "$bad"
 check lacks 'relays.syncthing.net' "$config"
 check lacks 'announce.syncthing.net' "$config"
+
+case_name='a failed config edit still starts the service again'
+cp "$config" "$scratch/config.good"
+printf 'not xml' >"$config"
+for step in 'syncthing_add_peer PEER-ID-7654321 100.64.0.10' 'syncthing_add_folders' 'setup_syncthing <<<y'; do
+  : >"$calls"
+  (eval "$step") >/dev/null 2>&1
+  check test "$?" -ne 0
+  check test "$(grep -c 'systemctl --user stop' "$calls")" = 1
+  check test "$(tail -n 1 "$calls")" = 'systemctl --user start syncthing.service'
+done
+cp "$scratch/config.good" "$config"
 
 if ((failures > 0)); then
   printf '%d failure(s)\n' "$failures" >&2
