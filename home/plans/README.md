@@ -62,13 +62,13 @@ Every write reads the doc, locks `.plans/`, reads it again and compares the keys
 
 ## Issue ranks
 
-Every open GitHub issue of a repo needs a rank. A doc ranks an issue when its `issue` key holds the number (`12`, `#12` or the issue URL), or its `## Plan` section names it as `#12`. Other sections hold history, so `#12` there does not count, and neither does `other/repo#12`. Issues that no feature doc covers go in the repo's `follow-ups` doc, one `- #12 title` item per line, in rank order. Give that doc status `planned`, so `next` walks it at its rank.
+Every open GitHub issue of a repo needs a rank. A doc ranks an issue when its `issue` key holds the number (`12`, `#12` or the issue URL), or its `## Plan` section names it as `#12`. Other sections hold history, so `#12` there does not count, and neither does `other/repo#12`. An issue that no doc covers gets its own doc, with `issue` set, status `parked` and a `- #12 title` line in its Plan. Its rank is its place in the order. No shared doc holds such issues.
 
 `plans next` prints the gaps before its other lines:
 
 ```
 ask	#1465	rank: plain-writing lint: rare shell forms still hide or invent PR bodies
-ask	#94	closed: drop it from follow-ups
+ask	#94	closed: drop it from some-doc
 ```
 
 A `rank` line is an open issue that no doc ranks. A `closed` line names the first doc by rank that still ranks a closed issue. With `--json`, these rows carry `"issue": N`, and `path` is the doc, or null. The check only reports. It never edits a doc.
