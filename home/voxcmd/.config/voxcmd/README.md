@@ -717,13 +717,13 @@ Saying "Cortana" starts a voice command, with no key: the same as `SUPER + COMMA
 
 ### Saved voice settings
 
-Settings > Input > Voice saves its choices to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/voice.env`, a state file outside `~/.config/voxcmd` (which is stow-folded into the public repo). Each reader takes a setting from its environment variable if set, else from this file, else its built-in default, so a variable in the user manager's environment always wins. A line is `KEY=VALUE` with a number (or, for the sensitivity, one of its level names), and a key that is absent means the default. The file is read as data and never sourced: any other line is ignored, and a bad value in it falls back to the default (a bad environment value is still refused by `voxcmd-wake`).
+Settings > Input > Voice saves its choices to `${XDG_STATE_HOME:-~/.local/state}/voxcmd/voice.env`, a state file outside `~/.config/voxcmd` (which is stow-folded into the public repo). Each reader takes a setting from its environment variable if set, else from this file, else its built-in default, so a variable in the user manager's environment always wins. A line is `KEY=VALUE` with a number (or, for the sensitivity, one of its level names), and a key that is absent means the default. The file is read as data and never sourced: any other line is ignored, and a bad value in it falls back to the default (a bad environment value is still refused by `voxcmd wake listen`, exit 78).
 
 | Key                            | Default      | Read by                       | Meaning                                                              |
 | ------------------------------ | ------------ | ----------------------------- | -------------------------------------------------------------------- |
-| `VOXCMD_WAKE_SENSITIVITY`      | `strict`     | `voxcmd-wake`                 | `strict`, `balanced` or `relaxed`; `VOXCMD_WAKE_THRESHOLD` and `_FRAMES` in the environment override its numbers (the file never holds them) |
-| `VOXCMD_WAKE_PAUSE_FOR_MEDIA`  | `0`          | `voxcmd-wake`                 | 1 pauses the listener while a player plays; 0 keeps it listening     |
-| `VOXCMD_WAKE_PAUSE_FOR_MIC`    | `1`          | `voxcmd-wake`                 | 1 pauses it while another app records from a microphone; 0 keeps it listening |
+| `VOXCMD_WAKE_SENSITIVITY`      | `strict`     | `voxcmd wake listen`          | `strict`, `balanced` or `relaxed`; `VOXCMD_WAKE_THRESHOLD` and `_FRAMES` in the environment override its numbers (the file never holds them) |
+| `VOXCMD_WAKE_PAUSE_FOR_MEDIA`  | `0`          | `voxcmd wake listen`          | 1 pauses the listener while a player plays; 0 keeps it listening     |
+| `VOXCMD_WAKE_PAUSE_FOR_MIC`    | `1`          | `voxcmd wake listen`          | 1 pauses it while another app records from a microphone; 0 keeps it listening |
 | `VOXCMD_DUCK_MEDIA_VOLUME`     | `30`         | `voxtype-duck`                | percent of its current volume the default output sink keeps while voxtype records (0 to 100); the follower reads it at each duck, so a change needs no restart |
 
 voxcmd and its hooks read it with `voxcmd util voice-env KEY`; `voxcmd wake listen` reads it itself and `voxtype-duck` has its own Python reader. `VOXCMD_VOICE_ENV_FILE` points all of them at another file (for tests). Wake sensitivity and the pause switches (exactly 0 or 1) are read once when the listener starts, so Settings runs `systemctl --user try-restart` on it after a change. Ducking is read at the start of each duck.
