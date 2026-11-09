@@ -16,9 +16,9 @@ const render = (text) => render_markdown(text, { issue_href });
 // The safety check: every tag in the output is one the renderer makes, with only its own attributes, and every link
 // goes to http(s). Text between tags holds no < or > at all, so nothing else can parse as markup.
 const ALLOWED_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6", "p", "ul", "ol", "li", "input", "code", "pre",
-  "strong", "em", "a", "table", "tr", "th", "td", "hr"]);
+  "strong", "em", "a", "table", "tr", "th", "td", "hr", "details", "summary"]);
 const ALLOWED_ATTRIBUTES = {
-  href: /^https?:\/\/[^"]*$/i, target: /^_blank$/, rel: /^noopener noreferrer$/, class: /^(task|front-matter|table)$/,
+  href: /^https?:\/\/[^"<>]*$/i, target: /^_blank$/, rel: /^noopener noreferrer$/, class: /^(task|front-matter|table)$/,
   type: /^checkbox$/, disabled: null, checked: null, start: /^[0-9]+$/, colspan: /^2$/,
 };
 
@@ -63,7 +63,7 @@ assert.equal(check("**bold** and *it* and _it_"), "<p><strong>bold</strong> and 
 assert.equal(check("owner_session_id stays"), "<p>owner_session_id stays</p>", "snake_case is no italic");
 assert.equal(check("a * b * c"), "<p>a * b * c</p>", "spaced stars are no italic");
 assert.equal(check("---\nid: demo\nwaiting_on: \"a: b\"\n---\n# Goal"),
-  '<table class="front-matter"><tr><th>id</th><td>demo</td></tr><tr><th>waiting_on</th><td>&quot;a: b&quot;</td></tr></table>\n<h1>Goal</h1>');
+  '<details class="front-matter"><summary>Fields (2)</summary><table><tr><th>id</th><td>demo</td></tr><tr><th>waiting_on</th><td>&quot;a: b&quot;</td></tr></table></details>\n<h1>Goal</h1>');
 assert.equal(check("a\n\n---\n\nb"), "<p>a</p>\n<hr>\n<p>b</p>");
 assert.equal(check("| a | b |\n|---|---|"), '<pre class="table">| a | b |\n|---|---|</pre>', "a table stays text");
 assert.equal(check("> quoted"), "<p>&gt; quoted</p>", "anything else stays text");
@@ -73,6 +73,8 @@ assert.equal(check("line one\nline two"), "<p>line one\nline two</p>");
 const link = (href, label) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 assert.equal(check("[docs](https://example.com/a?b=1&c=2)"), `<p>${link("https://example.com/a?b=1&amp;c=2", "docs")}</p>`);
 assert.equal(check("see https://example.com/x."), `<p>see ${link("https://example.com/x", "https://example.com/x")}.</p>`);
+assert.equal(check("**https://x.org**"), `<p><strong>${link("https://x.org", "https://x.org")}</strong></p>`, "closing stars end a bare link");
+assert.equal(check("*https://x.org*"), `<p><em>${link("https://x.org", "https://x.org")}</em></p>`);
 assert.equal(check("[a `b`](http://x.org)"), `<p>${link("http://x.org", "a <code>b</code>")}</p>`);
 assert.equal(check("[#12](https://x.org)"), `<p>${link("https://x.org", "#12")}</p>`, "no link in a link");
 assert.equal(check("me/other#12 and a#12 and ##12"), "<p>me/other#12 and a#12 and ##12</p>", "only a lone #N links");
@@ -93,6 +95,7 @@ const hostile = [
   "[x](JavaScript:alert(1))",
   "[x](data:text/html;base64,PHNjcmlwdD4=)",
   "[x](//evil.example)",
+  "[x](https://a`b`)",
   "[x](vbscript:msgbox)",
   "[x](java&#x09;script:alert(1))",
   '[x](https://a.org/"onmouseover="alert(1))',
@@ -116,6 +119,7 @@ for (const input of hostile) {
   assert.ok(!/<script|<img|<div|<b |href="(?!https?:)/i.test(output), `${input} -> ${output}`);
 }
 assert.equal(check("[x](javascript:alert(1))"), "<p>[x](javascript:alert(1))</p>");
+assert.equal(check("[x](https://a`b`)"), `<p>[x](${link("https://a", "https://a")}<code>b</code>)</p>`, "code never enters an href");
 assert.equal(check("<script>alert(1)</script>"), "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>");
 assert.equal(check("&lt;"), "<p>&amp;lt;</p>", "an entity in the doc shows as typed");
 assert.equal(escape_html(`<>&"'`), "&lt;&gt;&amp;&quot;&#39;");
