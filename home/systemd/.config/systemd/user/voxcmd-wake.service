@@ -10,7 +10,6 @@ After=graphical-session-pre.target
 # `systemctl --user enable voxcmd-wake` starts it at every login. Nothing enables it on install.
 [Service]
 Type=simple
-Environment=OMP_NUM_THREADS=1
 # Fetches the models on first use; it holds the unit in "activating" meanwhile. A failed download ("-") does not fail
 # the start here: the listener then finds the models missing and exits 78, which is not restarted, instead of the
 # download being retried every few seconds.
