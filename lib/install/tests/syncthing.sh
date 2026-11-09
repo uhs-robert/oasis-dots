@@ -24,8 +24,10 @@ export scratch
 stub sudo '"$@"'
 stub pacman ':'
 # A generated config holds this machine as the first device.
-stub syncthing 'cat >"$SYNCTHING_HOME/config.xml" <<XML
-<configuration version="51"><device id="SELF-ID" name="laptop"><address>dynamic</address></device><gui enabled="true"><address>127.0.0.1:8384</address></gui><options><listenAddress>default</listenAddress><globalAnnounceEnabled>true</globalAnnounceEnabled><localAnnounceEnabled>true</localAnnounceEnabled><relaysEnabled>true</relaysEnabled><natEnabled>true</natEnabled></options></configuration>
+# Like 2.x, generate takes only --home (and the GUI and port-probe flags this code does not use).
+stub syncthing '[[ $1 == generate && $2 == --home && $# -eq 3 ]] || { echo "unknown flag: $*" >&2; exit 2; }
+cat >"$SYNCTHING_HOME/config.xml" <<XML
+<configuration version="52"><device id="SELF-ID" name="laptop"><address>dynamic</address></device><gui enabled="true"><address>127.0.0.1:8384</address></gui><options><listenAddress>default</listenAddress><globalAnnounceEnabled>true</globalAnnounceEnabled><localAnnounceEnabled>true</localAnnounceEnabled><relaysEnabled>true</relaysEnabled><natEnabled>true</natEnabled></options></configuration>
 XML'
 stub systemctl 'case "$1 $2" in "--user is-active") exit 1 ;; esac'
 
@@ -45,6 +47,11 @@ called() { grep -qF -- "$1" "$calls"; }
 # Two repos for the folder step, found through the roots file the way `plans` finds them.
 mkdir -p "$scratch/dev/alpha/.git" "$scratch/dev/beta/.git" "$XDG_CONFIG_HOME/plans"
 echo "$scratch/dev" >"$XDG_CONFIG_HOME/plans/roots"
+
+case_name='the config dir follows the XDG variables'
+check test "$(unset SYNCTHING_HOME; XDG_STATE_HOME="$scratch/st" syncthing_home)" = "$scratch/st/syncthing"
+mkdir -p "$scratch/cfg/syncthing" && touch "$scratch/cfg/syncthing/config.xml"
+check test "$(unset SYNCTHING_HOME; XDG_CONFIG_HOME="$scratch/cfg" XDG_STATE_HOME="$scratch/st" syncthing_home)" = "$scratch/cfg/syncthing"
 
 case_name='no tailscale address writes nothing'
 touch "$scratch/tailscale-down"
@@ -72,6 +79,7 @@ check called 'systemctl --user enable syncthing.service'
 dropin="$XDG_CONFIG_HOME/systemd/user/syncthing.service.d/tailscale-retry.conf"
 check has 'Restart=always' "$dropin"
 check has 'RestartSec=10' "$dropin"
+check has 'StartLimitIntervalSec=0' "$dropin"
 
 case_name='a second setup changes nothing'
 sum_config=$(cksum <"$config")
@@ -81,6 +89,17 @@ setup_syncthing <<<y >/dev/null 2>&1
 check test "$(cksum <"$config")" = "$sum_config"
 check test "$(cksum <"$dropin")" = "$sum_dropin"
 check test "$(grep -c daemon-reload "$calls")" = 0
+
+case_name='a changed address rewrites the config with the service stopped first'
+stub tailscale 'echo 100.64.0.8'
+: >"$calls"
+setup_syncthing <<<y >/dev/null 2>&1
+check has '<listenAddress>tcp://100.64.0.8:22000</listenAddress>' "$config"
+stop_line=$(grep -n 'systemctl --user stop' "$calls" | head -n 1 | cut -d: -f1)
+start_line=$(grep -n 'systemctl --user start' "$calls" | head -n 1 | cut -d: -f1)
+check test -n "$stop_line"
+check test "$stop_line" -lt "$start_line"
+stub tailscale '[[ -e $scratch/tailscale-down ]] || echo 100.64.0.8'
 
 case_name='peer is reached at its tailscale address'
 syncthing_add_peer PEER-ID-1234567 100.64.0.9 >/dev/null
@@ -95,10 +114,10 @@ for repo in alpha beta; do
   check has "path=\"$scratch/dev/$repo/.plans\"" "$config"
   check has '.*.tmp' "$scratch/dev/$repo/.plans/.stignore"
   check test "$(wc -l <"$scratch/dev/$repo/.plans/.stignore")" = 1
-  for line in '.*.tmp' '*.png' '*.jpg' '*.jpeg' '*.gif' '*.webm' '*.mp4' '*.mov'; do
+  for line in '.*.tmp' '(?d)*.png' '(?d)*.jpg' '(?d)*.jpeg' '(?d)*.gif' '(?d)*.webp' '(?d)*.avif' '(?d)*.webm' '(?d)*.mp4' '(?d)*.mkv' '(?d)*.mov'; do
     check grep -qxF -- "$line" "$scratch/dev/$repo/.logs/.stignore"
   done
-  check test "$(wc -l <"$scratch/dev/$repo/.logs/.stignore")" = 8
+  check test "$(wc -l <"$scratch/dev/$repo/.logs/.stignore")" = 11
   check lacks 'sync-conflict' "$scratch/dev/$repo/.logs/.stignore"
 done
 check has 'type="simple"' "$config"

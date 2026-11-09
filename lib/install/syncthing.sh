@@ -6,17 +6,20 @@ SYNCTHING_PORT=22000
 SYNCTHING_GUI=127.0.0.1:8384
 SYNCTHING_KEEP_VERSIONS=5
 # Screenshots and recordings are most of .logs; Syncthing cannot ignore by size, so the list is by extension.
-SYNCTHING_LOGS_IGNORES=('*.png' '*.jpg' '*.jpeg' '*.gif' '*.webm' '*.mp4' '*.mov')
+# (?d) lets a host delete a directory that holds only ignored files when the other host deletes it (`plans close` does).
+SYNCTHING_LOGS_IGNORES=('(?d)*.png' '(?d)*.jpg' '(?d)*.jpeg' '(?d)*.gif' '(?d)*.webp' '(?d)*.avif' '(?d)*.webm' '(?d)*.mp4' '(?d)*.mkv' '(?d)*.mov')
 # The store's temp files (.<name>.<random>.tmp). Conflict copies stay unignored on purpose: they must stay visible.
 SYNCTHING_TMP_IGNORE='.*.tmp'
 
+# The order Syncthing itself uses, so the unit (which runs without --home) and this file agree.
 syncthing_home() {
+  local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/syncthing" state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/syncthing"
   if [[ -n ${SYNCTHING_HOME:-} ]]; then
     echo "$SYNCTHING_HOME"
-  elif [[ -e $HOME/.config/syncthing/config.xml && ! -e $HOME/.local/state/syncthing/config.xml ]]; then
-    echo "$HOME/.config/syncthing"
+  elif [[ -e $config_dir/config.xml ]]; then
+    echo "$config_dir"
   else
-    echo "$HOME/.local/state/syncthing"
+    echo "$state_dir"
   fi
 }
 
@@ -107,11 +110,6 @@ syncthing_write_ignores() {
   done
 }
 
-syncthing_restart_if_active() {
-  systemctl --user is-active --quiet syncthing.service && systemctl --user restart syncthing.service
-  return 0
-}
-
 setup_syncthing() {
   # Moving private files off this machine is never turned on by --yes; it needs an explicit answer.
   if [[ ${OPT_YES:-0} -eq 1 ]]; then
@@ -130,9 +128,10 @@ setup_syncthing() {
   command -v syncthing >/dev/null 2>&1 || sudo pacman -S --needed --noconfirm syncthing
 
   # A user unit cannot order itself after the system tailscaled, so it fails at boot until the address exists and retries.
+  # The shipped unit allows 4 starts in 60 s, so without StartLimitIntervalSec=0 the retries stop after 40 s.
   local dropin_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/syncthing.service.d" dropin
   dropin="$dropin_dir/tailscale-retry.conf"
-  local wanted=$'[Service]\nRestart=always\nRestartSec=10'
+  local wanted=$'[Unit]\nStartLimitIntervalSec=0\n\n[Service]\nRestart=always\nRestartSec=10'
   if [[ ! -e $dropin || $(<"$dropin") != "$wanted" ]]; then
     mkdir -p "$dropin_dir"
     printf '%s\n' "$wanted" >"$dropin"
@@ -142,11 +141,11 @@ setup_syncthing() {
   local home
   home=$(syncthing_home)
   mkdir -p "$home"
-  [[ -e $home/config.xml ]] || syncthing generate --home "$home" --no-default-folder >/dev/null
-  local result
-  result=$(syncthing_edit_config "$home/config.xml" tailscale "$address" "$SYNCTHING_GUI" "$SYNCTHING_PORT")
+  # A running Syncthing rewrites config.xml from memory, so stop it first. 2.x generates no default folder.
+  systemctl --user stop syncthing.service
+  [[ -e $home/config.xml ]] || syncthing generate --home "$home" >/dev/null
+  syncthing_edit_config "$home/config.xml" tailscale "$address" "$SYNCTHING_GUI" "$SYNCTHING_PORT" >/dev/null
   systemctl --user enable syncthing.service
-  if [[ $result == changed ]]; then syncthing_restart_if_active; fi
   systemctl --user start syncthing.service
   success "Syncthing listens on $address:$SYNCTHING_PORT only; no discovery, relays or NAT traversal; the GUI is at $SYNCTHING_GUI"
   info "Next: run 'just syncthing-peer <device-id> <peer-tailscale-ip>' with the other machine's ID, then 'just syncthing-folders'"
