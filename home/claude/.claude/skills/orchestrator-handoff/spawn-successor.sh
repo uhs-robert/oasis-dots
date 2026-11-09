@@ -7,7 +7,7 @@
 # new-window calls below, with no caller-supplied tmux argument, so the exception stays narrow.
 #
 # Window names come from window-names.sh: the caller's becomes <predecessor>-prev. The successor's window starts
-# as `next` because its session name does not exist yet; the successor renames it itself.
+# as `next` because its session name does not exist yet; the name-tmux-window.sh hook renames it at the successor's start, and the successor adds -next.
 #
 # The successor still asks the owner before taking the role: the launch prompt below comes from another session,
 # not the owner, so it never counts as the owner saying to expect the handoff.

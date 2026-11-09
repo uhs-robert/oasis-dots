@@ -118,6 +118,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/name-tmux-window.sh start",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -271,6 +281,15 @@
           {
             "type": "command",
             "command": "~/.local/bin/keeptabs-hook end claude"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/name-tmux-window.sh end",
+            "timeout": 5
           }
         ]
       }
