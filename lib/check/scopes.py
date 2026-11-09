@@ -186,7 +186,7 @@ PATH_SCOPES = [
     # shell linters for the shell files among them. install.sh is not here: it reaches the install scope above.
     ("lib/*", ""),
     ("install.sh", "install"),
-    ("uninstall.sh", ""),
+    ("uninstall.sh", "install"),
     ("demo/*", ""),
     ("packages/*", ""),
     ("docs/*", ""),
