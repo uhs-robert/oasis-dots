@@ -79,7 +79,7 @@ The repo comes from the `origin` remote, so a repo without a GitHub origin gets 
 
 `plans serve` runs a web board over the docs of every repo under the roots, the same repos as `--all`. Open http://127.0.0.1:8765 in a browser. It needs nothing beyond Python 3.
 
-In Hyprland, `SUPER + A`, then `K` opens the board, starting the service first when the port is closed. With `remote.json` set and the tailnet address answering, it opens that address instead of 127.0.0.1.
+In Hyprland, `SUPER + A`, then `K` opens the board, starting the service first when the port is closed. With `remote.json` set and the tailnet address answering, it opens that address instead of 127.0.0.1. The tailnet address refuses `e` (open in editor) and `x` (cancel), so for those open http://127.0.0.1:8765 instead.
 
 To run it in the background with every graphical session, enable the user service. `just stow plans` installs it, but nothing enables it:
 
