@@ -1840,10 +1840,11 @@ element("settings-btn").addEventListener("click", () => {
   element("settings-btn").blur();
 });
 settings_box.addEventListener("click", (event) => { if (event.target === settings_box) close_settings(); });
-// A press on the board outside the panel ends Settings, like Escape. The press is not cancelled, so a card click or
-// double-click still does its usual thing. The gear toggles on its own click, and a press on the phone sheet's dimmed
-// area is closed by the click handler above.
-document.addEventListener("mousedown", (event) => {
+// A click on the board outside the panel ends Settings, like Escape. It waits for the click, not the press, because
+// closing gives the panel's room back and moves the board. The press and release then hit the same element, so a
+// single click or a drag is not lost. The click is not cancelled, so a card click or double-click still acts. The gear
+// toggles on its own click, and the phone sheet's dimmed area is closed by the click handler above.
+document.addEventListener("click", (event) => {
   if (settings_open && !event.target.closest("#settings, #settings-btn")) close_settings();
 }, true);
 element("settings-close").addEventListener("click", close_settings);
