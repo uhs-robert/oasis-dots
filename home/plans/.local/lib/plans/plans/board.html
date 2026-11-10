@@ -1289,6 +1289,8 @@ function facet_choices(docs, filters, filter, value_of, all_docs = docs) {
   // The NUL-prefixed rows sort first, so the two special owner rows stay on top.
   return [...values].sort();
 }
+// The two role rows mean the same in any repo. A session name is a per-repo habit, so it does not carry over.
+const keeps_owner_on_repo_switch = (owner) => owner === OWNER_ASSIGNED || owner === OWNER_UNASSIGNED;
 // fuzzy:end
 
 // markdown:start
@@ -1524,9 +1526,9 @@ function make_combo({ id, all_label, none_label, get_choices_rank }) {
   }
 
   function pick(value) {
-    // Owner and project pick are per-repo habits, so a new repo starts them at ALL even if the old value has cards there.
+    // A project or session pick is a per-repo habit, so a new repo starts it at ALL even if the old value has cards there.
     if (id === "repo" && value !== ALL && value !== filters.repo) {
-      combos.owner.reset();
+      if (!keeps_owner_on_repo_switch(filters.owner)) combos.owner.reset();
       combos.project.reset();
     }
     filters[id] = value;
