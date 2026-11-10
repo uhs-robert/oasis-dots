@@ -394,6 +394,7 @@ voxcmd_swap() {
   main_bin=$(readlink -m "$repo/$voxcmd_rel/.local/bin")
   [[ -L $voxcmd_config_link ]] || die "$voxcmd_config_link is not a symlink (stow unfolded it?); refusing the voxcmd swap"
   for file in "$bin"/*; do
+    [[ -e $file ]] || continue # the package may have no .local/bin, leaving the glob unexpanded
     target=$voxcmd_bin_dir/${file##*/}
     [[ ! -e $target || -L $target ]] || die "$target is not a symlink; refusing the voxcmd swap"
   done
@@ -413,6 +414,7 @@ voxcmd_swap() {
   done
   mkdir -p "$voxcmd_bin_dir"
   for file in "$bin"/*; do
+    [[ -e $file ]] || continue # the package may have no .local/bin, leaving the glob unexpanded
     ln -sfn "$file" "$voxcmd_bin_dir/${file##*/}"
   done
   if voxcmd_is_rust_build "$dir"; then ln -sfn "$(voxcmd_rust_bin "$dir")" "$voxcmd_bin_dir/voxcmd"; fi
@@ -646,6 +648,7 @@ voxcmd_fully_linked() {
   local voxcmd=$bars/$1/$voxcmd_rel file
   [[ $(readlink -m "$voxcmd_config_link") == "$voxcmd/.config/voxcmd" ]] || return 1
   for file in "$voxcmd/.local/bin"/*; do
+    [[ -e $file ]] || continue # the package may have no .local/bin, leaving the glob unexpanded
     [[ $(readlink -m "$voxcmd_bin_dir/${file##*/}") == "$file" ]] || return 1
   done
   if voxcmd_is_rust_build "$bars/$1"; then
