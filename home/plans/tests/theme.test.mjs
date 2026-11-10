@@ -23,6 +23,7 @@ function make_page(saved_value, throws = false, cached_desktop = null) {
   const listeners = {};
   const select = {
     get value() { return page.select; }, set value(value) { page.select = value; },
+    blurred: 0, blur() { this.blurred += 1; },
     options: [], append(...options) { this.options.push(...options); },
     addEventListener(type, handler) { listeners[type] = handler; },
   };
@@ -93,9 +94,11 @@ page.set_board({ desktop_theme: "moonlight_dark" });
 page.choose("midnight_dark");
 assert.equal(page.storage.get("plans-theme"), "midnight_dark", "a pick is saved");
 assert.equal(page.root.dataset.theme, "midnight_dark", "a pick applies at once");
+assert.equal(page.select.blurred, 1, "a pick drops the focus, so board keys work and typeahead cannot change it");
 page.choose("follow");
 assert.equal(page.storage.has("plans-theme"), false, "Follow desktop clears the save");
 assert.equal(page.root.dataset.theme, "moonlight_dark", "Follow desktop applies the desktop theme");
+assert.equal(page.select.blurred, 2, "Follow desktop drops the focus too");
 
 const names = [...html.matchAll(/\["(\w+_dark)", "[A-Z]\w+"\]/g)].map((match) => match[1]);
 assert.equal(names.length, 16, "the page lists 16 themes");
