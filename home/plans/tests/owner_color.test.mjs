@@ -16,9 +16,14 @@ assert.equal(colors.size, 5);
 assert.deepEqual([...new Set(colors.values())].sort(), [...ASSIGNEE_SLOTS].sort(), "five names take five distinct slots");
 assert.deepEqual([...assign_owner_colors([...names].reverse())], [...colors], "input order does not matter");
 assert.deepEqual([...assign_owner_colors([...names, "alpha", "beta"])], [...colors], "duplicates do not shift colors");
-assert.equal(assign_owner_colors(["alpha"]).get("alpha"), assign_owner_colors(["alpha"]).get("alpha"), "stable");
+assert.deepEqual([...colors], [
+  ["alpha", "--assignee-sky"], ["beta", "--assignee-teal"], ["delta", "--assignee-orange"],
+  ["dotfiles-5d", "--assignee-iris"], ["gamma", "--assignee-magenta"],
+], "a known name set takes known slots");
+// "c" and "d" both hash to slot 3 (iris). "c" sorts first and keeps it, "d" probes on to magenta.
+assert.deepEqual([...assign_owner_colors(["d", "c"])], [["c", "--assignee-iris"], ["d", "--assignee-magenta"]], "a collision probes to the next free slot");
 
-const grays = ["none", "", "(assigned)".replace(/^/, "\u0000"), "\u0000unset", "\u0000assigned"];
+const grays = ["none", "", "\u0000(assigned)", "\u0000unset", "\u0000assigned"];
 const mixed = assign_owner_colors([...grays, "alpha", "beta"]);
 assert.deepEqual([...mixed.keys()].sort(), ["alpha", "beta"], "none, empty and synthetic rows stay gray");
 assert.deepEqual([...mixed], [...assign_owner_colors(["alpha", "beta"])], "gray rows take no slot");
