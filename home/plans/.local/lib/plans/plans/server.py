@@ -203,8 +203,21 @@ class Board:
             "kinds": validate.KINDS,
             # `e` opens a terminal, which needs the Wayland session; a headless host has none.
             "can_open_terminal": bool(os.environ.get("WAYLAND_DISPLAY")),
+            "desktop_theme": desktop_theme(),
             "repos": [view_json(view, labels[view.root]) for view in views],
         }
+
+
+def desktop_theme():
+    """The desktop's Oasis theme as a board theme key (`oasis_night` -> `night_dark`), or None. The page checks the
+    key against its own list, so an unknown name is harmless here. A missing or unreadable file is not an error."""
+    state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    try:
+        with open(os.path.join(state, "hypr", "theme"), encoding="utf-8") as handle:
+            name = handle.readline().strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    return name.removeprefix("oasis_") + "_dark" if name.startswith("oasis_") else None
 
 
 def holds_dead_owner(view):
