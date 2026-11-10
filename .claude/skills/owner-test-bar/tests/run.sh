@@ -193,7 +193,7 @@ rg() { git -C "$rr_repo" -c user.name=t -c user.email=t@t "$@"; }
 # shellcheck disable=SC2016 # the stub's own variables
 printf 'echo "main voxcmd $*" >>"%s"\necho "result: main"\n' "$rr_calls" >"$rr_main_bin"
 chmod +x "$rr_main_bin"
-echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop"
+echo main >"$rr_repo/home/voxcmd/.local/bin/voxcmd-helper"
 echo main >"$rr_repo/home/voxcmd/.config/voxcmd/keybinds.sh"
 ln -s "$here/../owner-test-bar.sh" "$rr_repo/.claude/skills/owner-test-bar/owner-test-bar.sh"
 rg add -A
@@ -202,7 +202,7 @@ rg update-ref refs/remotes/origin/main HEAD
 rg switch -q -c rust
 mkdir -p "$rr_repo/home/voxcmd/src"
 echo '[package]' >"$rr_repo/home/voxcmd/Cargo.toml"
-echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop"
+echo rust >"$rr_repo/home/voxcmd/.local/bin/voxcmd-helper"
 rg add -A
 rg commit -q -m rust
 rg switch -q main
@@ -364,7 +364,7 @@ check "voxcmd links into the bar's built binary" "rr_link_is voxcmd '$rr_dir/hom
 mv "$rr_dir/home/voxcmd/target/release/voxcmd" "$root/rr_bin_aside"
 check "status does not report a test build whose voxcmd binary is gone" "[[ \$(rrx voxcmd_status) != 'voxcmd: test build rustbar' ]]"
 mv "$root/rr_bin_aside" "$rr_dir/home/voxcmd/target/release/voxcmd"
-check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-autostop '$rr_dir/home/voxcmd/.local/bin/voxcmd-autostop' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
+check "the bar's helper scripts and config are linked too" "rr_link_is voxcmd-helper '$rr_dir/home/voxcmd/.local/bin/voxcmd-helper' && [[ \$(readlink -m $rr_home/.config/voxcmd) == $rr_dir/home/voxcmd/.config/voxcmd ]]"
 check "status reads test build" "[[ \$(rrx voxcmd_status) == 'voxcmd: test build rustbar' ]]"
 
 # A failed rebuild of the live bar must leave the binary the voxcmd link points at, and the previous owner's claim.
@@ -407,7 +407,7 @@ check "try runs explain on a Rust test build and reads its result" "[[ $code == 
 
 out=$(rrx voxcmd_restore)
 code=$?
-check "restore relinks main's built voxcmd and restows the rest" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-autostop '$rr_repo/home/voxcmd/.local/bin/voxcmd-autostop' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
+check "restore relinks main's built voxcmd and restows the rest" "[[ $code == 0 ]] && rr_link_is voxcmd '$rr_main_bin' && rr_link_is voxcmd-helper '$rr_repo/home/voxcmd/.local/bin/voxcmd-helper' && [[ ! -e $bars_dir/.voxcmd_bar ]] && [[ \$(rrx voxcmd_status) == 'voxcmd: main' ]]"
 rm -f "$rr_calls"
 out=$(rrx try_phrases "go home")
 check "try runs explain on main's build" "grep -q 'main voxcmd explain go home' '$rr_calls' && ! grep -q -- '--dry-run' '$rr_calls'"
@@ -427,6 +427,22 @@ rrx voxcmd_restore >/dev/null
 check "restore keeps the link stow made to a bash voxcmd main ships" "rr_link_is voxcmd '$rr_repo/home/voxcmd/.local/bin/voxcmd'"
 rm -f "$rr_repo/home/voxcmd/.local/bin/voxcmd" "$rr_home/.local/bin/voxcmd"
 ln -s "$rr_main_bin" "$rr_home/.local/bin/voxcmd"
+rm -f "$bars_dir/.owner" "$bars_dir/rustbar.branches"
+
+# A voxcmd package with no .local/bin (its last script was ported into the binary): the loops over that directory must
+# see nothing, not a literal "*" to link.
+rm -rf "$rr_dir/home/voxcmd/.local/bin"
+mkdir -p "$rr_dir/home/voxcmd/target/release"
+printf '#!/bin/sh\n' >"$rr_dir/home/voxcmd/target/release/voxcmd"
+chmod +x "$rr_dir/home/voxcmd/target/release/voxcmd"
+out=$(rrx voxcmd_swap rustbar "$rr_dir")
+code=$?
+check "a swap to a bar whose voxcmd has no .local/bin succeeds and links no stray '*'" "[[ $code == 0 && ! -e '$rr_home/.local/bin/*' && ! -L '$rr_home/.local/bin/*' ]]"
+rrx voxcmd_fully_linked rustbar >/dev/null
+check "and that bar still counts as fully linked" "[[ $? == 0 ]]"
+rrx voxcmd_restore >/dev/null
+git -C "$rr_dir" checkout -q -- home/voxcmd/.local/bin
+rm -rf "$rr_dir/home/voxcmd/target"
 rm -f "$bars_dir/.owner" "$bars_dir/rustbar.branches"
 
 # A throwaway HOME and git repo with a stowed voxtype and systemd package; the real stow runs, and systemctl is a fake that
