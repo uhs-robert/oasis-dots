@@ -72,6 +72,8 @@
                                padding: 3px 8px; font-size: 12px; line-height: 1.35; text-align: left; cursor: default;
                                background: var(--panel); border-radius: 4px; outline: 0; }
     #keys:hover::before, #keys:focus::before { content: none; }
+    /* The expanded hint leaves the flow, and with it the auto margin that pushed the gear right. */
+    header:has(#keys:hover, #keys:focus) #settings-btn { margin-left: auto; }
   }
   #message { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: none;
              max-width: 80vw; padding: 8px 14px; border-radius: 6px; background: var(--bad); color: var(--bg); }
@@ -127,6 +129,8 @@
   html.phone header { position: static; }
   html.phone #keys { display: none; }
   html.phone #settings input { font-size: 16px; }
+  /* The theme list is absolute inside the panel, so the panel needs room for it or the list clips. */
+  html.phone #settings-panel { height: 70vh; }
   html.phone #settings-btn { margin-left: auto; width: 32px; height: 32px; }
   html.phone #repo-picker { flex: 1 1 100%; }
   html.phone #repo { width: 100%; }
@@ -1836,6 +1840,12 @@ element("settings-btn").addEventListener("click", () => {
   element("settings-btn").blur();
 });
 settings_box.addEventListener("click", (event) => { if (event.target === settings_box) close_settings(); });
+// A press on the board outside the panel ends Settings, like Escape. The press is not cancelled, so a card click or
+// double-click still does its usual thing. The gear toggles on its own click, and a press on the phone sheet's dimmed
+// area is closed by the click handler above.
+document.addEventListener("mousedown", (event) => {
+  if (settings_open && !event.target.closest("#settings, #settings-btn")) close_settings();
+}, true);
 element("settings-close").addEventListener("click", close_settings);
 
 // Drag by pointer events rather than HTML drag and drop: the card can only land in its own lane, and the marker
@@ -1942,10 +1952,19 @@ document.addEventListener("keydown", (event) => {
   // list first (and stops there), so an Escape that reaches this point closes the modal. A comma closes it too, so no
   // theme name may hold one.
   if (settings_open) {
+    // Browser shortcuts (reload, find, zoom) are not board keys.
+    if (event.ctrlKey || event.metaKey || event.altKey || /^F\d{1,2}$/.test(event.key)) return;
     if (event.key === "," || event.key === "Escape") {
       event.preventDefault();
       close_settings();
-    } else if (event.key === "Tab" || !typing_in_field(event)) event.preventDefault(); // the one field keeps focus
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      element("theme").focus();
+    } else if (!typing_in_field(event)) {
+      // A printable key goes to the theme box, which the focus below reaches before the character lands.
+      if (event.key.length === 1) element("theme").focus();
+      else event.preventDefault();
+    }
     return;
   }
   if (event.key === "Escape") {
