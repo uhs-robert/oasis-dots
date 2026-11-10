@@ -65,7 +65,7 @@ BATON: <your session name> hands you the orchestrator role for <repo>; you are t
 Load the orchestrator-handoff skill and follow its "Take over" part.
 Offered now: <ids and doc paths>. Suggested first: <what to start on>. Reply "TAKEN <those ids>" once the owner agrees. They stay mine until my "HANDED <ids>"; act on them only after it.
 Held by me until their break: <ids, and where each will stop>. Leave them alone; each comes to you in a PIECE message.
-State: <running agents; worktrees with branch, commit, pushed or not; standing approvals; mid-way notes>.
+State: <your session log and any you inherited; running agents; worktrees with branch, commit, pushed or not; standing approvals; mid-way notes>.
 Time-sensitive: <owner tests pending, PRs awaiting review, or "nothing">.
 Send me any questions; I keep my context open to answer them.
 ```
