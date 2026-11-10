@@ -138,7 +138,7 @@ class Board:
                 changed = changed or not files_unchanged or doc_texts(views[root]) != doc_texts(cached)
             # Both are replaced only once every repo read, so a failed poll leaves no view behind its signature.
             self.signatures = signatures
-            theme = desktop_theme()
+            theme = desktop_theme(self.desktop_theme)
             changed = changed or theme != self.desktop_theme
             self.desktop_theme = theme
             if changed:
@@ -213,15 +213,18 @@ class Board:
         }
 
 
-def desktop_theme():
+def desktop_theme(previous=None):
     """The desktop's Oasis theme as a board theme key (`oasis_night` -> `night_dark`), or None. The page checks the
-    key against its own list, so an unknown name is harmless here. A missing or unreadable file is not an error."""
+    key against its own list, so an unknown name is harmless here. A missing or unreadable file is not an error. An
+    empty file is `previous`: the theme switch truncates the file before it writes the new name."""
     state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     try:
         with open(os.path.join(state, "hypr", "theme"), encoding="utf-8") as handle:
             name = handle.readline().strip()
     except (OSError, UnicodeDecodeError):
         return None
+    if not name:
+        return previous
     return name.removeprefix("oasis_") + "_dark" if name.startswith("oasis_") else None
 
 

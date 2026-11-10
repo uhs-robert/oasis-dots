@@ -37,28 +37,36 @@ class GeneratedThemesTest(unittest.TestCase):
             expected = {*gen_board_themes.ROLES, "overlay"}
             self.assertEqual(set(roles), expected, key)
 
-    def test_text_and_dim_reach_the_contrast_floor_on_cards(self):
+    # Exceptions the generator reports and keeps as the source file has them: no lighter color of the same hue below
+    # lightness 0.85 (accents), and no neutral between desert's dim and its text. Each carries a floor, so a real
+    # regression still fails.
+    LOW = {("desert_dark", "dim"): 4.4, ("desert_dark", "assignee-iris"): 3.0, ("dune_dark", "assignee-iris"): 3.0,
+           ("lagoon_dark", "assignee-iris"): 3.0, ("rose_dark", "assignee-iris"): 3.0,
+           ("cactus_dark", "assignee-iris"): 3.0, ("canyon_dark", "assignee-iris"): 3.0}
+
+    def check_floor(self, role_filter):
         for key, roles in board_themes().items():
-            for role in ("text", "dim"):
+            for role in (role for role in roles if role_filter(role)):
                 ratio = gen_board_themes.contrast(roles[role], roles["card"])
-                self.assertGreaterEqual(ratio, 4.5, f"{key} {role} on card is {ratio:.2f}:1")
+                if (key, role) in self.LOW:
+                    self.assertGreaterEqual(ratio, self.LOW[(key, role)], f"{key} {role} fell to {ratio:.2f}:1")
+                    self.assertLess(ratio, 4.5, f"{key} {role} now passes: drop it from LOW")
+                else:
+                    self.assertGreaterEqual(ratio, 4.5, f"{key} {role} on card is {ratio:.2f}:1")
+
+    def test_text_and_dim_reach_the_contrast_floor_on_cards(self):
+        self.check_floor(lambda role: role in ("text", "dim"))
+
+    def test_assignee_accents_reach_the_contrast_floor_on_cards(self):
+        self.check_floor(lambda role: role.startswith("assignee-"))
+
+    def test_dim_differs_from_text(self):
+        for key, roles in board_themes().items():
+            self.assertNotEqual(roles["dim"], roles["text"], key)
 
     def test_borders_do_not_vanish_into_cards_or_the_error_background(self):
         for key, roles in board_themes().items():
             self.assertNotIn(roles["line"], (roles["card"], roles["error-bg"]), key)
-
-    # Themes whose iris has no lighter color of its hue in their own file: the generator reports them and keeps the source value.
-    LOW_ASSIGNEE = {("desert_dark", "assignee-iris"), ("dune_dark", "assignee-iris"),
-                    ("lagoon_dark", "assignee-iris"), ("rose_dark", "assignee-iris")}
-
-    def test_assignee_accents_reach_the_contrast_floor_on_cards(self):
-        for key, roles in board_themes().items():
-            for role in (role for role in roles if role.startswith("assignee-")):
-                ratio = gen_board_themes.contrast(roles[role], roles["card"])
-                if (key, role) in self.LOW_ASSIGNEE:
-                    self.assertLess(ratio, 4.5, f"{key} {role} now passes: drop it from LOW_ASSIGNEE")
-                else:
-                    self.assertGreaterEqual(ratio, 4.5, f"{key} {role} on card is {ratio:.2f}:1")
 
     def test_night_matches_the_static_fallback(self):
         with open(BOARD, encoding="utf-8") as handle:
@@ -106,6 +114,15 @@ class DesktopThemeTest(unittest.TestCase):
         self.assertIsNone(self.read_with("gruvbox\n"))
         self.assertIsNone(self.read_with(""))
 
+    def test_an_empty_file_keeps_the_previous_theme(self):
+        # switch.lua and init.lua truncate the file before they write the new name.
+        with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
+            os.makedirs(os.path.join(state, "hypr"))
+            with open(os.path.join(state, "hypr", "theme"), "w", encoding="utf-8"):
+                pass
+            self.assertEqual(server.desktop_theme("moonlight_dark"), "moonlight_dark")
+            self.assertIsNone(server.desktop_theme())
+
     def test_the_board_json_carries_it_and_survives_a_missing_file(self):
         with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
             board = server.Board(os.path.join(state, "roots.json"))
@@ -141,6 +158,12 @@ class DesktopThemeWatchTest(unittest.TestCase):
             self.assertGreater(board.version, version, "a changed theme bumps")
             self.assertEqual(board.as_json()["desktop_theme"], "moonlight_dark")
             version = board.version
+
+            with open(path, "w", encoding="utf-8"):
+                pass
+            board.poll()
+            self.assertEqual(board.as_json()["desktop_theme"], "moonlight_dark", "a truncated file keeps the theme")
+            self.assertEqual(board.version, version, "and does not bump")
 
             os.remove(path)
             board.poll()
