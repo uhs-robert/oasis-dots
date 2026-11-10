@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const board_path = join(dirname(fileURLToPath(import.meta.url)), "../.local/lib/plans/plans/board.html");
 const html = readFileSync(board_path, "utf8");
 const block = html.split("// fuzzy:start")[1].split("// fuzzy:end")[0];
-const { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices } =
-  new Function(`${block}\nreturn { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices };`)();
+const { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED } =
+  new Function(`${block}\nreturn { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED };`)();
 
 const repo = (label, folder) => ({ label, root: `/home/me/${folder ?? label.split("/")[1]}` });
 const labels = (query, repos) => rank_repos(query, repos).map((entry) => entry.label);
@@ -68,29 +68,41 @@ const docs = [
 const facet = (filters, filter, scope = docs, all_docs = scope) =>
   facet_choices(scope, { ...no_filters, ...filters }, filter, value_of, all_docs);
 
-assert.deepEqual(facet({}, "owner"), [UNSET, "a", "b"], "no filter lists every value, including the unset stand-in");
-assert.deepEqual(facet({ project: "p2" }, "owner"), ["a", "b"], "another filter narrows a list");
+assert.deepEqual(facet({}, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "no filter lists every value, including the unset stand-in");
+assert.deepEqual(facet({ project: "p2" }, "owner"), [OWNER_ASSIGNED, "a", "b"], "another filter narrows a list");
 assert.deepEqual(facet({ project: "p1" }, "status"), ["building"], "status keeps only values on matching cards");
-assert.deepEqual(facet({ owner: "a" }, "owner"), [UNSET, "a", "b"], "a filter's own pick does not narrow its own list");
-assert.deepEqual(facet({ owner: "b", kind: "fix" }, "owner"), [UNSET, "a", "b"], "the pick stays beside the other-filter match");
+assert.deepEqual(facet({ owner: "a" }, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "a filter's own pick does not narrow its own list");
+assert.deepEqual(facet({ owner: "b", kind: "fix" }, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "the pick stays beside the other-filter match");
 assert.deepEqual(facet({ owner: "b", kind: "fix" }, "project"), [], "the narrowed list can be empty");
 assert.deepEqual(facet({ project: "p1", status: "done" }, "status"), ["building", "done"], "a pick that matches nothing stays listed");
-assert.deepEqual(facet({ waiting: true }, "owner"), ["a"], "the waiting box narrows the lists");
+assert.deepEqual(facet({ waiting: true }, "owner"), [OWNER_ASSIGNED, "a"], "the waiting box narrows the lists");
 assert.deepEqual(facet({ waiting: true, owner: "b" }, "project"), [], "waiting and a pick narrow together");
-assert.deepEqual(facet({}, "owner", docs.slice(2)), [UNSET, "b"], "the scope the caller passes bounds the list");
+assert.deepEqual(facet({}, "owner", docs.slice(2)), [OWNER_ASSIGNED, UNSET, "b"], "the scope the caller passes bounds the list");
 assert.deepEqual(facet({}, "kind", []), [], "no docs gives an empty list");
 assert.ok(doc_passes(docs[0], no_filters, null, value_of), "no filters pass every doc");
 assert.ok(!doc_passes(docs[0], { ...no_filters, owner: "b" }, null, value_of), "a pick hides other docs");
 assert.ok(doc_passes(docs[0], { ...no_filters, owner: "b" }, "owner", value_of), "the skipped filter is ignored");
 
-assert.deepEqual(facet({ owner: UNSET }, "project"), ["p3"], "picking (none) narrows the other lists");
-assert.deepEqual(facet({ owner: UNSET }, "owner"), [UNSET, "a", "b"], "the (none) pick stays in its own list");
-assert.deepEqual(facet({ owner: "gone" }, "owner"), [UNSET, "a", "b"], "a pick no doc has is dropped, so the combo resets it");
-assert.deepEqual(facet({ owner: "b" }, "owner", docs.slice(0, 2), docs), ["a", "b"], "a pick in another repo stays listed");
-assert.deepEqual(facet({ assigned: true }, "project"), ["p1", "p2"], "assigned drops cards with no owner");
-assert.deepEqual(facet({ assigned: true }, "owner"), ["a", "b"], "assigned narrows the owner list");
+assert.deepEqual(facet({ owner: UNSET }, "project"), ["p3"], "picking (unassigned) narrows the other lists");
+assert.deepEqual(facet({ owner: UNSET }, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "the (unassigned) pick stays in its own list");
+assert.deepEqual(facet({ owner: "gone" }, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "a pick no doc has is dropped, so the combo resets it");
+assert.deepEqual(facet({ owner: "b" }, "owner", docs.slice(0, 2), docs), [OWNER_ASSIGNED, "a", "b"], "a pick in another repo stays listed");
 const with_none = [...docs, { owner: "none", project: "p4", status: "review", kind: "fix", waiting_on: "" }];
-assert.deepEqual(facet({ assigned: true }, "project", with_none), ["p1", "p2"], "the none marker is not assigned");
-assert.ok(!doc_passes(docs[3], { ...no_filters, assigned: true }, null, value_of), "assigned hides an unset owner");
-assert.ok(doc_passes(docs[0], { ...no_filters, assigned: true }, null, value_of), "assigned keeps an owned card");
+const with_named = [...docs, { owner: "(assigned)", project: "p5", status: "review", kind: "fix", waiting_on: "" }];
+assert.deepEqual(facet({}, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "both special rows lead the owner list");
+assert.deepEqual(facet({}, "owner", with_none), [OWNER_ASSIGNED, UNSET, "a", "b"], "the none marker folds into (unassigned)");
+assert.deepEqual(facet({}, "owner", [docs[3]]), [UNSET], "no assigned card, no (assigned) row");
+assert.deepEqual(facet({}, "owner", with_named), [OWNER_ASSIGNED, UNSET, "(assigned)", "a", "b"], "a session named (assigned) is its own row");
+assert.deepEqual(facet({ owner: OWNER_ASSIGNED }, "project"), ["p1", "p2"], "(assigned) drops cards with no owner");
+assert.deepEqual(facet({ owner: OWNER_ASSIGNED }, "project", with_none), ["p1", "p2"], "the none marker is not assigned");
+assert.deepEqual(facet({ owner: UNSET }, "project", with_none), ["p3", "p4"], "(unassigned) keeps unset and none");
+assert.deepEqual(facet({ owner: OWNER_ASSIGNED }, "owner"), [OWNER_ASSIGNED, UNSET, "a", "b"], "the (assigned) pick stays listed");
+assert.ok(doc_passes(docs[0], { ...no_filters, owner: OWNER_ASSIGNED }, null, value_of), "(assigned) keeps an owned card");
+assert.ok(!doc_passes(docs[3], { ...no_filters, owner: OWNER_ASSIGNED }, null, value_of), "(assigned) hides an unset owner");
+assert.ok(!doc_passes(with_none[4], { ...no_filters, owner: OWNER_ASSIGNED }, null, value_of), "(assigned) hides the none marker");
+assert.ok(doc_passes(docs[3], { ...no_filters, owner: UNSET }, null, value_of), "(unassigned) keeps an unset owner");
+assert.ok(doc_passes(with_none[4], { ...no_filters, owner: UNSET }, null, value_of), "(unassigned) keeps the none marker");
+assert.ok(!doc_passes(docs[0], { ...no_filters, owner: UNSET }, null, value_of), "(unassigned) hides an owned card");
+assert.ok(!doc_passes(with_named[4], { ...no_filters, owner: UNSET }, null, value_of), "a session named (assigned) is assigned");
+assert.ok(doc_passes(docs[3], no_filters, null, value_of), "an empty owner box shows every card");
 console.log("fuzzy tests passed");
