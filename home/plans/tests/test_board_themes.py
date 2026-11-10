@@ -43,6 +43,23 @@ class GeneratedThemesTest(unittest.TestCase):
                 ratio = gen_board_themes.contrast(roles[role], roles["card"])
                 self.assertGreaterEqual(ratio, 4.5, f"{key} {role} on card is {ratio:.2f}:1")
 
+    def test_borders_do_not_vanish_into_cards_or_the_error_background(self):
+        for key, roles in board_themes().items():
+            self.assertNotIn(roles["line"], (roles["card"], roles["error-bg"]), key)
+
+    # Themes whose iris has no lighter color of its hue in their own file: the generator reports them and keeps the source value.
+    LOW_ASSIGNEE = {("desert_dark", "assignee-iris"), ("dune_dark", "assignee-iris"),
+                    ("lagoon_dark", "assignee-iris"), ("rose_dark", "assignee-iris")}
+
+    def test_assignee_accents_reach_the_contrast_floor_on_cards(self):
+        for key, roles in board_themes().items():
+            for role in (role for role in roles if role.startswith("assignee-")):
+                ratio = gen_board_themes.contrast(roles[role], roles["card"])
+                if (key, role) in self.LOW_ASSIGNEE:
+                    self.assertLess(ratio, 4.5, f"{key} {role} now passes: drop it from LOW_ASSIGNEE")
+                else:
+                    self.assertGreaterEqual(ratio, 4.5, f"{key} {role} on card is {ratio:.2f}:1")
+
     def test_night_matches_the_static_fallback(self):
         with open(BOARD, encoding="utf-8") as handle:
             root = re.search(r":root \{([^}]*)\}", handle.read()).group(1)
@@ -56,7 +73,7 @@ class GeneratedThemesTest(unittest.TestCase):
 
     def test_a_low_contrast_dim_is_raised_to_a_lighter_neutral(self):
         values = {"fg-dim": "#404040", "fg-muted": "#909090", "fg-core": "#FFFFFF", "syntax-bracket": "#404040"}
-        picked = gen_board_themes.lighter_neutral(values, "#000000", "#404040")
+        picked = gen_board_themes.lighter_neutral(values, "#404040", "#000000")
         self.assertEqual(picked, "#909090")
 
     def test_board_matches_a_fresh_generate_when_oasis_is_checked_out(self):
@@ -93,6 +110,41 @@ class DesktopThemeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
             board = server.Board(os.path.join(state, "roots.json"))
             self.assertIn("desktop_theme", board.as_json())
+            self.assertIsNone(board.as_json()["desktop_theme"])
+
+
+class DesktopThemeWatchTest(unittest.TestCase):
+    """A desktop theme change while the board is open bumps the version, so the event stream wakes the page."""
+
+    def test_the_version_follows_the_state_file(self):
+        with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
+            path = os.path.join(state, "hypr", "theme")
+            board = server.Board(os.path.join(state, "roots.json"))
+            board.poll(rescan=True)
+            version = board.version
+            board.poll()
+            self.assertEqual(board.version, version, "no change, no bump")
+
+            os.makedirs(os.path.dirname(path))
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("oasis_night\n")
+            board.poll()
+            self.assertGreater(board.version, version, "a file that appears bumps")
+            self.assertEqual(board.as_json()["desktop_theme"], "night_dark")
+            version = board.version
+            board.poll()
+            self.assertEqual(board.version, version, "the same theme does not bump again")
+
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("oasis_moonlight\n")
+            board.poll()
+            self.assertGreater(board.version, version, "a changed theme bumps")
+            self.assertEqual(board.as_json()["desktop_theme"], "moonlight_dark")
+            version = board.version
+
+            os.remove(path)
+            board.poll()
+            self.assertGreater(board.version, version, "a file that disappears bumps")
             self.assertIsNone(board.as_json()["desktop_theme"])
 
 

@@ -113,6 +113,8 @@ class Board:
         self.repo_roots = []
         self.last_rescan = None
         self.web_urls = {}
+        # The desktop theme rides on the board JSON, so a change to it must bump the version like a doc change.
+        self.desktop_theme = desktop_theme()
 
     def poll(self, rescan=False):
         """Read again each repo whose docs changed on disk. Bumps the version and wakes the event streams on a change."""
@@ -136,6 +138,9 @@ class Board:
                 changed = changed or not files_unchanged or doc_texts(views[root]) != doc_texts(cached)
             # Both are replaced only once every repo read, so a failed poll leaves no view behind its signature.
             self.signatures = signatures
+            theme = desktop_theme()
+            changed = changed or theme != self.desktop_theme
+            self.desktop_theme = theme
             if changed:
                 with self.changed:
                     self.views = views
@@ -203,7 +208,7 @@ class Board:
             "kinds": validate.KINDS,
             # `e` opens a terminal, which needs the Wayland session; a headless host has none.
             "can_open_terminal": bool(os.environ.get("WAYLAND_DISPLAY")),
-            "desktop_theme": desktop_theme(),
+            "desktop_theme": self.desktop_theme,
             "repos": [view_json(view, labels[view.root]) for view in views],
         }
 
