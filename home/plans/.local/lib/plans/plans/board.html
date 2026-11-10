@@ -58,13 +58,14 @@
   header label { color: var(--dim); }
   #keys { margin-left: auto; color: var(--dim); font-size: 12px; }
   #settings-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
-                  color: var(--dim); background: none; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
-  #settings-btn:hover, #settings-btn:focus-visible { color: var(--accent); outline: 0; }
+                  color: var(--dim); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+  #settings-btn:hover { color: var(--accent); }
+  #settings-btn:focus-visible { color: var(--accent); outline: 1px solid var(--accent); }
   /* Narrow screens fold the hint into a "?". The text stays in the same element, so a script that edits the text
      still applies. Hover or focus overlays the full hint on the "?" spot. */
   @media (max-width: 1599px) {
     #keys { font-size: 0; width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: help;
-            border: 1px solid var(--line); border-radius: 50%; }
+            border-radius: 50%; }
     #keys::before { content: "?"; font-size: 12px; }
     /* right: 44px keeps the gear (24px wide, 8px gap, 12px header padding) uncovered. */
     #keys:hover, #keys:focus { position: absolute; right: 44px; top: 8px; z-index: 6; width: auto; height: auto;
@@ -1941,7 +1942,7 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "," || event.key === "Escape") {
       event.preventDefault();
       close_settings();
-    } else if (!typing_in_field(event)) event.preventDefault();
+    } else if (event.key === "Tab" || !typing_in_field(event)) event.preventDefault(); // the one field keeps focus
     return;
   }
   if (event.key === "Escape") {
