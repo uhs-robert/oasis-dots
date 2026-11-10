@@ -318,7 +318,34 @@ function show_message(text, kind) {
   show_message.timer = setTimeout(() => { box.style.display = "none"; }, 6000);
 }
 
-const WRITE_HEADERS = { "Content-Type": "application/json", "X-Plans-Board": "1" };
+// laptop-key:start
+// plans-open.sh opens the tailnet address as #laptop-key=<key>. The browser never sends a fragment, and the page
+// strips it before its first request, so the key leaves the address bar at once.
+const LAPTOP_KEY_FRAGMENT = "#laptop-key=";
+const LAPTOP_KEY_STORE = "plans-laptop-key";
+
+// The key from the fragment, else the one saved earlier, else null. It takes location, history and storage as
+// arguments so a test runs it without a DOM. A null storage stands for blocked localStorage.
+function adopt_laptop_key(location, history, storage) {
+  const hash = location.hash;
+  if (!hash.startsWith(LAPTOP_KEY_FRAGMENT)) {
+    try { return storage.getItem(LAPTOP_KEY_STORE); } catch { return null; }
+  }
+  history.replaceState(history.state, "", location.pathname + location.search);
+  const key = hash.slice(LAPTOP_KEY_FRAGMENT.length);
+  if (!/^[A-Za-z0-9_-]{43}$/.test(key)) return null;
+  // Without storage the key lasts until a reload, and the launcher hands it over again.
+  try { storage.setItem(LAPTOP_KEY_STORE, key); } catch { /* this page only */ }
+  return key;
+}
+// laptop-key:end
+
+const laptop_key = adopt_laptop_key(window.location, window.history, (() => {
+  try { return window.localStorage; } catch { return null; }
+})());
+// Only writes carry the key. The server needs it for /api/open and /api/cancel on the tailnet address.
+const WRITE_HEADERS = { "Content-Type": "application/json", "X-Plans-Board": "1",
+  ...(laptop_key ? { "X-Plans-Laptop-Key": laptop_key } : {}) };
 // A move into one of these asks first, because it takes the doc out of the work order.
 const CONFIRM_STATUSES = ["blocked", "done"];
 let pending_confirm = null;

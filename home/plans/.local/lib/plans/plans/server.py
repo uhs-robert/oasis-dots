@@ -5,9 +5,12 @@ mtimes and pushes a new board version to the page by server-sent events. Every w
 the values the page showed as the basis, so an edit made after the page last loaded refuses the write.
 """
 
+import hmac
 import http.server
 import json
 import os
+import re
+import secrets
 import shlex
 import signal
 import subprocess
@@ -42,6 +45,11 @@ FALLBACK_EDITOR = "nvim"
 LOGIN_HEADER = "Tailscale-User-Login"
 # The phone may change status, owner, rank and the body. Opening the editor and cancelling stay on the laptop.
 REMOTE_ACTIONS = ("/api/update", "/api/move", "/api/toggle", "/api/section")
+# The laptop reaches the board through the same `tailscale serve` address as the phone, with the same login, so only
+# a secret tells them apart. plans-open.sh hands the key to the page in the URL fragment, and the page sends it back
+# in this header on every write.
+LAPTOP_KEY_HEADER = "X-Plans-Laptop-Key"
+LAPTOP_KEY_SHAPE = re.compile(r"[A-Za-z0-9_-]{43}")
 # A section edit from the board holds at most this much text. A plan doc section is far smaller.
 MAX_SECTION_BYTES = 16 * 1024
 
@@ -76,6 +84,57 @@ def load_remote(path=None):
     host, login = (value.strip() for value in values)
     # `tailscale status --json` gives the name with the DNS root dot, which no Host header carries.
     return Remote(host.rstrip(".").lower(), login)
+
+
+def laptop_key_file():
+    base = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    return os.path.join(base, "plans", "laptop-key")
+
+
+def load_laptop_key(path=None):
+    """The laptop key, created on first use, or None, which keeps /api/open and /api/cancel refused on the tailnet
+    address. The board still serves without it. No message names the key itself."""
+    path = path or laptop_key_file()
+    try:
+        os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+        try:
+            return read_laptop_key(path)
+        except FileNotFoundError:
+            pass
+        write_laptop_key(path)
+        return read_laptop_key(path)
+    except (OSError, ValueError) as error:
+        print(f"plans serve: {path}: {error}; the laptop key is off, so the tailnet address cannot open or cancel",
+              file=sys.stderr)
+        return None
+
+
+def read_laptop_key(path):
+    with open(path, encoding="ascii") as handle:
+        if os.fstat(handle.fileno()).st_mode & 0o077:
+            raise ValueError("group or others have access to it; chmod 600 it")
+        key = handle.read().strip()
+    if not LAPTOP_KEY_SHAPE.fullmatch(key):
+        raise ValueError("it holds no key; delete it and restart plans serve")
+    return key
+
+
+def write_laptop_key(path):
+    """Write a new key under a temp name, then link it into place. The file is 0600 from its first byte, a reader
+    never sees it half written, and a second writer racing this one keeps the first key."""
+    temp = f"{path}.{secrets.token_hex(8)}.tmp"
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="ascii") as handle:
+            handle.write(secrets.token_urlsafe(32) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temp, path)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(temp)
 
 
 class Refused(Exception):
@@ -328,6 +387,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # Set per server by make_server.
     board = None
     remote = None
+    laptop_key = None
     keepalive_seconds = KEEPALIVE_SECONDS
 
     def log_message(self, format, *args):  # noqa: A002 - the base class names it so
@@ -350,6 +410,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         host = (self.headers.get("Host") or "").lower()
         logins = self.headers.get_all(LOGIN_HEADER) or []
         return host in {remote.host, f"{remote.host}:443"} and logins == [remote.login]
+
+    def has_laptop_key(self):
+        sent = self.headers.get_all(LAPTOP_KEY_HEADER) or []
+        if self.laptop_key is None or len(sent) != 1:
+            return False
+        # http.server decodes header bytes as latin-1. compare_digest takes only ASCII str, so compare bytes.
+        return hmac.compare_digest(sent[0].encode("latin-1", "replace"), self.laptop_key.encode("ascii"))
 
     def host_refusal(self):
         """The 403 message for a request the Host check turns away, or None when the Host and login pass."""
@@ -388,8 +455,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json(403, {"error": refusal})
         if not self.write_is_from_board():
             return self.send_json(403, {"error": f"a write needs the {WRITE_HEADER} header and a JSON body"})
-        if self.is_remote() and self.path not in REMOTE_ACTIONS:
-            return self.send_json(403, {"error": f"{self.path} works on the laptop only"})
+        if self.is_remote() and self.path not in REMOTE_ACTIONS and not self.has_laptop_key():
+            return self.send_json(403, {"error": f"{self.path} works on the laptop only; open the board from the "
+                                                 "laptop launcher (Super+A, then K)"})
         actions = {"/api/update": update_doc, "/api/move": move_doc, "/api/open": open_doc, "/api/cancel": cancel_doc,
                    "/api/toggle": toggle_task, "/api/section": edit_section}
         action = actions.get(self.path)
@@ -766,9 +834,9 @@ class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
 
-def make_server(board, port=DEFAULT_PORT, keepalive_seconds=KEEPALIVE_SECONDS, remote=None):
+def make_server(board, port=DEFAULT_PORT, keepalive_seconds=KEEPALIVE_SECONDS, remote=None, laptop_key=None):
     handler = type("BoardHandler", (Handler,), {"board": board, "keepalive_seconds": keepalive_seconds,
-                                                "remote": remote})
+                                                "remote": remote, "laptop_key": laptop_key})
     return Server((HOST, port), handler)
 
 
@@ -776,7 +844,10 @@ def serve(port=DEFAULT_PORT, roots_file=None):
     """Run the board until SIGTERM or SIGINT, then return 0."""
     board = Board(roots_file)
     remote = load_remote()
-    httpd = make_server(board, port, remote=remote)
+    # Only the tailnet address needs the key. Writing it before the port opens means plans-open.sh, which waits for
+    # the port, always finds it.
+    laptop_key = load_laptop_key() if remote else None
+    httpd = make_server(board, port, remote=remote, laptop_key=laptop_key)
     board.poll(rescan=True)
     watcher = threading.Thread(target=board.watch, name="plans-watcher", daemon=True)
     watcher.start()
