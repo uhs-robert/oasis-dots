@@ -77,10 +77,10 @@ class Fixture:
             handle.write(doc_text(doc_id, rank, **keys))
         return path
 
-    def start(self, watch=True, remote=None):
+    def start(self, watch=True, remote=None, laptop_key=None):
         self.board = server.Board(self.roots_file, poll_seconds=POLL)
         self.board.poll(rescan=True)
-        self.httpd = server.make_server(self.board, 0, keepalive_seconds=KEEPALIVE, remote=remote)
+        self.httpd = server.make_server(self.board, 0, keepalive_seconds=KEEPALIVE, remote=remote, laptop_key=laptop_key)
         self.port = self.httpd.server_address[1]
         self.threads = [threading.Thread(target=self.httpd.serve_forever, daemon=True)]
         self.threads[0].start()

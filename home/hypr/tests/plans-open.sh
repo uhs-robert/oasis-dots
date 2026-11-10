@@ -2,8 +2,8 @@
 # Tests scripts/plans-open.sh against stubbed systemctl, xdg-open, xdg-mime, hyprctl and notify-send, on a spare port:
 # an open port opens the URL without starting the service, a closed port is started and then opened, and a port that
 # never opens sends a notification and exits non-zero. A fake remote.json and curl stub cover the tailnet link: it opens
-# when the host answers, and no file, a dead host, a bad host or a broken file open the local URL. The stubs keep the
-# owner's service, browser and desktop out of it.
+# when the host answers, and no file, a dead host, a bad host or a broken file open the local URL. A fake laptop key goes
+# into the tailnet URL's fragment only. The stubs keep the owner's service, browser, desktop and key out of it.
 set -u
 
 command -v jq >/dev/null || {
@@ -75,7 +75,7 @@ chmod +x "$work"/bin/*
 # run <start binds the port: 1|0>; sets $out (the log) and $code
 run() {
   : >"$work/log"
-  HOME="$work/home" XDG_CONFIG_HOME="$work/config" TAILNET_UP=${TAILNET_UP:-0} PATH="$work/bin:$PATH" LOG="$work/log" WORK="$work" PLANS_PORT=$port START_BINDS=$1 bash "$script" >/dev/null 2>&1
+  HOME="$work/home" XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" TAILNET_UP=${TAILNET_UP:-0} PATH="$work/bin:$PATH" LOG="$work/log" WORK="$work" PLANS_PORT=$port START_BINDS=$1 bash "$script" >/dev/null 2>&1
   code=$?
   sleep 0.3
   out=$(cat "$work/log")
@@ -151,6 +151,18 @@ TAILNET_UP=1 run 0
 [[ $out == *"address:0xB"* ]] || fail "tailnet up: focuses browser"
 TAILNET_UP=0 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *"xdg-open https"* ]] || fail "tailnet down: opens local"
+mkdir -p "$work/state/plans"
+key=Ab3_-Ab3_-Ab3_-Ab3_-Ab3_-Ab3_-Ab3_-Ab3_-xyz
+printf '%s\n' "$key" >"$work/state/plans/laptop-key"
+TAILNET_UP=1 run 0
+[[ $out == *"xdg-open https://board.example.ts.net/#laptop-key=$key"* ]] || fail "laptop key: in the fragment"
+[[ $(grep -c -- "$key" <<<"$out") -eq 1 ]] || fail "laptop key: only xdg-open sees it"
+TAILNET_UP=0 run 0
+[[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *"$key"* ]] || fail "laptop key: never on the local url"
+echo short >"$work/state/plans/laptop-key"
+TAILNET_UP=1 run 0
+[[ $out == *"xdg-open https://board.example.ts.net/"* && $out != *laptop-key* ]] || fail "bad laptop key: opens without it"
+rm -r "$work/state"
 echo '{not json' >"$work/config/plans/remote.json"
 TAILNET_UP=1 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "broken file: opens local"
@@ -164,5 +176,5 @@ TAILNET_UP=1 run 0
 [[ $out == *"xdg-open http://127.0.0.1:$port"* && $out != *curl* ]] || fail "no file: opens local"
 stop_listener
 
-echo "$((18 - failures))/18 passed"
+echo "$((22 - failures))/22 passed"
 exit $((failures ? 1 : 0))

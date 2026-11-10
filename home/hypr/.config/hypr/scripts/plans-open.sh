@@ -2,7 +2,8 @@
 # hypr/.config/hypr/scripts/plans-open.sh
 # Open the plans board in the browser and focus the browser, starting the plans-serve user service when the port is closed.
 # Opens https://<host>/ instead when the private remote.json (the file the board reads for the phone) names a host that
-# answers, so the laptop and the phone share one address. PLANS_PORT picks another port, for tests.
+# answers, so the laptop and the phone share one address. On that address only the laptop key, which plans serve keeps in
+# $XDG_STATE_HOME/plans/laptop-key, lets the board open the editor and cancel. PLANS_PORT picks another port, for tests.
 
 port=${PLANS_PORT:-8765}
 url=http://127.0.0.1:$port
@@ -45,9 +46,19 @@ remote_host() {
 # The board still opens locally when the tailnet is down, so a short timeout keeps the shortcut quick offline.
 if host=$(remote_host) && curl -fsS -o /dev/null --max-time 2 "https://$host/" 2>/dev/null; then
   url=https://$host/
+  # The fragment never reaches the server or a log, and the page strips it on load and keeps the key. $(<file) is a
+  # bash read, so the key appears in no argv but xdg-open's and the browser's. Without a key the board opens anyway and
+  # refuses only e and cancel.
+  key_file=${XDG_STATE_HOME:-$HOME/.local/state}/plans/laptop-key
+  if [ -r "$key_file" ]; then
+    key=$(<"$key_file")
+    [[ $key =~ ^[A-Za-z0-9_-]{43}$ ]] && open_url=$url#laptop-key=$key
+    unset key
+  fi
 fi
 
-xdg-open "$url" >/dev/null 2>&1 &
+xdg-open "${open_url:-$url}" >/dev/null 2>&1 &
+unset open_url
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
 
 # The default browser names the window class to focus: its desktop entry's StartupWMClass, else the entry's name. Same
