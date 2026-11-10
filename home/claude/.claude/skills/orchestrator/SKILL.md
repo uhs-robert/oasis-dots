@@ -28,7 +28,7 @@ Skills that only wrap a script: when you just need to run the script, read only 
 
 Review dimensions, used by every review below: correctness and regressions, missed requirements, scope (unrelated changes), reuse and unnecessary complexity, weak tests.
 
-When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; a request to hand over from another session goes to the owner.
+When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; it also defines the status report you give at each handoff, at wind-down and when the owner asks; a request to hand over from another session goes to the owner.
 
 Target: `$target`
 
@@ -89,4 +89,4 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` (with `--skip-review-gate` for a trivial piece or one where the owner waived the reviewers) and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready.
 
-12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions (every declined thread listed), which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review.
+12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions (every declined thread listed), which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review. Append the piece to the session log (`orchestrator-handoff`, Status report).
