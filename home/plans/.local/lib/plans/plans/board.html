@@ -1524,6 +1524,11 @@ function make_combo({ id, all_label, none_label, get_choices_rank }) {
   }
 
   function pick(value) {
+    // Owner and project pick are per-repo habits, so a new repo starts them at ALL even if the old value has cards there.
+    if (id === "repo" && value !== ALL && value !== filters.repo) {
+      combos.owner.reset();
+      combos.project.reset();
+    }
     filters[id] = value;
     close_list();
     input.blur();
