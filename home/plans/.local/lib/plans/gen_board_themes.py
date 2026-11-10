@@ -8,6 +8,7 @@ run from a worktree). With --check the script rewrites nothing and exits 1 when 
 """
 
 import os
+import colorsys
 import re
 import subprocess
 import sys
@@ -46,27 +47,67 @@ def read_vars(path):
         return dict(re.findall(r"--oasis-([\w-]+):\s*([^;]+);", handle.read()))
 
 
-def lighter_neutral(values, card, current):
-    """The closest lighter neutral of the same theme that reaches the contrast floor, else fg-core."""
-    neutrals = {values[key] for key in values if key.startswith("fg-") or key == "syntax-bracket"}
-    neutrals = {color.upper() for color in neutrals if re.fullmatch(r"#[0-9A-Fa-f]{6}", color)}
-    passing = [color for color in neutrals
-               if luminance(color) > luminance(current) and contrast(color, card) >= MIN_CONTRAST]
+def is_hex(color):
+    return re.fullmatch(r"#[0-9A-Fa-f]{6}", color) is not None
+
+
+def hls_of(hex_color):
+    return colorsys.rgb_to_hls(*(int(hex_color[index:index + 2], 16) / 255 for index in (1, 3, 5)))
+
+
+def hue_of(hex_color):
+    return hls_of(hex_color)[0] * 360
+
+
+def hue_distance(first, second):
+    gap = abs(hue_of(first) - hue_of(second)) % 360
+    return min(gap, 360 - gap)
+
+
+def lighter_neutral(values, current, card=None):
+    """The closest lighter neutral of the same theme, else fg-core. With a card, it must also reach the contrast floor."""
+    neutrals = {values[key].upper() for key in values
+                if (key.startswith("fg-") or key == "syntax-bracket") and is_hex(values[key])}
+    passing = [color for color in neutrals if luminance(color) > luminance(current)
+               and (card is None or contrast(color, card) >= MIN_CONTRAST)]
     return min(passing, key=luminance) if passing else values["fg-core"].upper()
 
 
-def theme_roles(values, adjusted):
+def lighter_same_hue(values, current, card):
+    """The closest lighter color of the theme within 25 degrees of `current` (grays have no hue, so they do not count) that reaches the floor on the card, or None."""
+    colors = {value.upper() for value in values.values() if is_hex(value)}
+    passing = [color for color in colors if luminance(color) > luminance(current)
+               and hls_of(color)[2] >= 0.3 and hue_distance(color, current) <= 25 and contrast(color, card) >= MIN_CONTRAST]
+    return min(passing, key=luminance) if passing else None
+
+
+def theme_roles(values, notes):
+    """The board roles of one theme. Each adjustment is a line in `notes`, for the generator to print."""
+    name = values["name"].strip('"')
     roles = {role: values[var].upper() for role, var in ROLES.items()}
     if contrast(roles["dim"], roles["card"]) < MIN_CONTRAST:
-        roles["dim"] = lighter_neutral(values, roles["card"], roles["dim"])
-        adjusted.append(values["name"].strip('"'))
+        roles["dim"] = lighter_neutral(values, roles["dim"], roles["card"])
+        notes.append(f"{name}: dim raised for contrast")
+    # A border the same color as the card, or as the error background, disappears there.
+    if roles["line"] in (roles["card"], roles["error-bg"]):
+        roles["line"] = lighter_neutral(values, roles["line"])
+        notes.append(f"{name}: line matched the card or error background, now {roles['line']}")
+    for role in ROLES:
+        if not role.startswith("assignee-") or contrast(roles[role], roles["card"]) >= MIN_CONTRAST:
+            continue
+        found = lighter_same_hue(values, roles[role], roles["card"])
+        if found:
+            notes.append(f"{name}: {role} raised from {roles[role]} to {found}")
+            roles[role] = found
+        else:
+            notes.append(f"{name}: {role} stays {roles[role]}, {contrast(roles[role], roles['card']):.2f}:1 on card, no lighter color of its hue")
     shadow = values["bg-shadow"]
     red, green, blue = (int(shadow[index:index + 2], 16) for index in (1, 3, 5))
     roles["overlay"] = f"rgba({red}, {green}, {blue}, 0.6)"
     return roles
 
 
-def load_themes(oasis_dir, adjusted):
+def load_themes(oasis_dir, notes):
     folder = os.path.join(oasis_dir, "extras", "css", "themes", "dark")
     themes = []
     for name in sorted(os.listdir(folder)):
@@ -75,7 +116,7 @@ def load_themes(oasis_dir, adjusted):
             continue
         values = read_vars(os.path.join(folder, name))
         label = match.group(1).capitalize()
-        themes.append((f"{match.group(1)}_dark", label, theme_roles(values, adjusted)))
+        themes.append((f"{match.group(1)}_dark", label, theme_roles(values, notes)))
     return themes
 
 
@@ -102,8 +143,8 @@ def replace_between(text, start, end, block):
     return pattern.sub(lambda _match: block, text, count=1)
 
 
-def generate(oasis_dir, text, adjusted=None):
-    themes = load_themes(oasis_dir, [] if adjusted is None else adjusted)
+def generate(oasis_dir, text, notes=None):
+    themes = load_themes(oasis_dir, [] if notes is None else notes)
     text = replace_between(text, CSS_START, CSS_END, css_block(themes))
     return replace_between(text, JS_START, JS_END, js_block(themes))
 
@@ -124,10 +165,10 @@ def main(argv):
     oasis_dir = paths[0] if paths else default_oasis_dir()
     with open(BOARD, encoding="utf-8") as handle:
         current = handle.read()
-    adjusted = []
-    fresh = generate(oasis_dir, current, adjusted)
-    for name in adjusted:
-        print(f"dim raised for contrast: {name}")
+    notes = []
+    fresh = generate(oasis_dir, current, notes)
+    for note in notes:
+        print(note)
     if check:
         return 0 if fresh == current else 1
     with open(BOARD, "w", encoding="utf-8") as handle:
