@@ -16,7 +16,7 @@ Argument: `$ARGUMENTS`
 
 ## Status report
 
-Format and session log: the `orchestrator-status` skill.
+Load the `orchestrator-status` skill for the format and the session log.
 
 ## Hand over (the current orchestrator; the owner starts it here)
 
