@@ -21,6 +21,8 @@ Sessions.add("💼 Work", {
 Sessions.remove("🎮 Game") -- drop a default; Sessions.clear() drops them all
 ```
 
+The launcher matches `class` exactly against the window class Hyprland reports. Flatpak Firefox reports `org.mozilla.firefox`, so set that class in your custom session.
+
 `Launcher.launch(name)` starts a session by exact name without the picker. voxcmd uses it for "open the work session" (see its [Sessions](../../../../../voxcmd/.config/voxcmd/README.md#sessions) section), with `Launcher.write_names(path)` to list them.
 
 ## Code
