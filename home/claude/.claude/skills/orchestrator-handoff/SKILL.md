@@ -18,7 +18,7 @@ Argument: `$ARGUMENTS`
 
 One format for every report to the owner. Give it at each handoff (step 1), at wind-down (end of day) and when the owner asks. Four parts, one short line per item:
 
-- **Done:** what shipped this session. Read it from the session log `<main checkout>/.logs/<project>/session-<session>.md`, because `plans close` deletes a merged doc and its `.logs` folder. When a piece merges, first append one line to the log: id, PR, what shipped.
+- **Done:** what shipped this session. Read it from the session log `<main checkout>/.logs/session-<session>.md`, because `plans close` deletes a merged doc and its `.logs` folder. Before a merged doc is deleted, append one line to the log: id, PR, what shipped, and its judgment calls and settled forks from Decisions.
 - **Outstanding:** `plans ls --owner <your session>`, `plans waiting` and `gh pr list`. Say what each waits on.
 - **Judgment calls and forks to revisit:** choices you made for the owner and forks you settled, each with its reason, so the owner can overrule it. Read them from the Decisions and Open questions of your docs.
 - **Recommendations:** what to do next, from those sections and `plans next --all`.
@@ -27,7 +27,7 @@ One format for every report to the owner. Give it at each handoff (step 1), at w
 
 ### 1. Split the pieces
 
-Sort every piece into one of two lists and tell the owner both, one line per piece, then give the status report:
+Sort every piece into one of two lists and tell the owner both, one line per piece:
 
 - **Hand now:** unmerged pieces at a natural break (below), and every next step nobody has started: the `plans next` lines, a plan to draft, a decision to put to the owner. Suggest what the successor should start on first.
 - **Keep until its break:** pieces with work in flight (an agent, a review or a check running), with where you expect each to stop.
@@ -37,7 +37,7 @@ A natural break is either:
 - **Its work is done:** merged, or, with no merge approval, its PR ready for the owner. With a standing approval, merge before you stop. A merged piece is never offered or handed: at its break, delete its doc and tell the successor (step 4).
 - **Or a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question with `plans set <id> waiting_on="owner: <question>"` instead of asking it. The successor asks it.
 
-End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), update the docs (step 2), run `plans set <id> owner_session=none` on each piece you own, give the status report and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
+End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), update the docs (step 2), give the status report, run `plans set <id> owner_session=none` on each piece you own, and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
 
 ### 2. Update the docs
 
@@ -49,7 +49,7 @@ Bring each plan doc you own up to date, at the main checkout:
 - The Plan section: a large rewrite goes to a Haiku agent, a small addition to `plans note`.
 - An owner-stated context budget goes to the budget file, as the orchestrator skill says.
 
-Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in. A piece with no doc (a short task tracked only in chat) gets one with `plans new`. Delete the doc of each piece that merged.
+Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in. A piece with no doc (a short task tracked only in chat) gets one with `plans new`. Append each merged piece to the session log, then delete its doc. Then give the status report.
 
 The state the front matter does not hold goes in the baton instead: running agents, worktrees with branch, commit and whether pushed, standing approvals, and notes on work stopped mid-way.
 
@@ -63,7 +63,7 @@ Find it, taking the first that applies:
 2. `ListAgents` shows exactly one other interactive session whose name starts with the repo directory's name (sessions are named `<dir>-<id>`, e.g. `dotfiles-33`): use it.
 3. Otherwise ask the owner through `AskUserQuestion`, offering those sessions and "none, end of day". Never guess between candidates.
 
-Send it, with `SendMessage`:
+Send it, with `SendMessage`, naming your session log in the `State` line:
 
 ```
 BATON: <your session name> hands you the orchestrator role for <repo>; you are the Nth orchestrator.
@@ -91,7 +91,7 @@ State: <PR #N ready / waiting on the owner for X>; branch, commit, pushed or not
 Reply "TAKEN <id>".
 ```
 
-Once its `TAKEN` is delivered, hand it as in step 3: `plans handoff`, then `HANDED <id>`, with the same rule on failure. A merged piece instead gets its doc deleted and the note `PIECE: <id> merged as PR #N; its doc is deleted.`, with no `TAKEN` and no `plans handoff`. Until a piece is handed it is still yours: an agent report for it still comes to you and you act on it.
+Once its `TAKEN` is delivered, hand it as in step 3: `plans handoff`, then `HANDED <id>`, with the same rule on failure. A merged piece instead gets its session log line appended, then its doc deleted, and the note `PIECE: <id> merged as PR #N; its doc is deleted.`, with no `TAKEN` and no `plans handoff`. Until a piece is handed it is still yours: an agent report for it still comes to you and you act on it.
 
 Agent reports and notices for pieces already handed over arrive here, because the agents were started here. Forward each to the successor unchanged and act on none of them.
 
