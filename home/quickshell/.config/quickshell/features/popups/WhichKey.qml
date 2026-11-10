@@ -165,6 +165,23 @@ PanelWindow {
         if (!was_open && burst_loader.item) burst_loader.item.play();
     }
 
+    // For a caller that holds the payload already (DesertFox's, from its state file) instead of a file to read.
+    function show_object(next): void {
+        root.wanted = true;
+        root.apply_payload(next);
+    }
+
+    function apply_payload(next): void {
+        if ((next.items || []).length === 0) {
+            root.hide_now();
+            return;
+        }
+        root.loading_payload = true;
+        root.payload = next;
+        root.loading_payload = false;
+        root.open_now();
+    }
+
     // Starts from the payload's load, not from show_payload, which would flash the previous payload.
     FileView {
         id: payload_file
@@ -172,15 +189,7 @@ PanelWindow {
         onLoaded: {
             if (!root.wanted) return;
             try {
-                const next = JSON.parse(text());
-                if ((next.items || []).length === 0) {
-                    root.hide_now();
-                    return;
-                }
-                root.loading_payload = true;
-                root.payload = next;
-                root.loading_payload = false;
-                root.open_now();
+                root.apply_payload(JSON.parse(text()));
             } catch (e) {
                 console.warn("WhichKey: invalid payload (" + e + ")");
             }
