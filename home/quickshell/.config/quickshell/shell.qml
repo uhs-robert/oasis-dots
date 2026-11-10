@@ -28,6 +28,7 @@ import qs.features.media
 import qs.features.keeptabs
 import qs.features.updates
 import qs.features.voice
+import qs.features.desertfox
 import qs.features.popups
 import qs.features.audio
 import qs.features.style
@@ -314,6 +315,7 @@ ShellRoot {
     WhichKeyIpc {
         whichkey: whichkey
     }
+    DesertfoxWhichKey {}
     Variants {
         model: Quickshell.screens
         WindowTargetOverlay {}
