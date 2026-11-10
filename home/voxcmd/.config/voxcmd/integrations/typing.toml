@@ -32,7 +32,7 @@ private = true
 # Long by design, and bounded by its recording instead of the session's turn and time caps.
 open_ended = true
 one_recording = true
-# The endings are heard at the recording's pauses (voxcmd-autostop's pause checks), not by voxcmd-wake, whose detector
+# The endings are heard at the recording's pauses (auto-stop's pause checks), not by voxcmd-wake, whose detector
 # misses a "cortana stop" said in one breath; it pauses through the recording as through any other.
 wake_listens = false
 # The idle bound: 10 s of quiet after speech stop the recording and type it, as "cortana stop" would, and 10 s with no

@@ -24,6 +24,8 @@ ov_voxcmd=$ov_pkg/tests/bin/voxcmd
 ov_turns=$root/turns
 mkdir -p "$ov_pkg" "$ov_config/replacements.d" "$XDG_RUNTIME_DIR/voxcmd" "$XDG_RUNTIME_DIR/voxtype"
 cp -r "$package/.local" "$ov_pkg/.local"
+# The package has no .local/bin of its own now (auto-stop is the binary's); the stubs go in one.
+mkdir -p "$ov_pkg/.local/bin"
 link_voxcmd_build "$ov_pkg"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$ov_pkg/.local/bin/voxcmd-autostop"
 copy_shipped_integrations "$ov_config" apps keybinds overview rapid

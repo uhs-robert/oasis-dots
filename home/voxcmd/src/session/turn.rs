@@ -173,13 +173,12 @@ fn refuse_occupied(label: &str) -> Opened {
     Opened::Refused
 }
 
-/// Why auto-stop cannot end a session's listens (`voxcmd-autostop --check`), none when it can.
+/// Why auto-stop cannot end a session's listens (`voxcmd internal autostop --check`), none when it can.
 fn autostop_unavailable() -> Option<String> {
-    let autostop = paths::autostop();
-    if !crate::ask::is_executable(&autostop) {
-        return Some("voxcmd-autostop is missing".to_string());
-    }
-    let output = std::process::Command::new(autostop).arg("--check").output();
+    let Some(mut autostop) = crate::voice::autostop::command() else {
+        return Some("auto-stop is missing".to_string());
+    };
+    let output = autostop.arg("--check").output();
     match output {
         Ok(output) if output.status.success() => None,
         Ok(output) => {

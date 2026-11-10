@@ -30,6 +30,8 @@ seq_bin=$seq_pkg/tests/bin/voxcmd
 gate=$root/gate
 mkdir -p "$seq_pkg" "$seq_config/integrations" "$seq_config/replacements.d"
 cp -r "$package/.local" "$seq_pkg/.local"
+# The package has no .local/bin of its own now (auto-stop is the binary's); the stubs go in one.
+mkdir -p "$seq_pkg/.local/bin"
 link_voxcmd_build "$seq_pkg"
 for integration in apps calendar notifications answers rapid; do
   copy_shipped_integrations "$seq_config" "$integration"

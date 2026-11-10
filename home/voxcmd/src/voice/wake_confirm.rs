@@ -4,7 +4,7 @@
 //! voxcmd-wake asks it before a trigger starts a command, with the audio on stdin as `/dev/stdin`, and reads only the
 //! exit code: prints `wake <words after it>` and exits 0, `not_wake` and exits 1, or `failed` and exits 2 when there is
 //! no file, voxtype fails or outlasts `VOXCMD_WAKE_CONFIRM_TIMEOUT_SECS`. A clip cut during a dictation names the
-//! recording it was heard in, whose ending it may be (`session::dictation::wake_heard`); `pause` says voxcmd-autostop
+//! recording it was heard in, whose ending it may be (`session::dictation::wake_heard`); `pause` says auto-stop
 //! cut it at a pause rather than voxcmd-wake at a trigger. Nothing it heard is logged.
 //!
 //! Whisper gets the daemon's initial prompt (`voxtype-prompt`, in the voxtype package), so it hears the wake word the
@@ -27,7 +27,7 @@ const PROMPT_TIMEOUT: Duration = Duration::from_secs(3);
 pub fn run(args: &[String]) -> Result<Option<String>, CliError> {
     let wav = args.first().map_or("", String::as_str);
     let recording = args.get(1).map_or("", String::as_str);
-    // voxcmd-autostop cut the clip at a pause rather than voxcmd-wake at a trigger, which only changes what is logged.
+    // auto-stop cut the clip at a pause rather than voxcmd-wake at a trigger, which only changes what is logged.
     let log_as = if args.get(2).is_some_and(|cutter| cutter == "pause") {
         "pause check"
     } else {

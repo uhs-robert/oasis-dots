@@ -5,7 +5,7 @@
 //!
 //! Whoever ends the recording first records how, as the current mode's `.ending` `{action, by}`, under the session
 //! lock; the watcher reads it once the transcript is in. `by` is `voice` (the wake word and one of the mode's endings,
-//! heard in a clip voxcmd-autostop cuts at a pause during the recording, or voxcmd-wake at a trigger), `key` (Stop
+//! heard in a clip auto-stop cuts at a pause during the recording, or voxcmd-wake at a trigger), `key` (Stop
 //! Voice), or the detector's `cap`, `pause` or `idle`.
 //! The voice key stops the recording without an ending, which reads as `{type, voice_key}`. `action` is the ending
 //! row's: `discard` cancels the recording, `end_session` ends the session once the text is handled, and any other is

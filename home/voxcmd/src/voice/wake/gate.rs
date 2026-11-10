@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-/// The tag voxcmd's own recorders carry on their stream (`capture::STREAM_TAG`).
+/// The tag voxcmd's own recorders carry on their stream (`capture::WAKE_TAG` and `AUTOSTOP_TAG`).
 const STREAM_TAG_KEY: &str = "voxcmd.tag";
 const SLOW_CHECK_SECS: f64 = 1.0;
 const PROBE_TIMEOUT: Duration = Duration::from_secs(3);

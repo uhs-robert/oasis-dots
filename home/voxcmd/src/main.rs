@@ -31,8 +31,7 @@ use std::io::Write;
 use std::process::ExitCode;
 
 /// The old underscore entry points, routed from the top level to `internal`, whose subcommands take these spellings as
-/// aliases. Only `_wake-confirm` is run that way live (`voxcmd-autostop`, `voxcmd-wake`); the rest are kept for the
-/// tests.
+/// aliases. Only `_wake-confirm` is run that way live (auto-stop's pause checks); the rest are kept for the tests.
 const LEGACY_INTERNAL: [&str; 5] = [
     "_watch",
     "_settle",
@@ -52,7 +51,12 @@ fn main() -> ExitCode {
     }
     let matches = Cli::command().version(version()).get_matches_from(args);
     let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|error| error.exit());
-    match dispatch(cli.command) {
+    // Its verdicts are exit codes (0, 3, 4, 5, 1) that no `CliError` carries.
+    let outcome = match cli.command {
+        Command::Internal(InternalCommand::Autostop(args)) => return voice::autostop::run(&args.args),
+        command => dispatch(command),
+    };
+    match outcome {
         Ok(Some(output)) => {
             // A closed pipe (`| head`) is the reader's choice, not a failure.
             let _ = writeln!(std::io::stdout(), "{output}");
@@ -146,6 +150,7 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         }
         Command::Internal(InternalCommand::WakeConfirm(args)) => voice::wake_confirm::run(&args.args),
         Command::Internal(InternalCommand::ChainStop(args)) => voice::chain_stop::run(&args.args).map(|()| None),
+        Command::Internal(InternalCommand::Autostop(_)) => unreachable!("main runs it for its exit code"),
         Command::Internal(InternalCommand::ClickMatch(args)) => click::internal::click_match(&args),
         Command::Internal(InternalCommand::ClickOcr(args)) => click::internal::click_ocr(&args.args),
         Command::Internal(InternalCommand::ClickAt(args)) => click::internal::click_at(&args),

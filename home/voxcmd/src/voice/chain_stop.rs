@@ -22,11 +22,9 @@ use std::process::{Command, Stdio};
 pub fn run(args: &[String]) -> Result<(), CliError> {
     let recording = args.first().map_or("", String::as_str);
     let settings = args.get(1).map_or("", String::as_str);
-    let program = paths::autostop();
-    if !ask::is_executable(&program) {
+    let Some(mut command) = super::autostop::command() else {
         return Ok(());
-    }
-    let mut command = Command::new(program);
+    };
     for (name, value) in settings.lines().filter_map(|line| line.split_once('=')) {
         command.env(name, value);
     }

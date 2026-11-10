@@ -3,7 +3,8 @@ use std::fmt;
 use std::process::ExitCode;
 
 /// Exit codes are 0, 1 and 2, and 78 for `wake listen` alone. Never 3: a hook that calls `voxcmd ask` would pass it on
-/// as "yield".
+/// as "yield". The one exception is `internal autostop`, whose verdicts (0, 3, 4, 5, 1) are exit codes that `main`
+/// returns without a `CliError`; no hook calls it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Exit {
     /// Nothing matched, did not parse, the action failed, or the user cancelled or declined.

@@ -137,20 +137,10 @@ pub fn threshold_file(pid: u32) -> PathBuf {
     runtime_dir().join(format!("threshold.{pid}"))
 }
 
-/// The speech detector that ends a recording after a pause (Python until voxcmd-port 4.2).
-pub fn autostop() -> PathBuf {
-    autostop_from(env_dir("VOXCMD_STAND_IN_BIN"))
-}
-
-/// Beside `stand_in` (the suites' stand-in binary), else in the built-from checkout.
-fn autostop_from(stand_in: Option<PathBuf>) -> PathBuf {
-    match stand_in {
-        Some(bin) => bin
-            .parent()
-            .unwrap_or(std::path::Path::new("/"))
-            .join("voxcmd-autostop"),
-        None => PathBuf::from(BUILT_FROM).join(".local/bin/voxcmd-autostop"),
-    }
+/// The stand-in for auto-stop the suites name with `VOXCMD_AUTOSTOP_CMD`; live, auto-stop is `voxcmd internal autostop`
+/// (`voice::autostop::command`).
+pub fn autostop_override() -> Option<PathBuf> {
+    env_dir("VOXCMD_AUTOSTOP_CMD")
 }
 
 #[cfg(test)]
@@ -158,10 +148,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn share_dir_and_autostop_come_from_the_checkout_not_the_bash_script() {
+    fn share_dir_comes_from_the_checkout_not_the_bash_script() {
         let root = PathBuf::from(BUILT_FROM);
         assert_eq!(share_dir_from(None, None), root.join(".local/share/voxcmd"));
-        assert_eq!(autostop_from(None), root.join(".local/bin/voxcmd-autostop"));
     }
 
     #[test]
@@ -170,10 +159,6 @@ mod tests {
         assert_eq!(
             share_dir_from(None, stand_in.clone()),
             PathBuf::from("/copy/.local/share/voxcmd")
-        );
-        assert_eq!(
-            autostop_from(stand_in),
-            PathBuf::from("/copy/.local/bin/voxcmd-autostop")
         );
     }
 

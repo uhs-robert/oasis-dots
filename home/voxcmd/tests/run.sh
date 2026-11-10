@@ -551,6 +551,8 @@ section "numbered picks"
 pkg=$root/pkg
 mkdir -p "$pkg"
 cp -r "$package/.local" "$pkg/.local"
+# The package has no .local/bin of its own now (auto-stop is the binary's); the stubs go in one.
+mkdir -p "$pkg/.local/bin"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-pick" "$pkg/.local/bin/voxcmd-pick"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$pkg/.local/bin/voxcmd-autostop"
 link_voxcmd_build "$pkg"
@@ -738,8 +740,8 @@ for phrase in "click mode" "start clicking" "clicking mode" "enter click mode"; 
 done
 out=$(route_all "stop clicking")
 check "'stop clicking' ends click mode instead of pausing media" "grep -Eq 'Click \($click_file\) action=stop_clicking' <<<\"\$out\" && [[ \$(grep -c '^option' <<<\"\$out\") == 1 ]]"
-# Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. Opening a mode looks for
-# voxcmd-autostop beside the binary VOXCMD_STAND_IN_BIN names, here the "numbered picks" copy's stub.
+# Run for real: click mode opens, then "stop clicking" ends it, which shows the action ran. Opening a mode runs the
+# auto-stop VOXCMD_AUTOSTOP_CMD names, here the "numbered picks" copy's stub.
 VOXCMD_CONFIG_DIR=$all_config "$voxcmd" run "click mode" >/dev/null 2>&1
 session_file=$XDG_RUNTIME_DIR/voxcmd/session.json
 opened=0
@@ -1700,6 +1702,8 @@ section "voice help"
 help_pkg=$root/help-pkg
 mkdir -p "$help_pkg"
 cp -r "$package/.local" "$help_pkg/.local"
+# The package has no .local/bin of its own now (auto-stop is the binary's); the stubs go in one.
+mkdir -p "$help_pkg/.local/bin"
 link_voxcmd_build "$help_pkg"
 help_voxcmd=$help_pkg/tests/bin/voxcmd
 help_answer=$root/help-answer

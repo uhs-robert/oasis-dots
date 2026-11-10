@@ -92,6 +92,7 @@ CASES = [
     ("home/voxcmd/tests/snapshots/cli__x.snap", " voxrust"),
     ("home/voxcmd/tests/fixtures/match-goldens.tsv", " voxrust"),
     ("home/voxcmd/tests/fixtures/monitor-places/grid.none.json", " voxrust"),
+    ("home/voxcmd/tests/fixtures/autostop-parity-goldens.json", " voxrust"),
     # Consumers that lib/check/steps/qml_paths.py names reach the quickshell scope beside their own.
     ("home/voxcmd/src/timer.rs", " voxphrases voxclick voxrest voxrust quickshell"),
     ("home/voxcmd/tests/run-monitors.sh", " voxclick quickshell"),
