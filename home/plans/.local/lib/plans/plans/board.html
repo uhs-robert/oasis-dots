@@ -202,7 +202,6 @@
     <ul id="kind-list" class="combo-list" role="listbox"></ul>
   </div>
   <label title="Cards waiting on the owner: a question, an approval or a task"><input id="waiting" type="checkbox"> Needs me</label>
-  <label title="Only cards with an owner session"><input id="assigned" type="checkbox"> Assigned</label>
   <span id="keys" tabindex="0">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo</span>
 </header>
 <nav id="tabs"></nav>
@@ -217,7 +216,7 @@
 const ALL = "";
 let board = null;
 let selected_path = null;
-const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false, assigned: false };
+const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
 const element = (id) => document.getElementById(id);
 
 function make(tag, class_name, text) {
@@ -487,7 +486,7 @@ async function load_board() {
 }
 
 // An owner or project can be the empty string, which is ALL, or null or missing. This stand-in keeps those docs
-// pickable under one "(none)" row. The text "none" is the explicit unowned marker and stays its own value.
+// pickable under one "(unassigned)" row. The text "none", the explicit unowned marker, joins them (see owner_key).
 const UNSET = "\u0000unset";
 const doc_value = (doc, key) => (doc[key] ?? "") === "" ? UNSET : String(doc[key]);
 
@@ -513,7 +512,7 @@ function fill_filter_choices() {
     const order = board_order[filter];
     // Status and kind keep the board's own order. A picked value off that list sorts last.
     if (order) values.sort((a, b) => (order.indexOf(a) + 1 || Infinity) - (order.indexOf(b) + 1 || Infinity));
-    return values.map((value) => ({ value, label: value === UNSET ? "(none)" : value }));
+    return values.map((value) => ({ value, label: value === UNSET ? "(unassigned)" : value === OWNER_ASSIGNED ? "(assigned)" : value }));
   };
   for (const filter of Object.keys(SELECT_FILTER_KEYS)) combos[filter].set_choices(choices_for(filter));
 }
@@ -525,7 +524,7 @@ function doc_is_shown(doc) {
 // An unreadable doc has no keys to filter on, so any select filter hides it.
 function problem_is_shown() {
   const select_filter_set = Object.keys(SELECT_FILTER_KEYS).some((filter) => filters[filter] !== ALL);
-  return !select_filter_set && !filters.waiting && !filters.assigned;
+  return !select_filter_set && !filters.waiting;
 }
 
 function pr_link(repo, pr) {
@@ -1256,12 +1255,24 @@ function rank_choices(query, choices) {
 // The card view and the filter lists share one rule. skip_filter names the list being built, which its own pick
 // must not narrow. value_of(doc, filter) reads the value a select filter compares.
 const SELECT_FILTERS = ["owner", "project", "status", "kind"];
+// The owner box also holds two rows that are not sessions. NUL-prefixed, so no real session name can equal them.
+// "(unassigned)" is the stand-in for an empty or missing owner, and the text "none" counts as that too.
+const OWNER_ASSIGNED = "\u0000assigned";
+const OWNER_UNASSIGNED = "\u0000unset";
+const owner_key = (value) => value === "none" ? OWNER_UNASSIGNED : value;
+// The value a doc has under a filter, for comparing with that filter's pick.
+function pick_value(doc, filter, value_of) {
+  const value = value_of(doc, filter);
+  return filter === "owner" ? owner_key(value) : value;
+}
+function pick_matches(doc, filter, pick, value_of) {
+  const value = pick_value(doc, filter, value_of);
+  return pick === OWNER_ASSIGNED && filter === "owner" ? value !== OWNER_UNASSIGNED : value === pick;
+}
 function doc_passes(doc, filters, skip_filter, value_of) {
   const select_matches = SELECT_FILTERS.every((filter) => filter === skip_filter || filters[filter] === "" ||
-    value_of(doc, filter) === filters[filter]);
-  const owner = value_of(doc, "owner");
-  const assigned = owner !== "none" && owner !== "\u0000unset";
-  return select_matches && (!filters.waiting || Boolean(doc.waiting_on)) && (!filters.assigned || assigned);
+    pick_matches(doc, filter, filters[filter], value_of));
+  return select_matches && (!filters.waiting || Boolean(doc.waiting_on));
 }
 
 // The values for one select filter's list: those on docs that pass every other filter, plus its own pick so it can
@@ -1269,10 +1280,12 @@ function doc_passes(doc, filters, skip_filter, value_of) {
 // combo resets it instead of leaving an empty board.
 function facet_choices(docs, filters, filter, value_of, all_docs = docs) {
   const values = new Set(docs.filter((doc) => doc_passes(doc, filters, filter, value_of))
-    .map((doc) => value_of(doc, filter)));
-  if (filters[filter] !== "" && all_docs.some((doc) => value_of(doc, filter) === filters[filter])) {
+    .map((doc) => pick_value(doc, filter, value_of)));
+  if (filter === "owner" && [...values].some((value) => value !== OWNER_UNASSIGNED)) values.add(OWNER_ASSIGNED);
+  if (filters[filter] !== "" && all_docs.some((doc) => pick_matches(doc, filter, filters[filter], value_of))) {
     values.add(filters[filter]);
   }
+  // The NUL-prefixed rows sort first, so the two special owner rows stay on top.
   return [...values].sort();
 }
 // fuzzy:end
@@ -1713,17 +1726,10 @@ document.addEventListener("keydown", (event) => {
   action();
 });
 
-// A checkbox gives focus back after a change, so the vim keys work again at once.
+// The checkbox gives focus back after a change, so the vim keys work again at once.
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
-  fill_filter_choices();
-  render();
-});
-
-element("assigned").addEventListener("change", () => {
-  filters.assigned = element("assigned").checked;
-  element("assigned").blur();
   fill_filter_choices();
   render();
 });
