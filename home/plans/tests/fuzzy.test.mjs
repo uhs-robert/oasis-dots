@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const board_path = join(dirname(fileURLToPath(import.meta.url)), "../.local/lib/plans/plans/board.html");
 const html = readFileSync(board_path, "utf8");
 const block = html.split("// fuzzy:start")[1].split("// fuzzy:end")[0];
-const { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED } =
-  new Function(`${block}\nreturn { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED };`)();
+const { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED, OWNER_UNASSIGNED, keeps_owner_on_repo_switch } =
+  new Function(`${block}\nreturn { fuzzy_score, rank_repos, rank_choices, doc_passes, facet_choices, OWNER_ASSIGNED, OWNER_UNASSIGNED, keeps_owner_on_repo_switch };`)();
 
 const repo = (label, folder) => ({ label, root: `/home/me/${folder ?? label.split("/")[1]}` });
 const labels = (query, repos) => rank_repos(query, repos).map((entry) => entry.label);
@@ -105,4 +105,8 @@ assert.ok(doc_passes(with_none[4], { ...no_filters, owner: UNSET }, null, value_
 assert.ok(!doc_passes(docs[0], { ...no_filters, owner: UNSET }, null, value_of), "(unassigned) hides an owned card");
 assert.ok(!doc_passes(with_named[4], { ...no_filters, owner: UNSET }, null, value_of), "a session named (assigned) is assigned");
 assert.ok(doc_passes(docs[3], no_filters, null, value_of), "an empty owner box shows every card");
+assert.ok(keeps_owner_on_repo_switch(OWNER_ASSIGNED), "a repo switch keeps (assigned)");
+assert.ok(keeps_owner_on_repo_switch(OWNER_UNASSIGNED), "a repo switch keeps (unassigned)");
+assert.ok(!keeps_owner_on_repo_switch("a"), "a repo switch resets a session name");
+assert.ok(!keeps_owner_on_repo_switch("(assigned)"), "a session named (assigned) is a name, not the row");
 console.log("fuzzy tests passed");
