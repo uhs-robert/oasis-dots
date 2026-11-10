@@ -74,7 +74,7 @@ Sessions for the launcher (`SUPER + SHIFT + O`), added to the shipped defaults. 
 local Sessions = require("extensions.auto_launcher.sessions")
 
 Sessions.add("💼 Work", {
-  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
+  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "firefox" },
   Sessions.tmuxifier({ session = "work", monitor = 2, ws = 1 }),
   { monitor = 2, ws = 2, cmd = "slack", class = "slack", size = { 1064, 461 }, delay = 5000 },
 })
@@ -102,7 +102,7 @@ Settings > Sessions saves and edits them: Save current layout marks the open win
   "sessions": {
     "Work": {
       "windows": [
-        { "monitor": 1, "ws": 1, "cmd": "firefox --new-window", "class": "org.mozilla.firefox" },
+        { "monitor": 1, "ws": 1, "cmd": "firefox --new-window", "class": "firefox" },
         { "monitor": 1, "ws": 1, "cmd": "kitty --class k-notes", "class": "k-notes", "size": [900, 1000], "guessed": true },
         { "special": "scratchpad", "cmd": "slack", "class": "slack", "float": true, "size": [1064, 461], "pos": [100, 80] }
       ]

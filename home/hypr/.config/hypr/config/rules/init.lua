@@ -83,7 +83,7 @@ local set_workspace_rules = function() return nil end
 local BROWSER_OPACITY = "1.0 override 0.85 override"
 
 local browser_rules = {
-  { name = "firefox-opacity", class = "^(org\\.mozilla\\.firefox)$" },
+  { name = "firefox-opacity", class = "^(firefox)$" },
   { name = "qutebrowser-opacity", class = "^(org\\.qutebrowser\\.qutebrowser)$" },
 }
 

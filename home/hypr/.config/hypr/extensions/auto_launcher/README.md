@@ -13,7 +13,7 @@ Your own sessions go in your `custom/` config and are registered on top of the d
 local Sessions = require("extensions.auto_launcher.sessions")
 
 Sessions.add("💼 Work", {
-  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
+  { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "firefox" },
   Sessions.tmuxifier({ session = "work", monitor = 2, ws = 1 }),
   { monitor = 2, ws = 2, cmd = "slack", class = "slack", size = { 1064, 461 }, delay = 5000 },
 })
