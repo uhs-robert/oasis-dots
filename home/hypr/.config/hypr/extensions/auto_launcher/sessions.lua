@@ -121,7 +121,7 @@ function M.defaults()
 
   return {
     ["🌐 Browsing"] = {
-      { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "org.mozilla.firefox" },
+      { monitor = 1, ws = 1, cmd = "firefox --new-window", class = "firefox" },
       M.term({ monitor = 2, ws = 1, exec = tui_fm, class_suffix = tui_fm }),
     },
 
