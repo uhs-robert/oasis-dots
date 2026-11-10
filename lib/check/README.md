@@ -46,7 +46,7 @@ A scope is a folder, and a change reaches the steps of the scopes its path falls
 | `quickshell` | `home/quickshell`, `system/etc/greetd/quickshell`, the `qml*` check modules | qmllint, the qml-* checks, lock-skins, style-exports, shaders, time-format, the node and headless-qs tests, the input vectors |
 | `voxclick`, `voxphrases`, `voxduck`, `voxrest`, `voxrust` | `home/voxcmd`, `home/voxtype`, `extras/voxcmd-firefox` | see Voxcmd scopes below |
 | `install` | `install.sh`, `lib/install`, `lib/common`, `packages/{snapper,devtools}.ini`, `home/calendar`, `home/agents`, `home/plans` | the install tests, calendar-sync-syntax, agent-run, agent-shims, plans |
-| `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator` and `orchestrator-handoff` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
+| `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator`, `orchestrator-handoff` and `orchestrator-status` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
 | `skills` | the `ship-batch` and `merge-prs` skills | their suites (5 to 11 minutes) |
 | `checkscope` | `lib/check`, the `lib/docs` generators | check-scope, check-cache |
 | `docsgen` | the keymaps, the IpcHandler files, the `lib/docs` generators | docs-generated |

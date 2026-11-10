@@ -176,6 +176,7 @@ PATH_SCOPES = [
     ("home/claude/.claude/hooks/*", "hooks"),
     ("home/claude/.claude/skills/orchestrator-handoff/*", "hooks"),
     ("home/claude/.claude/skills/orchestrator/*", "hooks"),
+    ("home/claude/.claude/skills/orchestrator-status/*", "hooks"),
     ("home/claude/.claude/skills/merge-prs/*", "skills"),
     (".claude/hooks/*", "hooks"),
     (".claude/skills/owner-test-bar/*", "hooks"),

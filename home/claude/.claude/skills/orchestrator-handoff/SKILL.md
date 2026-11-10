@@ -16,12 +16,7 @@ Argument: `$ARGUMENTS`
 
 ## Status report
 
-One format for every report to the owner. Give it at each handoff (step 1), at wind-down (end of day) and when the owner asks. Four parts, one short line per item:
-
-- **Done:** what shipped this session. Read it from the session log `<main checkout>/.logs/session-<session>.md`, because `plans close` deletes a merged doc and its `.logs` folder. Before a merged doc is deleted, append one line to the log: id, PR, what shipped, and its judgment calls and settled forks from Decisions. A successor adds the logs its predecessors name in their batons.
-- **Outstanding:** `plans ls --owner <your session>`, `plans waiting` and `gh pr list`. Say what each waits on.
-- **Judgment calls and forks to revisit:** choices you made for the owner and forks you settled, each with its reason, so the owner can overrule it. Read them from the Decisions and Open questions of your docs.
-- **Recommendations:** what to do next, from those sections and `plans next --all`.
+Format and session log: the `orchestrator-status` skill.
 
 ## Hand over (the current orchestrator; the owner starts it here)
 
