@@ -14,11 +14,20 @@ Only the owner starts a handoff, in the current orchestrator, the context-budget
 
 Argument: `$ARGUMENTS`
 
+## Status report
+
+One format for every report to the owner. Give it at each handoff (step 1), at wind-down (end of day) and when the owner asks. Four parts, one short line per item:
+
+- **Done:** what shipped this session. Read it from the session log `<main checkout>/.logs/<project>/session-<session>.md`, because `plans close` deletes a merged doc and its `.logs` folder. When a piece merges, first append one line to the log: id, PR, what shipped.
+- **Outstanding:** `plans ls --owner <your session>`, `plans waiting` and `gh pr list`. Say what each waits on.
+- **Judgment calls and forks to revisit:** choices you made for the owner and forks you settled, each with its reason, so the owner can overrule it. Read them from the Decisions and Open questions of your docs.
+- **Recommendations:** what to do next, from those sections and `plans next --all`.
+
 ## Hand over (the current orchestrator; the owner starts it here)
 
 ### 1. Split the pieces
 
-Sort every piece into one of two lists and tell the owner both, one line per piece:
+Sort every piece into one of two lists and tell the owner both, one line per piece, then give the status report:
 
 - **Hand now:** unmerged pieces at a natural break (below), and every next step nobody has started: the `plans next` lines, a plan to draft, a decision to put to the owner. Suggest what the successor should start on first.
 - **Keep until its break:** pieces with work in flight (an agent, a review or a check running), with where you expect each to stop.
@@ -28,7 +37,7 @@ A natural break is either:
 - **Its work is done:** merged, or, with no merge approval, its PR ready for the owner. With a standing approval, merge before you stop. A merged piece is never offered or handed: at its break, delete its doc and tell the successor (step 4).
 - **Or a point where you would normally ask the owner what to do next:** a plan to approve, an owner test, a decision. Record the question with `plans set <id> waiting_on="owner: <question>"` instead of asking it. The successor asks it.
 
-End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), update the docs (step 2), run `plans set <id> owner_session=none` on each piece you own, and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
+End of day (the owner said so, or passed `end-of-day`) has no successor, so nothing is handed now: carry every piece to its break (step 4), update the docs (step 2), run `plans set <id> owner_session=none` on each piece you own, give the status report and stop. A fresh session resumes later when the owner runs `/orchestrator-handoff` there.
 
 ### 2. Update the docs
 
