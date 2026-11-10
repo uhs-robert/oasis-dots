@@ -82,6 +82,7 @@
   .conflict { margin: 4px 8px 0; padding: 4px 8px; background: var(--error-bg); border-left: 3px solid var(--bad);
               font-size: 12px; word-break: break-all; }
   .badge { padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; }
+  .owner-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
   .badge.depends { color: var(--accent); }
   a { color: var(--accent); }
   .card.dragging { position: relative; z-index: 6; opacity: 0.85; pointer-events: none; }
@@ -221,6 +222,8 @@
 
 const ALL = "";
 let board = null;
+let owner_colors = new Map();
+const owner_color_var = (name) => owner_colors.get(name) ? `var(${owner_colors.get(name)})` : "";
 let selected_path = null;
 const filters = { repo: ALL, owner: ALL, project: ALL, status: ALL, kind: ALL, waiting: false };
 const element = (id) => document.getElementById(id);
@@ -485,6 +488,7 @@ async function load_board() {
   if (board && fresh.version < board.version) return;
   if (board_is_busy()) { held_reload = true; return; }
   board = fresh;
+  owner_colors = assign_owner_colors(board.repos.flatMap((repo) => repo.docs.map((doc) => doc.owner_session ?? "")));
   server_lost = false;
   element("keys").textContent = KEYS_HELP.replace(board.can_open_terminal === false ? ", e editor" : "", "");
   fill_filter_choices();
@@ -560,6 +564,8 @@ function card_node(repo, doc) {
   }
   for (const dependency of doc.depends_on || []) meta.append(make("span", "badge depends", `after ${dependency}`));
   if (doc.remote_host) meta.append(make("span", "badge", `on ${doc.remote_host}, read-only`));
+  const owner_tint = owner_color_var(doc.owner_session);
+  if (owner_tint) meta.querySelector(".owner").style.cssText = `color: ${owner_tint}; border-color: ${owner_tint}`;
   card.append(meta);
   if (doc.waiting_on) card.append(make("div", "waiting-on", `waiting: ${doc.waiting_on}`));
   if (is_phone()) {
@@ -1297,6 +1303,24 @@ function facet_choices(docs, filters, filter, value_of, all_docs = docs) {
 }
 // The two role rows mean the same in any repo. A session name is a per-repo habit, so it does not carry over.
 const keeps_owner_on_repo_switch = (owner) => owner === OWNER_ASSIGNED || owner === OWNER_UNASSIGNED;
+
+// Each real owner name gets one of the five assignee accents. Names are taken in sorted order and a name whose hashed
+// slot is taken probes to the next free one, so the same board always paints the same way. Past five names the
+// slots fill up and colors repeat. "none", empty and NUL-prefixed synthetic rows get no entry, so they stay gray.
+const ASSIGNEE_SLOTS = ["--assignee-orange", "--assignee-teal", "--assignee-sky", "--assignee-iris", "--assignee-magenta"];
+function assign_owner_colors(names) {
+  const real = [...new Set(names)].filter((name) => name && name !== "none" && !name.startsWith("\u0000")).sort();
+  const colors = new Map();
+  const taken = new Set();
+  for (const name of real) {
+    let slot = [...name].reduce((hash, char) => Math.imul(hash ^ char.codePointAt(0), 16777619) >>> 0, 2166136261) % ASSIGNEE_SLOTS.length;
+    if (taken.size === ASSIGNEE_SLOTS.length) taken.clear();
+    while (taken.has(slot)) slot = (slot + 1) % ASSIGNEE_SLOTS.length;
+    taken.add(slot);
+    colors.set(name, ASSIGNEE_SLOTS[slot]);
+  }
+  return colors;
+}
 // fuzzy:end
 
 // markdown:start
@@ -1498,6 +1522,12 @@ function make_combo({ id, all_label, none_label, get_choices_rank }) {
     if (!combo.list_open) return;
     const items = shown.map((row, index) => {
       const item = make("li", "", row.label);
+      const dot_color = id === "owner" ? owner_color_var(row.value) : "";
+      if (dot_color) {
+        const dot = make("span", "owner-dot");
+        dot.style.background = dot_color;
+        item.prepend(dot);
+      }
       item.id = `${id}-option-${index}`;
       item.setAttribute("role", "option");
       item.dataset.value = row.value;
