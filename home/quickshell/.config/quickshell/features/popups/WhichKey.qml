@@ -75,9 +75,10 @@ PanelWindow {
     // Room on every side for a soft shadow, taken out of the gap so the frame stays put.
     readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Math.min(Style.frame_drop, root.gap) : 0
     implicitWidth: root.drawer ? scaffold.full.surface.width : frame.width + root.shadow_pad * 2
-    // The header takes the bar's submap colour: fills get it under dark ink, plain titles take it as text.
-    readonly property bool tinted: SubmapState.active || Style.bar_lualine
-    readonly property color header_color: SubmapState.bar_color
+    // The header takes the bar's submap colour: fills get it under dark ink, plain titles take it as text. A caller that
+    // is not HyprVim (DesertFox's panel) sets both, so it does not follow the submap.
+    property bool tinted: SubmapState.active || Style.bar_lualine
+    property color header_color: SubmapState.bar_color
     readonly property bool filled_title: Style.show_title && Style.title_bg.a > 0
 
     // Floating frames set the title chip into the top border, half of it above the frame.

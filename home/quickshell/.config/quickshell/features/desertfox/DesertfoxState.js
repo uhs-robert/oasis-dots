@@ -51,5 +51,6 @@ function panel_key(values) {
 }
 
 function is_firefox_class(cls) {
-    return String(cls || "").toLowerCase().indexOf("firefox") === 0;
+    const lower = String(cls || "").toLowerCase();
+    return lower.indexOf("firefox") === 0 || lower === "org.mozilla.firefox";
 }

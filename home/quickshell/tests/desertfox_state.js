@@ -35,7 +35,7 @@ const cases = [
   ["a new panel seq changes the key", () => D.panel_key(D.validate(file_of({ whichkey: { seq: 8, title: [], rows: [] } }))) !== D.panel_key(D.validate(file_of())), true],
   ["a new host with the same seq changes the key", () => D.panel_key(D.validate(file_of({ host: { pid: 1, start: "2" } }))) !== D.panel_key(D.validate(file_of())), true],
   ["a missing mode gives an empty label", () => D.validate(file_of({ mode: undefined })).mode_label, ""],
-  ["firefox classes", () => ["firefox", "Firefox", "firefox-developer-edition", "foot", "", null].map(D.is_firefox_class), [true, true, true, false, false, false]],
+  ["firefox classes", () => ["firefox", "Firefox", "firefox-developer-edition", "org.mozilla.firefox", "foot", "", null].map(D.is_firefox_class), [true, true, true, true, false, false, false]],
 ];
 
 let failed = 0;

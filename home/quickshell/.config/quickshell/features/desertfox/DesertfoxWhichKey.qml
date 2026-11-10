@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import qs.theme
 import qs.features.popups
 
 // DesertFox's which-key on the overlay layer, drawn by its own WhichKey window beside the HyprVim one. It follows the
@@ -33,5 +34,8 @@ Scope {
 
     WhichKey {
         id: whichkey
+        // A fixed tint: the HyprVim submap colour says nothing about DesertFox's mode.
+        tinted: true
+        header_color: Theme.theme_primary
     }
 }
