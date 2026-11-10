@@ -1258,6 +1258,7 @@ const SELECT_FILTERS = ["owner", "project", "status", "kind"];
 // The owner box also holds two rows that are not sessions. NUL-prefixed, so no real session name can equal them.
 // "(unassigned)" is the stand-in for an empty or missing owner, and the text "none" counts as that too.
 const OWNER_ASSIGNED = "\u0000assigned";
+// Must equal UNSET above. This block is cut out and run alone by the node test, so it cannot reference UNSET.
 const OWNER_UNASSIGNED = "\u0000unset";
 const owner_key = (value) => value === "none" ? OWNER_UNASSIGNED : value;
 // The value a doc has under a filter, for comparing with that filter's pick.
@@ -1726,7 +1727,7 @@ document.addEventListener("keydown", (event) => {
   action();
 });
 
-// The checkbox gives focus back after a change, so the vim keys work again at once.
+// A checkbox gives focus back after a change, so the vim keys work again at once.
 element("waiting").addEventListener("change", () => {
   filters.waiting = element("waiting").checked;
   element("waiting").blur();
