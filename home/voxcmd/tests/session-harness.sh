@@ -14,6 +14,8 @@ sess_stubs=$root/sess-stubs
 sess_pkg=$root/sess-pkg
 mkdir -p "$sess_stubs" "$sess_pkg"
 cp -r "$package/.local" "$sess_pkg/.local"
+# The package has no .local/bin of its own now (auto-stop is the binary's); the stubs go in one.
+mkdir -p "$sess_pkg/.local/bin"
 ln -sf "$SANDBOX_DIR/bin/voxcmd-autostop" "$sess_pkg/.local/bin/voxcmd-autostop"
 link_voxcmd_build "$sess_pkg"
 # sess_voxcmd is the build under test, linked into the copy; its session turns' watchers are the process name the tests

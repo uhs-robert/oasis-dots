@@ -228,6 +228,7 @@ exit "$(cat '{work}/verdict')""#,
             .env("WORK", self.path().join("work"))
             .env("VOXCMD_CONFIG_DIR", self.path().join("config"))
             .env("VOXCMD_STAND_IN_BIN", self.path().join("stand-in/voxcmd"))
+            .env("VOXCMD_AUTOSTOP_CMD", self.path().join("stand-in/voxcmd-autostop"))
             .env("XDG_RUNTIME_DIR", self.path().join("runtime"))
             .env("XDG_DATA_HOME", self.path().join("data"))
             .env("XDG_CONFIG_HOME", self.path().join("xdg"))

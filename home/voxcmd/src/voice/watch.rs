@@ -35,7 +35,7 @@ const START_GRACE_POLLS: u32 = 50;
 /// voxtype may write the transcript a moment after it reports idle.
 const TRANSCRIPT_GRACE_POLLS: u32 = 10;
 
-/// voxcmd-autostop's `VERDICT_*` exit codes; any other exit leaves the recording alone.
+/// auto-stop's `Verdict` exit codes; any other exit leaves the recording alone.
 pub(super) const VERDICT_SILENCE: i32 = 0;
 pub(super) const VERDICT_NO_SPEECH: i32 = 3;
 pub(super) const VERDICT_MAX_LENGTH: i32 = 5;
@@ -293,7 +293,7 @@ impl Drop for Cleanup {
 /// Why a session ends with the turn's watcher that still owned it.
 const UNEXPECTED_END: &str = "the listener stopped unexpectedly";
 
-/// voxcmd-autostop, which ends the recording once it hears speech and then a pause, or cancels it when nothing was
+/// `voxcmd internal autostop`, which ends the recording once it hears speech and then a pause, or cancels it when nothing was
 /// said. It exits by itself when the recording ends some other way; `stop` ends it first otherwise.
 struct Detector {
     /// Emptied by the waiting thread once the group has no process left, so neither `stop` nor a stop signal reaches
@@ -313,11 +313,7 @@ struct DetectorGroup {
 
 impl Detector {
     fn start(settings: &str, discard_flag: &Path, session_mode: Option<&str>) -> Option<Self> {
-        let program = paths::autostop();
-        if !ask::is_executable(&program) {
-            return None;
-        }
-        let mut command = Command::new(program);
+        let mut command = super::autostop::command()?;
         let mut checks_pauses = false;
         for (name, value) in settings.lines().filter_map(|line| line.split_once('=')) {
             command.env(name, value);

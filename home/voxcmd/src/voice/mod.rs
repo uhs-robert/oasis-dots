@@ -5,9 +5,12 @@
 //! stopper a chained dictation ending leaves (`internal chain-stop`)
 //!
 //! voxtype records and transcribes; voxcmd only reads its state file and calls `voxtype record start|stop|cancel`.
+pub mod autostop;
+pub mod capture;
 pub mod chain_stop;
 pub mod listen;
 pub mod settle;
+pub mod signal;
 pub mod stop;
 pub mod wake;
 pub mod wake_confirm;

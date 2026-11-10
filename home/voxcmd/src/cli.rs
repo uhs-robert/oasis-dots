@@ -305,6 +305,8 @@ pub enum InternalCommand {
     WakeConfirm(InternalArgs),
     #[command(alias = "_chain-stop")]
     ChainStop(InternalArgs),
+    /// The speech-then-pause detector the watcher and the chain's stopper run; its exit codes are their protocol
+    Autostop(InternalArgs),
     /// The click matcher on click-ocr's output (stdin); the target is in CLICK_TARGET. A test entry point
     #[command(hide = true)]
     ClickMatch(ClickMatchArgs),

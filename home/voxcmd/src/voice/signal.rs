@@ -1,7 +1,8 @@
 //! SIGTERM and SIGINT as a flag plus a pipe, so the loop notices a stop at once, even in the middle of a wait
 //!
-//! Not `process`'s handlers: those end voxcmd by re-raising the signal, but the unit expects the listener to stop
-//! itself and exit 0 after it has killed its `pw-record`.
+//! Not `process`'s handlers: those end voxcmd by re-raising the signal, but the wake unit expects the listener to stop
+//! itself and exit 0 after it has killed its `pw-record`, and the watcher expects auto-stop to exit 4 (nothing to do)
+//! the same way. Shared by both; the exit code is the caller's.
 use std::os::fd::RawFd;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
@@ -20,6 +21,11 @@ extern "C" fn on_signal(_signal: libc::c_int) {
 }
 
 pub fn install() -> std::io::Result<()> {
+    install_for(&[libc::SIGTERM, libc::SIGINT])
+}
+
+/// The same for another set of signals (auto-stop also stops on SIGHUP).
+pub fn install_for(signals: &[libc::c_int]) -> std::io::Result<()> {
     let mut ends = [0; 2];
     // SAFETY: `ends` holds the two descriptors pipe2 fills in.
     if unsafe { libc::pipe2(ends.as_mut_ptr(), libc::O_CLOEXEC | libc::O_NONBLOCK) } != 0 {
@@ -27,7 +33,7 @@ pub fn install() -> std::io::Result<()> {
     }
     READ_END.store(ends[0], Ordering::SeqCst);
     WRITE_END.store(ends[1], Ordering::SeqCst);
-    for signal in [libc::SIGTERM, libc::SIGINT] {
+    for &signal in signals {
         // SAFETY: a zeroed sigaction with only the handler set; no SA_RESTART, so a blocked read returns early.
         unsafe {
             let mut action: libc::sigaction = std::mem::zeroed();

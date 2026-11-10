@@ -6,23 +6,23 @@
 //!
 //! `Listener::step` does one thing per call and takes its audio, time and commands as parameters, so the lifecycle
 //! tests drive it with fakes.
-use super::capture::{Frames, SAMPLE_RATE, SourceEnded};
-use super::capture::{PcmFile, PwRecord};
 use super::decider::Decider;
 use super::gate::Gate;
 use super::gate::{PauseGate, other_app_recording, playerctl_playing};
+use super::models;
 use super::scorer::TractScorer;
 use super::scorer::{FRAME_SAMPLES, Scorer};
 use super::settings::Settings;
 use super::state::State;
 use super::state::StateFile;
-use super::{models, signal};
 use crate::debug::debug;
 use crate::exit::CliError;
 use crate::notify::{Kind, notify};
 use crate::paths;
+use crate::voice::capture::{Frames, SAMPLE_RATE, SourceEnded, WAKE_TAG};
+use crate::voice::capture::{PcmFile, PwRecord, private_audio_file, wav_bytes};
+use crate::voice::signal;
 use std::collections::VecDeque;
-use std::os::fd::FromRawFd;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -315,29 +315,6 @@ impl Listener {
     }
 }
 
-/// The frames as a 16 kHz mono s16 WAV file's content.
-pub fn wav_bytes<'a>(frames: impl IntoIterator<Item = &'a Vec<i16>>) -> Vec<u8> {
-    let pcm: Vec<u8> = frames
-        .into_iter()
-        .flat_map(|frame| frame.iter().flat_map(|sample| sample.to_le_bytes()))
-        .collect();
-    let mut wav = Vec::with_capacity(44 + pcm.len());
-    wav.extend_from_slice(b"RIFF");
-    wav.extend_from_slice(&(36 + pcm.len() as u32).to_le_bytes());
-    wav.extend_from_slice(b"WAVEfmt ");
-    wav.extend_from_slice(&16u32.to_le_bytes());
-    wav.extend_from_slice(&1u16.to_le_bytes());
-    wav.extend_from_slice(&1u16.to_le_bytes());
-    wav.extend_from_slice(&SAMPLE_RATE.to_le_bytes());
-    wav.extend_from_slice(&(SAMPLE_RATE * 2).to_le_bytes());
-    wav.extend_from_slice(&2u16.to_le_bytes());
-    wav.extend_from_slice(&16u16.to_le_bytes());
-    wav.extend_from_slice(b"data");
-    wav.extend_from_slice(&(pcm.len() as u32).to_le_bytes());
-    wav.extend_from_slice(&pcm);
-    wav
-}
-
 /// Seconds of audio per frame, for the clock of a `--pcm` run.
 pub const FRAME_SECS: f64 = FRAME_SAMPLES as f64 / SAMPLE_RATE as f64;
 
@@ -444,21 +421,6 @@ fn voxcmd_command() -> std::ffi::OsString {
     std::env::var_os("VOXCMD_WAKE_VOXCMD")
         .filter(|path| !path.is_empty())
         .unwrap_or_else(|| crate::ask::this_binary().into())
-}
-
-/// `content` in an anonymous memfd, read from the start: no path another process can open, gone when closed.
-fn private_audio_file(content: &[u8]) -> std::io::Result<std::fs::File> {
-    use std::io::{Seek, Write};
-    // SAFETY: memfd_create with a NUL-terminated name; the descriptor it returns is owned by the File.
-    let fd = unsafe { libc::memfd_create(c"voxcmd-wake-audio".as_ptr(), libc::MFD_CLOEXEC) };
-    if fd < 0 {
-        return Err(std::io::Error::last_os_error());
-    }
-    // SAFETY: `fd` is a fresh descriptor nothing else owns.
-    let mut file = unsafe { std::fs::File::from_raw_fd(fd) };
-    file.write_all(content)?;
-    file.rewind()?;
-    Ok(file)
 }
 
 /// Waits for the child up to `limit`. On the deadline it kills the child's group (it leads one) and waits for it.
@@ -590,8 +552,8 @@ fn fetch(settings: &Settings) -> Result<(), CliError> {
 /// decider fires. No microphone, no confirmation and no `wake.json`; the cooldown runs on the file's own time.
 fn run_pcm(file: &Path, mut scorer: Box<dyn Scorer>, mut decider: Decider) -> Result<(), CliError> {
     use std::io::Write;
-    let mut source =
-        PcmFile::open(file).map_err(|error| CliError::failed(SUBCOMMAND, format!("{}: {error}", file.display())))?;
+    let mut source = PcmFile::open(file, FRAME_SAMPLES)
+        .map_err(|error| CliError::failed(SUBCOMMAND, format!("{}: {error}", file.display())))?;
     let mut out = std::io::BufWriter::new(std::io::stdout().lock());
     let mut index = 0usize;
     while let Ok(Some(frame)) = source.next_frame(Duration::ZERO) {
@@ -627,7 +589,7 @@ fn run_live(settings: &Settings, scorer: Box<dyn Scorer>, decider: Decider) -> R
     let mut listener = Listener::new(
         (
             scorer,
-            Box::new(|| PwRecord::spawn().map(|source| Box::new(source) as Box<dyn Frames>)),
+            Box::new(|| PwRecord::spawn(WAKE_TAG, FRAME_SAMPLES).map(|source| Box::new(source) as Box<dyn Frames>)),
             Box::new(gate),
             Box::new(worker),
         ),
