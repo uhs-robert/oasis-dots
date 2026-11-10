@@ -1,7 +1,6 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import qs.core
 import qs.features.voice
@@ -16,7 +15,8 @@ Singleton {
 
     // The file belongs to a running host of a known version.
     readonly property bool live: store.values.valid && root.owner_alive && root.probed_owner === root.owner_key
-    readonly property bool firefox_focused: State.is_firefox_class(WindowState.class_of(Hyprland.activeToplevel))
+    // By address, not Hyprland.activeToplevel: that stays null after a Quickshell restart until the first focus event.
+    readonly property bool firefox_focused: State.is_firefox_class(WindowState.class_of(WindowState.windows.find(t => t.address === WindowState.active_address)))
     readonly property bool shown: root.live && root.firefox_focused
 
     readonly property string mode_id: store.values.mode_id
@@ -71,7 +71,8 @@ Singleton {
     PolledFile {
         id: owner_probe
         path: root.owner > 0 ? "/proc/" + root.owner + "/stat" : ""
-        enabled: store.values.valid
+        // A host found dead stays dead until the file changes (onLoaded of the store polls once then).
+        enabled: store.values.valid && !(root.probed_owner === root.owner_key && !root.owner_alive)
         interval_ms: 3000
         run_on_start: false
         block_loading: true
