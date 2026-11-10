@@ -83,6 +83,7 @@ These choices from the design stay in force:
 | Stow package `plans` (in CORE) | `packages/stow.ini`, `lib/install/stow.sh` | [`lib/install/README.md`](../lib/install/README.md) |
 | Orchestrator skill, reviewers | `home/claude/.claude/skills/orchestrator/` | its `SKILL.md` and `reviewers.md` |
 | Handoff skill and its scripts | `home/claude/.claude/skills/orchestrator-handoff/` | its `SKILL.md` |
+| Status report skill | `home/claude/.claude/skills/orchestrator-status/` | its `SKILL.md` |
 | Interview skill | `home/claude/.claude/skills/interview/` | its `SKILL.md` |
 | Merging | `.claude/skills/ship-batch/` | its `SKILL.md`; the Merging section of [`AGENTS.md`](../AGENTS.md) |
 | Context budget hook | `home/claude/.claude/hooks/context-budget.sh` | the header comment |
