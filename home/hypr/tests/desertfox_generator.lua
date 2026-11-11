@@ -56,11 +56,12 @@ local function read_log()
 	return text
 end
 
--- The push is a background job, so poll for the stub's log.
+-- The push is a background job, so poll for the stub's log. The stub's redirection creates the file before it writes,
+-- so only a record ending in a newline counts as complete.
 local function wait_for_log()
 	for _ = 1, 50 do
 		local text = read_log()
-		if text then
+		if text and text:sub(-1) == "\n" then
 			return text
 		end
 		real_execute("sleep 0.1")
