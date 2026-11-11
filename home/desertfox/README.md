@@ -18,4 +18,4 @@ Every Hyprland reload (login and each theme switch) runs `desertfox theme <name>
 
 - `.config/desertfox/keymap.toml`: bindings per mode, plus the `search_keys` and `container_keys` shortcuts. Entries equal to DesertFox's defaults are left out.
 - `.config/desertfox/search_engines.toml`: engine URL templates and labels.
-- `.config/desertfox/settings.toml`: the default engine, the new tab page and the bridge switch and the `desktop` palette.
+- `.config/desertfox/settings.toml`: the default engine, the new tab page, the bridge switch and the `desktop` palette.
