@@ -49,10 +49,6 @@ STUB_GH_FAIL=1 bash "$script" >/dev/null 2>&1
 check "gh fails, API fallback" "9.8.7" "$(cat "$STUB_RECORD" 2>/dev/null)"
 
 rm -f "$STUB_RECORD"
-DESERTFOX_NO_GH=1 bash "$script" >/dev/null 2>&1
-check "no gh, API fallback" "9.8.7" "$(cat "$STUB_RECORD" 2>/dev/null)"
-
-rm -f "$STUB_RECORD"
 STUB_GH_FAIL=1 STUB_CURL_FAIL=1 bash "$script" >/dev/null 2>&1
 check "no network exits non-zero" "1" "$?"
 [[ ! -e $STUB_RECORD ]] || check "no network runs nothing" "absent" "present"

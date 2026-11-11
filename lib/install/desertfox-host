@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Installs or updates the DesertFox native hosts and CLI by running the latest release's own install.sh, which checks the checksums.
-# DESERTFOX_REPO and DESERTFOX_API exist for the offline test; DESERTFOX_NO_GH skips gh so the test reaches the curl fallback.
 set -euo pipefail
-repo=${DESERTFOX_REPO:-uhs-robert/desertfox}
-api=${DESERTFOX_API:-https://api.github.com/repos/$repo/releases/latest}
-download_base=${DESERTFOX_DOWNLOAD:-https://github.com/$repo/releases/download}
+repo=uhs-robert/desertfox
+api=https://api.github.com/repos/$repo/releases/latest
+download_base=https://github.com/$repo/releases/download
 
 tag=""
-if [[ -z ${DESERTFOX_NO_GH:-} ]] && command -v gh >/dev/null 2>&1; then
+if command -v gh >/dev/null 2>&1; then
   tag=$(gh release view --repo "$repo" --json tagName --jq .tagName 2>/dev/null) || tag=""
 fi
 if [[ -z $tag ]]; then
@@ -24,4 +23,5 @@ version=${tag#v}
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 curl -fsSL --max-time 60 -o "$dir/install.sh" "$download_base/$tag/install.sh"
+[[ -s $dir/install.sh ]] || { echo "desertfox-host: the downloaded install.sh for $tag is empty" >&2; exit 1; }
 bash "$dir/install.sh" "$version"
