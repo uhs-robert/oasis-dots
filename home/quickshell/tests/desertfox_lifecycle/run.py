@@ -376,6 +376,31 @@ def power_and_stale_steps(r, problems):
         bridge.down()
 
 
+def cancelled_retry_steps(r, problems):
+    def check(name, result):
+        print(("ok   " if result is None else "FAIL ") + name + ("" if result is None else "\n     " + result))
+        if result is not None:
+            problems.append(name)
+
+    bridge = FakeBridge(os.path.join(r.dir, "bridge.sock"))
+    os.makedirs(r.dir, exist_ok=True)
+    try:
+        r.start()
+        time.sleep(2.5)
+        # The first attempt fails after about 1 s and the retry then waits 1 s, so 1.4 s in, a retry is waiting.
+        r.write_mount(True)
+        time.sleep(1.4)
+        bridge.up()
+        r.write_ac(False)
+        time.sleep(4)
+        check("battery with a retry waiting: the retry is cancelled", None if not bridge.subscribes else "%d asks after the switch to battery" % len(bridge.subscribes))
+        r.write_ac(True)
+        check("AC returns after a cancelled retry: the stream connects", r.wait_for({"streaming": "1", "now": "Song"}, timeout=3))
+    finally:
+        r.stop()
+        bridge.down()
+
+
 def main():
     problems = []
     with tempfile.TemporaryDirectory() as root:
@@ -394,6 +419,12 @@ def main():
         r = Run(root)
         try:
             power_and_stale_steps(r, problems)
+        finally:
+            r.stop()
+    with tempfile.TemporaryDirectory() as root:
+        r = Run(root)
+        try:
+            cancelled_retry_steps(r, problems)
         finally:
             r.stop()
     return 1 if problems else 0

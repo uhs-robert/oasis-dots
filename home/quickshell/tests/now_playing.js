@@ -36,7 +36,7 @@ const cases = [
   ["the tab list stays older than a tab an event named", () => ids(N.seed(run([audible(5, true)]), { ok: true, tabs: [{ tab_id: 1, audible: true, last_accessed: 99 }] })), [1, 5]],
   ["the tab list does not bring back a tab an event silenced", () => ids(N.seed(run([audible(5, true), audible(5, false)]), { ok: true, tabs: [{ tab_id: 5, audible: true, last_accessed: 1 }] })), []],
   ["a refused tab list adds nothing", () => N.seed(N.empty, { ok: false, message: "off" }).audible, []],
-  ["a malformed tab list changes nothing", () => [N.seed(N.empty, null), N.seed(N.empty, { ok: true }), N.seed(N.empty, { ok: true, tabs: [null, { audible: true }] })].map(s => s.audible.length), [0, 0, 0]],
+  ["a malformed tab list adds nothing", () => [N.seed(N.empty, null), N.seed(N.empty, { ok: true }), N.seed(N.empty, { ok: true, tabs: [null, { audible: true }] })].map(s => s.audible.length), [0, 0, 0]],
 
   ["a title change before the tab list reaches the tab the list adds", () => N.current(N.seed(run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "Fresh", url: "https://new" }]), { ok: true, tabs: [{ tab_id: 1, audible: true, last_accessed: 5, title: "Old", url: "https://old" }] })), { tab_id: 1, window_id: undefined, title: "Fresh", url: "https://new" }],
   ["held changes of tabs the list does not add are dropped", () => N.seed(run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "a", url: "b" }]), { ok: true, tabs: [] }).pending, {}],
