@@ -12,10 +12,10 @@ Private bindings and container names join through `keymap.d/` files from a priva
 
 ## Desktop palette sync
 
-Every Hyprland reload (login and each theme switch) runs `desertfox theme <name>` with the desktop palette name, from `home/hypr/.config/hypr/theme/generate/desertfox.lua`. The push is best effort: with the browser closed it fails silently and the browser keeps its old palette until the next reload. DesertFox follows the push when its `palette` setting is `desktop`.
+Every Hyprland reload (login and each theme switch) runs `desertfox theme <name>` with the desktop palette name, from `home/hypr/.config/hypr/theme/generate/desertfox.lua`. The push is best effort: with the browser closed it fails silently and the browser keeps its old palette until the next reload. `settings.toml` sets `palette = "desktop"`, so DesertFox follows the push. When the saved palette cannot load and Hyprland renders the embedded fallback, the push names `oasis_moonlight`.
 
 ## Code
 
 - `.config/desertfox/keymap.toml`: bindings per mode, plus the `search_keys` and `container_keys` shortcuts. Entries equal to DesertFox's defaults are left out.
 - `.config/desertfox/search_engines.toml`: engine URL templates and labels.
-- `.config/desertfox/settings.toml`: the default engine, the new tab page and the bridge switch.
+- `.config/desertfox/settings.toml`: the default engine, the new tab page and the bridge switch and the `desktop` palette.

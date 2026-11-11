@@ -102,7 +102,27 @@ Config.theme = "it's"
 check("quoted name does not raise", pcall(generate, {}))
 check("quoted name arrives whole", wait_for_log() == "it's\n")
 
--- 5. A missing theme does not raise.
+-- 5. On the embedded fallback palette the push names oasis_moonlight, not the missing saved name.
+os.remove(log)
+write_stub("printf '%s\\n' \"$2\" > '" .. log .. "'")
+Config.theme = "oasis_gone"
+check("fallback does not raise", pcall(generate, require("theme.fallback")))
+check("fallback pushes oasis_moonlight", wait_for_log() == "oasis_moonlight\n")
+
+-- 6. Generate.all really runs the desertfox generator (registration, not just the generator).
+os.remove(log)
+write_stub("printf '%s\\n' \"$2\" > '" .. log .. "'")
+Config.theme = "oasis_moonlight"
+local Generate = require("theme.generate")
+for name in pairs(Generate) do
+	if name ~= "all" and name ~= "desertfox" then
+		Generate[name] = function() end
+	end
+end
+Generate.all({})
+check("Generate.all runs desertfox", wait_for_log() == "oasis_moonlight\n")
+
+-- 7. A missing theme does not raise.
 Config.theme = nil
 check("nil theme does not raise", pcall(generate, {}))
 
