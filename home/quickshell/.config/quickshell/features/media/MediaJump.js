@@ -11,6 +11,12 @@ function is_firefox_player(desktop_entry, dbus_name) {
     return String(dbus_name || "").toLowerCase().indexOf(".firefox.") !== -1;
 }
 
+// jq program for `hyprctl clients -j`: the address of the most recently focused Firefox window, empty when none. A
+// window never focused has focusHistoryID -1 and is skipped. The class test sits in its own parentheses because
+// `a | b and c` reads `c` from `b`'s output. `[.]` stands for a literal dot to avoid escapes through two quote layers.
+var raise_filter = '[.[] | select(((.class | ascii_downcase) | test("^(firefox|org[.]mozilla[.]firefox)")) and .focusHistoryID >= 0)]' +
+    " | sort_by(.focusHistoryID) | .[0].address // empty";
+
 function squashed(text) {
     return String(text || "").replace(/\s+/g, " ").trim();
 }
@@ -34,9 +40,9 @@ function newest(tabs) {
 }
 
 // The `tabs` rows of the bridge's reply -> the row to switch to, or null. While the player plays, the audible tabs
-// are the candidates and the one matching the MPRIS track (url first, then title) wins, else the most recently used one. With no audible tab,
-// or a paused player (nothing is audible then), only a title or url match across every tab counts: guessing by recency
-// would pick an unrelated tab.
+// are the candidates and the one matching the MPRIS track (url first, then title) wins, else the most recently used
+// one. With no audible tab, or a paused player (nothing is audible then), only a url or title match across every tab
+// counts: guessing by recency would pick an unrelated tab.
 function pick_tab(rows, track_title, track_url, playing) {
     var tabs = [];
     for (var i = 0; Array.isArray(rows) && i < rows.length; i++) {

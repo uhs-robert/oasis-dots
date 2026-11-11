@@ -7,8 +7,12 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/media/MediaJump.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { is_firefox_player, pick_tab };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { is_firefox_player, pick_tab, raise_filter };", T);
 const M = T.api;
+
+const { execFileSync } = require("child_process");
+const raised = clients => execFileSync("jq", ["-r", M.raise_filter], { input: JSON.stringify(clients) }).toString().trim();
+const win = (address, cls, history) => ({ address, class: cls, focusHistoryID: history });
 
 const tab = (id, title, extra) => Object.assign({ tab_id: id, window_id: 1, title, url: "https://example.com/" + id, audible: false, last_accessed: 0 }, extra);
 const pick = (rows, title, url, playing) => {
@@ -28,6 +32,12 @@ const cases = [
   ["missing values", () => M.is_firefox_player(undefined, null), false],
   ["a bus name that only ends in firefox", () => M.is_firefox_player("", "org.mpris.MediaPlayer2.firefox"), false],
 
+  ["raise: the most recently focused Firefox window", () => raised([win("0xa", "firefox", 3), win("0xb", "firefox", 1), win("0xc", "kitty", 0)]), "0xb"],
+  ["raise: a never-focused Firefox window is skipped", () => raised([win("0xa", "firefox", -1), win("0xb", "firefox", 4), win("0xc", "kitty", 0)]), "0xb"],
+  ["raise: only a never-focused Firefox window gives nothing", () => raised([win("0xa", "firefox", -1), win("0xc", "kitty", 0)]), ""],
+  ["raise: flatpak and mixed-case classes count", () => raised([win("0xa", "org.mozilla.firefox", 2), win("0xb", "Firefox", 5)]), "0xa"],
+  ["raise: a class that only contains firefox does not", () => raised([win("0xa", "notfirefox", 0)]), ""],
+  ["raise: no clients", () => raised([]), ""],
   ["one audible tab", () => pick([tab(1, "a"), tab(2, "b", { audible: true })], "x", "", true), 2],
   ["title match beats recency among audible tabs", () => pick([tab(1, "Song A - YouTube", { audible: true, last_accessed: 5 }), tab(2, "Song B - YouTube", { audible: true, last_accessed: 9 })], "Song A", "", true), 1],
   ["url match beats recency", () => pick([tab(1, "x", { audible: true, last_accessed: 5, url: "https://v/1" }), tab(2, "y", { audible: true, last_accessed: 9, url: "https://v/2" })], "", "https://v/1", true), 1],

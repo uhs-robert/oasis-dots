@@ -70,12 +70,12 @@ Singleton {
 
     // The most recently focused Firefox window, whichever tab it shows. A window never focused (focusHistoryID -1) is skipped.
     function raise_window() {
-        Quickshell.execDetached(["sh", "-c", raise_script]);
+        Quickshell.execDetached(["sh", "-c", raise_script, "sh", MediaJump.raise_filter]);
     }
 
     readonly property string raise_script: `
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
-addr=$(hyprctl -j clients | jq -r '[.[] | select((.class | ascii_downcase) | test("^(firefox|org\\\\.mozilla\\\\.firefox)") and .focusHistoryID >= 0)] | sort_by(.focusHistoryID) | .[0].address // empty')
+addr=$(hyprctl -j clients | jq -r "$1")
 [ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
 exit 0
 `
