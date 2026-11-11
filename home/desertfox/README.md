@@ -6,8 +6,12 @@ Run `just build` in the DesertFox checkout first. The recipe finds that checkout
 
 Private bindings and container names join through `keymap.d/` files from a private repo. Each binding is one line of the command grammar described in the DesertFox README. Nothing private belongs here.
 
+## Hosts
+
+`just desertfox-host` installs or updates the two native hosts and the `desertfox` CLI from the latest DesertFox release. `install.sh` runs it too, except with `--server`. The Firefox permission click on `:native.install` stays manual.
+
 ## Code
 
 - `.config/desertfox/keymap.toml`: bindings per mode, plus the `search_keys` and `container_keys` shortcuts. Entries equal to DesertFox's defaults are left out.
 - `.config/desertfox/search_engines.toml`: engine URL templates and labels.
-- `.config/desertfox/settings.toml`: the default engine and the new tab page.
+- `.config/desertfox/settings.toml`: the default engine, the new tab page and the bridge switch.

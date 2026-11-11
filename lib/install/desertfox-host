@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Installs or updates the DesertFox native hosts and CLI by running the latest release's own install.sh, which checks the checksums.
+set -euo pipefail
+repo=uhs-robert/desertfox
+api=https://api.github.com/repos/$repo/releases/latest
+download_base=https://github.com/$repo/releases/download
+
+tag=""
+if command -v gh >/dev/null 2>&1; then
+  tag=$(gh release view --repo "$repo" --json tagName --jq .tagName 2>/dev/null) || tag=""
+fi
+if [[ -z $tag ]]; then
+  # sed, not jq: this must work on a machine that has only curl.
+  tag=$(curl -fsSL --max-time 20 "$api" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1) || tag=""
+fi
+if [[ -z $tag ]]; then
+  echo "desertfox-host: cannot find the latest release of $repo (needs network)" >&2
+  exit 1
+fi
+version=${tag#v}
+
+# The script runs remote code, so it goes in a fresh directory and is passed by path.
+dir=$(mktemp -d)
+trap 'rm -rf "$dir"' EXIT
+curl -fsSL --max-time 60 -o "$dir/install.sh" "$download_base/$tag/install.sh"
+[[ -s $dir/install.sh ]] || {
+  echo "desertfox-host: the downloaded install.sh for $tag is empty" >&2
+  exit 1
+}
+bash "$dir/install.sh" "$version"

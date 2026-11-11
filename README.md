@@ -243,7 +243,7 @@ cd ~/dotfiles
 ./uninstall.sh      # remove symlinks
 ```
 
-Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes).
+Installs system packages, AUR packages, fonts, and dev tools, then stows dotfiles into `~/`. Prompts for optional components (greetd, Steam, Nvidia, dev runtimes). It also installs the DesertFox native hosts (not on `--server`; a missing network only warns, and `just desertfox-host` retries). The Firefox permission click on `:native.install` stays manual.
 
 The dev runtimes picker also offers the CodeRabbit CLI (official installer, unpinned). Update it with `coderabbit update`. To remove it, run `rm ~/.local/bin/{coderabbit,cr}` and `rm -r ~/.coderabbit`. The reviewer list is in `home/claude/.claude/skills/orchestrator/reviewers.md`.
 
@@ -356,6 +356,7 @@ just install          # run install.sh
 just uninstall        # run uninstall.sh
 just sync-root-yazi   # regenerate root's Yazi keymap from the user's
 just update-repos     # pull the external repos cloned into repos/
+just desertfox-host   # install or update the DesertFox native hosts
 just ssh-server       # opt in to an SSH server reachable only over Tailscale
 ```
 
