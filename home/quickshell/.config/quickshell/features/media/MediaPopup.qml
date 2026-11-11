@@ -18,7 +18,7 @@ Popup {
     size_class: "large"
     preferred_width: 520
     body_height: content.implicitHeight + 24
-    key_help: "Tab player · space play · h/l seek · H/L track · s shuffle · r loop · q close"
+    key_help: "Tab player · space play · h/l seek · H/L track · s shuffle · r loop · G tab · q close"
 
     readonly property var player: MediaState.active
     readonly property var players: MediaState.players
@@ -40,6 +40,17 @@ Popup {
 
     function player_index(p) {
         return root.players.indexOf(p);
+    }
+
+    // Closes the popup first so it lets go of the keyboard before Firefox is raised. A player that is not Firefox gets a
+    // notice and the popup stays.
+    function jump_to_tab() {
+        if (!MediaJumpState.player_is_firefox) {
+            MediaJumpState.say("The active player is not Firefox");
+            return;
+        }
+        ThemeAudio.play("confirm");
+        Popups.after_close(() => MediaJumpState.jump());
     }
 
     function handle_key(event) {
@@ -73,6 +84,9 @@ Popup {
         } else if (event.key === Qt.Key_R) {
             MediaState.cycle_loop();
             ThemeAudio.play("confirm");
+            event.accepted = true;
+        } else if (event.key === Qt.Key_G) {
+            root.jump_to_tab();
             event.accepted = true;
         }
     }

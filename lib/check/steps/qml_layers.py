@@ -51,6 +51,7 @@ UNRANKED = {"scripts", "assets", "sounds", "custom"}
 SIBLING_ALLOW = {
     ("features/bar_editor/BarEditor.qml", "features/bar/BarLayout.js"),
     ("features/settings/sections/DisplaysSection.qml", "features/display/DisplayLayout.js"),
+    ("features/media/MediaJumpState.qml", "features/launcher/FirefoxTabs.js"),
 }
 SIBLING_LAYERS = ("features", "styles")
 FLAT_LAYERS = {"ui"}

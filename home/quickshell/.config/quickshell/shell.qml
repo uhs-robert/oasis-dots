@@ -267,6 +267,7 @@ ShellRoot {
         id: picker_voice
     }
     PopupIpc {}
+    MediaIpc {}
     PickerIpc {
         voice: picker_voice
     }

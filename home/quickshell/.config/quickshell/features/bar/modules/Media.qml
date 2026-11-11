@@ -61,13 +61,16 @@ BarModule {
         }
     }
 
-    // Under the well's own button, so the button's click wins.
+    // Under the well's own button, so the button's click wins. Right-click jumps to the Firefox tab behind the track
+    // and does nothing for any other player.
     MouseArea {
         anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
         onClicked: mouse => {
             if (mouse.button === Qt.MiddleButton) MediaState.toggle();
-            else root.toggle_popup();
+            else if (mouse.button === Qt.RightButton) {
+                if (MediaJumpState.player_is_firefox) MediaJumpState.jump();
+            } else root.toggle_popup();
         }
         onWheel: wheel => root.scroll(wheel)
     }
