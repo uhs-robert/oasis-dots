@@ -319,6 +319,7 @@ SHELL_GROUPS = {
         "lib/common/*.sh",
         "lib/install/*.sh",
         "lib/install/desertfox-freshness",
+        "lib/install/desertfox-host",
         "lib/git-hooks/pre-commit",
         "lib/install/artcraft-update",
         "lib/install/tests/*.sh",
