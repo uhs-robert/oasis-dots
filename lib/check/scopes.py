@@ -279,6 +279,7 @@ STEPS = [
     Step("act-lib", "hypr", "lua ./home/hypr/tests/act.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("workspace-layout", "hypr", "lua ./home/hypr/tests/workspace_layout.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("theme-state", "hypr", "lua ./home/hypr/tests/theme_state.lua", ("lua",), skip_reason="the hypr tests need lua"),
+    Step("desertfox-generator", "hypr", "lua ./home/hypr/tests/desertfox_generator.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("submap-hints", "hypr", "lua ./home/hypr/tests/submap_hints.lua", ("lua",), skip_reason="the hypr tests need lua"),
     Step("session-start", "hypr", "lua ./home/hypr/tests/session_start.lua", ("lua",), skip_reason="the hypr tests need lua"),
     # The real-tree action tests also run in check-cache, which a Hyprland or action-definition edit does not reach. Named

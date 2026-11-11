@@ -13,6 +13,7 @@ Generate.conf = require("theme.generate.conf")
 Generate.terminals = require("theme.generate.terminals")
 Generate.quickshell = require("theme.generate.quickshell")
 Generate.nvim = require("theme.generate.nvim")
+Generate.desertfox = require("theme.generate.desertfox")
 
 --- Runs all generators with the provided color table.
 --- @param c table Palette color table from theme.colors.*
@@ -23,6 +24,7 @@ Generate.all = function(c)
   Generate.terminals(c)
   Generate.quickshell(c)
   Generate.nvim(c)
+  Generate.desertfox(c)
 end
 
 return Generate

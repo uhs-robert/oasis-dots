@@ -116,7 +116,7 @@ See [`extensions/wallpaper/README.md`](extensions/wallpaper/README.md) for setti
 
 ## Theme
 
-The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals, Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`, and Neovim when synced).
+The colors come from the Oasis palettes in `theme/colors/`. Picking one saves it, reloads Hyprland and reruns every generator in `theme/generate/` (Hyprland, rofi, the terminals, Quickshell, whose `theme.json` lands in `~/.local/state/quickshell/`, Neovim when synced, and DesertFox, which gets the palette name from `desertfox theme <name>` in the background and ignores a failure).
 
 The rofi `colors.rasi`, foot `foot.ini` and yazi `theme.toml` are generated and gitignored. Edit their tracked `colors.template.rasi`, `foot.template.ini` and `theme.template.toml` instead; the installer copies each one into place when the generated file is missing. Deploy these packages with `just stow <pkg>` (or the installer), not bare `stow`, so that step runs.
 
