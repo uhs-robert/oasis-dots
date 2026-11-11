@@ -180,6 +180,22 @@ def steps(r, problems):
         check("dead pid: a rewrite naming the same host stays hidden", r.hold(4, {"live": "0", "shown": "0"}))
         r.write_state(other.pid, other.start)
         check("dead pid: a file from a new host shows again", r.wait_for({"live": "1", "shown": "1", "chip": "INSERT"}))
+
+        # Nothing polls while Firefox is unfocused (the host's death goes unjudged), and focus gain reads everything at once.
+        r.write_focus("0x2")
+        check("unfocused: the chip is hidden", r.wait_for({"shown": "0"}))
+        shutil.rmtree(r.dir)
+        r.write_state(other.pid, other.start, mode_id="normal", label="NORMAL")
+        check("unfocused, folder recreated: the chip stays hidden", r.hold(1.5, {"shown": "0"}))
+        r.write_focus("0x1")
+        check("focus gain: the new folder and file show at once", r.wait_for({"live": "1", "shown": "1", "chip": "NORMAL"}, timeout=1))
+
+        r.write_focus("0x2")
+        check("unfocused again: the chip is hidden", r.wait_for({"shown": "0"}))
+        other.kill()
+        check("unfocused, host killed: no probe judges it", r.hold(4, {"live": "1"}))
+        r.write_focus("0x1")
+        check("focus gain: the dead host is found at once", r.wait_for({"live": "0", "shown": "0"}, timeout=1))
     finally:
         r.stop()
         host.kill()
