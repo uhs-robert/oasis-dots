@@ -15,9 +15,12 @@ function squashed(text) {
     return String(text || "").replace(/\s+/g, " ").trim();
 }
 
-function matches_track(tab, track_title, track_url) {
+function url_matches(tab, track_url) {
     var url = squashed(track_url);
-    if (url !== "" && squashed(tab.url) === url) return true;
+    return url !== "" && squashed(tab.url) === url;
+}
+
+function title_matches(tab, track_title) {
     var title = squashed(track_title);
     return title !== "" && squashed(tab.title).indexOf(title) !== -1;
 }
@@ -31,7 +34,7 @@ function newest(tabs) {
 }
 
 // The `tabs` rows of the bridge's reply -> the row to switch to, or null. While the player plays, the audible tabs
-// are the candidates and the one matching the MPRIS track wins, else the most recently used one. With no audible tab,
+// are the candidates and the one matching the MPRIS track (url first, then title) wins, else the most recently used one. With no audible tab,
 // or a paused player (nothing is audible then), only a title or url match across every tab counts: guessing by recency
 // would pick an unrelated tab.
 function pick_tab(rows, track_title, track_url, playing) {
@@ -42,7 +45,11 @@ function pick_tab(rows, track_title, track_url, playing) {
     }
     var audible = tabs.filter(function (t) { return t.audible === true; });
     var by_audio = playing && audible.length > 0;
-    var matched = (by_audio ? audible : tabs).filter(function (t) { return matches_track(t, track_title, track_url); });
-    if (matched.length > 0) return newest(matched);
+    var pool = by_audio ? audible : tabs;
+    // An exact url is the track's identity, a title can repeat across tabs, so titles count only when no url matches.
+    var by_url = pool.filter(function (t) { return url_matches(t, track_url); });
+    if (by_url.length > 0) return newest(by_url);
+    var by_title = pool.filter(function (t) { return title_matches(t, track_title); });
+    if (by_title.length > 0) return newest(by_title);
     return by_audio ? newest(audible) : null;
 }

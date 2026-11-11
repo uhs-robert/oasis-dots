@@ -23,7 +23,7 @@ Singleton {
     function jump() {
         if (!root.player) return "no player";
         if (!root.player_is_firefox) {
-            root.notice("not_firefox", "The active player is not Firefox");
+            root.say("The active player is not Firefox");
             return "not firefox";
         }
         root.target_title = root.player.trackTitle || "";
@@ -39,10 +39,16 @@ Singleton {
     property string target_url: ""
     property bool target_playing: false
 
+    // For a miss the user just caused: every press answers.
+    function say(text) {
+        Quickshell.execDetached(["notify-send", "-a", "Media", text]);
+    }
+
+    // For a standing condition (sharing off, bridge down): once per session per cause.
     function notice(cause, text) {
         if (root.noticed[cause]) return;
         root.noticed[cause] = true;
-        Quickshell.execDetached(["notify-send", "-a", "Media", text]);
+        root.say(text);
     }
 
     function on_tabs(text) {
@@ -58,17 +64,18 @@ Singleton {
         }
         root.raise_window();
         if (reply.state === "sharing_off") root.notice("sharing_off", "DesertFox is not sharing its tabs: set bridge_share_tabs to true. Raised the Firefox window only");
+        else if (reply.state === "unavailable") root.notice("unavailable", "The DesertFox bridge is not reachable. Raised the Firefox window only");
         else if (reply.state === "error") root.notice("error", "Firefox did not list its tabs: " + reply.error);
     }
 
-    // The most recently focused Firefox window, whichever tab it shows.
+    // The most recently focused Firefox window, whichever tab it shows. A window never focused (focusHistoryID -1) is skipped.
     function raise_window() {
         Quickshell.execDetached(["sh", "-c", raise_script]);
     }
 
     readonly property string raise_script: `
 command -v hyprctl >/dev/null && command -v jq >/dev/null || exit 0
-addr=$(hyprctl -j clients | jq -r '[.[] | select((.class | ascii_downcase) | test("^(firefox|org\\\\.mozilla\\\\.firefox)")) ] | sort_by(.focusHistoryID) | .[0].address // empty')
+addr=$(hyprctl -j clients | jq -r '[.[] | select((.class | ascii_downcase) | test("^(firefox|org\\\\.mozilla\\\\.firefox)") and .focusHistoryID >= 0)] | sort_by(.focusHistoryID) | .[0].address // empty')
 [ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })"
 exit 0
 `

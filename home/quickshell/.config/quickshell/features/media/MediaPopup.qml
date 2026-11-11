@@ -46,7 +46,7 @@ Popup {
     // notice and the popup stays.
     function jump_to_tab() {
         if (!MediaJumpState.player_is_firefox) {
-            MediaJumpState.notice("not_firefox", "The active player is not Firefox");
+            MediaJumpState.say("The active player is not Firefox");
             return;
         }
         ThemeAudio.play("confirm");
