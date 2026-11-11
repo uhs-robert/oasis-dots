@@ -5,10 +5,10 @@ prompt = """
 
 The agent calling this tool should first determine the TIMEFRAME.
 
-1. Get the modification date of `session-report.md`; this is the default TIMEFRAME.
-2. If `session-report.md` does not exist AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
+1. Get the modification date of the newest `session-report*.md` at the repo root; this is the default TIMEFRAME.
+2. If no `session-report*.md` exists AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
 
-- Get modification date: `stat -c %y session-report.md`
+- Get modification date: `stat -c %y "$(ls -t session-report*.md | head -1)"`
 - Recent commits by time: !`git log --since="${TIMEFRAME}" --oneline --reverse`
 - Detailed commit info: !`git log --since="${TIMEFRAME}" --stat --reverse`
 - Current branch status: !`git status --short`
@@ -24,13 +24,13 @@ The command accepts an optional argument string that may include:
 
 ### Processing Logic
 
-- If no timeframe is specified in arguments, default to "since the last session-report.md was modified" otherwise if session-report.md does not exist, fallback to "24 hours ago".
+- If no timeframe is specified in arguments, default to "since the newest session-report*.md was modified" otherwise if no session-report*.md exists, fallback to "24 hours ago".
 - If no description is provided, infer work description from git commit history analysis
 - Arguments can contain both timeframe and description
 
 ### Timeframe Options
 
-- Default: "since last session-report.md modification (or 24 hours ago if none exists)"
+- Default: "since the newest session-report*.md modification (or 24 hours ago if none exists)"
 - Alternative: "today", "yesterday", "3 days ago", "1 week ago"
 - Custom: Any git-compatible time format
 
@@ -44,7 +44,7 @@ The command accepts an optional argument string that may include:
 3. **Group related changes** into logical sections
 4. **Create meaningful section titles** that describe the work accomplished
 5. **Format output** for easy copy/paste into spreadsheet (title + markdown)
-6. **Always create/overwrite session-report.md** - Replace any existing session-report.md file with the new report
+6. **Always create/overwrite session-report-<label>.md** at the repo root - The label is the start date of the timeframe (for example `2026-10-20`), so parallel runs do not overwrite each other
 
 ## Analysis Guidelines
 
@@ -65,7 +65,7 @@ The command accepts an optional argument string that may include:
 
 ## Output Format
 
-**Always overwrite/create `session-report.md`** with this structure:
+**Always overwrite/create `session-report-<label>.md`** with this structure:
 
 ```
 [Descriptive Summary Title About Work Accomplished]
