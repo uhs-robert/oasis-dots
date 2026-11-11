@@ -10,6 +10,10 @@ Private bindings and container names join through `keymap.d/` files from a priva
 
 `just desertfox-host` installs or updates the two native hosts and the `desertfox` CLI from the latest DesertFox release. `install.sh` runs it too, except with `--server`. The Firefox permission click on `:native.install` stays manual.
 
+## Desktop palette sync
+
+Every Hyprland reload (login and each theme switch) runs `desertfox theme <name>` with the desktop palette name, from `home/hypr/.config/hypr/theme/generate/desertfox.lua`. The push is best effort: with the browser closed it fails silently and the browser keeps its old palette until the next reload. DesertFox follows the push when its `palette` setting is `desktop`.
+
 ## Code
 
 - `.config/desertfox/keymap.toml`: bindings per mode, plus the `search_keys` and `container_keys` shortcuts. Entries equal to DesertFox's defaults are left out.
