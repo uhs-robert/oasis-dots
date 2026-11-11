@@ -94,6 +94,7 @@ Singleton {
         root.arm_on_engage = false;
         live_ctx.scene = "";
         root.wake();
+        key_grace_timer.stop();
         persist.held = false;
         persist.backdrops = JSON.stringify(files);
         persist.locked = true;
