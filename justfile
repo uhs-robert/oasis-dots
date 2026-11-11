@@ -331,11 +331,11 @@ desertfox-config:
     cd "$desertfox"
     node tools/build-config/cli.ts "$config_dir" --live || { echo "desertfox-config: build-config failed. If it says Unknown option '--live', update the DesertFox checkout at $desertfox and run 'just build' there" >&2; exit 1; }
 
-# Install or update the ArtCraft apps in packages/artcraft.ini from their signed GitHub releases (--check only lists what is behind)
 # Install or update the DesertFox native hosts and the desertfox CLI from the latest release (needs network; the Firefox permission click on :native.install stays manual)
 desertfox-host:
     bash "{{ justfile_directory() }}/lib/install/desertfox-host"
 
+# Install or update the ArtCraft apps in packages/artcraft.ini from their signed GitHub releases (--check only lists what is behind)
 artcraft-update *args:
     bash "{{ justfile_directory() }}/lib/install/artcraft-update" {{ args }}
 
