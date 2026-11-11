@@ -75,10 +75,9 @@ PanelWindow {
     // Room on every side for a soft shadow, taken out of the gap so the frame stays put.
     readonly property int shadow_pad: !root.drawer && Style.frame_shadow.a > 0 ? Math.min(Style.frame_drop, root.gap) : 0
     implicitWidth: root.drawer ? scaffold.full.surface.width : frame.width + root.shadow_pad * 2
-    // The header takes the bar's submap colour: fills get it under dark ink, plain titles take it as text. A caller that
-    // is not HyprVim (DesertFox's panel) sets both, so it does not follow the submap.
-    property bool tinted: SubmapState.active || Style.bar_lualine
-    property color header_color: SubmapState.bar_color
+    // The header takes the bar's submap colour: fills get it under dark ink, plain titles take it as text.
+    readonly property bool tinted: SubmapState.active || Style.bar_lualine
+    readonly property color header_color: SubmapState.bar_color
     readonly property bool filled_title: Style.show_title && Style.title_bg.a > 0
 
     // Floating frames set the title chip into the top border, half of it above the frame.
@@ -166,23 +165,6 @@ PanelWindow {
         if (!was_open && burst_loader.item) burst_loader.item.play();
     }
 
-    // For a caller that holds the payload already (DesertFox's, from its state file) instead of a file to read.
-    function show_object(next): void {
-        root.wanted = true;
-        root.apply_payload(next);
-    }
-
-    function apply_payload(next): void {
-        if ((next.items || []).length === 0) {
-            root.hide_now();
-            return;
-        }
-        root.loading_payload = true;
-        root.payload = next;
-        root.loading_payload = false;
-        root.open_now();
-    }
-
     // Starts from the payload's load, not from show_payload, which would flash the previous payload.
     FileView {
         id: payload_file
@@ -190,7 +172,15 @@ PanelWindow {
         onLoaded: {
             if (!root.wanted) return;
             try {
-                root.apply_payload(JSON.parse(text()));
+                const next = JSON.parse(text());
+                if ((next.items || []).length === 0) {
+                    root.hide_now();
+                    return;
+                }
+                root.loading_payload = true;
+                root.payload = next;
+                root.loading_payload = false;
+                root.open_now();
             } catch (e) {
                 console.warn("WhichKey: invalid payload (" + e + ")");
             }
