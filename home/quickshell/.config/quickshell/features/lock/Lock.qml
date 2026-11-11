@@ -208,6 +208,7 @@ Singleton {
         if (!root.granted) return;
         root.granted = false;
         root.disarm_music();
+        key_grace_timer.stop();
         persist.locked = false;
         root.drop_backdrop();
         Quickshell.execDetached([root.flag_script, "clear"]);
@@ -232,6 +233,7 @@ Singleton {
     // NORMAL mode (not insert) offers keys to `skin` while the buffer is empty and PAM waits on nothing; `i` or any typed key enters INSERT, Esc on an empty buffer leaves it.
     function key(event, skin) {
         root.wake();
+        key_grace_timer.restart();
         root.arm_music();
         if (root.granted) {
             // A fresh press skips the unlock animation; a held Enter from the submit does not.
@@ -287,6 +289,13 @@ Singleton {
         id: music_timer
         interval: 120000
         onTriggered: root.music_armed = false
+    }
+
+    // A key press runs the skin's motion for this long even while the load guard is still. The guard is untouched, so it
+    // stills the lock again once the grace lapses. Started by keys only: engage and the saver wake do not grant it.
+    Timer {
+        id: key_grace_timer
+        interval: 60000
     }
 
     Timer {
@@ -496,7 +505,7 @@ Singleton {
         insert: root.insert
         granted: root.granted
         saver: root.saver && PowerSource.on_ac
-        animate: PowerSource.on_ac && !load_guard.still
+        animate: PowerSource.on_ac && (!load_guard.still || key_grace_timer.running)
         shown: persist.locked
         backdrops: root.backdrop_files
         power_live: true
