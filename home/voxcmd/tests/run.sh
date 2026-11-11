@@ -1175,6 +1175,14 @@ check "and reads the session store" "jq -e 'all(.[]; .tab_id == null) and length
 out=$("$firefox_tab" request '{"verb": "tabs"}')
 check "request marks it for the picker" "jq -e '.ok == false and .sharing_off == true and (.message | contains(\"bridge_share_tabs\"))' <<<\"\$out\" >/dev/null"
 
+for refusal in stale-tab rate-limit; do
+  start_fake_host "$refusal"
+  : >"$log"
+  status=0
+  out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+  check "a $refusal refusal of an activation falls back to the address bar" "[[ \$status == 0 && \$out != *'may have switched'* && \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
+done
+
 start_fake_host no-extension
 out=$("$firefox_tab" request '{"verb": "tabs"}')
 check "a bridge with no Firefox behind it is unavailable, as no socket is" "jq -e '.ok == false and .unavailable == true' <<<\"\$out\" >/dev/null"

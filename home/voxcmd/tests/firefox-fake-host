@@ -3,7 +3,7 @@
 $XDG_RUNTIME_DIR/desertfox/bridge.sock, in the bridge's shapes ({"verb": ...} in, {"ok": true, ...fields} or
 {"ok": false, "message"} out).
 
-  firefox-fake-host <tabs.json> <requests.log> [error|sharing-off|no-extension|silent-activate|malformed-tabs|malformed-activate]
+  firefox-fake-host <tabs.json> <requests.log> [error|stale-tab|rate-limit|sharing-off|no-extension|silent-activate|malformed-tabs|malformed-activate]
 
 Every request line is appended to <requests.log>. `tabs` returns the fixture; `activate` returns the window of the tab with
 that id, or an error for an unknown one. With "error" every request is answered with an error, with "sharing-off" every
@@ -39,6 +39,10 @@ while True:
             continue
         if mode == "error":
             reply = {"ok": False, "message": "refused"}
+        elif mode == "stale-tab":
+            reply = {"ok": False, "message": "no such tab"}
+        elif mode == "rate-limit":
+            reply = {"ok": False, "message": "rate limit: too many requests, slow down"}
         elif mode == "sharing-off":
             reply = {"ok": False, "message": "tab sharing is off, set bridge_share_tabs to true"}
         elif mode == "no-extension":

@@ -166,9 +166,13 @@ main() {
     install_nvidia
     setup_voxtype
     setup_calendar_timer
-    retire_voxcmd_firefox_extension || warn "The old voxcmd Firefox extension was not fully removed; run: just retire-firefox-extension"
     setup_tailnet_ssh
     setup_syncthing
+  fi
+
+  # Outside the services branch: the old extension's leftovers matter on a --minimal or --no-services install too.
+  if [[ $OPT_SERVER -eq 0 ]]; then
+    retire_voxcmd_firefox_extension || warn "The old voxcmd Firefox extension was not fully removed; run: just retire-firefox-extension"
   fi
 
   print_manual_installs

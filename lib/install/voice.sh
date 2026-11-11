@@ -107,11 +107,13 @@ retire_voxcmd_firefox_extension() {
   local retired=0
 
   if [[ -e "$manifest" || -L "$manifest" ]]; then
-    rm -f "$manifest" && retired=1
+    rm -f "$manifest" || return 1
+    retired=1
   fi
   # Stow removes a link only while its package still holds the file, so the host's link outlives the deleted source.
   if [[ -L "$host" && ! -e "$host" ]]; then
-    rm -f "$host" && retired=1
+    rm -f "$host" || return 1
+    retired=1
   fi
   if [[ -e "$xpi_dest" ]]; then
     "${sudo_cmd[@]}" rm -f "$xpi_dest" || return 1

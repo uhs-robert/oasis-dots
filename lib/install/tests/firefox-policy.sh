@@ -84,5 +84,22 @@ retire_voxcmd_firefox_extension >/dev/null 2>&1
 check test "$?" != 0
 check test "$(cat "$FIREFOX_POLICIES_FILE")" = '{"voxcmd@oasis-dots": broken'
 
+case_name='fails when the manifest or the host link cannot be removed'
+install_old_files
+chmod a-w "$(dirname "$manifest")"
+if [ "$(id -u)" != 0 ]; then
+  retire_voxcmd_firefox_extension >/dev/null 2>&1
+  check test "$?" != 0
+  check test -e "$manifest"
+  chmod u+w "$(dirname "$manifest")"
+  chmod a-w "$(dirname "$host")"
+  rm -f "$manifest"
+  retire_voxcmd_firefox_extension >/dev/null 2>&1
+  check test "$?" != 0
+  check test -L "$host"
+  chmod u+w "$(dirname "$host")"
+fi
+chmod -R u+w "$HOME"
+
 [ "$failures" -eq 0 ] || exit 1
 echo 'firefox-policy: ok'

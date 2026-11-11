@@ -61,6 +61,9 @@ HOST_TIMEOUT = float(os.environ.get("VOXCMD_FIREFOX_HOST_TIMEOUT", "3"))
 # The bridge's fixed texts that mean it did nothing: tab sharing is off, or Firefox has no extension port open.
 SHARING_OFF_TEXT = "tab sharing is off"
 NOT_CONNECTED_TEXT = "the extension is not connected"
+# Fixed refusal texts of the bridge (host/desertfox-bridge) that also mean nothing happened: a stale tab id, and the
+# request limits. A stale id from a voice command must reach the address-bar fallback, not read as a half-done switch.
+NOTHING_DONE_TEXTS = ("no such tab", "rate limit: too many requests, slow down", "too many requests are waiting")
 SHARING_OFF_HINT = "DesertFox is not sharing its tabs: set bridge_share_tabs to true"
 # Seconds to wait for the window DesertFox marked with the nonce to show it in its title.
 PREFACE_WAIT = float(os.environ.get("VOXCMD_FIREFOX_PREFACE_WAIT", "1.0"))
@@ -301,8 +304,8 @@ def host_request(request):
         message = str(reply.get("message") or "no reason given")
         if message.startswith(SHARING_OFF_TEXT):
             raise SharingOff(message)
-        if message == NOT_CONNECTED_TEXT:
-            raise HostUnavailable(f"DesertFox's bridge has no Firefox behind it: {message}")
+        if message == NOT_CONNECTED_TEXT or message in NOTHING_DONE_TEXTS:
+            raise HostUnavailable(f"DesertFox's bridge did nothing: {message}")
         raise HostError(f"DesertFox's bridge answered with an error: {message}")
     return reply
 
