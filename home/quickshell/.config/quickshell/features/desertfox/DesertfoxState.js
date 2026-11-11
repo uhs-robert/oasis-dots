@@ -1,9 +1,9 @@
 .pragma library
 
-// The DesertFox state file (host-written, version 1): its validation and the which-key mapping, kept pure so a node
-// test can run them. The shape is the hand-off contract with the DesertFox display host.
+// The DesertFox state file (host-written, version 2): its validation, kept pure so a node test can run it. The shape is
+// the hand-off contract with the DesertFox bridge host (host/README.md in DesertFox).
 
-var supported_version = 1;
+var supported_version = 2;
 
 // A file this reader does not know is the same as no file: nothing shows.
 var empty = {
@@ -11,46 +11,32 @@ var empty = {
     host_pid: 0,
     host_start: "",
     mode_id: "",
-    mode_label: "",
-    whichkey_seq: 0,
-    whichkey_title: "",
-    whichkey_items: []
+    mode_label: ""
 };
 
 function validate(raw) {
     if (!raw || raw.version !== supported_version) return Object.assign({}, empty);
     const host = raw.host || {};
     const mode = raw.mode || {};
-    const panel = raw.whichkey;
-    const has_panel = !!panel && typeof panel === "object" && Array.isArray(panel.rows);
     return {
         valid: true,
         host_pid: Number(host.pid) || 0,
         host_start: String(host.start || ""),
         mode_id: String(mode.id || ""),
-        mode_label: String(mode.label || ""),
-        whichkey_seq: has_panel ? Number(panel.seq) || 0 : 0,
-        whichkey_title: has_panel && Array.isArray(panel.title) ? panel.title.join(" ") : "",
-        whichkey_items: has_panel ? panel.rows.map(item_of) : []
+        mode_label: String(mode.label || "")
     };
 }
 
-// A row's `more` marks a group, drawn as a filled key cap.
-function item_of(row) {
-    return { key: String(row.keys || ""), desc: String(row.command || row.description || ""), group: row.more === true };
+// Modes that draw their own surface (the hint labels, the command line), where a chip would sit on top of it.
+var own_surface_modes = ["hint", "cmdline"];
+
+function hides_chip(mode_id) {
+    return own_surface_modes.indexOf(mode_id) >= 0;
 }
 
-// What WhichKey.qml takes. Position, columns and footer are its own defaults, not in the file.
-function payload_of(values) {
-    return { title: values.whichkey_title, items: values.whichkey_items };
-}
-
-// Identity of the panel on screen: a new host restarting its counter at the same number is still a new panel.
-function panel_key(values) {
-    return values.host_start + ":" + values.whichkey_seq;
-}
-
+// Firefox builds name their window class `firefox`, `firefox-esr`, `firefox-developer-edition` or, packaged by
+// Flatpak and others, `org.mozilla.firefox`.
 function is_firefox_class(cls) {
     const lower = String(cls || "").toLowerCase();
-    return lower.indexOf("firefox") === 0 || lower === "org.mozilla.firefox";
+    return lower.indexOf("firefox") === 0 || lower.indexOf("org.mozilla.firefox") === 0;
 }
