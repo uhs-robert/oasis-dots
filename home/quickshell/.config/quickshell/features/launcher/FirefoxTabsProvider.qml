@@ -31,7 +31,7 @@ PickerProvider {
     // raising the right window by the title nonce (DesertFox assumes no window manager), so the picker calls it rather
     // than talking to the socket itself.
     readonly property string firefox_tab: Quickshell.env("HOME") + "/.local/share/voxcmd/firefox-tab"
-    readonly property string setup_hint: "Firefox tabs need DesertFox with its bridge on: set bridge and bridge_share_tabs to true in DesertFox"
+    readonly property string setup_hint: "Firefox tabs need DesertFox with its bridge on: set bridge and bridge_share_tabs to true in DesertFox and grant its nativeMessaging permission"
     readonly property string sharing_off_hint: "DesertFox is not sharing its tabs: set bridge_share_tabs to true"
     readonly property int capture_batch_size: 4
     // A batch waits on Firefox drawing each tab; the default of 3 s is for one quick request.

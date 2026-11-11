@@ -115,13 +115,15 @@ retire_voxcmd_firefox_extension() {
     rm -f "$host" || return 1
     retired=1
   fi
-  if [[ -e "$xpi_dest" ]]; then
+  # The xpi and the policy file are system files: `--no-system-files` and `--minimal` leave them (OPT_SYSTEM_FILES=0).
+  local system_files=${OPT_SYSTEM_FILES:-1}
+  if [[ $system_files -eq 1 && -e "$xpi_dest" ]]; then
     "${sudo_cmd[@]}" rm -f "$xpi_dest" || return 1
     retired=1
   fi
 
   # Only a policies file that names the extension is read as JSON, so an unrelated broken file never fails the installer.
-  if [[ -f "$policies_file" ]] && grep -qF "$FIREFOX_EXTENSION_ID" "$policies_file"; then
+  if [[ $system_files -eq 1 && -f "$policies_file" ]] && grep -qF "$FIREFOX_EXTENSION_ID" "$policies_file"; then
     require_cmd jq
     local trimmed policies_dir tmp
     if ! trimmed=$(jq --arg id "$FIREFOX_EXTENSION_ID" 'del(.policies.ExtensionSettings[$id]) | if .policies.ExtensionSettings == {} then del(.policies.ExtensionSettings) else . end' "$policies_file"); then

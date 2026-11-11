@@ -170,7 +170,8 @@ main() {
     setup_syncthing
   fi
 
-  # Outside the services branch: the old extension's leftovers matter on a --minimal or --no-services install too.
+  # Outside the services branch, so --minimal and --no-services installs drop the home leftovers too. The system ones
+  # (xpi, policy entry) need system files on.
   if [[ $OPT_SERVER -eq 0 ]]; then
     retire_voxcmd_firefox_extension || warn "The old voxcmd Firefox extension was not fully removed; run: just retire-firefox-extension"
   fi

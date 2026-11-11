@@ -84,6 +84,22 @@ retire_voxcmd_firefox_extension >/dev/null 2>&1
 check test "$?" != 0
 check test "$(cat "$FIREFOX_POLICIES_FILE")" = '{"voxcmd@oasis-dots": broken'
 
+case_name='leaves the system files with OPT_SYSTEM_FILES=0 and still clears the home ones'
+install_old_files
+cat >"$FIREFOX_POLICIES_FILE" <<'JSON'
+{"policies": {"ExtensionSettings": {"voxcmd@oasis-dots": {"installation_mode": "normal_installed"}}}}
+JSON
+before=$(cat "$FIREFOX_POLICIES_FILE")
+OPT_SYSTEM_FILES=0 retire_voxcmd_firefox_extension >/dev/null 2>&1
+check test "$?" = 0
+check test -e "$FIREFOX_EXTENSION_XPI_DEST"
+check test "$(cat "$FIREFOX_POLICIES_FILE")" = "$before"
+check test ! -e "$manifest"
+check test ! -L "$host"
+retire_voxcmd_firefox_extension >/dev/null 2>&1
+check test ! -e "$FIREFOX_EXTENSION_XPI_DEST"
+check test "$(jq -r '.policies.ExtensionSettings' "$FIREFOX_POLICIES_FILE")" = null
+
 case_name='fails when the manifest or the host link cannot be removed'
 install_old_files
 chmod a-w "$(dirname "$manifest")"

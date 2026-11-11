@@ -34,7 +34,7 @@ Windows are numbered in the order Firefox opened them, the same in the headers, 
 
 The list shows at once with the pictures saved last time. Fresh ones then swap in a few tabs at a time, the selected tab first. An unloaded tab keeps its last picture, dimmed, and says `unloaded`. A tab never captured shows its icon and title. Only icons Firefox hands over inline are drawn, so the bar fetches nothing from the web. Other tabs get a globe.
 
-It needs DesertFox with `bridge` and `bridge_share_tabs` on (tab sharing is a separate switch, off by default, because a tab list leaks browsing). Without the bridge the picker shows a setup hint instead of a list, and with sharing off it says so. Favicons show only when DesertFox hands over an icon that is not a data URL, so most rows have the generic glyph. Private windows never show, since DesertFox does not share them.
+It needs DesertFox with `bridge` and `bridge_share_tabs` on and its `nativeMessaging` permission granted (tab sharing is a separate switch, off by default, because a tab list leaks browsing). Without the bridge the picker shows a setup hint instead of a list, and with sharing off it says so. Favicons show only when DesertFox hands over an icon that is not a data URL, so most rows have the generic glyph. Private windows never show, since DesertFox does not share them.
 
 ## Tmux windows
 
