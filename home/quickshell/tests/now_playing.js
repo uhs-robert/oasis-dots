@@ -8,7 +8,7 @@ const assert = require("assert");
 
 const file = path.join(__dirname, "../.config/quickshell/features/desertfox/NowPlaying.js");
 const ctx = vm.createContext({});
-vm.runInContext(fs.readFileSync(file, "utf8").replace(/^\.pragma.*$/m, "") + "\nthis.api = { empty, parse_line, is_refusal, reduce, seed, current, label_of, next_backoff_ms, pause_request };", ctx);
+vm.runInContext(fs.readFileSync(file, "utf8").replace(/^\.pragma.*$/m, "") + "\nthis.api = { empty, parse_line, reduce, seed, current, label_of, next_backoff_ms, pause_request };", ctx);
 const N = ctx.api;
 
 const audible = (id, on, title) => ({ event: "tab_audible", tab_id: id, window_id: 3, audible: on, title: title || "T" + id, url: "https://x/" + id });
@@ -38,9 +38,13 @@ const cases = [
   ["a refused tab list changes nothing", () => N.seed(N.empty, { ok: false, message: "off" }), N.empty],
   ["a malformed tab list changes nothing", () => [N.seed(N.empty, null), N.seed(N.empty, { ok: true }), N.seed(N.empty, { ok: true, tabs: [null, { audible: true }] })].map(s => s.audible.length), [0, 0, 0]],
 
+  ["a title change before the tab list reaches the tab the list adds", () => N.current(N.seed(run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "Fresh", url: "https://new" }]), { ok: true, tabs: [{ tab_id: 1, audible: true, last_accessed: 5, title: "Old", url: "https://old" }] })), { tab_id: 1, window_id: undefined, title: "Fresh", url: "https://new" }],
+  ["held changes of tabs the list does not add are dropped", () => N.seed(run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "a", url: "b" }]), { ok: true, tabs: [] }).pending, {}],
+  ["held changes are dropped after a refused list too", () => N.seed(run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "a", url: "b" }]), { ok: false }).pending, {}],
+  ["held changes stop growing at the cap", () => Object.keys(run(Array.from({ length: 100 }, (_, i) => ({ event: "tab_updated", tab_id: i, window_id: 3, title: "a", url: "b" }))).pending).length, 64],
+  ["a tab that starts playing drops its held change", () => run([{ event: "tab_updated", tab_id: 1, window_id: 3, title: "a", url: "b" }, audible(1, true)]).pending, {}],
   ["the ack is the first line", () => N.parse_line('{"ok":true}').kind, "ack"],
-  ["the cap refusal is told apart", () => N.is_refusal(N.parse_line('{"ok":false,"message":"too many subscribers"}')), true],
-  ["another refusal is not the cap", () => N.is_refusal(N.parse_line('{"ok":false,"message":"rate limited"}')), false],
+  ["a refusal is a refusal", () => N.parse_line('{"ok":false,"message":"too many subscribers"}').kind, "refused"],
   ["an event line carries its fields", () => N.parse_line('{"event":"tabs_off","seq":4}').event.seq, 4],
   ["junk is junk", () => ["", "nope", "5", "null", "{}"].map(t => N.parse_line(t).kind), ["junk", "junk", "junk", "junk", "junk"]],
 

@@ -4,6 +4,7 @@
 # A line whose exception no longer applies fails as stale: delete it in the PR that makes it so.
 
 uncalled cmdstatus                    # the module id is also the target; nothing calls refresh yet (5.7 keeps it)
+uncalled now_playing                  # jump and pause are for the owner's own key binds (permanent)
 uncalled weather                      # README-documented preview hook for fixtures (permanent)
 uncalled transition                   # a debugging hook, called by hand (permanent)
 uncalled osd                          # shadow.sh wait reaches it through a computed target (permanent)

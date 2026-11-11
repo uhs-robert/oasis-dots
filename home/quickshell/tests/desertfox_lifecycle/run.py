@@ -1,4 +1,5 @@
-"""Drives features/desertfox/DesertfoxState.qml through the bridge host's life in a headless qs.
+"""Drives features/desertfox/DesertfoxState.qml through the bridge host's life in a headless qs, then NowPlayingState.qml
+against a fake bridge socket (bridge down then up, the subscriber cap, unmount).
 
 The real files run beside stubs (stubs/) for the window focus and VoxSessionState's stat parser.
 This script plays the bridge host and the compositor: it writes $XDG_RUNTIME_DIR/desertfox/state.json and focus.txt,
@@ -13,6 +14,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
@@ -26,10 +28,10 @@ WAIT_S = 8
 
 def copy_config(cfg):
     """The real files under test and the stubs, laid out as the `qs.` import paths expect."""
-    for rel in ("core/JsonStore.qml", "core/PolledFile.qml", "features/desertfox/DesertfoxState.qml", "features/desertfox/DesertfoxState.js"):
+    for rel in ("core/JsonStore.qml", "core/PolledFile.qml", "features/desertfox/DesertfoxState.qml", "features/desertfox/DesertfoxState.js", "features/desertfox/NowPlayingState.qml", "features/desertfox/NowPlaying.js"):
         os.makedirs(os.path.join(cfg, os.path.dirname(rel)), exist_ok=True)
         shutil.copy(os.path.join(CONFIG, rel), os.path.join(cfg, rel))
-    for rel, name in (("features/windows", "WindowState"), ("features/voice", "VoxSessionState"), ("theme", "Theme")):
+    for rel, name in (("features/windows", "WindowState"), ("features/voice", "VoxSessionState"), ("theme", "Theme"), ("core", "PowerSource")):
         os.makedirs(os.path.join(cfg, rel), exist_ok=True)
         shutil.copy(os.path.join(HERE, "stubs", name + ".qml"), os.path.join(cfg, rel))
     shutil.copy(os.path.join(HERE, "shell.qml"), cfg)
@@ -79,6 +81,10 @@ class Run:
         with open(tmp, "w") as f:
             f.write(text)
         os.rename(tmp, os.path.join(self.dir, "state.json"))
+
+    def write_mount(self, on):
+        with open(os.path.join(self.runtime, "mount.txt"), "w") as f:
+            f.write("1\n" if on else "0\n")
 
     def start(self):
         cfg = os.path.join(self.root, "cfg")
@@ -202,12 +208,127 @@ def steps(r, problems):
         other.kill()
 
 
+class FakeBridge:
+    """A stand-in for the bridge's socket: `mode` is "serve" (ack, one audible tab, stay open) or "refuse" (the cap
+    refusal, then close). It records when each subscribe arrived and which subscribe connections are still open."""
+
+    def __init__(self, path):
+        self.path = path
+        self.mode = "serve"
+        self.subscribes = []
+        self.open_subscribers = 0
+        self.lock = threading.Lock()
+        self.server = None
+
+    def up(self):
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        self.server = socket.socket(socket.AF_UNIX)
+        self.server.bind(self.path)
+        self.server.listen(8)
+        threading.Thread(target=self.accept, daemon=True).start()
+
+    def down(self):
+        if self.server:
+            self.server.close()
+            os.unlink(self.path)
+            self.server = None
+
+    def accept(self):
+        server = self.server
+        while True:
+            try:
+                connection, _ = server.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.serve, args=(connection,), daemon=True).start()
+
+    def serve(self, connection):
+        with connection:
+            line = connection.makefile("rb").readline()
+            try:
+                verb = json.loads(line).get("verb")
+            except ValueError:
+                return
+            if verb == "tabs":
+                connection.sendall(b'{"ok": true, "tabs": []}\n')
+                return
+            if verb != "subscribe":
+                return
+            with self.lock:
+                self.subscribes.append(time.time())
+                refuse = self.mode == "refuse"
+                if not refuse:
+                    self.open_subscribers += 1
+            if refuse:
+                connection.sendall(b'{"ok": false, "message": "too many subscribers"}\n')
+                return
+            try:
+                connection.sendall(b'{"ok": true}\n{"event": "tab_audible", "tab_id": 4, "window_id": 1, "audible": true, "title": "Song", "url": "https://x", "seq": 1}\n')
+                while connection.recv(1):
+                    pass
+            except OSError:
+                pass
+            finally:
+                with self.lock:
+                    self.open_subscribers -= 1
+
+    def wait_subscribers(self, count, timeout=WAIT_S):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with self.lock:
+                if self.open_subscribers == count:
+                    return None
+            time.sleep(0.05)
+        return "wanted %d open subscribers, have %d" % (count, self.open_subscribers)
+
+
+def now_playing_steps(r, problems):
+    def check(name, result):
+        print(("ok   " if result is None else "FAIL ") + name + ("" if result is None else "\n     " + result))
+        if result is not None:
+            problems.append(name)
+
+    bridge = FakeBridge(os.path.join(r.dir, "bridge.sock"))
+    os.makedirs(r.dir, exist_ok=True)
+    try:
+        r.start()
+        r.write_mount(True)
+        check("bridge down: the chip is empty and nothing streams", r.hold(1.5, {"streaming": "0", "now": ""}))
+        bridge.up()
+        check("bridge comes up: the module reconnects and shows the audible tab", r.wait_for({"streaming": "1", "now": "Song"}, timeout=12))
+        r.write_mount(False)
+        check("unmount: the subscriber connection closes", bridge.wait_subscribers(0))
+        check("unmount: the chip empties", r.wait_for({"streaming": "0", "now": ""}))
+        bridge.down()
+        bridge.mode = "refuse"
+        bridge.up()
+        bridge.subscribes.clear()
+        r.write_mount(True)
+        time.sleep(6)
+        stamps = list(bridge.subscribes)
+        gaps = [b - a for a, b in zip(stamps, stamps[1:])]
+        check("cap refusal: the retries slow down (%d asks in 6 s)" % len(stamps),
+              None if 2 <= len(stamps) <= 4 and gaps and gaps[-1] > gaps[0] * 1.4 else "asks at %r" % [round(t - stamps[0], 1) for t in stamps])
+        check("cap refusal: nothing shows", r.hold(0, {"streaming": "0", "now": ""}))
+        bridge.mode = "serve"
+        check("a place frees up: the next retry streams", r.wait_for({"streaming": "1", "now": "Song"}, timeout=12))
+    finally:
+        r.stop()
+        bridge.down()
+
+
 def main():
     problems = []
     with tempfile.TemporaryDirectory() as root:
         r = Run(root)
         try:
             steps(r, problems)
+        finally:
+            r.stop()
+    with tempfile.TemporaryDirectory() as root:
+        r = Run(root)
+        try:
+            now_playing_steps(r, problems)
         finally:
             r.stop()
     return 1 if problems else 0

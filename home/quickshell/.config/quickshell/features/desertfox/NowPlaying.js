@@ -3,11 +3,13 @@
 // Which tabs are making sound, from the DesertFox bridge's event stream (wire format: host/README.md in DesertFox).
 // Pure, so a node test can run it. A state is { audible: [tab...], touched: {tab_id: true} }, `audible` oldest first, so
 // the last entry is the tab to show. `touched` is the tabs an event named since the stream started: a one-time tab list
-// taken at connect is older than any of those and must not overwrite them.
+// taken at connect is older than any of those and must not overwrite them. `pending` holds the title and address of a
+// tab that is not known to play yet, so a title change that beats the tab list is not lost when the list adds the tab.
 
-var empty = { audible: [], touched: {} };
+var empty = { audible: [], touched: {}, pending: {} };
 
-var refused_message = "too many subscribers";
+// A page that retitles many silent tabs must not grow `pending` without end before the list arrives.
+var max_pending = 64;
 
 function tab_of(fields) {
     return {
@@ -22,6 +24,12 @@ function without(list, tab_id) {
     return list.filter(t => t.tab_id !== tab_id);
 }
 
+function omit(map, tab_id) {
+    const next = Object.assign({}, map);
+    delete next[tab_id];
+    return next;
+}
+
 function mark(touched, tab_id) {
     const next = Object.assign({}, touched);
     next[tab_id] = true;
@@ -29,7 +37,7 @@ function mark(touched, tab_id) {
 }
 
 // One stream line as { kind: "ack" | "refused" | "event" | "junk", event? }. The first line of a stream is the ack or
-// the refusal, which is how the host says its four subscribers are taken.
+// a refusal (the host's four subscriber places taken, or the rate limit).
 function parse_line(text) {
     let line;
     try {
@@ -39,13 +47,9 @@ function parse_line(text) {
     }
     if (!line || typeof line !== "object") return { kind: "junk" };
     if (line.ok === true) return { kind: "ack" };
-    if (line.ok === false) return { kind: "refused", message: String(line.message || "") };
+    if (line.ok === false) return { kind: "refused" };
     if (typeof line.event === "string") return { kind: "event", event: line };
     return { kind: "junk" };
-}
-
-function is_refusal(parsed) {
-    return parsed.kind === "refused" && parsed.message === refused_message;
 }
 
 // The next state after one event. Events about tabs that are not playing, and the mode events, change nothing.
@@ -55,18 +59,26 @@ function reduce(state, event) {
         const rest = without(state.audible, id);
         return {
             audible: event.audible === true ? rest.concat([tab_of(event)]) : rest,
-            touched: mark(state.touched, id)
+            touched: mark(state.touched, id),
+            pending: omit(state.pending, id)
         };
     }
     if (event.event === "tab_updated") {
-        if (!state.audible.some(t => t.tab_id === id)) return state;
-        return {
-            audible: state.audible.map(t => t.tab_id === id ? Object.assign({}, t, { title: String(event.title || ""), url: String(event.url || "") }) : t),
-            touched: state.touched
-        };
+        const text = { title: String(event.title || ""), url: String(event.url || "") };
+        if (state.audible.some(t => t.tab_id === id)) {
+            return {
+                audible: state.audible.map(t => t.tab_id === id ? Object.assign({}, t, text) : t),
+                touched: state.touched,
+                pending: state.pending
+            };
+        }
+        if (!(id in state.pending) && Object.keys(state.pending).length >= max_pending) return state;
+        const pending = Object.assign({}, state.pending);
+        pending[id] = text;
+        return { audible: state.audible, touched: state.touched, pending: pending };
     }
     if (event.event === "tab_removed") {
-        return { audible: without(state.audible, id), touched: mark(state.touched, id) };
+        return { audible: without(state.audible, id), touched: mark(state.touched, id), pending: omit(state.pending, id) };
     }
     // Sharing went off: the host forgot every tab and no tab event follows until it is on again.
     if (event.event === "tabs_off") return empty;
@@ -74,14 +86,17 @@ function reduce(state, event) {
 }
 
 // Adds the audible tabs of a `tabs` reply that no event named yet, the least recently used first, so the tab the owner
-// used last is the one that shows. The tabs already known stay newer than all of them.
+// used last is the one that shows. The tabs already known stay newer than all of them. A title change that came before
+// the reply is newer than the reply's text, so it wins. Whatever the reply, the held changes are dropped after.
 function seed(state, reply) {
-    if (!reply || reply.ok !== true || !Array.isArray(reply.tabs)) return state;
+    const settled = { audible: state.audible, touched: state.touched, pending: {} };
+    if (!reply || reply.ok !== true || !Array.isArray(reply.tabs)) return settled;
     const older = reply.tabs
         .filter(t => t && t.audible === true && typeof t.tab_id === "number" && !state.touched[t.tab_id])
         .sort((a, b) => (Number(a.last_accessed) || 0) - (Number(b.last_accessed) || 0))
-        .map(tab_of);
-    return { audible: older.concat(state.audible), touched: state.touched };
+        .map(t => Object.assign(tab_of(t), state.pending[t.tab_id] || {}));
+    settled.audible = older.concat(state.audible);
+    return settled;
 }
 
 function current(state) {

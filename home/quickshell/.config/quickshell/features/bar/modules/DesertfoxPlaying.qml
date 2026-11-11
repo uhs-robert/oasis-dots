@@ -16,15 +16,25 @@ BarModule {
     readonly property var tab: NowPlayingState.tab
 
     // A side bar's column is too narrow for a title.
-    shown: !root.vertical && root.tab !== null
+    shown: root.counted && root.tab !== null
     tooltip_title: "Playing in Firefox"
     tooltip_text: root.tab ? root.tab.title + "\nClick: go to the tab. Right click: pause." : ""
     onTooltip_textChanged: if (root.hovered) Tooltip.show(root, root.tooltip_text, root.tooltip_title)
     implicitWidth: root.shown ? chip.width : 0
     implicitHeight: chip.height
 
-    Component.onCompleted: NowPlayingState.mounted_modules++
-    Component.onDestruction: NowPlayingState.mounted_modules--
+    // Only a bar that can show the chip holds the stream and its retries; a side bar's module never draws.
+    readonly property bool counted: !root.vertical
+    property bool registered: false
+    onCountedChanged: root.sync_count()
+    Component.onCompleted: root.sync_count()
+    Component.onDestruction: if (root.registered) NowPlayingState.mounted_modules--
+
+    function sync_count(): void {
+        if (root.counted === root.registered) return;
+        root.registered = root.counted;
+        NowPlayingState.mounted_modules += root.counted ? 1 : -1;
+    }
 
     Rectangle {
         id: chip

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.features.bar
 import qs.features.bar_editor
+import qs.features.desertfox
 import qs.theme.transitions
 import qs.features.lock
 import qs.features.overview
@@ -288,6 +289,7 @@ ShellRoot {
     SoundIpc {}
     CommandStatusIpc {}
     DirectoryIpc {}
+    NowPlayingIpc {}
     CalendarIpc {}
     LockPreview {
         id: lock_preview
