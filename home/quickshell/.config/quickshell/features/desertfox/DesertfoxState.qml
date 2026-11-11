@@ -32,6 +32,18 @@ Singleton {
     property string probed_owner: ""
     property bool state_dir_exists: false
 
+    // Both probes below poll only while Firefox is focused, since nothing shows otherwise. On focus gain everything is
+    // read at once and the file watch is re-armed, so a host that came or went while Firefox was unfocused shows
+    // correctly with no wait for the next tick.
+    onFirefox_focusedChanged: {
+        if (!root.firefox_focused)
+            return;
+        state_dir_probe.poll();
+        store.rearm();
+        if (store.values.valid)
+            owner_probe.poll();
+    }
+
     // A missing, half-written or unknown file is the defaults: nothing shows. The host replaces the file by rename and
     // JsonStore rereads on the change.
     JsonStore {
@@ -51,6 +63,7 @@ Singleton {
     PolledFile {
         id: state_dir_probe
         path: root.state_dir
+        enabled: root.firefox_focused
         interval_ms: 1000
         block_loading: true
         onLoad_failed: error => {
@@ -69,7 +82,7 @@ Singleton {
         id: owner_probe
         path: root.owner > 0 ? "/proc/" + root.owner + "/stat" : ""
         // A host found dead stays dead until the file changes (onLoaded of the store polls once then).
-        enabled: store.values.valid && !(root.probed_owner === root.owner_key && !root.owner_alive)
+        enabled: root.firefox_focused && store.values.valid && !(root.probed_owner === root.owner_key && !root.owner_alive)
         interval_ms: 3000
         run_on_start: false
         block_loading: true
