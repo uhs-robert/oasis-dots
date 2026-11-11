@@ -34,7 +34,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - [`launcher/`](features/launcher/README.md) holds the fuzzy picker, its `Pickers` registry and IPC handler, its providers (agents, apps, clipboard, dirs, projects, emoji, Firefox tabs, tmux windows, windows, keybinds, choices), the HyprVim `:` prompt in `hyprvim/`, and `TypingSettings`.
 - `screen_select/` holds `RegionSelector`, its toolbar and key overlays, and the `cursors/`, `loupe/` and `targets/` skins.
 - `display/` holds `Displays` and `DisplayLayout.js` (monitor layout), `Backlight`, the brightness and zoom IPC handlers, and the overview zoom `Zoom` with its loupe and reticle.
-- `media/` holds `MediaState` (MPRIS players), `CavaState` (the cava feed, run while a registered viewer draws it; `CavaViewers.js`), the media popup with its album art, seek bar, round buttons and cava strip, and the volume popup.
+- `media/` holds `MediaState` (MPRIS players), `CavaState` (the cava feed, run while a registered viewer draws it; `CavaViewers.js`), the media popup with its album art, seek bar, round buttons and cava strip, the volume popup, and the jump to the Firefox tab behind the track (`MediaJumpState` runs it, `MediaJump.js` picks the tab, `MediaIpc` exposes it; popup `G`, bar right-click).
 - `osd/` holds the on-screen display for brightness, volume, power and voice state.
 - `screenshot/` holds `Screenshot` (capture and recording state), its IPC handler, `ScreenShare` and the screenshot popup.
 - [`notifications/`](features/notifications/README.md): Notification history and Do Not Disturb
@@ -99,6 +99,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `lock` | `preview(name: string): string` |  |
 | `lock` | `preview_close(): string` |  |
 | `lock` | `state(): string` |  |
+| `media` | `jump_to_tab(): string` | `media.jump_to_tab` |
 | `notifications` | `toggle_dnd(): void` | `notifications.toggle_dnd` |
 | `notifications` | `get_dnd(): bool` |  |
 | `notifications` | `clear_all(): void` | `notifications.clear_all` |

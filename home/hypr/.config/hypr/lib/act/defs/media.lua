@@ -76,3 +76,9 @@ Act.define("media.brightness_down", {
   opts = ONESHOT,
   run = media("brightness_down"),
 })
+
+Act.define("media.jump_to_tab", {
+  label = "Jump to Media Tab",
+  intent = "Switch to the Firefox tab playing the active media player's track and raise its window.",
+  run = Act.Ipc("media", "jump_to_tab"),
+})

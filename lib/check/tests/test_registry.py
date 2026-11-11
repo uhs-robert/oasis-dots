@@ -44,6 +44,7 @@ KEYLESS_IPC_IDS = [
     "zoom.step",
     "zoom.size",
     "zoom.full",
+    "media.jump_to_tab",
     "overview.toggle",
     "overview.close",
     "settings.open",
