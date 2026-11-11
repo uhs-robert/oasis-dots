@@ -236,7 +236,7 @@ case_voxcmd_rust_source() {
   source=$(first_tracked 'home/voxcmd/src/cli.rs') || return 0
   echo '// x' >>"$source"
   plan
-  expect_ran voxcmd-rust voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_ran voxcmd-rust voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake
   expect_skipped luacheck qmllint
 }
 
@@ -247,14 +247,14 @@ case_voxcmd_rust_snapshot() {
   echo '# x' >>"$snapshot"
   plan
   expect_ran voxcmd-rust
-  expect_skipped voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_skipped voxcmd-click voxcmd-phrases voxcmd-calendar voxcmd-wake
 }
 
 case_voxcmd_bash_script() {
   start_case 'voxcmd-autostop script'
   echo '# x' >>home/voxcmd/.local/bin/voxcmd-autostop
   plan
-  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox
+  expect_ran voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake
   expect_skipped voxcmd-rust voxtype-duck luacheck
 }
 
@@ -263,14 +263,14 @@ case_voxcmd_shared_fixture() {
   echo '# x' >>home/voxcmd/tests/fixtures/ocr.tsv
   plan
   expect_ran voxcmd-phrases
-  expect_skipped voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox voxcmd-rust
+  expect_skipped voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-rust
 }
 
 case_voxcmd_small_suite() {
   start_case 'one small voxcmd suite'
   echo '# x' >>home/voxcmd/tests/run-calendar.sh
   plan
-  expect_ran voxcmd-calendar voxcmd-wake voxcmd-firefox shellcheck
+  expect_ran voxcmd-calendar voxcmd-wake shellcheck
   expect_skipped voxcmd-phrases voxcmd-click voxcmd-rust
 }
 
@@ -333,16 +333,6 @@ case_check_scope_for_own_test() {
   expect_skipped voxcmd-click qmllint
 }
 
-case_firefox_extension() {
-  start_case 'Firefox extension script'
-  local script
-  script=$(first_tracked 'extras/voxcmd-firefox/*.js') || return 0
-  echo '// x' >>"$script"
-  plan
-  expect_ran voxcmd-firefox
-  expect_skipped qmllint luacheck shellcheck
-}
-
 case_firefox_policy() {
   start_case 'Firefox policy installer'
   echo '# x' >>lib/install/voice.sh
@@ -389,7 +379,7 @@ case_paths_list() {
 
 case_paths_list_unclaimed_skip_voxcmd() {
   start_case 'unclaimed listed path with the voxcmd steps skipped'
-  local voxcmd='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake voxcmd-firefox'
+  local voxcmd='voxcmd-phrases voxcmd-click voxcmd-calendar voxcmd-wake'
   plan_paths 'newdir/file' CHECK_SKIP_STEPS="$voxcmd"
   expect_ran qmllint shellcheck shfmt luacheck packages
   for step in $voxcmd; do
@@ -431,7 +421,7 @@ case_only() {
 }
 
 for case_fn in case_hook_edit case_readme case_markdown_in_a_scope case_markdown_a_test_reads case_home_qml case_layer_allowlist case_singleton_name_allowlist case_shader_source case_outside_quickshell_consumer case_greeter_lua case_action_definition case_voxcmd_runner case_voxcmd_rust_source case_voxcmd_rust_snapshot case_voxcmd_bash_script case_voxcmd_shared_fixture case_voxcmd_small_suite case_deleted_sourced_helper \
-  case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_extension case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
+  case_unmapped_path case_check_sh case_check_py case_full_override case_check_scope_for_check_script case_check_scope_for_own_test case_firefox_policy case_greeter_keyring case_install_loader case_install_loader_reached_through_earlier_arms \
   case_paths_list case_paths_list_unclaimed_skip_voxcmd case_paths_list_deleted_script case_skip_steps_with_changed case_only; do
   report "$case_fn"
 done

@@ -135,7 +135,7 @@ voxcmd-test:
     set -euo pipefail
     cargo test --locked --manifest-path home/voxcmd/Cargo.toml
     failed=()
-    for suite in run-phrases run run-calendar run-wake run-firefox-extension; do
+    for suite in run-phrases run run-calendar run-wake; do
         "home/voxcmd/tests/$suite.sh" || failed+=("$suite")
     done
     [ "${#failed[@]}" = 0 ] || { echo "suites failed: ${failed[*]}" >&2; exit 1; }
@@ -143,26 +143,6 @@ voxcmd-test:
 # Sample the running wake word listener's memory and CPU for N minutes; run it on an idle machine
 voxcmd-wake-sample minutes="60":
     home/voxcmd/tests/wake-sample.sh {{minutes}}
-
-# Sign the voxcmd Firefox extension as unlisted on addons.mozilla.org, into extras/voxcmd-firefox.xpi; the API key is read from rbw
-sign-firefox-extension:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    entry="Firefox AMO API Key"
-    # Passed in the environment, not as arguments, so the secret never shows in the process list.
-    # The issuer is the entry's username, or the first line of its notes when it was stored there.
-    WEB_EXT_API_KEY=$(rbw get --field username "$entry")
-    [[ -n $WEB_EXT_API_KEY ]] || WEB_EXT_API_KEY=$(rbw get --field notes "$entry" | head -n 1)
-    [[ $WEB_EXT_API_KEY =~ ^user:[0-9]+:[0-9]+$ ]] || { echo "no JWT issuer (user:<numbers>:<numbers>, from addons.mozilla.org/developers/addon/api/key/) in the username or notes of rbw's \"$entry\"" >&2; exit 1; }
-    WEB_EXT_API_SECRET=$(rbw get "$entry")
-    export WEB_EXT_API_KEY WEB_EXT_API_SECRET
-    artifacts=$(mktemp -d)
-    trap 'rm -rf "$artifacts"' EXIT
-    npx --yes web-ext@10.7.0 sign --channel=unlisted --source-dir extras/voxcmd-firefox --artifacts-dir "$artifacts"
-    signed=$(find "$artifacts" -name '*.xpi' -print -quit)
-    [[ -n $signed ]] || { echo "web-ext returned no signed .xpi" >&2; exit 1; }
-    cp "$signed" extras/voxcmd-firefox.xpi
-    echo "signed: extras/voxcmd-firefox.xpi"
 
 # Let the greetd login unlock the GNOME keyring (needs sudo); greeter-sync --install and the installer also run it
 greeter-keyring:
@@ -172,22 +152,13 @@ greeter-keyring:
     source lib/install/load.sh
     enable_greetd_keyring_unlock
 
-# Install the signed voxcmd extension through a Firefox policy (needs sudo) and register its host, so one command sets everything up
-firefox-extension:
+# Remove the retired voxcmd Firefox extension: its host manifest, installed xpi and policy entry (needs sudo)
+retire-firefox-extension:
     #!/usr/bin/env bash
     set -euo pipefail
     export DOTFILES_DIR="$PWD"
     source lib/install/load.sh
-    register_firefox_host
-    install_firefox_extension_policy
-
-# Register voxcmd's Firefox native-messaging host (needs the voxcmd package stowed); load extras/voxcmd-firefox in Firefox afterwards
-firefox-host:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export DOTFILES_DIR="$PWD"
-    source lib/install/load.sh
-    register_firefox_host
+    retire_voxcmd_firefox_extension
 
 # Tune pacman.conf and makepkg, enable the paccache timer (asks first; needs sudo)
 pacman-tweaks:

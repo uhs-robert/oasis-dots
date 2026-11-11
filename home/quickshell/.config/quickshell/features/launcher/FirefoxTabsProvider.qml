@@ -5,7 +5,7 @@ import qs.theme
 import "FirefoxTabs.js" as FirefoxTabs
 import "../../core/Fuzzy.js" as Fuzzy
 
-// Every Firefox tab through voxcmd's Firefox extension, grouped by window in tab-bar order or most recently used
+// Every Firefox tab through DesertFox's bridge, grouped by window in tab-bar order or most recently used
 // first (`s`, remembered in FirefoxTabsSettings): each card shows the tab's last captured image, refreshed a few tabs
 // at a time after the list shows. Enter switches to the tab and focuses its window, `x` closes it, `y` copies its URL
 // and `f` narrows the list to one window.
@@ -25,17 +25,20 @@ PickerProvider {
     rank_by_usage: false
     keep_order: true
     actions: [{ key: "x", desc: "close tab" }, { key: "y", desc: "copy URL" }, { key: "f", desc: "window", needs_item: false }, { key: "s", desc: "sort", needs_item: false }]
-    empty_text: root.host_state === "loading" ? "Loading tabs" : root.host_state === "unavailable" ? root.setup_hint : root.host_state === "error" ? "Firefox did not list its tabs: " + root.host_error : "No tabs open"
+    empty_text: root.host_state === "loading" ? "Loading tabs" : root.host_state === "unavailable" ? root.setup_hint : root.host_state === "sharing_off" ? root.sharing_off_hint : root.host_state === "error" ? "Firefox did not list its tabs: " + root.host_error : "No tabs open"
 
-    // voxcmd's socket client: it checks the socket is the user's own before trusting it, and also switches tabs,
-    // focusing the right window by the title nonce, so the picker calls it rather than talking to the socket itself.
+    // voxcmd's bridge client: it checks the socket is the user's own before trusting it, and also switches tabs,
+    // raising the right window by the title nonce (DesertFox assumes no window manager), so the picker calls it rather
+    // than talking to the socket itself.
     readonly property string firefox_tab: Quickshell.env("HOME") + "/.local/share/voxcmd/firefox-tab"
-    readonly property string setup_hint: "Firefox tabs need voxcmd's Firefox extension: run just firefox-extension, then restart Firefox"
+    readonly property string setup_hint: "Firefox tabs need DesertFox with its bridge on: set bridge and bridge_share_tabs to true in DesertFox"
+    readonly property string sharing_off_hint: "DesertFox is not sharing its tabs: set bridge_share_tabs to true"
     readonly property int capture_batch_size: 4
     // A batch waits on Firefox drawing each tab; the default of 3 s is for one quick request.
     readonly property string capture_timeout_s: "30"
 
-    // "loading", "ok", "unavailable" (no socket or no host answering) or "error".
+    // "loading", "ok", "unavailable" (no socket or no bridge answering), "sharing_off" (the bridge is up, tab sharing is
+    // not) or "error".
     property string host_state: "loading"
     property string host_error: ""
     // Every listed tab in tab-bar order; `items` is the ones the window filter keeps, in the sort's order.
@@ -80,7 +83,7 @@ PickerProvider {
         root.capture_queue = [];
         if (root.entries.length === 0) root.host_state = "loading";
         list_proc.running = false;
-        list_proc.command = root.request_argv({ cmd: "tabs" });
+        list_proc.command = root.request_argv({ verb: "tabs" });
         list_proc.running = true;
     }
 
@@ -88,7 +91,7 @@ PickerProvider {
         const reply = FirefoxTabs.parse_reply(text);
         root.host_state = reply.state;
         root.host_error = reply.error;
-        root.entries = reply.state === "ok" ? FirefoxTabs.items_of(reply.result) : [];
+        root.entries = reply.state === "ok" ? FirefoxTabs.items_of(reply.fields.tabs) : [];
         const ids = {};
         for (const e of root.entries) ids[e.id] = true;
         const kept = {};
@@ -107,7 +110,7 @@ PickerProvider {
             const batch = root.capture_queue[0].filter(id => open_ids.indexOf(id) >= 0);
             root.capture_queue = root.capture_queue.slice(1);
             if (batch.length === 0) continue;
-            capture_proc.command = root.request_argv({ cmd: "capture", tab_ids: batch }, root.capture_timeout_s);
+            capture_proc.command = root.request_argv({ verb: "capture", tab_ids: batch }, root.capture_timeout_s);
             capture_proc.running = true;
             return;
         }
@@ -122,12 +125,12 @@ PickerProvider {
 
     function captured(text) {
         const reply = FirefoxTabs.parse_reply(text);
-        // An extension from before thumbnails refuses `capture`; the cards keep their placeholders.
+        // A refused capture (sharing off, no Firefox) leaves the cards on their placeholders.
         if (reply.state !== "ok") {
             root.capture_queue = [];
             return;
         }
-        root.thumbs = FirefoxTabs.merged_thumbs(root.thumbs, reply.result);
+        root.thumbs = FirefoxTabs.merged_thumbs(root.thumbs, reply.fields.results);
     }
 
     function activate(item) {
@@ -158,12 +161,12 @@ PickerProvider {
             if (root.close_failed) {
                 root.close_failed = false;
                 list_proc.running = false;
-                list_proc.command = root.request_argv({ cmd: "tabs" });
+                list_proc.command = root.request_argv({ verb: "tabs" });
                 list_proc.running = true;
             }
             return;
         }
-        close_proc.command = root.request_argv({ cmd: "close", tab_id: root.close_queue[0] });
+        close_proc.command = root.request_argv({ verb: "close", tab_id: root.close_queue[0] });
         root.close_queue = root.close_queue.slice(1);
         close_proc.running = true;
     }
@@ -192,7 +195,14 @@ PickerProvider {
         stdout: StdioCollector {
             onStreamFinished: root.captured(text)
         }
-        onExited: Qt.callLater(root.capture_next)
+        onExited: capture_gap.restart()
+    }
+
+    // The bridge answers at most 10 requests a second over every verb, so batches never run back to back.
+    Timer {
+        id: capture_gap
+        interval: 150
+        onTriggered: root.capture_next()
     }
 
     Process {
@@ -272,8 +282,8 @@ PickerProvider {
             Text {
                 anchors.fill: parent
                 anchors.margins: 16
-                visible: !pane.entry && root.host_state === "unavailable"
-                text: "No Firefox tabs to show: Firefox is not running, or voxcmd's Firefox extension is not installed.\n\nStow the voxcmd package and run just firefox-extension (it registers the native host and installs the extension), then restart Firefox. extras/voxcmd-firefox/README.md has the details and how to try it unsigned. Private windows never show here: the extension cannot see them."
+                visible: !pane.entry && (root.host_state === "unavailable" || root.host_state === "sharing_off")
+                text: root.host_state === "sharing_off" ? root.sharing_off_hint + ".\n\nIn DesertFox set bridge_share_tabs to true, then open the picker again." : "No Firefox tabs to show: Firefox is not running, or DesertFox's bridge is off.\n\nIn DesertFox set bridge and bridge_share_tabs to true. Private windows never show here: DesertFox does not share them."
                 textFormat: Text.PlainText
                 wrapMode: Text.WordWrap
                 color: Style.text_muted

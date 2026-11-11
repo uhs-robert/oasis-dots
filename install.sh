@@ -166,8 +166,7 @@ main() {
     install_nvidia
     setup_voxtype
     setup_calendar_timer
-    register_firefox_host --quiet
-    install_firefox_extension_policy --quiet || warn "The Firefox extension policy was not installed; run: just firefox-extension"
+    retire_voxcmd_firefox_extension || warn "The old voxcmd Firefox extension was not fully removed; run: just retire-firefox-extension"
     setup_tailnet_ssh
     setup_syncthing
   fi

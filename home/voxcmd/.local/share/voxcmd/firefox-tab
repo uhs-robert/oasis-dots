@@ -6,17 +6,18 @@
   firefox-tab candidates tabs|sites <target> [--raw <transcript>]
                                        voxcmd candidates ({id, label, match_text}) for a spoken target
   firefox-tab focus <address> [title]  focus the window, then the tab titled so (Firefox's tab search)
-  firefox-tab focus tab:<id> [title]   activate the tab by id through the extension, then focus its window
+  firefox-tab focus tab:<id> [title]   activate the tab by id through DesertFox's bridge, then focus its window
 
-With the extension's host running (firefox-host), tabs are listed live and switched by id. Otherwise, or when the host
-fails, tabs come from the session store and switch through the address bar.
+With DesertFox's bridge running and `bridge_share_tabs` on, tabs are listed live and switched by id. Otherwise, or when
+the bridge fails, tabs come from the session store and switch through the address bar.
   firefox-tab goto [--running] <url>   focus a tab on the url's site, else open the url in a new tab; with --running,
                                        exit 3 without doing anything when no Firefox window is open
   firefox-tab open [--here] <url>      open the url in a new tab, or the url or text in the focused tab
   firefox-tab search <text>            search the text with the default engine in a new tab
   firefox-tab new-tab | close-tab      press Ctrl+T or Ctrl+W in Firefox
-  firefox-tab request <json>           send one request to the extension's host and print the reply line; a host that
-                                       cannot be reached prints {"ok": false, "unavailable": true, "error": ...}
+  firefox-tab request <json>           send one request ({"verb": ...}) to DesertFox's bridge and print the reply line;
+                                       a bridge that cannot be reached prints {"ok": false, "unavailable": true, "message": ...},
+                                       one that refuses to share tabs {"ok": false, "sharing_off": true, "message": ...}
 
 Keys are typed with wtype, and only into a Firefox window that has focus.
 """
@@ -54,10 +55,14 @@ def debug(message):
 
 # Not under /tmp without XDG_RUNTIME_DIR: another user could plant a socket there and feed this fake titles.
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR")
-HOST_SOCKET = os.path.join(RUNTIME_DIR, "voxcmd", "firefox.sock") if RUNTIME_DIR else None
-# Seconds a host request may take; the host itself gives the extension 2.
+HOST_SOCKET = os.path.join(RUNTIME_DIR, "desertfox", "bridge.sock") if RUNTIME_DIR else None
+# Seconds a bridge request may take; the bridge itself gives the extension up to 10.
 HOST_TIMEOUT = float(os.environ.get("VOXCMD_FIREFOX_HOST_TIMEOUT", "3"))
-# Seconds to wait for the window the extension marked with the nonce to show it in its title.
+# The bridge's fixed texts that mean it did nothing: tab sharing is off, or Firefox has no extension port open.
+SHARING_OFF_TEXT = "tab sharing is off"
+NOT_CONNECTED_TEXT = "the extension is not connected"
+SHARING_OFF_HINT = "DesertFox is not sharing its tabs: set bridge_share_tabs to true"
+# Seconds to wait for the window DesertFox marked with the nonce to show it in its title.
 PREFACE_WAIT = float(os.environ.get("VOXCMD_FIREFOX_PREFACE_WAIT", "1.0"))
 
 
@@ -219,21 +224,36 @@ def keys(*steps):
     debug(f"typed; the window title is now {hyprctl_json('activewindow', {}).get('title', '')!r}")
 
 
-# ---- extension ------------------------------------------------------------------------------------------------
+# ---- DesertFox bridge -----------------------------------------------------------------------------------------
 
 
 class HostError(Exception):
-    """The extension's host answered badly, or not in time, after the request was sent."""
+    """The bridge answered badly, or not in time, after the request was sent."""
 
 
 class HostUnavailable(HostError):
-    """The request never reached the host (no socket, an untrusted one, no connection): nothing was done, so the caller
-    may fall back to another way."""
+    """The request never took effect (no socket, an untrusted one, no connection, no extension behind the bridge, or
+    tab sharing off): nothing was done, so the caller may fall back to another way."""
+
+
+class SharingOff(HostUnavailable):
+    """The bridge is up but `bridge_share_tabs` is off in DesertFox."""
+
+
+sharing_off_said = False
+
+
+def say_sharing_off(fallback):
+    """Says once per run, on stderr, that tabs are not shared and what is used instead."""
+    global sharing_off_said
+    if not sharing_off_said:
+        sharing_off_said = True
+        print(f"{SHARING_OFF_HINT}, so {fallback}", file=sys.stderr)
 
 
 def trusted_socket():
     """Whether the socket and its directory are this user's and nobody else can write there, so nobody else can have
-    planted them. Read access does not matter: the socket itself is 0600 and XDG_RUNTIME_DIR is private."""
+    planted them. Read access does not matter: the socket itself is 0600 and the bridge's directory is 0700."""
     if not HOST_SOCKET:
         return "XDG_RUNTIME_DIR is not set"
     try:
@@ -249,11 +269,12 @@ def trusted_socket():
 
 
 def host_request(request):
-    """One request to firefox-host over its socket: a JSON line out, a JSON line back. Returns the reply's result.
-    HostUnavailable means nothing was sent; any other HostError means the request may have been acted on."""
+    """One request to the bridge over its socket: a JSON line out, a JSON line back. Returns the whole reply, whose
+    named fields are the verb's answer. HostUnavailable means nothing was done; any other HostError means the request
+    may have been acted on."""
     untrusted = trusted_socket()
     if untrusted:
-        raise HostUnavailable(f"the Firefox host is not usable: {untrusted}")
+        raise HostUnavailable(f"DesertFox's bridge is not usable: {untrusted}")
     connection = socket.socket(socket.AF_UNIX)
     connection.settimeout(HOST_TIMEOUT)
     try:
@@ -261,7 +282,7 @@ def host_request(request):
         connection.sendall(json.dumps(request).encode() + b"\n")
     except OSError as error:
         connection.close()
-        raise HostUnavailable(f"the Firefox host is unreachable: {error}")
+        raise HostUnavailable(f"DesertFox's bridge is unreachable: {error}")
     try:
         data = b""
         while not data.endswith(b"\n"):
@@ -271,17 +292,23 @@ def host_request(request):
             data += chunk
         reply = json.loads(data)
     except (OSError, ValueError) as error:
-        raise HostError(f"the Firefox host did not answer: {error}")
+        raise HostError(f"DesertFox's bridge did not answer: {error}")
     finally:
         connection.close()
-    if not isinstance(reply, dict) or reply.get("ok") is not True:
-        error = reply.get("error") if isinstance(reply, dict) else reply
-        raise HostError(f"the Firefox host answered with an error: {error}")
-    return reply.get("result")
+    if not isinstance(reply, dict):
+        raise HostError(f"DesertFox's bridge answered with something else than an object: {reply!r}")
+    if reply.get("ok") is not True:
+        message = str(reply.get("message") or "no reason given")
+        if message.startswith(SHARING_OFF_TEXT):
+            raise SharingOff(message)
+        if message == NOT_CONNECTED_TEXT:
+            raise HostUnavailable(f"DesertFox's bridge has no Firefox behind it: {message}")
+        raise HostError(f"DesertFox's bridge answered with an error: {message}")
+    return reply
 
 
 def live_tab(tab):
-    """A tab from the extension in the shape of store_tabs plus tab_id; raises HostError for a malformed one."""
+    """A tab from the bridge in the shape of store_tabs plus tab_id; raises HostError for a malformed one."""
     try:
         if not (isinstance(tab["tab_id"], int) and isinstance(tab["window_id"], int) and isinstance(tab.get("title", ""), str) and isinstance(tab.get("url", ""), str)):
             raise TypeError("wrong types")
@@ -296,53 +323,67 @@ def live_tab(tab):
             "address": None,
         }
     except (KeyError, TypeError, AttributeError) as error:
-        raise HostError(f"the Firefox host listed a malformed tab: {error}")
+        raise HostError(f"DesertFox listed a malformed tab: {error}")
 
 
 def live_tabs():
-    """Every visible tab the extension reports; None when it cannot say, whatever the reason: listing changes nothing."""
+    """Every visible tab the bridge reports; None when it cannot say, whatever the reason: listing changes nothing."""
     try:
-        listed = host_request({"cmd": "tabs"})
+        listed = host_request({"verb": "tabs"}).get("tabs")
         if not isinstance(listed, list) or not all(isinstance(tab, dict) for tab in listed):
-            raise HostError("the Firefox host listed no tabs")
+            raise HostError("DesertFox listed no tabs")
         return [live_tab(tab) for tab in listed if not tab.get("hidden")]
+    except SharingOff as error:
+        debug(f"{error}, so the session store is read")
+        say_sharing_off("tabs are read from the session store")
+        return None
     except HostError as error:
         debug(f"{error}, so the session store is read")
         return None
 
 
 def activate_tab(tab_id, title):
-    """Switches to the tab by its id, then focuses the Hyprland window showing it. Returns False, with nothing done,
-    only when the request never reached the extension; once it was sent a failure is reported and not retried, as the
-    tab may already have switched. The window is found by a nonce the extension puts in front of its title, since
-    titles are not unique and change while a tab loads. A window not found is not an error: the tab did switch."""
+    """Switches to the tab by its id, then raises the Hyprland window showing it. Returns False, with nothing done,
+    only when the request never took effect; once it was sent a failure is reported and not retried, as the tab may
+    already have switched. A window not found is not an error: the tab did switch."""
     nonce = os.environ.get("VOXCMD_FIREFOX_NONCE") or "vx" + os.urandom(6).hex()
     try:
-        result = host_request({"cmd": "activate", "tab_id": tab_id, "preface": nonce})
-        if not isinstance(result, dict) or result.get("activated") is not True or not isinstance(result.get("window_id"), int):
-            raise HostError("the Firefox host's activation answer is malformed")
+        result = host_request({"verb": "activate", "tab_id": tab_id, "preface": nonce})
+        if not isinstance(result.get("window_id"), int):
+            raise HostError("DesertFox's activation answer is malformed")
+    except SharingOff as error:
+        say_sharing_off("the address bar switches tabs")
+        debug(f"{error}, so the address bar switches tabs")
+        return False
     except HostUnavailable as error:
         debug(f"{error}, so the address bar switches tabs")
         return False
     except HostError as error:
         fail(f"{error}; the tab may have switched, so the address bar was not tried")
-    try:
-        confirmed = result.get("preface_set") is True and focus_marked_window(nonce)
-    finally:
-        try:
-            host_request({"cmd": "clear_preface", "window_id": result["window_id"], "preface": nonce})
-        except HostError as error:
-            debug(f"the title preface was not cleared now: {error}")
+    confirmed = result.get("preface_set") is True and raise_marked_window(nonce, result["window_id"])
     active = hyprctl_json("activewindow", {})
     if confirmed:
         debug(f"activated tab {tab_id}")
-    elif is_firefox(active) and printable(page_title(active.get("title", ""))) == printable(result.get("title", "")):
+    elif is_firefox(active) and printable(page_title(active.get("title", ""))) == printable(title):
         # Without the marker, a focused Firefox window showing the tab's title is the best evidence it is the one.
         debug(f"activated tab {tab_id}; its window was not marked, but a Firefox window showing it has focus")
     else:
         debug(f"activated tab {tab_id}; focus on its window is not confirmed")
         print("the tab switched, but its window could not be focused", file=sys.stderr)
     return True
+
+
+def raise_marked_window(nonce, window_id):
+    """Raises the Hyprland window DesertFox marked with the nonce for an activate, then gives its title back. DesertFox
+    assumes no window manager, so this is where the desktop finds the window: any caller that sent an activate with a
+    nonce (the tab switch here, a now-playing module later) ends with this call. Returns whether the window took focus."""
+    try:
+        return focus_marked_window(nonce)
+    finally:
+        try:
+            host_request({"verb": "clear_preface", "window_id": window_id, "preface": nonce})
+        except HostError as error:
+            debug(f"the title preface was not cleared now: {error}")
 
 
 def focus_marked_window(nonce):
@@ -424,7 +465,7 @@ def match_windows(tabs, clients):
 
 
 def all_tabs():
-    """Every tab, live from the extension when it answers, else from the session store, or with no profile or store
+    """Every tab, live from DesertFox's bridge when it answers, else from the session store, or with no profile or store
     to read only the windows, so focusing by window title still works."""
     tabs = live_tabs()
     return match_windows(session_tabs() if tabs is None else tabs, firefox_clients())
@@ -477,7 +518,7 @@ def tab_candidates(target, transcript):
         title = " ".join(tab["title"].split())
         site = site_of(tab["url"])
         label = f"{title} ({site})" if site else title
-        # "tab:<id> <title>" names the tab to the extension; the title lets the address bar find it when that fails.
+        # "tab:<id> <title>" names the tab to the bridge; the title lets the address bar find it when that fails.
         candidate_id = f"tab:{tab['tab_id']} {title}" if tab["tab_id"] is not None else f"{tab['address']} {title}"
         candidates.append({"id": candidate_id, "label": label, "match_text": title})
         if site:
@@ -505,7 +546,7 @@ def site_candidates(target, transcript):
 
 
 def focus_tab_by_id(tab_id, title):
-    """Activates the tab through the extension. When it cannot, the tab is found again by its title in the session
+    """Activates the tab through DesertFox's bridge. When it cannot, the tab is found again by its title in the session
     store, which has the window to switch it in."""
     if activate_tab(tab_id, title):
         return
@@ -660,20 +701,23 @@ def query_places(connection, words):
 
 
 def relay(text):
-    """One request to the host for another program (the Quickshell tabs picker), with the socket checks above."""
+    """One request to the bridge for another program (the Quickshell tabs picker), with the socket checks above. Prints
+    the bridge's own reply, or a failure with `unavailable` (nothing reached the bridge or Firefox) or `sharing_off`."""
     try:
         request = json.loads(text)
     except ValueError:
         request = None
-    if not isinstance(request, dict) or not isinstance(request.get("cmd"), str):
-        print("the request must be a JSON object with a cmd", file=sys.stderr)
+    if not isinstance(request, dict) or not isinstance(request.get("verb"), str):
+        print("the request must be a JSON object with a verb", file=sys.stderr)
         sys.exit(2)
     try:
-        reply = {"ok": True, "result": host_request(request)}
+        reply = host_request(request)
+    except SharingOff as error:
+        reply = {"ok": False, "sharing_off": True, "message": f"{SHARING_OFF_HINT} ({error})"}
     except HostUnavailable as error:
-        reply = {"ok": False, "unavailable": True, "error": str(error)}
+        reply = {"ok": False, "unavailable": True, "message": str(error)}
     except HostError as error:
-        reply = {"ok": False, "error": str(error)}
+        reply = {"ok": False, "message": str(error)}
     print(json.dumps(reply))
 
 

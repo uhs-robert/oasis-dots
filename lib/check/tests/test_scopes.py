@@ -72,7 +72,6 @@ CASES = [
     ("home/voxcmd/tests/run-phrases.sh", " voxphrases"),
     ("home/voxcmd/tests/run-calendar.sh", " voxrest"),
     ("home/voxcmd/tests/run-wake.sh", " voxrest"),
-    ("home/voxcmd/tests/run-firefox-extension.sh", " voxrest"),
     ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxrest"),
     ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxrest"),
     ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
@@ -83,7 +82,6 @@ CASES = [
     ("home/voxcmd/src/main.rs", " voxphrases voxclick voxrest voxrust"),
     ("home/voxcmd/Cargo.lock", " voxphrases voxclick voxrest voxrust"),
     ("home/voxcmd/.config/voxcmd/integrations/x.toml", " voxphrases voxclick voxrest voxrust"),
-    ("extras/voxcmd-firefox/background.js", " voxphrases voxclick voxrest"),
     ("home/voxcmd/rustfmt.toml", " voxrust"),
     ("home/voxcmd/tests/cli.rs", " voxrust"),
     # Cargo tests read the shipped share/ files and replacement rules, so they reach the crate step too.

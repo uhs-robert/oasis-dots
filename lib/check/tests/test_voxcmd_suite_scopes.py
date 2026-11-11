@@ -20,10 +20,10 @@ FALLTHROUGH = "home/voxcmd/*"
 SUITE_ENTRIES = {
     scopes.VOX_PHRASES: ["run-phrases.sh"],
     scopes.VOX_CLICK: ["run.sh", "run-sessions.sh", "run-modes.sh", "run-sequences.sh", "run-overview.sh", "run-monitors.sh"],
-    scopes.VOX_REST: ["run-calendar.sh", "run-wake.sh", "run-firefox-extension.sh"],
+    scopes.VOX_REST: ["run-calendar.sh", "run-wake.sh"],
 }
 
-EXTENSIONLESS_SCRIPTS = ("firefox-profile", "firefox-fake-host", "firefox-host-test")
+EXTENSIONLESS_SCRIPTS = ("firefox-profile", "firefox-fake-host")
 
 # Named in a suite's code but not read by it (a comment-free mention, such as a path in a string it only prints; or a
 # same-named file elsewhere: the click suite reads the shipped integrations/click.toml, not the crate's fixture of that

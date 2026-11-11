@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Stands in for firefox-host in the voxcmd tests: answers `tabs` and `activate` on $XDG_RUNTIME_DIR/voxcmd/firefox.sock.
+"""Stands in for DesertFox's bridge in the voxcmd tests: answers `tabs`, `activate` and `clear_preface` on
+$XDG_RUNTIME_DIR/desertfox/bridge.sock, in the bridge's shapes ({"verb": ...} in, {"ok": true, ...fields} or
+{"ok": false, "message"} out).
 
-  firefox-fake-host <tabs.json> <requests.log> [error|silent-activate|malformed-tabs|malformed-activate]
+  firefox-fake-host <tabs.json> <requests.log> [error|sharing-off|no-extension|silent-activate|malformed-tabs|malformed-activate]
 
-Every request line is appended to <requests.log>. `tabs` returns the fixture; `activate` returns the title and window
-of the tab with that id, or an error for an unknown one. With "error" every request is answered with an error.
+Every request line is appended to <requests.log>. `tabs` returns the fixture; `activate` returns the window of the tab with
+that id, or an error for an unknown one. With "error" every request is answered with an error, with "sharing-off" every
+tab verb is, and with "no-extension" every request says no extension is connected.
 """
 import json
 import os
@@ -15,7 +18,7 @@ import time
 tabs_path, requests_log = sys.argv[1:3]
 mode = sys.argv[3] if len(sys.argv) > 3 else ""
 tabs = json.load(open(tabs_path))
-path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "voxcmd", "firefox.sock")
+path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "desertfox", "bridge.sock")
 os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
 if os.path.exists(path):
     os.unlink(path)
@@ -29,22 +32,27 @@ while True:
         with open(requests_log, "a") as log:
             log.write(line)
         request = json.loads(line)
+        verb = request.get("verb")
         tab = next((tab for tab in tabs if tab["tab_id"] == request.get("tab_id")), None)
-        if mode == "silent-activate" and request["cmd"] == "activate":
+        if mode == "silent-activate" and verb == "activate":
             time.sleep(5)
             continue
         if mode == "error":
-            reply = {"ok": False, "error": "refused"}
-        elif mode == "malformed-tabs" and request["cmd"] == "tabs":
-            reply = {"ok": True, "result": [{"tab_id": "x", "window_id": 1}]}
-        elif mode == "malformed-activate" and request["cmd"] == "activate":
-            reply = {"ok": True, "result": "done"}
-        elif request["cmd"] == "tabs":
-            reply = {"ok": True, "result": tabs}
-        elif request["cmd"] == "activate" and tab:
-            reply = {"ok": True, "result": {"activated": True, "title": tab["title"], "window_id": tab["window_id"], "focused": True, "preface_set": True}}
-        elif request["cmd"] == "clear_preface":
-            reply = {"ok": True, "result": {"cleared": True}}
+            reply = {"ok": False, "message": "refused"}
+        elif mode == "sharing-off":
+            reply = {"ok": False, "message": "tab sharing is off, set bridge_share_tabs to true"}
+        elif mode == "no-extension":
+            reply = {"ok": False, "message": "the extension is not connected"}
+        elif mode == "malformed-tabs" and verb == "tabs":
+            reply = {"ok": True, "tabs": [{"tab_id": "x", "window_id": 1}]}
+        elif mode == "malformed-activate" and verb == "activate":
+            reply = {"ok": True, "focused": True}
+        elif verb == "tabs":
+            reply = {"ok": True, "tabs": tabs}
+        elif verb == "activate" and tab:
+            reply = {"ok": True, "window_id": tab["window_id"], "focused": True, "preface_set": True}
+        elif verb == "clear_preface":
+            reply = {"ok": True, "cleared": True}
         else:
-            reply = {"ok": False, "error": "No tab with that id"}
+            reply = {"ok": False, "message": "no such tab"}
         connection.sendall(json.dumps(reply).encode() + b"\n")
