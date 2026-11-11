@@ -23,5 +23,8 @@ version=${tag#v}
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 curl -fsSL --max-time 60 -o "$dir/install.sh" "$download_base/$tag/install.sh"
-[[ -s $dir/install.sh ]] || { echo "desertfox-host: the downloaded install.sh for $tag is empty" >&2; exit 1; }
+[[ -s $dir/install.sh ]] || {
+  echo "desertfox-host: the downloaded install.sh for $tag is empty" >&2
+  exit 1
+}
 bash "$dir/install.sh" "$version"
