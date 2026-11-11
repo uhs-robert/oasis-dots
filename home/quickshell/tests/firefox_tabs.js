@@ -1,4 +1,4 @@
-// Runs FirefoxTabs.js under node: reading firefox-tab's replies, tab order and the sort, window numbers and headers, the
+// Runs FirefoxTabs.js under node: reading firefox-tab's replies from DesertFox's bridge, tab order and the sort, window numbers and headers, the
 // window filter and thumbnail sources.
 "use strict";
 const fs = require("fs");
@@ -12,22 +12,24 @@ const names = ["parse_reply", "short_host", "tab_item", "items_of", "recent_firs
 vm.runInContext(fs.readFileSync(file, "utf8").replace(/^\.pragma.*$/m, "") + "\nthis.api = { " + names.join(", ") + " };", ctx);
 const F = ctx.api;
 
-const tab = (id, window_id, last_accessed, extra) => Object.assign({ tab_id: id, window_id: window_id, title: "Tab " + id, url: "https://www.example.com/" + id, active: false, discarded: false, last_accessed: last_accessed, incognito: false, pinned: false, hidden: false, fav_icon_url: "", thumbnail: "", thumbnail_at: 0 }, extra || {});
-// As the host lists them: grouped by window, each in tab-bar order.
-const listed = [tab(1, 10, 100), tab(3, 10, 200, { discarded: true, active: true }), tab(2, 20, 300, { active: true }), tab(4, 20, 50, { hidden: true }), tab(5, 30, 400, { incognito: true })];
+const tab = (id, window_id, last_accessed, extra) => Object.assign({ tab_id: id, window_id: window_id, title: "Tab " + id, url: "https://www.example.com/" + id, active: false, discarded: false, last_accessed: last_accessed, pinned: false, hidden: false, fav_icon_url: "", thumbnail: "", thumbnail_at: 0 }, extra || {});
+// As the bridge lists them: grouped by window, each in tab-bar order.
+const listed = [tab(1, 10, 100), tab(3, 10, 200, { discarded: true, active: true }), tab(2, 20, 300, { active: true }), tab(4, 20, 50, { hidden: true })];
 const items = F.items_of(listed);
 const windows = F.windows_of(items);
 
 const cases = [
-  ["an ok reply carries its result", () => F.parse_reply('{"ok":true,"result":[1]}'), { state: "ok", result: [1], error: "" }],
-  ["an unreachable host is unavailable", () => F.parse_reply('{"ok":false,"unavailable":true,"error":"no socket"}').state, "unavailable"],
-  ["an error answer is an error, with its text", () => F.parse_reply('{"ok":false,"error":"refused"}'), { state: "error", result: null, error: "refused" }],
+  ["an ok reply carries the bridge's fields", () => F.parse_reply('{"ok":true,"tabs":[1]}'), { state: "ok", fields: { ok: true, tabs: [1] }, error: "" }],
+  ["an unreachable bridge is unavailable", () => F.parse_reply('{"ok":false,"unavailable":true,"message":"no socket"}').state, "unavailable"],
+  ["tab sharing off is its own state, with its text", () => F.parse_reply('{"ok":false,"sharing_off":true,"message":"set bridge_share_tabs"}'), { state: "sharing_off", fields: null, error: "set bridge_share_tabs" }],
+  ["an error answer is an error, with its text", () => F.parse_reply('{"ok":false,"message":"refused"}'), { state: "error", fields: null, error: "refused" }],
+  ["an error with no text still says something", () => F.parse_reply('{"ok":false}').error, "unknown error"],
   ["no output at all (firefox-tab missing) is unavailable", () => [F.parse_reply("").state, F.parse_reply("sh: not found").state], ["unavailable", "unavailable"]],
   ["host: scheme, www, port, path and user go", () => [F.short_host("https://www.example.com:8080/a?b"), F.short_host("http://me@docs.example.org/x"), F.short_host("https://example.com")], ["example.com", "docs.example.org", "example.com"]],
   ["host: a URL with no host keeps its scheme", () => [F.short_host("about:config?filter=x"), F.short_host("file:///home/me/a.html"), F.short_host("moz-extension://abc/page.html"), F.short_host("")], ["about:config", "file", "abc", ""]],
-  ["tabs keep the order the host lists them in (tab-bar order)", () => items.map(i => i.tab_id), [1, 3, 2]],
+  ["tabs keep the order the bridge lists them in (tab-bar order)", () => items.map(i => i.tab_id), [1, 3, 2]],
   ["recent puts the most recently used first", () => F.recent_first(items).map(i => i.tab_id), [2, 3, 1]],
-  ["hidden and private tabs never show", () => items.some(i => i.tab_id === 4 || i.tab_id === 5), false],
+  ["hidden tabs never show", () => items.some(i => i.tab_id === 4), false],
   ["a malformed tab is skipped, not fatal", () => F.items_of([{ tab_id: "x", window_id: 1 }, null, tab(7, 1, 0)]).map(i => i.id), ["7"]],
   ["a result that is not a list gives no tabs", () => F.items_of({ tabs: [] }), []],
   ["the title is the label, the URL searchable as the description, the host a keyword", () => { const i = F.tab_item(tab(1, 1, 0)); return [i.label, i.description, i.keywords]; }, ["Tab 1", "https://www.example.com/1", ["example.com"]]],

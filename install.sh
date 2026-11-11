@@ -167,10 +167,14 @@ main() {
     install_nvidia
     setup_voxtype
     setup_calendar_timer
-    register_firefox_host --quiet
-    install_firefox_extension_policy --quiet || warn "The Firefox extension policy was not installed; run: just firefox-extension"
     setup_tailnet_ssh
     setup_syncthing
+  fi
+
+  # Outside the services branch, so --minimal and --no-services installs drop the home leftovers too. The system ones
+  # (xpi, policy entry) need system files on.
+  if [[ $OPT_SERVER -eq 0 ]]; then
+    retire_voxcmd_firefox_extension || warn "The old voxcmd Firefox extension was not fully removed; run: just retire-firefox-extension"
   fi
 
   print_manual_installs

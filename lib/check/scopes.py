@@ -110,15 +110,10 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/firefox-fake-host", VOX_CLICK),
     ("home/voxcmd/tests/run-calendar.sh", VOX_REST),
     ("home/voxcmd/tests/run-wake.sh", VOX_REST),
-    ("home/voxcmd/tests/run-firefox-extension.sh", VOX_REST),
-    ("home/voxcmd/tests/firefox-host-test", VOX_REST),
-    ("home/voxcmd/tests/firefox-background.test.js", VOX_REST),
-    # Every suite but the Firefox one runs inside sandbox.sh, whose tests/bin ask-stub they reach the ask stubs through;
-    # the Firefox suite shares the voxrest scope, so the scope runs.
+    # Every suite runs inside sandbox.sh, whose tests/bin holds the ask stubs they reach.
     ("home/voxcmd/tests/sandbox.sh", VOXCMD_SUITES),
     ("home/voxcmd/tests/bin/*", VOXCMD_SUITES),
-    # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites; the
-    # calendar one shares voxrest with the Firefox suite, which therefore reruns for no reason.
+    # Builds the fixture Firefox profile (places.sql, sessionstore.json) for the phrases, click and calendar suites.
     ("home/voxcmd/tests/firefox-profile", VOXCMD_SUITES),
     # Run by hand (benchmark, wake sampling), by no step.
     ("home/voxcmd/tests/bench.sh", ""),
@@ -157,7 +152,6 @@ PATH_SCOPES = [
     ("home/voxtype/.local/bin/voxtype-prompt", VOX_DUCK + " " + VOX_REST),
     ("home/voxtype/*", VOX_DUCK),
     ("home/systemd/.config/systemd/user/voxtype-duck.service", VOX_DUCK),
-    ("extras/voxcmd-firefox/*", VOXCMD_SUITES),
     # install: the installer libraries, their tests, the packages they read, the host-side calendar script, the agent
     # launcher and the plans CLI (small packages whose own scope would cost more than it saves).
     ("lib/install/*", "install"),
@@ -249,7 +243,6 @@ STEPS = [
     Step("voxcmd-calendar", VOX_REST, "bash ./home/voxcmd/tests/run-calendar.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-wake", VOX_REST, "bash ./home/voxcmd/tests/run-wake.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxtype-duck", VOX_DUCK, "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
-    Step("voxcmd-firefox", VOX_REST, "bash ./home/voxcmd/tests/run-firefox-extension.sh", ("jq", "fzf"), skip_reason=VOXCMD_SKIP, serial_lane=True),
     Step("voxcmd-rust", VOX_RUST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
     Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),

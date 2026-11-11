@@ -1054,7 +1054,7 @@ check "and types into the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M c
 out=$("$firefox_tab" close-tab)
 check "close-tab never closes a tab in a window not focused" "[[ \$out == 'Firefox is not focused' && -z \$(typed) ]]"
 
-# ---- Firefox with the extension's host answering: tabs listed live and switched by id -----------------------------
+# ---- Firefox with DesertFox's bridge answering: tabs listed live and switched by id -----------------------------
 
 section "firefox live"
 live_requests=$root/live-requests.log
@@ -1064,18 +1064,18 @@ start_fake_host() {
   : >"$live_requests"
   "$here/firefox-fake-host" "$here/fixtures/firefox/live-tabs.json" "$live_requests" "$@" &
   fake_host_pid=$!
-  wait_until test -S "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
+  wait_until test -S "$XDG_RUNTIME_DIR/desertfox/bridge.sock"
 }
 stop_fake_host() {
   [[ -z $fake_host_pid ]] || kill "$fake_host_pid" 2>/dev/null
   fake_host_pid=""
-  rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
+  rm -f "$XDG_RUNTIME_DIR/desertfox/bridge.sock"
 }
-mkdir -p "$XDG_RUNTIME_DIR/voxcmd"
-chmod 700 "$XDG_RUNTIME_DIR/voxcmd"
+mkdir -p "$XDG_RUNTIME_DIR/desertfox"
+chmod 700 "$XDG_RUNTIME_DIR/desertfox"
 : >"$debug_log"
 make_profile
-# Two windows show the same tab title; the extension marks the one holding the activated tab with the nonce.
+# Two windows show the same tab title; DesertFox marks the one holding the activated tab with the nonce.
 export VOXCMD_FIREFOX_NONCE=vxtest1
 marked_clients=$(jq -c 'map(if .address == "0x3001" then .title = "Cart - Example Shop — Mozilla Firefox" elif .address == "0x3002" then .title = "vxtest1 Cart - Example Shop — Mozilla Firefox" else . end)' <<<"$SANDBOX_CLIENTS_JSON")
 cart_window=$(jq -c '.[] | select(.address == "0x3002")' <<<"$marked_clients")
@@ -1083,24 +1083,24 @@ reloading_clients=$(jq -c 'map(if .address == "0x3002" then .title = "vxtest1 (3
 
 start_fake_host
 out=$("$firefox_tab" tabs)
-check "tabs come from the extension, an unloaded tab among them" "jq -e 'any(.[]; .tab_id == 12 and .title == \"Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
+check "tabs come from the bridge, an unloaded tab among them" "jq -e 'any(.[]; .tab_id == 12 and .title == \"Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
 check "each live tab is matched to its window as the store's are" "[[ \$(jq -r '[.[] | select(.tab_id == 21) | .address] | join(\" \")' <<<\"\$out\") == 0x3002 ]]"
-check "a window the extension does not list is still listed by its title" "jq -e 'any(.[]; .tab_id == null and .address == \"0x3003\")' <<<\"\$out\" >/dev/null"
+check "a window the bridge does not list is still listed by its title" "jq -e 'any(.[]; .tab_id == null and .address == \"0x3003\")' <<<\"\$out\" >/dev/null"
 out=$("$firefox_tab" candidates tabs "wiki" --raw "go to wiki")
 check "a candidate carries the tab id and its title" "[[ \$(jq -r '[.[] | select(.match_text == \"Unloaded Wiki Page\") | .id] | join(\"|\")' <<<\"\$out\") == 'tab:12 Unloaded Wiki Page' ]]"
 check "candidates are listed by site name too" "jq -e 'any(.[]; .match_text == \"wiki example\" and .id == \"tab:12 Unloaded Wiki Page\")' <<<\"\$out\" >/dev/null"
 check "a window with no live tab is a candidate under the old id" "jq -e 'any(.[]; .id == \"0x3003 Private notes\")' <<<\"\$out\" >/dev/null"
 
 check "hidden tabs are left out, as the store's are" "! jq -e 'any(.[]; .tab_id == 31)' <<<\"\$(\"\$firefox_tab\" tabs)\" >/dev/null"
-out=$("$firefox_tab" request '{"cmd": "tabs"}')
-check "request relays the host's reply as one JSON line" "jq -e '.ok == true and any(.result[]; .tab_id == 12)' <<<\"\$out\" >/dev/null"
-check "and the request itself unchanged" "[[ \$(tail -n 1 '$live_requests') == '{\"cmd\": \"tabs\"}' ]]"
+out=$("$firefox_tab" request '{"verb": "tabs"}')
+check "request relays the bridge's reply as one JSON line" "jq -e '.ok == true and any(.tabs[]; .tab_id == 12)' <<<\"\$out\" >/dev/null"
+check "and the request itself unchanged" "[[ \$(tail -n 1 '$live_requests') == '{\"verb\": \"tabs\"}' ]]"
 : >"$log"
 : >"$live_requests"
 out=$(SANDBOX_CLIENTS_JSON=$marked_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
-check "focus tab:<id> activates the tab through the extension, naming a nonce" "[[ \$(jq -c '[.cmd, .tab_id, .preface]' <<<\"\$(grep activate '$live_requests')\") == '[\"activate\",22,\"vxtest1\"]' ]]"
+check "focus tab:<id> activates the tab through the bridge, naming a nonce" "[[ \$(jq -c '[.verb, .tab_id, .preface]' <<<\"\$(grep activate '$live_requests')\") == '[\"activate\",22,\"vxtest1\"]' ]]"
 check "then focuses the window carrying the nonce, not the other one with the same title" "grep -q \"^hyprctl dispatch hl.dsp.focus({ window = 'address:0x3002' })\" '$log' && ! grep -q \"address:0x3001\" '$log'"
-check "and gives the title back" "[[ \$(jq -c '[.cmd, .window_id]' <<<\"\$(tail -n 1 '$live_requests')\") == '[\"clear_preface\",2]' ]]"
+check "and gives the title back" "[[ \$(jq -c '[.verb, .window_id]' <<<\"\$(tail -n 1 '$live_requests')\") == '[\"clear_preface\",2]' ]]"
 check "and types nothing" "[[ -z \$(typed) ]]"
 : >"$log"
 out=$(SANDBOX_CLIENTS_JSON=$reloading_clients SANDBOX_ACTIVEWINDOW_JSON=$cart_window "$firefox_tab" focus tab:22 "Cart - Example Shop")
@@ -1136,14 +1136,14 @@ out=$("$firefox_tab" tabs)
 check "a malformed tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
 
 start_fake_host
-chmod 775 "$XDG_RUNTIME_DIR/voxcmd"
+chmod 775 "$XDG_RUNTIME_DIR/desertfox"
 : >"$debug_log"
 out=$("$firefox_tab" tabs)
 check "a socket in a directory others can write to is not used" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null && grep -q 'others can write' '$debug_log'"
-chmod 755 "$XDG_RUNTIME_DIR/voxcmd"
+chmod 755 "$XDG_RUNTIME_DIR/desertfox"
 out=$("$firefox_tab" tabs)
 check "one others can only read, as voxcmd creates it, is used" "jq -e 'any(.[]; .tab_id == 22)' <<<\"\$out\" >/dev/null"
-chmod 700 "$XDG_RUNTIME_DIR/voxcmd"
+chmod 700 "$XDG_RUNTIME_DIR/desertfox"
 out=$(env -u XDG_RUNTIME_DIR "$firefox_tab" tabs)
 check "without XDG_RUNTIME_DIR nothing is looked for in /tmp" "jq -e 'all(.[]; .tab_id == null)' <<<\"\$out\" >/dev/null"
 out=$("$firefox_tab" tabs)
@@ -1158,26 +1158,54 @@ check "an error answer to an activation is reported, not retried through the add
 out=$("$firefox_tab" tabs)
 check "but an error answer to the tab list falls back to the session store" "jq -e 'all(.[]; .tab_id == null) and any(.[]; .title == \"Cart - Example Shop\")' <<<\"\$out\" >/dev/null"
 check "saying why in the debug trace" "grep -q 'answered with an error: refused' '$debug_log'"
-out=$("$firefox_tab" request '{"cmd": "tabs"}')
-check "request passes an error answer on as one" "jq -e '.ok == false and (.unavailable | not) and (.error | contains(\"refused\"))' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" request '{"verb": "tabs"}')
+check "request passes an error answer on as one" "jq -e '.ok == false and (.unavailable | not) and (.sharing_off | not) and (.message | contains(\"refused\"))' <<<\"\$out\" >/dev/null"
+
+start_fake_host sharing-off
+: >"$log"
+: >"$debug_log"
+status=0
+out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+check "with tab sharing off, focus says so plainly" "[[ \$out == *'set bridge_share_tabs to true'* ]]"
+check "and still switches through the address bar" "[[ \$status == 0 && \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
+out=$("$firefox_tab" tabs 2>&1 >/dev/null)
+check "listing says it once" "[[ \$(grep -c bridge_share_tabs <<<\"\$out\") == 1 ]]"
+out=$("$firefox_tab" tabs 2>/dev/null)
+check "and reads the session store" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" request '{"verb": "tabs"}')
+check "request marks it for the picker" "jq -e '.ok == false and .sharing_off == true and (.message | contains(\"bridge_share_tabs\"))' <<<\"\$out\" >/dev/null"
+
+for refusal in stale-tab rate-limit; do
+  start_fake_host "$refusal"
+  : >"$log"
+  status=0
+  out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop" 2>&1) || status=$?
+  check "a $refusal refusal of an activation falls back to the address bar" "[[ \$status == 0 && \$out != *'may have switched'* && \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
+done
+
+start_fake_host no-extension
+out=$("$firefox_tab" request '{"verb": "tabs"}')
+check "a bridge with no Firefox behind it is unavailable, as no socket is" "jq -e '.ok == false and .unavailable == true' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" tabs)
+check "and tabs come from the session store" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
 
 stop_fake_host
-out=$("$firefox_tab" request '{"cmd": "tabs"}')
-check "request says when no host can be reached" "jq -e '.ok == false and .unavailable == true' <<<\"\$out\" >/dev/null"
+out=$("$firefox_tab" request '{"verb": "tabs"}')
+check "request says when the bridge cannot be reached" "jq -e '.ok == false and .unavailable == true' <<<\"\$out\" >/dev/null"
 status=0
 "$firefox_tab" request '[1]' 2>/dev/null || status=$?
-check "and refuses a request that is not an object with a cmd" "[[ \$status == 2 ]]"
+check "and refuses a request that is not an object with a verb" "[[ \$status == 2 ]]"
 : >"$log"
 : >"$debug_log"
 out=$(SANDBOX_ACTIVEWINDOW_JSON=$inbox_window SANDBOX_SWITCHED_TITLE="Cart - Example Shop" "$firefox_tab" focus tab:22 "Cart - Example Shop")
 check "with no socket a tab id is looked up by title and switched through the address bar" "[[ \"\$(typed | paste -sd'|')\" == '-M ctrl l -m ctrl|-- % Cart - Example Shop|-k Down|-k Return' ]]"
 check "saying why in the debug trace" "grep -q 'is not usable' '$debug_log'"
-python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])' "$XDG_RUNTIME_DIR/voxcmd/firefox.sock"
+python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])' "$XDG_RUNTIME_DIR/desertfox/bridge.sock"
 out=$("$firefox_tab" tabs)
 check "a stale socket nobody listens on is no extension either" "jq -e 'all(.[]; .tab_id == null) and length > 0' <<<\"\$out\" >/dev/null"
 out=$("$firefox_tab" candidates tabs "cart" --raw "go to cart")
 check "and candidates keep the old id form" "[[ \$(jq -r '[.[] | select(.match_text == \"Cart - Example Shop\") | .id] | join(\"|\")' <<<\"\$out\") == '0x3002 Cart - Example Shop' ]]"
-rm -f "$XDG_RUNTIME_DIR/voxcmd/firefox.sock" "$debug_log"
+rm -f "$XDG_RUNTIME_DIR/desertfox/bridge.sock" "$debug_log"
 
 firefox_config=$root/firefox-config
 mkdir -p "$firefox_config/replacements.d"

@@ -1,11 +1,13 @@
 .pragma library
 
-// The Firefox tabs picker's reading of voxcmd's extension host (FirefoxTabsProvider.qml), kept here so node can test it:
+// The Firefox tabs picker's reading of DesertFox's bridge (FirefoxTabsProvider.qml), kept here so node can test it:
 // replies from `firefox-tab request`, tab order and the sort, window numbers and headers, the window filter and
 // thumbnail sources.
 
-// One reply line: { state: "ok" | "unavailable" | "error", result, error }. No output at all means firefox-tab is
-// missing or crashed, which is as unreachable as a missing socket.
+// One reply line from `firefox-tab request`: { state: "ok" | "unavailable" | "sharing_off" | "error", fields, error }.
+// `fields` is the bridge's reply (its named fields, `tabs` or `results`) and `error` its message. No output at all means
+// firefox-tab is missing or crashed, which is as unreachable as a missing socket. "sharing_off" is a bridge that is up
+// while `bridge_share_tabs` is off in DesertFox.
 function parse_reply(text) {
     var reply = null;
     try {
@@ -13,9 +15,10 @@ function parse_reply(text) {
     } catch (e) {
         reply = null;
     }
-    if (!reply || typeof reply !== "object") return { state: "unavailable", result: null, error: "no answer from firefox-tab" };
-    if (reply.ok === true) return { state: "ok", result: reply.result, error: "" };
-    return { state: reply.unavailable === true ? "unavailable" : "error", result: null, error: String(reply.error || "unknown error") };
+    if (!reply || typeof reply !== "object") return { state: "unavailable", fields: null, error: "no answer from firefox-tab" };
+    if (reply.ok === true) return { state: "ok", fields: reply, error: "" };
+    var state = reply.sharing_off === true ? "sharing_off" : reply.unavailable === true ? "unavailable" : "error";
+    return { state: state, fields: null, error: String(reply.message || "unknown error") };
 }
 
 // "example.com" from "https://www.example.com:8080/a?b"; a URL with no host keeps its scheme ("about:config", "file").
@@ -36,11 +39,11 @@ function text_or_empty(value) {
     return typeof value === "string" ? value : "";
 }
 
-// A picker item from one listed tab, or null for one the picker never shows: malformed, hidden, or private (the
-// extension cannot see private windows, so one listed anyway is not shown either).
+// A picker item from one listed tab, or null for one the picker never shows: malformed or hidden. A private window's
+// tabs never come from the bridge.
 function tab_item(tab) {
     if (!tab || typeof tab !== "object" || typeof tab.tab_id !== "number" || typeof tab.window_id !== "number") return null;
-    if (tab.hidden === true || tab.incognito === true) return null;
+    if (tab.hidden === true) return null;
     var url = text_or_empty(tab.url);
     var host = short_host(url);
     return {
@@ -62,7 +65,7 @@ function tab_item(tab) {
     };
 }
 
-// The shown tabs in the order the host lists them: Firefox's `tabs.query` gives each window's tabs in tab-bar order.
+// The shown tabs in the order the bridge lists them: Firefox's `tabs.query` gives each window's tabs in tab-bar order.
 function items_of(result) {
     if (!Array.isArray(result)) return [];
     var out = [];
@@ -148,7 +151,7 @@ function filter_label(filter, windows) {
     return filter === "all" || i < 0 ? "ALL" : "WINDOW " + (i + 1) + "/" + windows.length;
 }
 
-// tab id -> { thumbnail, thumbnail_at } from a `capture` result over the old map; a failed capture keeps the old image.
+// tab id -> { thumbnail, thumbnail_at } from a `capture` reply's results over the old map; a failed capture keeps the old image.
 function merged_thumbs(thumbs, captures) {
     var next = {};
     for (var k in thumbs) next[k] = thumbs[k];
@@ -168,15 +171,15 @@ function thumb_of(item, thumbs) {
     return { thumbnail: item.thumbnail, thumbnail_at: item.thumbnail_at };
 }
 
-// A file URL for the image, or "". The host rewrites a tab's image at the same path, so the capture time rides along
+// A file URL for the image, or "". The bridge rewrites a tab's image at the same path, so the capture time rides along
 // as a query: a new time is a new URL, which the Image loads afresh instead of reusing what it cached.
 function thumbnail_source(thumb) {
     if (!thumb || typeof thumb.thumbnail !== "string" || thumb.thumbnail.charAt(0) !== "/") return "";
     return "file://" + thumb.thumbnail.split("/").map(encodeURIComponent).join("/") + "?at=" + number_or(thumb.thumbnail_at, 0);
 }
 
-// Only icons that need no network: Firefox hands most favicons over as data: URLs. An http one would have the bar
-// fetch from the site, so it gets the generic glyph instead.
+// Only icons that need no network. The bridge blanks a data: URL icon (a list of them would outgrow one message), and
+// an http one would have the bar fetch from the site, so most tabs get the generic glyph.
 function favicon_source(url) {
     var u = String(url || "");
     return /^data:image\//i.test(u) || /^file:\/\//i.test(u) ? u : "";

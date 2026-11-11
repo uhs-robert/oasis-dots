@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Voice input: voxtype setup, plus voxcmd's Firefox host and the signed extension installed through an enterprise policy.
+# Voice input: voxtype setup, plus the cleanup of the retired voxcmd Firefox extension.
 
 # Builds the voxcmd crate under ~/.local/share/voxcmd-rs and links ~/.local/bin/voxcmd (and voxcmd-rs) to it, as `just
 # voxcmd-build` does. install.sh calls it after stowing: a build, not stow, makes the voxcmd link now, so a failed build
@@ -91,98 +91,55 @@ setup_voxtype() {
   success "voxtype configured"
 }
 
-# Registers voxcmd's Firefox host with Firefox. The manifest needs the host's absolute path, so it cannot be a stowed
-# file. Without the stowed voxcmd package there is no host to register: silent from the installer, a warning from `just`.
-register_firefox_host() {
-  local host="$HOME/.local/share/voxcmd/firefox-host"
-  local manifest="$HOME/.mozilla/native-messaging-hosts/voxcmd_firefox.json"
-  if [[ ! -x "$host" ]]; then
-    [[ "${1:-}" == --quiet ]] || warn "voxcmd's Firefox host is not stowed ($host), run: just stow voxcmd"
-    return 0
-  fi
-  if [[ "$host" == *[\"\\]* ]]; then
-    warn "Not registering the Firefox host: its path has a quote or backslash"
-    return 1
-  fi
-  local wanted
-  wanted=$(printf '{\n  "name": "voxcmd_firefox",\n  "description": "voxcmd tab control",\n  "path": "%s",\n  "type": "stdio",\n  "allowed_extensions": ["voxcmd@oasis-dots"]\n}\n' "$host")
-  if [[ "$(cat "$manifest" 2>/dev/null)" == "$wanted" ]]; then
-    info "Firefox host already registered"
-    return 0
-  fi
-  mkdir -p "$(dirname "$manifest")"
-  printf '%s\n' "$wanted" >"$manifest"
-  success "Firefox host registered: load extras/voxcmd-firefox in Firefox (see its README)"
-}
-
 FIREFOX_EXTENSION_ID="voxcmd@oasis-dots"
 
-# The paths and the sudo command are overridable so the test can run against a scratch directory without root.
-# FIREFOX_POLICY_SUDO may be set to the empty string.
-install_firefox_extension_policy() {
-  local quiet=0
-  [[ "${1:-}" == --quiet ]] && quiet=1
-  local source_xpi="$DOTFILES_DIR/extras/voxcmd-firefox.xpi"
+# DesertFox's own bridge replaced the voxcmd Firefox extension. This undoes what the installer once put on a machine:
+# the native-messaging manifest, the stowed host's dangling link, the installed xpi and the policy entry that loaded it.
+# Quiet and idempotent, so the installer may run it every time. The paths and the sudo command are overridable so the
+# test can run against a scratch directory without root. FIREFOX_POLICY_SUDO may be set to the empty string.
+retire_voxcmd_firefox_extension() {
   local xpi_dest="${FIREFOX_EXTENSION_XPI_DEST:-/usr/share/oasis-dots/voxcmd-firefox.xpi}"
   local policies_file="${FIREFOX_POLICIES_FILE:-/etc/firefox/policies/policies.json}"
-  local distribution_policies="${FIREFOX_DISTRIBUTION_POLICIES:-/usr/lib/firefox/distribution/policies.json}"
+  local manifest="$HOME/.mozilla/native-messaging-hosts/voxcmd_firefox.json"
+  local host="$HOME/.local/share/voxcmd/firefox-host"
   local -a sudo_cmd
   read -ra sudo_cmd <<<"${FIREFOX_POLICY_SUDO-sudo}"
+  local retired=0
 
-  if ! command -v firefox &>/dev/null; then
-    ((quiet)) || info "Firefox is not installed, skipping the voxcmd extension"
-    return 0
+  if [[ -e "$manifest" || -L "$manifest" ]]; then
+    rm -f "$manifest" || return 1
+    retired=1
   fi
-  if [[ ! -x "$HOME/.local/share/voxcmd/firefox-host" ]]; then
-    ((quiet)) || warn "voxcmd is not stowed, so the Firefox extension has no host to talk to, run: just stow voxcmd"
-    return 0
+  # Stow removes a link only while its package still holds the file, so the host's link outlives the deleted source.
+  if [[ -L "$host" && ! -e "$host" ]]; then
+    rm -f "$host" || return 1
+    retired=1
   fi
-  if [[ ! -f "$source_xpi" ]]; then
-    ((quiet)) || warn "No signed extension at $source_xpi, run: just sign-firefox-extension"
-    return 0
-  fi
-  require_cmd jq
-
-  # Firefox reads one policies file and does not merge, so an existing distribution file is shadowed by ours.
-  if [[ -f "$distribution_policies" ]]; then
-    warn "$distribution_policies exists and is ignored once $policies_file does; merge its policies there first"
-    return 1
+  # The xpi and the policy file are system files: `--no-system-files` and `--minimal` leave them (OPT_SYSTEM_FILES=0).
+  local system_files=${OPT_SYSTEM_FILES:-1}
+  if [[ $system_files -eq 1 && -e "$xpi_dest" ]]; then
+    "${sudo_cmd[@]}" rm -f "$xpi_dest" || return 1
+    retired=1
   fi
 
-  local policies_json='{}'
-  if [[ -e "$policies_file" ]]; then
-    policies_json=$(<"$policies_file")
-    if ! jq -e . >/dev/null 2>&1 <<<"$policies_json"; then
-      warn "$policies_file is not valid JSON, leaving it alone"
+  # Only a policies file that names the extension is read as JSON, so an unrelated broken file never fails the installer.
+  if [[ $system_files -eq 1 && -f "$policies_file" ]] && grep -qF "$FIREFOX_EXTENSION_ID" "$policies_file"; then
+    require_cmd jq
+    local trimmed policies_dir tmp
+    if ! trimmed=$(jq --arg id "$FIREFOX_EXTENSION_ID" 'del(.policies.ExtensionSettings[$id]) | if .policies.ExtensionSettings == {} then del(.policies.ExtensionSettings) else . end' "$policies_file"); then
+      warn "$policies_file is not valid JSON, leaving the old voxcmd Firefox policy entry alone"
       return 1
     fi
-  fi
-  local entry
-  entry=$(jq -n --arg url "file://$xpi_dest" '{installation_mode: "normal_installed", install_url: $url}')
-
-  local xpi_current=0 policy_current=0
-  cmp -s "$source_xpi" "$xpi_dest" && xpi_current=1
-  jq -e --arg id "$FIREFOX_EXTENSION_ID" --argjson entry "$entry" '.policies.ExtensionSettings[$id] == $entry' >/dev/null <<<"$policies_json" && policy_current=1
-  if ((xpi_current && policy_current)); then
-    info "Firefox extension policy already current"
-    return 0
-  fi
-
-  if ((! xpi_current)); then
-    "${sudo_cmd[@]}" install -Dm644 "$source_xpi" "$xpi_dest" || return 1
-  fi
-  if ((! policy_current)); then
-    local merged policies_dir tmp
-    merged=$(jq --arg id "$FIREFOX_EXTENSION_ID" --argjson entry "$entry" '.policies.ExtensionSettings[$id] = $entry' <<<"$policies_json") || return 1
     policies_dir=$(dirname "$policies_file")
-    "${sudo_cmd[@]}" install -d "$policies_dir" || return 1
     tmp=$("${sudo_cmd[@]}" mktemp "$policies_dir/.policies.json.XXXXXX") || return 1
-    if ! { printf '%s\n' "$merged" | "${sudo_cmd[@]}" tee "$tmp" >/dev/null &&
+    if ! { printf '%s\n' "$trimmed" | "${sudo_cmd[@]}" tee "$tmp" >/dev/null &&
       "${sudo_cmd[@]}" chmod 644 "$tmp" &&
       "${sudo_cmd[@]}" mv -f "$tmp" "$policies_file"; }; then
       "${sudo_cmd[@]}" rm -f "$tmp"
       return 1
     fi
+    retired=1
   fi
-  success "Firefox extension policy installed: restart Firefox to load voxcmd"
+  ((retired)) && success "Retired the voxcmd Firefox extension: DesertFox's bridge replaces it, restart Firefox"
+  return 0
 }
