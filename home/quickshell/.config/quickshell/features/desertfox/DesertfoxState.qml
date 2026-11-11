@@ -7,24 +7,21 @@ import qs.features.voice
 import qs.features.windows
 import "DesertfoxState.js" as State
 
-// The DesertFox mode and which-key panel, read from the snapshot the DesertFox display host keeps at
-// $XDG_RUNTIME_DIR/desertfox/state.json. Both only show while Firefox is the focused window; the file itself says
-// nothing about focus when Firefox loses it.
+// The DesertFox mode, read from the snapshot the DesertFox bridge host keeps at $XDG_RUNTIME_DIR/desertfox/state.json.
+// It only shows while Firefox is the focused window; the file itself says nothing about focus when Firefox loses it.
 Singleton {
     id: root
 
     // The file belongs to a running host of a known version.
     readonly property bool live: store.values.valid && root.owner_alive && root.probed_owner === root.owner_key
     // By address, not Hyprland.activeToplevel: that stays null after a Quickshell restart until the first focus event.
+    // WindowState.active_address falls back to focus history until then.
     readonly property bool firefox_focused: State.is_firefox_class(WindowState.class_of(WindowState.windows.find(t => t.address === WindowState.active_address)))
     readonly property bool shown: root.live && root.firefox_focused
 
     readonly property string mode_id: store.values.mode_id
-    // Empty hides the chip: hint and cmdline draw their own surface.
-    readonly property string chip_label: root.shown ? store.values.mode_label : ""
-    readonly property bool has_panel: root.shown && store.values.whichkey_items.length > 0
-    readonly property string panel_key: State.panel_key(store.values)
-    readonly property var panel_payload: State.payload_of(store.values)
+    // Hint and cmdline draw their own surface, so the chip hides there. The host publishes a label for every mode.
+    readonly property string chip_label: root.shown && !State.hides_chip(store.values.mode_id) ? store.values.mode_label : ""
 
     readonly property string state_dir: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/desertfox"
     readonly property int owner: store.values.host_pid
