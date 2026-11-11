@@ -11,7 +11,7 @@ The agent calling this tool should first determine the TIMEFRAME.
 1. Get the modification date of the newest `session-report*.md` at the repo root; this is the default TIMEFRAME.
 2. If no `session-report*.md` exists AND the user did not provide a specific timeframe then the default TIMEFRAME should instead be "24 hours ago".
 
-- Get modification date: `stat -c %y "$(ls -t session-report*.md | head -1)"`
+- Get modification date: `root="$(git rev-parse --show-toplevel)"; f="$(ls -t "$root"/session-report*.md 2>/dev/null | head -1)"; [ -n "$f" ] && stat -c %y "$f"`
 - Recent commits by time: !`git log --since="${TIMEFRAME}" --oneline --reverse`
 - Detailed commit info: !`git log --since="${TIMEFRAME}" --stat --reverse`
 - Current branch status: !`git status --short`
