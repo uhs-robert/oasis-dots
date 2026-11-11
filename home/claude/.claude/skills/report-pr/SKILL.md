@@ -1,26 +1,28 @@
 ---
 name: report-pr
-description: Generate development activity reports from a GitHub pull request, grouped into problem-and-fix sections, optionally split into one report per work session or date range. Requires a PR number or URL argument, plus an optional work description and split point. Use when the user asks for a PR report, pull request report, a report for part of a PR's work (e.g. "just today's work"), or /pr-report.
-argument-hint: "<pr-number-or-url> [description] [--split <date>[,<date>...]] [--since <date>] [--until <date>]"
+description: Generate development activity reports from one or more GitHub pull requests, one report per PR, grouped into problem-and-fix sections, optionally split into one report per work session or date range. Requires at least one PR number or URL argument, plus an optional work description and split point. Use when the user asks for a PR report, pull request report, a report for part of a PR's work (e.g. "just today's work"), or /pr-report.
+argument-hint: "<pr-number-or-url>... [description] [--split <date>[,<date>...]] [--since <date>] [--until <date>]"
 arguments:
   - args
 ---
 
 # PR Report
 
-Argument string: `$args`. It must include a PR number or URL, and may include a work description and a date range or split points.
+Argument string: `$args`. It must include one or more PR numbers or URLs, and may include a work description and a date range or split points.
 
 A report tells someone who wasn't there what work was done and why it mattered, in the order it happened. It is read by people billing, planning or reviewing the work, not by the code reviewer, so it explains problems and outcomes, not just file changes.
 
 ## Gather the record
 
-Determine the PR from `$args` (number, `#123`, or full URL).
+Determine each PR from `$args` (number, `#123`, or full URL). Write one report file per PR.
 
 - Commits with **authored** dates and full messages: `gh pr view <pr> --json commits --jq '.commits[] | "\(.authoredDate) \(.oid[0:7]) \(.messageHeadline)\n\(.messageBody)\n"'`. Use authored dates, never committed dates: a rebase or merge rewrites committed dates to the day it happened, so every commit looks like it was done that day.
 - Commit bodies carry the why (the problem found, the alternative rejected). Read them; headlines alone produce generic bullets.
 - The diff, per range: `gh pr diff <pr>`, or in a local clone `git diff --stat <from>..<to>` and `git diff --shortstat <from>..<to>` for line counts per period.
 - Related work outside the PR: commits on the base branch that reference the PR or its issue (`git log --all --grep '#<pr>' --grep '#<issue>'`). Include them, marked as going straight to the base branch, with their short SHAs.
 - The PR body and review comments can be stale or describe an earlier approach. Check claims against the final code before repeating them.
+- Commit messages can go stale the same way: a squash-merged or reworked branch has messages that describe code a later commit replaced. Check every claim against the final diff. Describe a replaced approach only as the requirement the final code meets.
+- Line counts cover source only. Exclude generated output: paths the repo lists as generated (for example `.claude/generated-paths`), minified `public/` output and `build: minify` commits. State source counts only.
 - If the work happened in this conversation, the conversation is also part of the record: verification against live systems, configuration changes outside the repo (CMS or no-code builders, dashboards, infra), merges, rebases and deploys are work and belong in the report even when they produced no commit.
 
 ## Splitting by session or date
@@ -29,8 +31,8 @@ When `$args` or the user asks for part of the work ("before today", "just this s
 
 - Partition commits by authored date. A split date starts the later period.
 - Write one report per period, each standing alone: its own title, sections, impact and line counts for that period's range only.
-- Write each period as that session's own report, in the voice of someone reporting what they did in that session. Do not frame an earlier period as "initial", "first version" or "previously", and do not refer to the other period.
-- Name the files `pr-report-1-<label>.md`, `pr-report-2-<label>.md`, …, with short labels such as `previous` and `today`. Without a split, use `pr-report.md`.
+- Write each period as that session's own report, in the first person, as the person who did that session's work. Do not frame an earlier period as "initial", "first version" or "previously", and do not refer to the other period.
+- Name the files `pr-report-<pr>-1-<label>.md`, `pr-report-<pr>-2-<label>.md`, …, with short labels such as `previous` and `today`. Without a split, use `pr-report-<pr>.md`. The PR number keeps parallel reports from overwriting each other.
 
 ## Output location
 
@@ -63,12 +65,16 @@ When `$args` or the user asks for part of the work ("before today", "just this s
 
 ### Writing
 
-- Active voice, past-tense verbs at the start of bullets: "Added", "Moved", "Gated", "Narrowed". Inside sentences, name the actor: "the code re-reads the record", not "the record is re-read".
+- Active voice, past-tense verbs at the start of bullets: "Added", "Moved", "Gated", "Narrowed". Inside sentences, name the actor: "the code re-reads the record" or "I re-read the record", not "the record is re-read".
 - Context paragraphs state the concrete problem, with the specific mechanism: "The SMS view only matches reviewed records and carries no Reviewer field, so the check could never see a pickup", not "the check didn't work properly".
 - Name the identifiers a reader would search for: file paths, view and field keys, config names, SHAs for out-of-PR commits.
 - New code files: give the size in lines (`(73 lines)`). New assets: give the size in bytes and any format change (`(1.8KB)`, PNG → JPEG).
-- Say how something was found when that was real work: "Testing showed…", "I checked every view against the live schema…".
+- Say how something was found when that was real work: "I tested…", "I checked every view against the live schema…".
 - No filler, no hedging, no praise of the work. Keep each bullet to one or two lines.
+- The report is client facing and used for billing. Describe each problem and its fix in the order it happened, in neutral, professional terms.
+- Do not judge our own work. Avoid words such as "overengineered", "mistake", "wrong" and "broken by us".
+- Write in the first person, as the person who did the work: "I added…", "I tested…". Do not refer to the person who directed the work ("the owner said", "the developer", "as requested").
+- State a change of direction as the requirement it met. Write "Rebuilt the modal on Knack's own markup so Knack's stylesheet styles it", not "the first build was overengineered".
 
 ## Formatting
 
