@@ -6,6 +6,7 @@ var modules = [
     { name: "start", file: "StartButton.qml", popup: true, section: "x", args: [], supports_compact: true },
     { name: "workspaces", file: "Workspaces.qml", popup: false, section: "x", args: [], supports_compact: true },
     { name: "desertfox", file: "Desertfox.qml", popup: false, section: "x", args: [] },
+    { name: "desertfox_playing", file: "DesertfoxPlaying.qml", popup: false, section: "x", args: [] },
     { name: "clock", file: "Clock.qml", popup: true, section: "z", args: [], supports_compact: true },
     { name: "tray", file: "Tray.qml", popup: true, section: "x", args: [] },
     { name: "volume", file: "Volume.qml", popup: true, section: "x", args: [], supports_compact: true },

@@ -48,7 +48,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - [`overview/`](features/overview/README.md): Workspace overview and its voice contract
 - [`bar/`](features/bar/README.md): Bar layout and modules, command status
 - [`bar_editor/`](features/bar_editor/README.md): The full-screen editor for the bar's modules, opened over IPC
-- `desertfox/` holds `DesertfoxState` (the DesertFox bridge host's `$XDG_RUNTIME_DIR/desertfox/state.json`: the mode, ignored once its host process is gone or its `version` is not 2) and `DesertfoxState.js` (its validation and the Firefox class gate); the `desertfox` bar module is in `bar/modules/`.
+- `desertfox/` holds `DesertfoxState` (the DesertFox bridge host's `$XDG_RUNTIME_DIR/desertfox/state.json`: the mode, ignored once its host process is gone or its `version` is not 2) and `DesertfoxState.js` (its validation and the Firefox class gate); `NowPlayingState` (a `subscribe` socket to the bridge host, kept open while a `desertfox_playing` module is mounted, with backoff reconnects, plus the jump and pause calls) and `NowPlaying.js` (the event reducer); the `desertfox` and `desertfox_playing` bar modules are in `bar/modules/`.
 - `voice/` holds `VoxSessionState` and `VoxWakeState` (the voxcmd session and wake-word files), `VoxtypeState` and `VoxtypeAudioState` (dictation state and samples), `VoiceSettings`, and the click hints: `ClickHints`, its IPC handler and `ClickHintsOverlay`.
 - [`settings/`](features/settings/README.md): The Settings panel and its saved state files
 - [`popups/`](features/popups/README.md): Popup framework and shared popup keys
