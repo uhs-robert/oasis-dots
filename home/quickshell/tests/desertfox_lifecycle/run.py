@@ -86,6 +86,10 @@ class Run:
         with open(os.path.join(self.runtime, "mount.txt"), "w") as f:
             f.write("1\n" if on else "0\n")
 
+    def write_ac(self, on):
+        with open(os.path.join(self.runtime, "ac.txt"), "w") as f:
+            f.write("1\n" if on else "0\n")
+
     def start(self):
         cfg = os.path.join(self.root, "cfg")
         os.makedirs(cfg)
@@ -217,6 +221,10 @@ class FakeBridge:
         self.mode = "serve"
         self.subscribes = []
         self.open_subscribers = 0
+        self.connections = []
+        # Cleared to hold every `tabs` reply back, and to make it name a tab that is playing.
+        self.tabs_release = threading.Event()
+        self.tabs_release.set()
         self.lock = threading.Lock()
         self.server = None
 
@@ -250,7 +258,10 @@ class FakeBridge:
             except ValueError:
                 return
             if verb == "tabs":
-                connection.sendall(b'{"ok": true, "tabs": []}\n')
+                held = not self.tabs_release.is_set()
+                self.tabs_release.wait(10)
+                tabs = b'[{"tab_id": 9, "window_id": 1, "audible": true, "last_accessed": 1, "title": "Stale", "url": "u"}]' if held else b"[]"
+                connection.sendall(b'{"ok": true, "tabs": ' + tabs + b'}\n')
                 return
             if verb != "subscribe":
                 return
@@ -259,6 +270,7 @@ class FakeBridge:
                 refuse = self.mode == "refuse"
                 if not refuse:
                     self.open_subscribers += 1
+                    self.connections.append(connection)
             if refuse:
                 connection.sendall(b'{"ok": false, "message": "too many subscribers"}\n')
                 return
@@ -271,6 +283,13 @@ class FakeBridge:
             finally:
                 with self.lock:
                     self.open_subscribers -= 1
+                    if connection in self.connections:
+                        self.connections.remove(connection)
+
+    def push(self, line):
+        with self.lock:
+            for connection in self.connections:
+                connection.sendall(line.encode() + b"\n")
 
     def wait_subscribers(self, count, timeout=WAIT_S):
         deadline = time.time() + timeout
@@ -317,6 +336,46 @@ def now_playing_steps(r, problems):
         bridge.down()
 
 
+def power_and_stale_steps(r, problems):
+    def check(name, result):
+        print(("ok   " if result is None else "FAIL ") + name + ("" if result is None else "\n     " + result))
+        if result is not None:
+            problems.append(name)
+
+    bridge = FakeBridge(os.path.join(r.dir, "bridge.sock"))
+    os.makedirs(r.dir, exist_ok=True)
+    try:
+        r.write_ac(False)
+        r.start()
+        time.sleep(2.5)
+        r.write_mount(True)
+        time.sleep(3.5)
+        bridge.up()
+        time.sleep(4)
+        check("battery: a down bridge is not retried", None if not bridge.subscribes else "%d asks on battery" % len(bridge.subscribes))
+        r.write_ac(True)
+        check("AC returns: the stream connects at once", r.wait_for({"streaming": "1", "now": "Song"}, timeout=3))
+        r.write_ac(False)
+        bridge.push('{"event": "tab_audible", "tab_id": 5, "window_id": 1, "audible": true, "title": "Next", "url": "u", "seq": 2}')
+        check("battery: an open stream stays up and keeps delivering", r.wait_for({"streaming": "1", "now": "Next"}))
+        r.write_ac(True)
+
+        # A tab list that is still in flight when sharing goes off must not bring its tabs back.
+        r.write_mount(False)
+        check("stale reply: unmounted", r.wait_for({"streaming": "0"}))
+        bridge.tabs_release.clear()
+        r.write_mount(True)
+        check("stale reply: streaming again with the tab list held back", r.wait_for({"streaming": "1", "now": "Song"}))
+        bridge.push('{"event": "tabs_off", "seq": 3}')
+        check("stale reply: tabs_off empties the chip", r.wait_for({"now": ""}))
+        bridge.tabs_release.set()
+        check("stale reply: the old tab list is dropped", r.hold(1.5, {"streaming": "1", "now": ""}))
+    finally:
+        r.stop()
+        bridge.tabs_release.set()
+        bridge.down()
+
+
 def main():
     problems = []
     with tempfile.TemporaryDirectory() as root:
@@ -329,6 +388,12 @@ def main():
         r = Run(root)
         try:
             now_playing_steps(r, problems)
+        finally:
+            r.stop()
+    with tempfile.TemporaryDirectory() as root:
+        r = Run(root)
+        try:
+            power_and_stale_steps(r, problems)
         finally:
             r.stop()
     return 1 if problems else 0

@@ -5,8 +5,9 @@
 // the last entry is the tab to show. `touched` is the tabs an event named since the stream started: a one-time tab list
 // taken at connect is older than any of those and must not overwrite them. `pending` holds the title and address of a
 // tab that is not known to play yet, so a title change that beats the tab list is not lost when the list adds the tab.
+// Once the list has settled (`seeded`) nothing is held any more.
 
-var empty = { audible: [], touched: {}, pending: {} };
+var empty = { audible: [], touched: {}, pending: {}, seeded: false };
 
 // A page that retitles many silent tabs must not grow `pending` without end before the list arrives.
 var max_pending = 64;
@@ -57,28 +58,25 @@ function reduce(state, event) {
     const id = event.tab_id;
     if (event.event === "tab_audible") {
         const rest = without(state.audible, id);
-        return {
+        return Object.assign({}, state, {
             audible: event.audible === true ? rest.concat([tab_of(event)]) : rest,
             touched: mark(state.touched, id),
             pending: omit(state.pending, id)
-        };
+        });
     }
     if (event.event === "tab_updated") {
         const text = { title: String(event.title || ""), url: String(event.url || "") };
         if (state.audible.some(t => t.tab_id === id)) {
-            return {
-                audible: state.audible.map(t => t.tab_id === id ? Object.assign({}, t, text) : t),
-                touched: state.touched,
-                pending: state.pending
-            };
+            return Object.assign({}, state, { audible: state.audible.map(t => t.tab_id === id ? Object.assign({}, t, text) : t) });
         }
+        if (state.seeded) return state;
         if (!(id in state.pending) && Object.keys(state.pending).length >= max_pending) return state;
         const pending = Object.assign({}, state.pending);
         pending[id] = text;
-        return { audible: state.audible, touched: state.touched, pending: pending };
+        return Object.assign({}, state, { pending: pending });
     }
     if (event.event === "tab_removed") {
-        return { audible: without(state.audible, id), touched: mark(state.touched, id), pending: omit(state.pending, id) };
+        return Object.assign({}, state, { audible: without(state.audible, id), touched: mark(state.touched, id), pending: omit(state.pending, id) });
     }
     // Sharing went off: the host forgot every tab and no tab event follows until it is on again.
     if (event.event === "tabs_off") return empty;
@@ -89,7 +87,7 @@ function reduce(state, event) {
 // used last is the one that shows. The tabs already known stay newer than all of them. A title change that came before
 // the reply is newer than the reply's text, so it wins. Whatever the reply, the held changes are dropped after.
 function seed(state, reply) {
-    const settled = { audible: state.audible, touched: state.touched, pending: {} };
+    const settled = { audible: state.audible, touched: state.touched, pending: {}, seeded: true };
     if (!reply || reply.ok !== true || !Array.isArray(reply.tabs)) return settled;
     const older = reply.tabs
         .filter(t => t && t.audible === true && typeof t.tab_id === "number" && !state.touched[t.tab_id])

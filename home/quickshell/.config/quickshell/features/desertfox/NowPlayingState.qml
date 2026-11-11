@@ -101,11 +101,17 @@ Singleton {
         }
     }
 
-    // Power came back while the stream was down and no retry waits: try again now.
+    // On battery a waiting retry is cancelled. When power comes back with the stream down and no retry waiting, try again
+    // now.
     Connections {
         target: PowerSource
         function onOn_acChanged() {
-            if (PowerSource.on_ac && root.wanted && !root.streaming && !retry.running && !link.active) link.active = true;
+            if (!PowerSource.on_ac) {
+                retry.stop();
+                if (!root.streaming) link.active = false;
+            } else if (root.wanted && !root.streaming && !retry.running && !link.active) {
+                link.active = true;
+            }
         }
     }
 
