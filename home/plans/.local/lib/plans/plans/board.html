@@ -56,25 +56,11 @@
   .combo-list li.chosen { font-weight: 600; }
   .combo-list li.none { color: var(--dim); cursor: default; }
   header label { color: var(--dim); }
-  #keys { margin-left: auto; color: var(--dim); font-size: 12px; }
-  #settings-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
+  #help-btn, #settings-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
                   color: var(--dim); background: none; border: 0; border-radius: 4px; cursor: pointer; }
-  #settings-btn:hover { color: var(--accent); }
-  #settings-btn:focus-visible { color: var(--accent); outline: 1px solid var(--accent); }
-  /* Narrow screens fold the hint into a "?". The text stays in the same element, so a script that edits the text
-     still applies. Hover or focus overlays the full hint on the "?" spot. */
-  @media (max-width: 1599px) {
-    #keys { font-size: 0; width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: help;
-            border-radius: 50%; }
-    #keys::before { content: "?"; font-size: 12px; }
-    /* right: 44px keeps the gear (24px wide, 8px gap, 12px header padding) uncovered. */
-    #keys:hover, #keys:focus { position: absolute; right: 44px; top: 8px; z-index: 6; width: auto; height: auto;
-                               padding: 3px 8px; font-size: 12px; line-height: 1.35; text-align: left; cursor: default;
-                               background: var(--panel); border-radius: 4px; outline: 0; }
-    #keys:hover::before, #keys:focus::before { content: none; }
-    /* The expanded hint leaves the flow, and with it the auto margin that pushed the gear right. */
-    header:has(#keys:hover, #keys:focus) #settings-btn { margin-left: auto; }
-  }
+  #help-btn { margin-left: auto; font: 600 15px system-ui, sans-serif; }
+  #help-btn:hover, #settings-btn:hover { color: var(--accent); }
+  #help-btn:focus-visible, #settings-btn:focus-visible { color: var(--accent); outline: 1px solid var(--accent); }
   #message { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 10; display: none;
              max-width: 80vw; padding: 8px 14px; border-radius: 6px; background: var(--bad); color: var(--bg); }
   #message.info { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
@@ -119,6 +105,27 @@
   #confirm { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
              background: var(--overlay); }
   #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; max-width: 70ch; }
+  #help { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
+          padding: 12px; background: var(--overlay); }
+  #help.open { display: flex; }
+  #help-panel { width: 100%; max-width: 640px; max-height: 100%; overflow-y: auto; padding: 14px 18px 18px;
+                background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  #help-panel .top { display: flex; align-items: center; gap: 8px; }
+  #help-panel h2 { flex: 1; margin: 0; font-size: 16px; }
+  #help-panel h3 { margin: 14px 0 6px; color: var(--dim); font-size: 11px; text-transform: uppercase; }
+  #help-panel dl { display: grid; grid-template-columns: 8em 1fr; gap: 6px 16px; align-items: baseline; margin: 0; }
+  #help-panel dt { display: flex; flex-wrap: wrap; gap: 4px; }
+  #help-panel dd { margin: 0; }
+  #help-panel kbd { min-width: 1.6em; padding: 1px 6px; background: var(--card); color: var(--accent);
+                    border: 1px solid var(--line); border-radius: 4px; font: 12px ui-monospace, monospace; text-align: center; }
+  /* One borderless X for every panel. The doubled class and :is raise it over the panels' own button rules. */
+  html :is(#sheet-panel, #settings-panel, #help-panel) button.close-x.close-x { display: flex; align-items: center; justify-content: center;
+        flex: none; width: 24px; height: 24px; padding: 0; color: var(--dim); background: none; border: 0; border-radius: 4px;
+        cursor: pointer; }
+  html :is(#sheet-panel, #settings-panel, #help-panel) button.close-x.close-x:hover,
+  html :is(#sheet-panel, #settings-panel, #help-panel) button.close-x.close-x:focus-visible { color: var(--accent); }
+  html :is(#sheet-panel, #settings-panel, #help-panel) button.close-x.close-x:focus-visible { outline: 1px solid var(--accent); }
+  html.phone :is(#sheet-panel, #settings-panel, #help-panel) button.close-x.close-x { width: 32px; height: 32px; }
   #settings-panel h2 { flex: 1; margin: 0; font-size: 16px; }
   #settings-panel label { display: block; margin: 14px 0 4px; color: var(--dim); }
   .hidden { display: none !important; }
@@ -127,11 +134,10 @@
   #tabs, #sheet, #settings, #confirm .phone-only { display: none; }
   html.phone { scroll-padding-top: var(--tabs-h, 40px); }
   html.phone header { position: static; }
-  html.phone #keys { display: none; }
   html.phone #settings input { font-size: 16px; }
   /* The theme list is absolute inside the panel, so the panel needs room for it or the list clips. */
   html.phone #settings-panel { height: 70vh; }
-  html.phone #settings-btn { margin-left: auto; width: 32px; height: 32px; }
+  html.phone #help-btn, html.phone #settings-btn { width: 32px; height: 32px; }
   html.phone #repo-picker { flex: 1 1 100%; }
   html.phone #repo { width: 100%; }
   html.phone #status-picker { display: none; }
@@ -244,7 +250,7 @@
     <ul id="kind-list" class="combo-list" role="listbox"></ul>
   </div>
   <label title="Cards waiting on the owner: a question, an approval or a task"><input id="waiting" type="checkbox"> Needs me</label>
-  <span id="keys" tabindex="0">j k cards, gg G ends, h l columns, H L status, J K rank, o view, e editor, a owner, x cancel, / repo, comma settings</span>
+  <button id="help-btn" type="button" aria-label="Help" title="Help (?)">?</button>
   <button id="settings-btn" type="button" aria-label="Settings" title="Settings (,)">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7c-.1-.6-.1-1.2 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
   </button>
@@ -255,9 +261,10 @@
 <div id="sheet"><div id="sheet-panel"></div></div>
 <div id="message"></div>
 <div id="confirm"><div></div></div>
+<div id="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div id="help-panel"></div></div>
 <div id="settings" role="dialog" aria-label="Settings">
   <div id="settings-panel">
-    <div class="top"><h2>Settings</h2><button id="settings-close" type="button">Close</button></div>
+    <div class="top"><h2>Settings</h2></div>
     <label for="theme">Theme</label>
     <div class="combo-picker" id="theme-picker">
       <input id="theme" class="combo" type="text" role="combobox" aria-expanded="false" aria-controls="theme-list"
@@ -307,6 +314,17 @@ function make(tag, class_name, text) {
   if (class_name) node.className = class_name;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+// The one X every panel closes with. Its look is the .close-x rule.
+function close_button(on_click) {
+  const button = make("button", "close-x");
+  button.type = "button";
+  button.setAttribute("aria-label", "Close");
+  button.title = "Close";
+  button.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  button.addEventListener("click", on_click);
+  return button;
 }
 
 function show_message(text, kind) {
@@ -644,8 +662,6 @@ function end_preview() {
 
 apply_theme();
 
-const KEYS_HELP = element("keys").textContent;
-
 async function load_board() {
   if (board_is_busy()) { held_reload = true; return; }
   const response = await fetch("/api/board", { cache: "no-store" });
@@ -657,7 +673,6 @@ async function load_board() {
   owner_colors = assign_owner_colors(board.repos.flatMap((repo) => repo.docs.map((doc) => doc.owner_session ?? "")));
   server_lost = false;
   apply_theme();
-  element("keys").textContent = KEYS_HELP.replace(board.can_open_terminal === false ? ", e editor" : "", "");
   fill_filter_choices();
   render();
 }
@@ -1054,8 +1069,7 @@ element("sheet").addEventListener("click", (event) => { if (event.target === ele
 // field's typing or the button under the finger.
 function build_sheet() {
   const panel = element("sheet-panel");
-  const close = make("button", "", "Close");
-  close.addEventListener("click", close_sheet);
+  const close = close_button(close_sheet);
   const top = make("div", "top");
   const title = make("div");
   title.style.flex = "1";
@@ -1841,6 +1855,7 @@ make_combo({
 combos.theme.set_choices(THEMES.map(([value, label]) => ({ value, label })));
 
 function open_settings() {
+  close_help();
   settings_open = true;
   settings_box.classList.add("open");
   mark_panel_open();
@@ -1874,7 +1889,73 @@ settings_box.addEventListener("click", (event) => { if (event.target === setting
 document.addEventListener("click", (event) => {
   if (settings_open && !event.target.closest("#settings, #settings-btn")) close_settings();
 }, true);
-element("settings-close").addEventListener("click", close_settings);
+element("settings-panel").firstElementChild.append(close_button(close_settings));
+
+// The help modal. Its rows come from this one list, so the hints stay in step with the KEYS map below. A row with
+// needs_terminal is dropped when the server has no terminal to open an editor in.
+const HELP_SECTIONS = [
+  ["Navigation", [
+    [["j", "k"], "Next or previous card"],
+    [["h", "l"], "Previous or next column"],
+    [["g", "g"], "First card in the column"],
+    [["G"], "Last card in the column"],
+    [["/"], "Pick a repo"],
+  ]],
+  ["Cards", [
+    [["o", "Enter"], "Open the doc view"],
+    [["H", "L"], "Move to the previous or next status"],
+    [["J", "K"], "Rank down or up"],
+    [["a"], "Set the owner"],
+    [["e"], "Open in the editor", { needs_terminal: true }],
+    [["x"], "Cancel the card"],
+  ]],
+  ["Board", [
+    [[","], "Settings"],
+    [["?"], "This help"],
+    [["Esc"], "Close a panel or this help"],
+  ]],
+];
+
+let help_open = false;
+
+function build_help() {
+  const panel = element("help-panel");
+  const body = [make("div", "top")];
+  body[0].append(make("h2", "", "Keyboard shortcuts"), close_button(close_help));
+  for (const [title, rows] of HELP_SECTIONS) {
+    const list = make("dl");
+    for (const [keys, text, flags = {}] of rows) {
+      if (flags.needs_terminal && board && board.can_open_terminal === false) continue;
+      const term = make("dt");
+      term.append(...keys.map((key) => make("kbd", "", key)));
+      list.append(term, make("dd", "", text));
+    }
+    body.push(make("h3", "", title), list);
+  }
+  panel.replaceChildren(...body);
+}
+
+function open_help() {
+  if (settings_open) close_settings();
+  help_open = true;
+  build_help();
+  element("help").classList.add("open");
+  element("help-panel").querySelector(".close-x").focus();
+}
+
+function close_help() {
+  if (!help_open) return;
+  help_open = false;
+  element("help").classList.remove("open");
+  document.activeElement.blur();
+}
+
+element("help-btn").addEventListener("click", () => {
+  if (help_open) close_help();
+  else open_help();
+  element("help-btn").blur();
+});
+element("help").addEventListener("click", (event) => { if (event.target === element("help")) close_help(); });
 
 // Drag by pointer events rather than HTML drag and drop: the card can only land in its own lane, and the marker
 // shows the slot the drop takes.
@@ -1967,6 +2048,7 @@ const KEYS = {
   x: () => cancel_card(),
   o: () => open_view(),
   ",": () => open_settings(),
+  "?": () => open_help(),
   Enter: () => open_view(),
 };
 
@@ -1974,6 +2056,20 @@ document.addEventListener("keydown", (event) => {
   if (pending_confirm) {
     event.preventDefault();
     if (["y", "n", "Escape"].includes(event.key)) answer_confirm(event.key === "y");
+    return;
+  }
+  // Help captures every key like the confirm box. Only Escape and the key that opened it close it, and Tab stays on
+  // the X, the one control inside.
+  if (help_open) {
+    if (event.ctrlKey || event.metaKey || event.altKey || /^F\d{1,2}$/.test(event.key)) return;
+    if (event.key === "Escape" || event.key === "?") {
+      event.preventDefault();
+      close_help();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+    } else if (!event.target.closest("button")) {
+      event.preventDefault();
+    }
     return;
   }
   // Settings captures the board keys like the confirm box. The theme box keeps typing, and its Escape closes its own
