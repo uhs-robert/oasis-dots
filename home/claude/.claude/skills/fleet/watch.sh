@@ -56,10 +56,11 @@ fleet=$1 project=$2
 stuck_seconds=${FLEET_STUCK_SECONDS:-1800}
 nudge_text=${FLEET_NUDGE_TEXT:-"Fleet watchdog: you look idle while a piece of yours is in building status. Continue it, or set waiting_on and say why you are held."}
 
-main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") || {
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || {
   echo "watch.sh: not in a git repository" >&2
   exit 2
 }
+main_checkout=$(dirname "$git_common_dir")
 log_dir=$main_checkout/.logs/$project
 mkdir -p "$log_dir"
 log_file=$log_dir/fleet-watch.md
@@ -90,13 +91,15 @@ load_state() {
   [[ -f $state_file ]] || return 0
   while IFS=$'\t' read -r name h c e ah aa; do
     [[ -n $name ]] || continue
+    # An empty field is stored as "-": read with a tab separator folds empty fields and shifts the rest.
+    [[ $ah != - ]] || ah=
     hash[$name]=$h changed_at[$name]=$c ever_owned[$name]=$e acted_hash[$name]=$ah acted_at[$name]=$aa
   done <"$state_file"
 }
 save_state() {
   local name
   for name in "${!changed_at[@]}"; do
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:-}" "${acted_at[$name]:-0}"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:--}" "${acted_at[$name]:-0}"
   done >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
 
@@ -149,6 +152,7 @@ hash_of() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
 # The fallback for SendMessage: the guarded typing of the nudge text into one window of the fleet session.
 nudge() { # <window name>
   local row pane dead pane_pid text
+  load_state
   row=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null |
     awk -F'|' -v n="$1" '$2 == n {print; exit}')
   [[ -n $row ]] || {
@@ -165,6 +169,9 @@ nudge() { # <window name>
     echo "NOT NUDGED $1: the session is busy"
   elif ! prompt_box_empty "$text"; then
     echo "NOT NUDGED $1: text in the prompt box, or no prompt box"
+  elif [[ -z ${acted_hash[$1]:-} || ${acted_hash[$1]} != "$(hash_of "$text")" ]]; then
+    # The check that reported the stall stored the pane as it saw it. Any other pane is not that stall.
+    echo "NOT NUDGED $1: the pane is not as the last check reported it stuck"
   else
     tmux send-keys -t "$pane" -l "$nudge_text" || return 1
     # Text and Enter in one call leaves the text unsent in the prompt box, so Enter follows after a pause.
@@ -184,8 +191,10 @@ pass() {
   windows=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null) || return 2
   load_state
   all_finished=1
+  declare -A seen=()
   while IFS='|' read -r pane name dead pane_pid; do
     [[ -n $name ]] || continue
+    seen[$name]=1
     text=$(tmux capture-pane -p -t "$pane" 2>/dev/null)
     new_hash=$(hash_of "$text")
     # A failed lookup is not an empty list: an empty list would read as "owns nothing" and let the fleet finish.
@@ -236,6 +245,9 @@ pass() {
         if ((active > 0)); then
           log "$name LOST claude exited with unfinished pieces: $ids"
           problems+=("LOST $name: claude exited with unfinished pieces: $ids")
+        elif [[ ${ever_owned[$name]:-0} != 1 ]]; then
+          log "$name LOST claude exited before its first claim"
+          problems+=("LOST $name: claude exited before its first claim")
         else
           log "$name EXITED claude exited, no unfinished pieces"
           problems+=("EXITED $name: claude exited, no unfinished pieces")
@@ -262,12 +274,35 @@ pass() {
     # Finished: left claude with nothing unfinished, or went idle after owning pieces that are all merged, closed or
     # held for the owner. A session that left claude with unfinished pieces is lost, not finished.
     if [[ $state == exited ]]; then
-      ((active == 0)) || all_finished=0
+      ((active == 0)) && [[ ${ever_owned[$name]:-0} == 1 ]] || all_finished=0
     elif [[ $state != idle ]] || [[ ${ever_owned[$name]:-0} != 1 ]] || ((active > 0)); then
       all_finished=0
     fi
     state=
   done <<<"$windows"
+  # A window that was there on an earlier check and is gone now: its pieces still count, so the fleet is not
+  # finished on the windows that remain.
+  for name in "${!changed_at[@]}"; do
+    [[ -z ${seen[$name]:-} ]] || continue
+    if ! docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null) || [[ -z $docs ]]; then
+      log "$name window gone and plans ls failed"
+      all_finished=0
+      continue
+    fi
+    ids=$(jq -r '[.[].id] | join(",")' <<<"$docs")
+    active=$(jq '[.[] | select(.status == "approved" or .status == "building" or (.status == "review" and .waiting_on == ""))] | length' <<<"$docs")
+    [[ -z $ids ]] || ever_owned[$name]=1
+    if ((active > 0)) || [[ ${ever_owned[$name]:-0} != 1 ]]; then
+      all_finished=0
+      if [[ -z ${acted_hash[$name]:-} ]]; then
+        log "$name GONE window closed; unfinished pieces: ${ids:--}"
+        problems+=("GONE $name: its window is closed, unfinished pieces: ${ids:--}")
+        acted_hash[$name]=gone acted_at[$name]=$(date +%s)
+      fi
+    else
+      acted_hash[$name]='' acted_at[$name]=0
+    fi
+  done
   save_state
   return 0
 }
