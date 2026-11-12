@@ -14,6 +14,10 @@ Private bindings and container names join through `keymap.d/` files from a priva
 
 Every Hyprland reload (login and each theme switch) runs `desertfox theme <name>` with the desktop palette name, from `home/hypr/.config/hypr/theme/generate/desertfox.lua`. The push is best effort: with the browser closed it fails silently and the browser keeps its old palette until the next reload. `settings.toml` sets `palette = "desktop"`, so DesertFox follows the push. When the saved palette cannot load and Hyprland renders the embedded fallback, the push names `oasis_moonlight`.
 
+## External editor
+
+In insert mode, `<C-i>` (`text.edit_external`) opens the focused text field in Neovim in a floating kitty window. Saving with `:w` closes the window and returns the text to the field. `editor.toml` sets the command, `just restow desertfox` links it, and the window rule in `home/hypr/.config/hypr/config/rules/init.lua` floats it. The [DesertFox host README](https://github.com/uhs-robert/desertfox/blob/main/host/README.md) has the file format.
+
 ## Code
 
 - `.config/desertfox/editor.toml`: the editor the host opens for a text field (Neovim in kitty). The window rule in `home/hypr/.config/hypr/config/rules/init.lua` floats its `desertfox-editor` class.
