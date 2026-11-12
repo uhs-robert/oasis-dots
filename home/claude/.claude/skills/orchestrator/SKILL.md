@@ -32,6 +32,8 @@ When the owner asks you to hand off, pass the baton or wind down, load `orchestr
 
 When the owner asks you to plan a fleet of orchestrators or an overnight run, load `fleet`.
 
+Target: `$target`
+
 ## Start another orchestrator session
 
 To start one more orchestrator in its own tmux window, write its prompt to a file and run:
@@ -39,8 +41,6 @@ To start one more orchestrator in its own tmux window, write its prompt to a fil
 `~/.claude/skills/orchestrator-handoff/spawn-orchestrator.sh <name> <prompt-file> [--model M] [--budget N]`
 
 `<name>` is a session name like `df-help`. The window opens in your tmux session, in this repo's main checkout. Pass `--model` with the model the owner asked for. `--budget` is the context budget in tokens. The script sets no permission mode. For two or more full-auto sessions use `fleet`, not this script.
-
-Target: `$target`
 
 ## Briefing the owner
 
