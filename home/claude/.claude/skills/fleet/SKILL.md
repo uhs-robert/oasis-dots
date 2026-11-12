@@ -16,7 +16,7 @@ Arguments: `$ARGUMENTS`
 
 - Each fleet session runs `/orchestrator auto` and claims its own docs with `plans claim --as <its ListAgents name>`. The planner leaves `owner_session` empty and never claims.
 - Fleet sessions skip the interview and the plan approval, because the planner asked the design forks up front. They still run the overlap check.
-- Merges go through the repo's own merge step only. In the dotfiles repo that is `ship-batch`. Never run `merge-prs.sh` with a PR number or the `gh` merge command. The launch prompt names the merge step, so fill `<merge_step>` with it.
+- Merges go through the repo's own merge step only. Never run `merge-prs.sh` with a PR number or the `gh` merge command. Read the merge step from the repo's `AGENTS.md` or `CLAUDE.md`, and ask the owner if neither names one. The launch prompt carries it in `<merge_step>`.
 - Session names do not start with the repo directory name, because orchestrators already in that repo use such names. Use a short prefix of your own, then the bundle.
 - Sessions coordinate by `SendMessage`, found through `ListAgents`. Nobody coordinates the fleet unless the owner chose a coordinator.
 
@@ -67,7 +67,7 @@ The target is 60 percent of the session budget. A 500k budget takes about 300k o
 Ask the owner these every run, in one `AskUserQuestion` round while the scouts work:
 
 - How the sessions start: the planner launches them in tmux, or the owner starts them by hand.
-- What happens to finished work: merge to main through the repo's merge step (`ship-batch` in dotfiles), or stop at review-ready PRs. A merge needs a passing check and reviewer approval.
+- What happens to finished work: merge to main through the repo's merge step, or stop at review-ready PRs. A merge needs a passing check and reviewer approval.
 - The role of the planner: plan only, or also coordinate the sessions.
 - The context budget per session, in tokens. The launch sets it in `CLAUDE_CONTEXT_BUDGET` and in the prompt.
 - Hand checks: the default is to hold such a piece unmerged, as stock full auto does. The other choice is to merge it and append the hand checks to `<main checkout>/.logs/<project>/morning-checks.md` for the owner.
@@ -108,7 +108,7 @@ Fill these in `launch-prompt.txt` and `roster.md`:
 | `<work_tokens>` | the work sized for the session, about 60 percent of the budget |
 | `<pieces_in_order>` | the piece ids in build order, with a note where another session waits on one |
 | `<main_checkout>` | the absolute path of the repo's main checkout |
-| `<merge_step>` | the repo's merge command or skill, such as `ship-batch` in dotfiles |
+| `<merge_step>` | the repo's merge command or skill. Read it from the repo's `AGENTS.md` or `CLAUDE.md`. If neither names one, ask the owner |
 | `<hand_check_rule>` | the owner's hand-check choice, in one sentence |
 | `<date>`, `<coordinator_line>` | the roster's date, and one sentence on whether a coordinator runs |
 | `<release_rule>`, `<excluded_pieces_rule>` | the owner's release and exclusion rules, one sentence each |

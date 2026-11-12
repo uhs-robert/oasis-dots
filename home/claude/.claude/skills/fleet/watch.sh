@@ -156,8 +156,12 @@ pass() {
     [[ -n $name ]] || continue
     text=$(tmux capture-pane -p -t "$pane" 2>/dev/null)
     new_hash=$(hash_of "$text")
-    docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null)
-    [[ -n $docs ]] || docs='[]'
+    # A failed lookup is not an empty list: an empty list would read as "owns nothing" and let the fleet finish.
+    if ! docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null) || [[ -z $docs ]]; then
+      log "$name plans ls failed; session skipped this pass"
+      all_finished=0
+      continue
+    fi
     ids=$(jq -r '[.[].id] | join(",")' <<<"$docs")
     building=$(jq '[.[] | select(.status == "building" and .waiting_on == "")] | length' <<<"$docs")
     active=$(jq '[.[] | select(.status == "approved" or .status == "building" or (.status == "review" and .waiting_on == ""))] | length' <<<"$docs")

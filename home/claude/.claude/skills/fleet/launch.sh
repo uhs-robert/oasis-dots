@@ -42,6 +42,8 @@ for pair in "$@"; do
   name=${pair%%=*} file=${pair#*=}
   [[ $pair == *=* ]] || usage
   tmux_safe_name "$name" || refuse "bad window name: $name"
+  # The name must also pass the grammar of `plans` session names (validate.py SESSION), so the session can claim.
+  [[ $name =~ ^[a-z0-9][a-z0-9.]*(-[a-z0-9.]+)*-[a-z0-9]+$ ]] || refuse "not a plans session name (like df-help): $name"
   [[ $name != "$fleet" ]] || refuse "window name equals the fleet session name: $name"
   [[ " ${names[*]:-} " != *" $name "* ]] || refuse "name given twice: $name"
   [[ $file == /* && $file != *$'\n'* ]] || refuse "the prompt path must be absolute and on one line: $file"
@@ -76,6 +78,11 @@ tmux new-session -d -s "$fleet" -n "${names[0]}" -c "$main_checkout" "$(command_
   echo "launch.sh: could not create the session" >&2
   exit 3
 }
+# A reused fleet name must not inherit the old watcher's state. A held lock means a watcher still runs: leave it.
+for state in "$main_checkout"/.logs/*/fleet-watch-"$fleet".state; do
+  [[ -e $state ]] || continue
+  (flock -n 9 && rm -f "$state") 9>"${state%.state}.lock"
+done
 for i in "${!names[@]}"; do
   ((i == 0)) && continue
   tmux new-window -d -t "=$fleet:" -n "${names[i]}" -c "$main_checkout" "$(command_for "${names[i]}" "${files[i]}")" ||
