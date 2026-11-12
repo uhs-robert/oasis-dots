@@ -75,6 +75,16 @@ class FirefoxCss(unittest.TestCase):
         for pane in ("#sidebar-box", "#tabbrowser-tabbox", "findbar"):
             self.assertNotIn(pane, covered)
 
+    def test_chamfer_outside_of_the_content_box_is_the_colour_behind_it(self):
+        # #tabbrowser-tabbox sits on #browser, not on TextFox's --tf-bg, so a --tf-bg triangle shows as a mismatch outside each corner.
+        # #browser is the toolbar colour with vertical tabs off and the toolbox colour with them on (they differ in Firefox 160).
+        css = gen.firefox_css(frame("chamfer", 12))
+        plain = css.split("\n#tabbrowser-tabbox {\n  --tf-bevel-outside:")[1]
+        vertical = css.split("\n  #tabbrowser-tabbox {\n    --tf-bevel-outside:")[1]
+        self.assertTrue(plain.strip().startswith("var(--toolbar-background-color"), plain)
+        self.assertIn('@media -moz-pref("sidebar.verticalTabs")', css)
+        self.assertTrue(vertical.strip().startswith("var(--toolbox-background-color"), vertical)
+
     def test_round_has_no_bevel_rules(self):
         css = gen.firefox_css(frame("round", 12))
         for text in ("pointer-events", "position: relative", "padding: 8px"):
