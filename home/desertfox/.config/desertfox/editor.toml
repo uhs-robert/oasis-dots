@@ -1,0 +1,5 @@
+# Kitty runs in the foreground until nvim quits. Never add --single-instance:
+# it hands off to the running kitty and exits at once, which the host reads
+# as an editor that ended without saving.
+argv = ["kitty", "--class", "desertfox-editor", "nvim", "+autocmd BufWritePost <buffer> quit", "{file}"]
+insert_argv = ["+normal! G", "+startinsert!"]
