@@ -28,6 +28,8 @@
 # with an empty prompt box and a claude process below it, and logs the nudge.
 # Like launch.sh, a sanctioned use of the owner's tmux server, since guard-tmux-socket.sh does not look inside scripts.
 set -uo pipefail
+# shellcheck source=claude-runs-in.sh
+source "$(dirname "${BASH_SOURCE[0]}")/claude-runs-in.sh"
 
 mode=check
 if [[ ${1:-} == --nudge ]]; then
@@ -135,16 +137,6 @@ prompt_box_empty() {
   line=${line#❯}
   line=${line//$'\xc2\xa0'/ }
   [[ $line =~ ^[[:space:]]*$ ]]
-}
-
-# Claude is the pane's process or runs below it. A shell prompt or a shell with background jobs is not claude.
-claude_runs_in() { # <pid>
-  local pid=$1 child
-  [[ $(ps -o comm= -p "$pid" 2>/dev/null) == claude ]] && return 0
-  for child in $(pgrep -P "$pid"); do
-    claude_runs_in "$child" && return 0
-  done
-  return 1
 }
 
 hash_of() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
