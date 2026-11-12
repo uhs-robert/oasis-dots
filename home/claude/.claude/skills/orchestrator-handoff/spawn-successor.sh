@@ -2,9 +2,8 @@
 # Opens a fresh Claude session in a new window of the caller's own tmux session, primed to take an orchestrator
 # handoff from the session named in $1. Usage: spawn-successor.sh <predecessor-session-name>
 #
-# With rename-window.sh, the sanctioned way for an agent to change the owner's tmux server: guard-tmux-socket.sh
-# refuses tmux commands that do, and does not look inside scripts. Keep it to the fixed rename-window and
-# new-window calls below, with no caller-supplied tmux argument, so the exception stays narrow.
+# Keep it to the fixed rename-window and new-window calls below, with no caller-supplied tmux argument.
+# guard-tmux-socket.sh blocks only a bare `tmux kill-server`, so no script needs an exception to it.
 #
 # Window names come from window-names.sh: the caller's becomes <predecessor>-prev. The successor's window starts
 # as `next` because its session name does not exist yet; the name-tmux-window.sh hook renames it at the successor's start, and the successor adds -next.

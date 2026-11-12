@@ -103,6 +103,8 @@ When you hold no piece and nothing you started is running (no agent, background 
 2. Run `~/.claude/skills/orchestrator-handoff/spawn-successor.sh <your session name>`. It opens a window named `next` in your tmux session with a fresh Claude told to expect your baton, and renames yours to `<your session name>-prev`. The successor renames its own window to `<its name>-next` at once. Windows are named `next`, `<name>-next`, `<name>`, `<name>-prev` and `<name>-done`. The `name-tmux-window.sh` hook gives each Claude session in tmux its bare `<name>` at start (a session with no name yet is skipped), so only the role labels need a call here. `rename-window.sh` also types `/rename <name>` into your own pane, so the session title shows the bare name once your turn ends. If it fails or is denied, hand the owner the `!` command, or ask them to start the session themselves.
 3. End the turn. The successor sends `READY`; its sender is the successor. Follow Hand over from step 1, using that sender in step 3.
 
+`spawn-successor.sh` starts the successor for a handoff. `spawn-orchestrator.sh <name> <prompt-file> [--model M] [--budget N]` starts one new orchestrator on a prompt, with no handoff and with the model the owner asked for. `fleet/launch.sh` starts two or more.
+
 After the wind-down note, once no small piece remains (nothing in flight, or only pieces too big for the remaining budget), ask the owner the next-task question with `AskUserQuestion` and offer to hand it to a fresh session. On a yes, run steps 1-3 now, without waiting for the handoff note.
 
 Taking over still needs the owner: the successor asks them before replying `TAKEN`, like any `BATON`.

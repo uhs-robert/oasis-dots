@@ -97,11 +97,14 @@ refused "a fleet session name with a colon is refused" "fl:eet" 1000 df-c="$work
 refused "a window named like the fleet is refused" fleet2 1000 fleet2="$work/prompt-c.txt"
 refused "too few arguments are refused" fleet2 1000
 refused "a pair without = is refused" fleet2 1000 df-c
+refused "one bundle is refused (use spawn-orchestrator.sh)" fleet2 1000 df-c="$work/prompt-c.txt"
+out=$(launch fleet2 1000 df-c="$work/prompt-c.txt" 2>&1)
+check "the one-bundle refusal names spawn-orchestrator.sh" grep -q "spawn-orchestrator.sh" <<<"$out"
 
 # A prompt path with a space and a single quote is accepted and read intact
 mkdir "$work/dir with 'quote' and space"
 printf '/orchestrator auto. You are df-q, line one.\n' >"$work/dir with 'quote' and space/prompt q.txt"
-out=$(launch fleet7 1000 "df-q=$work/dir with 'quote' and space/prompt q.txt" 2>&1)
+out=$(launch fleet7 1000 "df-q=$work/dir with 'quote' and space/prompt q.txt" df-y1="$work/prompt-b.txt" 2>&1)
 check "a prompt path with a space and a quote launches" test $? -eq 0
 check "the prompt of such a path reaches claude" grep -q "You are df-q, line one" <<<"$(pane_of fleet7 df-q)"
 t kill-session -t =fleet7
@@ -114,8 +117,8 @@ echo keep >"$work/.logs/p/fleet-watch-fleet9.state"
 flock "$work/.logs/p/fleet-watch-fleet9.lock" sleep 20 &
 holder=$!
 sleep 0.5
-launch fleet8 1000 df-r="$work/prompt-c.txt" >/dev/null 2>&1
-launch fleet9 1000 df-t="$work/prompt-c.txt" >/dev/null 2>&1
+launch fleet8 1000 df-r="$work/prompt-c.txt" df-y2="$work/prompt-b.txt" >/dev/null 2>&1
+launch fleet9 1000 df-t="$work/prompt-c.txt" df-y3="$work/prompt-b.txt" >/dev/null 2>&1
 check "a new fleet removes the stale state of its name" test ! -e "$work/.logs/p/fleet-watch-fleet8.state"
 check "a state file whose watcher holds the lock stays" test -e "$work/.logs/p/fleet-watch-fleet9.state"
 kill "$holder"
@@ -136,13 +139,13 @@ check "a failed new-window leaves no session behind" test "$(sessions)" = "$befo
 # A tmux that fails on new-session: nothing is created
 # shellcheck disable=SC2016
 printf '#!/bin/sh\n[ "$1" = new-session ] && exit 1\nexec %s "$@"\n' "$real_tmux" >"$work/failbin/tmux"
-(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" fleet4 1000 df-c="$work/prompt-c.txt" >/dev/null 2>&1)
+(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" fleet4 1000 df-c="$work/prompt-c.txt" df-y4="$work/prompt-b.txt" >/dev/null 2>&1)
 check "a failed new-session exits 3 and leaves nothing" test $? -eq 3 -a "$(sessions)" = "$before"
 
 # new-session fails because another process made the session in the gap after the check: that session stays
 # shellcheck disable=SC2016
 printf '#!/bin/sh\nif [ "$1" = new-session ]; then %s new-session -d -s racefleet "sleep 120"; exit 1; fi\nexec %s "$@"\n' "$real_tmux" "$real_tmux" >"$work/failbin/tmux"
-(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" racefleet 1000 df-c="$work/prompt-c.txt" >/dev/null 2>&1)
+(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" racefleet 1000 df-c="$work/prompt-c.txt" df-y5="$work/prompt-b.txt" >/dev/null 2>&1)
 check "a failed new-session exits 3" test $? -eq 3
 check "a failed new-session does not kill a session another process made" grep -qw racefleet <<<"$(sessions)"
 t kill-session -t =racefleet
@@ -150,30 +153,30 @@ before=$(sessions)
 
 # The same names launch again once the first fleet is gone
 t kill-session -t =fleet1
-launch fleet5 1000 df-a="$work/prompt-a.txt" >/dev/null 2>&1
+launch fleet5 1000 df-a="$work/prompt-a.txt" df-y6="$work/prompt-b.txt" >/dev/null 2>&1
 check "a name is free again after its fleet is killed" test $? -eq 0
 
 # A claude that never shows its prompt: reported with exit 4, and the fleet keeps running
-out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet6 1000 df-s="$work/prompt-b.txt" 2>&1)
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet6 1000 df-s="$work/prompt-b.txt" df-y7="$work/prompt-b.txt" 2>&1)
 check "an unconfirmed start exits 4" test $? -eq 4
 check "an unconfirmed start names the window" grep -q "UNCONFIRMED df-s" <<<"$out"
 check "an unconfirmed fleet is left running" grep -qw fleet6 <<<"$(sessions)"
 
 # A prompt file whose first line is blank gets a marker from its first text line, never an empty one that matches any pane
 printf '\n/orchestrator auto. You are df-e, line one.\n' >"$work/prompt-blank.txt"
-out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet10 1000 df-e="$work/prompt-blank.txt" 2>&1)
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet10 1000 df-e="$work/prompt-blank.txt" df-y8="$work/prompt-b.txt" 2>&1)
 check "a blank first line does not confirm a silent pane" test $? -eq 4
-launch fleet11 1000 df-e2="$work/prompt-blank.txt" >/dev/null 2>&1
+launch fleet11 1000 df-e2="$work/prompt-blank.txt" df-y9="$work/prompt-b.txt" >/dev/null 2>&1
 check "a blank first line still confirms a pane that shows the prompt" grep -q "You are df-e, line one" <<<"$(pane_of fleet11 df-e2)"
 printf '\n\n' >"$work/prompt-empty.txt"
 before=$(sessions)
-launch fleet12 1000 df-f="$work/prompt-empty.txt" >/dev/null 2>&1
+launch fleet12 1000 df-f="$work/prompt-empty.txt" df-ya="$work/prompt-b.txt" >/dev/null 2>&1
 check "a prompt file with no text is refused" test $? -eq 2 -a "$(sessions)" = "$before"
 
 # Outside a git repository nothing is launched
 nogit=$(mktemp -d)
 before=$(sessions)
-(cd "$nogit" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/bin:$PATH "$skill/launch.sh" fleet13 1000 df-g="$work/prompt-a.txt" >/dev/null 2>&1)
+(cd "$nogit" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/bin:$PATH "$skill/launch.sh" fleet13 1000 df-g="$work/prompt-a.txt" df-yb="$work/prompt-b.txt" >/dev/null 2>&1)
 check "a launch outside a git repository is refused and creates nothing" test $? -eq 2 -a "$(sessions)" = "$before"
 rm -rf "$nogit"
 
