@@ -9,7 +9,7 @@ Estimate the work a skilled developer does, not the work the agents did.
 
 ## Measure first
 
-1. Get the size of the change: `git show --stat` or `gh pr diff --stat`. Leave out generated files (minified output, lock files, data copies).
+1. Get the size of the change: `git show --stat` or `gh pr view <pr> --json additions,deletions,files`. Leave out generated files (minified output, lock files, data copies).
 2. Note what the change copies from existing code (a picker, a loader, a pattern). Copying is faster than designing.
 
 ## The developer
