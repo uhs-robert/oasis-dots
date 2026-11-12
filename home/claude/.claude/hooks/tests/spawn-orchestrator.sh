@@ -38,6 +38,7 @@ check() {
   fi
 }
 windows() { t list-windows -a -F '#{window_name}' | sort | tr '\n' ' '; }
+not() { ! "$@"; }
 has_name() { t list-windows -a -F '#{window_name}' | grep -qx "$1"; }
 pane_of() { t capture-pane -p -t "$1"; }
 
@@ -64,7 +65,7 @@ check "claude gets -n <name> and the prompt as the only arguments" grep -q "stan
 check "claude gets the name" grep -qx "arg:df-one" <<<"$pane"
 # shellcheck disable=SC2016 # the dollar sign is literal test text
 check "the prompt arrives as one argument, quotes and dollar intact" grep -qF 'second line with "quotes" and $dollar' <<<"$pane"
-check "no permission mode flag" bash -c '! grep -q -e "--permission-mode" <<<"$1"' _ "$pane"
+check "no permission mode flag" not grep -q -e --permission-mode <<<"$pane"
 check "the window opens in the repo root" test "$(t display-message -p -t '=main:=df-one' '#{pane_current_path}')" = "$(realpath "$work")"
 check "the caller keeps its name" test "$(t display-message -p -t "$caller" '#{window_name}')" = caller
 check "the new window is not made active" test "$(t display-message -p -t '=main:=df-one' '#{window_active}')" = 0
