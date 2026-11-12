@@ -69,6 +69,7 @@ When `$args` or the user asks for part of the work ("before today", "just this s
 - Context paragraphs state the concrete problem, with the specific mechanism: "The SMS view only matches reviewed records and carries no Reviewer field, so the check could never see a pickup", not "the check didn't work properly".
 - Name the identifiers a reader would search for: file paths, view and field keys, config names, SHAs for out-of-PR commits.
 - New code files: give the size in lines (`(73 lines)`). New assets: give the size in bytes and any format change (`(1.8KB)`, PNG → JPEG).
+- If an estimate of human time is asked for, use the `time-estimates` skill.
 - Say how something was found when that was real work: "I tested…", "I checked every view against the live schema…".
 - No filler, no hedging, no praise of the work. Keep each bullet to one or two lines.
 - The report is client facing and used for billing. Describe each problem and its fix in the order it happened, in neutral, professional terms.
