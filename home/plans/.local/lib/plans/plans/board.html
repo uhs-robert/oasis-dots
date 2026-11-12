@@ -1891,8 +1891,9 @@ document.addEventListener("click", (event) => {
 }, true);
 element("settings-panel").firstElementChild.append(close_button(close_settings));
 
-// The help modal. Its rows come from this one list, so the hints stay in step with the KEYS map below. A row with
+// The help modal. help_keys.test.mjs fails when this list and the KEYS map below drift apart. A row with
 // needs_terminal is dropped when the server has no terminal to open an editor in.
+// help-keys:start
 const HELP_SECTIONS = [
   ["Navigation", [
     [["j", "k"], "Next or previous card"],
@@ -1915,8 +1916,10 @@ const HELP_SECTIONS = [
     [["Esc"], "Close a panel or this help"],
   ]],
 ];
+// help-keys:end
 
 let help_open = false;
+let help_return_focus = null;
 
 function build_help() {
   const panel = element("help-panel");
@@ -1937,6 +1940,7 @@ function build_help() {
 
 function open_help() {
   if (settings_open) close_settings();
+  help_return_focus = document.activeElement;
   help_open = true;
   build_help();
   element("help").classList.add("open");
@@ -1948,6 +1952,8 @@ function close_help() {
   help_open = false;
   element("help").classList.remove("open");
   document.activeElement.blur();
+  if (help_return_focus && help_return_focus.isConnected && help_return_focus !== document.body) help_return_focus.focus();
+  help_return_focus = null;
 }
 
 element("help-btn").addEventListener("click", () => {
@@ -2032,6 +2038,7 @@ function typing_in_field(event) {
 const CHORD_MS = 700;
 let g_armed_until = 0;
 
+// board-keys:start
 const KEYS = {
   G: () => jump_in_column(true),
   j: () => step_in_column(1),
@@ -2051,6 +2058,7 @@ const KEYS = {
   "?": () => open_help(),
   Enter: () => open_view(),
 };
+// board-keys:end
 
 document.addEventListener("keydown", (event) => {
   if (pending_confirm) {
@@ -2070,6 +2078,12 @@ document.addEventListener("keydown", (event) => {
     } else if (!event.target.closest("button")) {
       event.preventDefault();
     }
+    return;
+  }
+  // A ? in the theme box opens help too, and help closes Settings.
+  if (settings_open && event.key === "?" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    open_help();
     return;
   }
   // Settings captures the board keys like the confirm box. The theme box keeps typing, and its Escape closes its own
