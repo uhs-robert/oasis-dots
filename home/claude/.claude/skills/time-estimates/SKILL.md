@@ -30,9 +30,9 @@ Design discussions and owner decisions, waits for review or deploy, and meetings
 
 ## Check the total against the size
 
-Pick a rate of 10-50 finished, tested lines per hour. Copied or simple code runs near 50. Intricate code runs near 10. Divide the size by the rate to get the size figure.
+Pick a rate of 10-50 finished, tested lines per hour. Copied or simple code runs near 50. Intricate code runs near 10. Divide the line count by the rate to get the coding time.
 
-The size figure is the coding time: the line count divided by the rate. Add the time for diagnosis and hand tests to it. If the total is more than twice that sum, name the reason in the table or cut the estimate. This is a sanity check, not the price.
+Add the time for diagnosis and hand tests to the coding time. If the total is more than twice that sum, name the reason in the table or cut the estimate. This is a sanity check, not the price.
 
 ## Output
 
