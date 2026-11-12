@@ -80,6 +80,18 @@ box#vertical-tabs {{
   min-height: 0 !important;
 }}
 
+/* The content box sits on #browser. That is the toolbar colour with vertical tabs off, and with them on the window's
+   toolbox colour shows through, which differs from the toolbar colour. Firefox keys its own #browser background on this pref. */
+#tabbrowser-tabbox {{
+  --tf-bevel-outside: var(--toolbar-background-color, var(--tf-bg));
+}}
+
+@media -moz-pref("sidebar.verticalTabs") {{
+  #tabbrowser-tabbox {{
+    --tf-bevel-outside: var(--toolbox-background-color, var(--tf-bg));
+  }}
+}}
+
 {after} {{
   content: "";
   position: absolute;
