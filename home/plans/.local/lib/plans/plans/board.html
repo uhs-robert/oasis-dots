@@ -102,7 +102,8 @@
   .drop-marker { height: 3px; margin: -1px 0; background: var(--accent); border-radius: 2px; }
   .owner-input { width: 100%; margin-top: 3px; background: var(--bg); color: var(--text);
                  border: 1px solid var(--accent); border-radius: 3px; font: inherit; }
-  #confirm { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
+  /* Above Help (z-index 9), so a question that arrives while Help is open is not hidden behind it. */
+  #confirm { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center;
              background: var(--overlay); }
   #confirm div { padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; max-width: 70ch; }
   #help { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center;
