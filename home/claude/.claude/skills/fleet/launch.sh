@@ -22,6 +22,8 @@
 set -uo pipefail
 # shellcheck source=../orchestrator-handoff/window-names.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../orchestrator-handoff/window-names.sh"
+# shellcheck source=claude-runs-in.sh
+source "$(dirname "${BASH_SOURCE[0]}")/claude-runs-in.sh"
 
 usage() {
   echo "usage: launch.sh <fleet-session> <context-budget> <name>=<prompt-file>..." >&2
@@ -96,8 +98,8 @@ for i in "${!names[@]}"; do
     abort "could not create window ${names[i]}"
 done
 
-# Confirm each window started claude: a claude process runs under the pane's shell, or the pane shows the start of the
-# prompt. The prompt alone is not enough, because a working session scrolls or redraws it away. #{pane_current_command}
+# Confirm each window started claude: a claude process runs below the pane's shell on two polls in a row, or the pane
+# shows the start of the prompt. Two polls, because a claude that crashes at start is alive for the first one. The prompt alone is not enough, because a working session scrolls or redraws it away. #{pane_current_command}
 # is no help: the window shell runs claude without job control, so tmux reports the shell. A window whose claude
 # exited, or that shows neither signal after the wait, is reported, not fixed: the owner or planner looks at the pane.
 confirm_seconds=${FLEET_CONFIRM_SECONDS:-45}
@@ -105,14 +107,16 @@ unconfirmed=0
 for i in "${!names[@]}"; do
   # The first non-empty line: an empty marker would match any pane.
   head_of_prompt=$(grep -m1 . "${files[i]}" | cut -c1-20)
-  seen=0
+  seen=0 hits=0
   for ((waited = 0; waited < confirm_seconds * 2; waited++)); do
     target="=$fleet:=${names[i]}"
-    if pgrep -x -P "$(tmux display-message -p -t "$target" '#{pane_pid}' 2>/dev/null)" claude >/dev/null 2>&1 ||
-      tmux capture-pane -p -t "$target" 2>/dev/null | grep -qF -- "$head_of_prompt"; then
-      seen=1
-      break
+    if claude_runs_in "$(tmux display-message -p -t "$target" '#{pane_pid}' 2>/dev/null)"; then
+      ((++hits >= 2)) && seen=1
+    else
+      hits=0
     fi
+    tmux capture-pane -p -t "$target" 2>/dev/null | grep -qF -- "$head_of_prompt" && seen=1
+    ((seen)) && break
     sleep 0.5
   done
   if ((seen)); then

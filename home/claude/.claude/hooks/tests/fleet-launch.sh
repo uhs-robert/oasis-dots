@@ -193,5 +193,14 @@ out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=
 rc=$?
 check "a running claude that no longer shows its prompt is confirmed" test "$rc" -eq 0 -a -n "$(grep '^started df-w' <<<"$out")"
 
+# A claude below a wrapper process (like systemd-run or node) is found too
+mkdir "$work/wrapbin"
+printf '#!/bin/sh\nexec "%s/wrapbin/runner" "%s/busybin/claude"\n' "$work" "$work" >"$work/wrapbin/claude"
+printf '#!/bin/sh\n"$1"\nexit\n' >"$work/wrapbin/runner"
+chmod +x "$work/wrapbin/claude" "$work/wrapbin/runner"
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/wrapbin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet15 1000 df-x="$work/prompt-b.txt" 2>&1)
+rc=$?
+check "a claude below a wrapper process is confirmed" test "$rc" -eq 0 -a -n "$(grep '^started df-x' <<<"$out")"
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
