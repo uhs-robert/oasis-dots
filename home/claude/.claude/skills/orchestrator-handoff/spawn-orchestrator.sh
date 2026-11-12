@@ -61,8 +61,9 @@ valid_session_name "$name" && [[ $name != *[.:]* ]] || refuse "bad window name: 
   exit 3
 }
 
-git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || refuse "not in a git repository"
-main_checkout=$(dirname "$git_common_dir")
+# The first entry of the worktree list is the main checkout, also for a submodule or a --separate-git-dir repo.
+main_checkout=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
+[[ -n $main_checkout ]] || refuse "not in a git repository"
 session=$(tmux display-message -p -t "$TMUX_PANE" '#S') || {
   echo "spawn-orchestrator.sh: could not read the tmux session" >&2
   exit 4

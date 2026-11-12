@@ -39,6 +39,8 @@ check() {
 }
 windows() { t list-windows -a -F '#{window_name}' | sort | tr '\n' ' '; }
 not() { ! "$@"; }
+# flag_has_value <pane text> <flag> <value>: the stand-in prints one argument per line, so the value follows its flag
+flag_has_value() { grep -x -A1 -- "arg:$2" <<<"$1" | grep -qx -- "arg:$3"; }
 has_name() { t list-windows -a -F '#{window_name}' | grep -qx "$1"; }
 pane_of() { t capture-pane -p -t "$1"; }
 
@@ -90,7 +92,7 @@ check "a spawn with model and budget exits 0" test $? -eq 0
 settle
 pane=$(pane_of '=main:=df-two')
 check "the budget reaches claude's environment" grep -q "standin budget=424242 args=5" <<<"$pane"
-check "the model reaches --model" grep -A1 -x "arg:--model" <<<"$pane" | grep -qx "arg:opus"
+check "the model reaches --model" flag_has_value "$pane" --model opus
 spawn df-three "$work/prompt.txt" --budget 1000 --model sonnet >/dev/null 2>&1
 settle
 check "the flags work in either order" grep -q "standin budget=1000 args=5" <<<"$(pane_of '=main:=df-three')"
