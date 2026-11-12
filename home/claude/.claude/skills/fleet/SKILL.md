@@ -16,7 +16,7 @@ Arguments: `$ARGUMENTS`
 
 - Each fleet session runs `/orchestrator auto` and claims its own docs with `plans claim --as <its ListAgents name>`. The planner leaves `owner_session` empty and never claims.
 - Fleet sessions skip the interview and the plan approval, because the planner asked the design forks up front. They still run the overlap check.
-- Merges go through `ship-batch` only. Never run `merge-prs.sh` with a PR number or the `gh` merge command.
+- Merges go through the repo's own merge step only. In the dotfiles repo that is `ship-batch`. Never run `merge-prs.sh` with a PR number or the `gh` merge command. The launch prompt names the merge step, so fill `<merge_step>` with it.
 - Session names do not start with the repo directory name, because orchestrators already in that repo use such names. Use a short prefix of your own, then the bundle.
 - Sessions coordinate by `SendMessage`, found through `ListAgents`. Nobody coordinates the fleet unless the owner chose a coordinator.
 
@@ -67,7 +67,7 @@ The target is 60 percent of the session budget. A 500k budget takes about 300k o
 Ask the owner these every run, in one `AskUserQuestion` round while the scouts work:
 
 - How the sessions start: the planner launches them in tmux, or the owner starts them by hand.
-- What happens to finished work: merge to main through `ship-batch` once the check passes and the reviewer approves, or stop at review-ready PRs.
+- What happens to finished work: merge to main through the repo's merge step (`ship-batch` in dotfiles), or stop at review-ready PRs. A merge needs a passing check and reviewer approval.
 - The role of the planner: plan only, or also coordinate the sessions.
 - The context budget per session, in tokens. The launch sets it in `CLAUDE_CONTEXT_BUDGET` and in the prompt.
 - Hand checks: the default is to hold such a piece unmerged, as stock full auto does. The other choice is to merge it and append the hand checks to `<main checkout>/.logs/<project>/morning-checks.md` for the owner.
@@ -87,13 +87,13 @@ Check each item against the scout reports and ask the owner about each one that 
 
 The watchdog only watches. It never claims a piece, merges or answers a permission prompt.
 
-Start it with the `Monitor` tool on `~/.claude/skills/fleet/watch.sh <fleet-session> <project>`, persistent. It prints one line per event: `NUDGED`, `STALL`, `PROMPT`, `EXITED`, `FINISHED` or `STOPPED`. It ends by itself on `FINISHED` or `STOPPED`. A monitor expires after 30 minutes at most, so start `watch.sh` again on each expiry. The state file carries the stall timing over.
+Start it with the `Monitor` tool on `~/.claude/skills/fleet/watch.sh <fleet-session> <project>`. It prints one line per event: `NUDGED`, `STALL`, `PROMPT`, `EXITED`, `LOST`, `FINISHED`, `STOPPED` or `INTERRUPTED`. It ends by itself on `FINISHED` (every session is done) or `STOPPED` (the fleet's tmux session is gone). A monitor expires after 30 minutes at most, and the expiry sends a signal. On `INTERRUPTED`, start `watch.sh` again. The state file, kept per fleet, carries the stall timing over.
 
 If `Monitor` is not available, run `/loop 10m` with the instruction to run `watch.sh --once <fleet-session> <project>`. Cancel the loop when the output says `FINISHED` or `STOPPED`.
 
-A session is stuck when it sits idle with an empty prompt box and owns a piece in `building` status. In addition, for 30 minutes it shows no pane change, commit, plan doc change or new file under its `.logs` folder. Set the time with `FLEET_STUCK_SECONDS`. The nudge is a line of text typed into the pane. One stall gets one nudge. A session that is busy, waits on a permission prompt or has text in its prompt box gets none.
+A session is stuck when it runs claude, sits idle with an empty prompt box and owns a piece in `building` status with `waiting_on` empty. In addition, for 30 minutes it shows no activity. Activity is a pane change, a commit, a plan doc change, a new `.logs` file or a changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`. The nudge is a line of text typed into the pane. One stall gets one nudge. A session that is busy, waits on a permission prompt or has text in its prompt box gets none.
 
-On `PROMPT`, `STALL` or `EXITED`, look at the pane with `tmux capture-pane`, then tell the owner. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
+`LOST` means claude exited while the session still owns unfinished pieces. Such a session never counts as finished, so the watchdog keeps running until you deal with it. On `PROMPT`, `STALL`, `EXITED` or `LOST`, look at the pane with `tmux capture-pane`, then tell the owner. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
 
 ## Placeholders
 
@@ -108,6 +108,7 @@ Fill these in `launch-prompt.txt` and `roster.md`:
 | `<work_tokens>` | the work sized for the session, about 60 percent of the budget |
 | `<pieces_in_order>` | the piece ids in build order, with a note where another session waits on one |
 | `<main_checkout>` | the absolute path of the repo's main checkout |
+| `<merge_step>` | the repo's merge command or skill, such as `ship-batch` in dotfiles |
 | `<hand_check_rule>` | the owner's hand-check choice, in one sentence |
 | `<date>`, `<coordinator_line>` | the roster's date, and one sentence on whether a coordinator runs |
 | `<release_rule>`, `<excluded_pieces_rule>` | the owner's release and exclusion rules, one sentence each |

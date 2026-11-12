@@ -85,7 +85,8 @@ refused "a non-numeric budget is refused" fleet2 lots df-c="$work/prompt-c.txt"
 refused "a zero budget is refused" fleet2 0 df-c="$work/prompt-c.txt"
 refused "a missing prompt file is refused" fleet2 1000 df-c="$work/none.txt"
 refused "a relative prompt path is refused" fleet2 1000 df-c=prompt-c.txt
-refused "a prompt path with a quote is refused" fleet2 1000 "df-c=$work/pro'mpt.txt"
+refused "a prompt path with a newline is refused" fleet2 1000 "df-c=$work/pro
+mpt.txt"
 refused "a window name with a dot is refused" fleet2 1000 "df.c=$work/prompt-c.txt"
 refused "a window name with a space is refused" fleet2 1000 "df c=$work/prompt-c.txt"
 refused "a name starting with a dash is refused" fleet2 1000 "-x=$work/prompt-c.txt"
@@ -93,6 +94,15 @@ refused "a fleet session name with a colon is refused" "fl:eet" 1000 df-c="$work
 refused "a window named like the fleet is refused" fleet2 1000 fleet2="$work/prompt-c.txt"
 refused "too few arguments are refused" fleet2 1000
 refused "a pair without = is refused" fleet2 1000 df-c
+
+# A prompt path with a space and a single quote is accepted and read intact
+mkdir "$work/dir with 'quote' and space"
+printf '/orchestrator auto. You are df-q, line one.\n' >"$work/dir with 'quote' and space/prompt q.txt"
+out=$(launch fleet7 1000 "df-q=$work/dir with 'quote' and space/prompt q.txt" 2>&1)
+check "a prompt path with a space and a quote launches" test $? -eq 0
+check "the prompt of such a path reaches claude" grep -q "You are df-q, line one" <<<"$(pane_of fleet7 df-q)"
+t kill-session -t =fleet7
+before=$(sessions)
 
 # A tmux that fails on new-window part way: the new session is killed again and the first fleet is untouched
 mkdir "$work/failbin"
@@ -109,6 +119,15 @@ check "a failed new-window leaves no session behind" test "$(sessions)" = "$befo
 printf '#!/bin/sh\n[ "$1" = new-session ] && exit 1\nexec %s "$@"\n' "$real_tmux" >"$work/failbin/tmux"
 (cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" fleet4 1000 df-c="$work/prompt-c.txt" >/dev/null 2>&1)
 check "a failed new-session exits 3 and leaves nothing" test $? -eq 3 -a "$(sessions)" = "$before"
+
+# new-session fails because another process made the session in the gap after the check: that session stays
+# shellcheck disable=SC2016
+printf '#!/bin/sh\nif [ "$1" = new-session ]; then %s new-session -d -s racefleet "sleep 120"; exit 1; fi\nexec %s "$@"\n' "$real_tmux" "$real_tmux" >"$work/failbin/tmux"
+(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/failbin:$work/bin:$PATH "$skill/launch.sh" racefleet 1000 df-c="$work/prompt-c.txt" >/dev/null 2>&1)
+check "a failed new-session exits 3" test $? -eq 3
+check "a failed new-session does not kill a session another process made" grep -qw racefleet <<<"$(sessions)"
+t kill-session -t =racefleet
+before=$(sessions)
 
 # The same names launch again once the first fleet is gone
 t kill-session -t =fleet1

@@ -8,18 +8,22 @@
 #   NUDGED <name>   a stalled session got the nudge text
 #   STALL <name>    a stalled session could not be nudged (text waiting in its prompt box, or no prompt box)
 #   PROMPT <name>   a session waits on a permission prompt; the watchdog never answers it
-#   EXITED <name>   a session left claude and sits at a shell
+#   EXITED <name>   a session left claude with no unfinished pieces
+#   LOST <name>     a session left claude while it still owns unfinished pieces; it never counts as finished
 #   FINISHED        every fleet session is finished; the watchdog has stopped
-#   STOPPED         the fleet's tmux session is gone or a signal arrived
+#   STOPPED         the fleet's tmux session is gone; the watchdog has stopped
+#   INTERRUPTED     a signal arrived, as when Monitor expires; start the watchdog again, its state carries over
 # The full per-session state goes to <main checkout>/.logs/<project>/fleet-watch.md, a line per session per pass and a
-# line per nudge. The state between passes is fleet-watch.state beside it.
+# line per nudge. The state between passes is fleet-watch-<fleet>.state beside it, with a lock of the same stem.
 #
 # Stuck means: the pane shows an empty prompt box, nothing moved in the pane, no commit on the session's branches and
-# no change to its plan docs or .logs folders for the stuck time, and the session owns a piece in `building` status.
+# no change to its plan docs, .logs folders or branch worktree for the stuck time, and the session owns a piece in
+# `building` status that is not waiting on anything (`waiting_on` empty).
 # One stall gets one nudge: the stall ends only when the pane or the progress moves again.
 #
 # Watch only. It reads panes and plan docs, types only the nudge text, and only into an idle pane of the named fleet
-# session, found by pane id from that session's own window list. It never claims a piece, merges or answers a prompt.
+# session where a claude process runs, found by pane id from that session's own window list. It never claims a
+# piece, merges or answers a prompt.
 # Like launch.sh, a sanctioned use of the owner's tmux server, since guard-tmux-socket.sh does not look inside scripts.
 set -uo pipefail
 
@@ -48,13 +52,15 @@ main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir
 log_dir=$main_checkout/.logs/$project
 mkdir -p "$log_dir"
 log_file=$log_dir/fleet-watch.md
-state_file=$log_dir/fleet-watch.state
+state_file=$log_dir/fleet-watch-$fleet.state
 [[ -e $log_file ]] || printf '# Fleet watch: %s\n\n' "$fleet" >"$log_file"
 
-# One watcher per fleet, so two of them never nudge the same stall.
-exec 9>"$log_dir/fleet-watch.lock"
+# One watcher per fleet, so two of them never nudge the same stall. State and lock are per fleet, because two fleets
+# can work on the same project.
+lock_file=$log_dir/fleet-watch-$fleet.lock
+exec 9>"$lock_file"
 flock -n 9 || {
-  echo "watch.sh: another watcher holds $log_dir/fleet-watch.lock" >&2
+  echo "watch.sh: another watcher holds $lock_file" >&2
   exit 0
 }
 
@@ -63,8 +69,8 @@ log() { printf -- '- %s %s\n' "$(date +%FT%T)" "$*" >>"$log_file"; }
 sleeper=
 on_signal() {
   [[ -z $sleeper ]] || kill "$sleeper" 2>/dev/null
-  log "stopped by signal"
-  echo STOPPED
+  log "interrupted by a signal"
+  echo INTERRUPTED
   exit 0
 }
 trap on_signal INT TERM
@@ -88,12 +94,23 @@ save_state() {
 }
 
 # The newest sign of work by the owner of these docs: a commit on its branch, or a change to a plan doc or .logs file.
+# The worktree where a branch is checked out, if any.
+worktree_of() { # <branch>
+  git -C "$main_checkout" worktree list --porcelain 2>/dev/null |
+    awk -v b="refs/heads/$1" '/^worktree /{p=substr($0, 10)} $1 == "branch" && $2 == b {print p; exit}'
+}
+
+# A session can wait on its own background build for longer than the stuck time with no commit, so a file changed
+# in the worktree of its branch counts as work too. One recent file is enough, so find stops at the first.
 latest_progress() { # <json of the session's docs>
-  local best=0 t id branch path
+  local best=0 t id branch path worktree
   while IFS=$'\t' read -r id branch path; do
+    worktree=
+    [[ -z $branch || $branch == none ]] || worktree=$(worktree_of "$branch")
     for t in $(stat -c %Y "$path" 2>/dev/null) \
       $(find "$log_dir/$id" -type f -printf '%Ts\n' 2>/dev/null) \
-      $([[ -n $branch && $branch != none ]] && git -C "$main_checkout" log -1 --format=%ct "$branch" -- 2>/dev/null); do
+      $([[ -n $branch && $branch != none ]] && git -C "$main_checkout" log -1 --format=%ct "$branch" -- 2>/dev/null) \
+      $([[ -n $worktree ]] && find "$worktree" \( -name .git -o -name node_modules \) -prune -o -type f -newermt "@$(($(date +%s) - stuck_seconds))" -printf '%Ts\n' -quit 2>/dev/null); do
       ((t > best)) && best=$t
     done
   done < <(jq -r '.[] | [.id, .branch, .path] | @tsv' <<<"$1")
@@ -110,6 +127,16 @@ prompt_box_empty() {
   [[ $line =~ ^[[:space:]]*$ ]]
 }
 
+# Claude is the pane's process or runs below it. A shell prompt or a shell with background jobs is not claude.
+claude_runs_in() { # <pid>
+  local pid=$1 child
+  [[ $(ps -o comm= -p "$pid" 2>/dev/null) == claude ]] && return 0
+  for child in $(pgrep -P "$pid"); do
+    claude_runs_in "$child" && return 0
+  done
+  return 1
+}
+
 hash_of() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
 
 nudge() { # <pane id> <name>
@@ -120,19 +147,19 @@ nudge() { # <pane id> <name>
 }
 
 pass() {
-  local now windows pane name dead cmd text new_hash docs ids active building state quiet progress
+  local now windows pane name dead pane_pid text new_hash docs ids active building state quiet progress
   now=$(date +%s)
-  windows=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_current_command}|#{pane_pid}' 2>/dev/null) || return 2
+  windows=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null) || return 2
   load_state
   all_finished=1
-  while IFS='|' read -r pane name dead cmd pane_pid; do
+  while IFS='|' read -r pane name dead pane_pid; do
     [[ -n $name ]] || continue
     text=$(tmux capture-pane -p -t "$pane" 2>/dev/null)
     new_hash=$(hash_of "$text")
     docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null)
     [[ -n $docs ]] || docs='[]'
     ids=$(jq -r '[.[].id] | join(",")' <<<"$docs")
-    building=$(jq '[.[] | select(.status == "building")] | length' <<<"$docs")
+    building=$(jq '[.[] | select(.status == "building" and .waiting_on == "")] | length' <<<"$docs")
     active=$(jq '[.[] | select(.status == "approved" or .status == "building" or (.status == "review" and .waiting_on == ""))] | length' <<<"$docs")
     [[ -z $ids ]] || ever_owned[$name]=1
     progress=$(latest_progress "$docs")
@@ -148,9 +175,9 @@ pass() {
     hash[$name]=$new_hash
 
     # tmux names the foreground process group by its leader, which for `sh -c "claude ...; exec zsh"` is the shell
-    # even while claude runs. So a shell with a child process is claude running, and a shell without one is the
-    # `exec zsh` after claude exited.
-    if [[ $dead == 1 ]] || { [[ $cmd =~ ^-?(bash|zsh|sh|fish|dash)$ ]] && ! pgrep -P "$pane_pid" >/dev/null; }; then
+    # even while claude runs, so the pane command says nothing. Only a claude process below the pane makes it a
+    # session. Without one, the pane is the `exec zsh` after claude exited, and nothing is typed into it.
+    if [[ $dead == 1 ]] || ! claude_runs_in "$pane_pid"; then
       state=exited
     elif grep -qE 'Do you want to|❯ 1\. |\(y/n\)' <<<"$(tail -n 15 <<<"$text")"; then
       state=prompt
@@ -170,8 +197,13 @@ pass() {
     case $state in
     exited)
       if [[ -z ${acted_hash[$name]:-} ]]; then
-        log "$name EXITED to a shell"
-        echo "EXITED $name"
+        if ((active > 0)); then
+          log "$name LOST claude exited with unfinished pieces: $ids"
+          echo "LOST $name"
+        else
+          log "$name EXITED claude exited, no unfinished pieces"
+          echo "EXITED $name"
+        fi
         acted_hash[$name]=$new_hash acted_at[$name]=$now
       fi
       ;;
@@ -200,8 +232,11 @@ pass() {
       ;;
     esac
 
-    # Finished: left claude, or went idle after owning pieces that are all merged, closed or held for the owner.
-    if [[ $state != exited ]] && { [[ $state != idle ]] || [[ ${ever_owned[$name]:-0} != 1 ]] || ((active > 0)); }; then
+    # Finished: left claude with nothing unfinished, or went idle after owning pieces that are all merged, closed or
+    # held for the owner. A session that left claude with unfinished pieces is lost, not finished.
+    if [[ $state == exited ]]; then
+      ((active == 0)) || all_finished=0
+    elif [[ $state != idle ]] || [[ ${ever_owned[$name]:-0} != 1 ]] || ((active > 0)); then
       all_finished=0
     fi
     state=
