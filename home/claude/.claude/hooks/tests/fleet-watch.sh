@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Runs the fleet skill's watch.sh against a private tmux server (-L, never the owner's default one), stand-in panes
-# and a stand-in `plans`. Checks the stuck rule, the log line for each state and each nudge, one nudge per stall,
-# no nudge to a busy session, no touch outside the fleet session and a clean stop.
+# and a stand-in `plans`. Checks the stuck rule, the log line for each state, one report per stall, that a check types
+# into no pane, the guarded --nudge fallback, no touch outside the fleet session, and the planner's background loop
+# from SKILL.md: it sleeps through ok, wakes once on a problem or on all finished, and wakes on a crashed check.
 set -uo pipefail
-skill=$(cd "$(dirname "$0")" && pwd)/../../skills/fleet
+skill=${FLEET_SKILL_DIR:-$(cd "$(dirname "$0")" && pwd)/../../skills/fleet}
+guard=$(cd "$(dirname "$0")" && pwd)/../guard-wait-loops.sh
 pass=0 fail=0
 
 work=$(mktemp -d)
@@ -112,9 +114,16 @@ doc() {
   jq -n --arg id "$id" --arg s "$status" --arg w "$waiting" --arg b "$branch" --arg p "$work/.plans/p/$id.md" \
     '[{id: $id, project: "p", status: $s, waiting_on: $w, branch: $b, path: $p}]' >"$PLANS_DATA/$owner.json"
 }
-watch() { (cd "$work" && TMUX=$tmux_env FLEET_STUCK_SECONDS=${stuck:-3} FLEET_INTERVAL_SECONDS=1 "$skill/watch.sh" "$@"); }
-# watch_bg: run as `(watch_bg ...) &`; the exec makes the script itself the background pid, so a signal reaches it
-watch_bg() { cd "$work" && TMUX=$tmux_env FLEET_STUCK_SECONDS=${stuck:-3} FLEET_INTERVAL_SECONDS=1 exec "$skill/watch.sh" "$@"; }
+watch() { (cd "$work" && TMUX=$tmux_env FLEET_STUCK_SECONDS=${stuck:-3} "$skill/watch.sh" "$@"); }
+# The planner's loop, the one line of SKILL.md that starts with `sleep`, with the one-second sleeps and the script path
+# of the test. Its output is what would wake the planner.
+loop_line() { # <fleet> <project> [script]
+  grep -m1 '^sleep 1800; while' "$skill/SKILL.md" |
+    sed -e "s|sleep 1800|sleep 1|g" -e "s|~/.claude/skills/fleet/watch.sh|${3:-$skill/watch.sh}|" \
+      -e "s|<fleet-session>|$1|" -e "s|<project>|$2|"
+}
+# watch_loop <fleet> <project> [script]: run as `(watch_loop ...) &`, the loop being the background pid
+watch_loop() { cd "$work" && TMUX=$tmux_env FLEET_STUCK_SECONDS=${stuck:-3} exec bash -c "$(loop_line "$@")"; }
 # fresh_work: counts as new progress for the sessions with a fresh plan doc and a fresh commit
 fresh_work() {
   touch "$work/.plans/p/piece-fresh.md"
@@ -152,37 +161,31 @@ doc df-branch piece-branch building "" piece-branch
 touch -d '1 hour ago' "$work/.plans/p/piece-branch.md"
 
 fresh_work
-out1=$(watch --once f1 p 2>&1)
-check "the first pass nudges nobody, whatever the pane shows" test "$(typed_lines f1 df-idle)" -eq 0
+out1=$(watch f1 p 2>&1)
+check "the first check reports no stuck session, whatever the panes show" test -z "$(grep ^STUCK <<<"$out1")"
 sleep 4
 fresh_work
-out2=$(watch --once f1 p 2>&1)
-sleep 2
-check "a stuck session gets one nudge line on stdout" grep -qx "NUDGED df-idle" <<<"$out2"
-check "the nudge text reaches the stuck pane" grep -q "Fleet watchdog" "$work/typed-f1-df-idle"
-check "the nudge is submitted, one line typed" test "$(typed_lines f1 df-idle)" -eq 1
+out2=$(watch f1 p 2>&1)
+check "a stuck session is reported as STUCK" grep -q "^STUCK df-idle" <<<"$out2"
 fresh_work
-out3=$(watch --once f1 p 2>&1)
+out3=$(watch f1 p 2>&1)
 sleep 4
 fresh_work
-out4=$(watch --once f1 p 2>&1)
-check "the same stall is not nudged again" test "$(typed_lines f1 df-idle)" -eq 1
-check "no NUDGED line for a stall already nudged" test -z "$(grep NUDGED <<<"$out3$out4")"
-check "a busy session (spinner) is not nudged" test "$(typed_lines f1 df-busy)" -eq 0
-check "a session whose pane keeps changing is not nudged" test "$(typed_lines f1 df-moving)" -eq 0
-check "a session with a fresh plan doc is not nudged" test "$(typed_lines f1 df-fresh)" -eq 0
-check "a session with a fresh commit on its branch is not nudged" test "$(typed_lines f1 df-branch)" -eq 0
+out4=$(watch f1 p 2>&1)
+check "a stall already reported is not reported again" test -z "$(grep 'STUCK df-idle' <<<"$out3$out4")"
+check "a check types into no pane" test "$(cat "$work"/typed-f1-* 2>/dev/null | wc -l)" -eq 0
+check "a busy session (spinner) is not stuck" test -z "$(grep df-busy <<<"$out1$out2$out3$out4")"
+check "a session whose pane keeps changing is not stuck" test -z "$(grep df-moving <<<"$out1$out2$out3$out4")"
+check "a session with a fresh plan doc is not stuck" test -z "$(grep df-fresh <<<"$out1$out2$out3$out4")"
+check "a session with a fresh commit on its branch is not stuck" test -z "$(grep df-branch <<<"$out1$out2$out3$out4")"
 check "a permission prompt is never typed into" test "$(typed_lines f1 df-perm)" -eq 0
 check "a prompt is reported once" test "$(grep -c '^PROMPT df-perm' <<<"$out1$out2$out3$out4")" -eq 1
-check "text left in the prompt box is not nudged over" test "$(typed_lines f1 df-typed)" -eq 0
-check "a stuck session with text in its box is reported as STALL" grep -qx "STALL df-typed" <<<"$out2"
-check "a pane with no prompt box is not nudged" test "$(typed_lines f1 df-nobox)" -eq 0
-check "a session at a shell with unfinished pieces is reported LOST once" test "$(grep -c '^LOST df-exit$' <<<"$out1$out2$out3$out4")" -eq 1
+check "a stuck session with text in its box is reported" grep -q "^STUCK df-typed" <<<"$out2"
+check "a session at a shell with unfinished pieces is reported LOST once" test "$(grep -c '^LOST df-exit:' <<<"$out1$out2$out3$out4")" -eq 1
 check "a session at a shell with no pieces is reported EXITED once" test "$(grep -c '^EXITED df-exit-clean' <<<"$out1$out2$out3$out4")" -eq 1
-check "a shell with a background job and a prompt mark is never nudged" test "$(typed_lines f1 df-shell-child)" -eq 0
 check "that shell is reported as lost, not idle" grep -q ' df-shell-child exited ' <<<"$(log_of p)"
-check "a session whose piece waits on something is not nudged" test "$(typed_lines f1 df-wait)" -eq 0
-check "a session with fresh files in its branch worktree is not nudged" test "$(typed_lines f1 df-wt)" -eq 0
+check "a session whose piece waits on something is not stuck" test -z "$(grep df-wait <<<"$out1$out2$out3$out4")"
+check "a session with fresh files in its branch worktree is not stuck" test -z "$(grep df-wt <<<"$out1$out2$out3$out4")"
 check "a same-named window in another tmux session is untouched" test "$(typed_lines other df-idle)" -eq 0
 
 log=$(log_of p)
@@ -193,123 +196,159 @@ check "the log has a busy line for a changing pane" grep -q ' df-moving busy ' <
 check "the log has a prompt line" grep -q ' df-perm prompt ' <<<"$log"
 check "the log has an exited line" grep -q ' df-exit exited ' <<<"$log"
 check "the log has a LOST line" grep -q ' df-exit LOST claude exited' <<<"$log"
-check "the log has one NUDGE line for the stall" test "$(grep -c ' df-idle NUDGE sent' <<<"$log")" -eq 1
-check "the log has a STALL line for the unnudgeable session" grep -q ' df-typed STALL not nudged' <<<"$log"
+check "the log has one STUCK line for the stall" test "$(grep -c ' df-idle STUCK ' <<<"$log")" -eq 1
 check "every state line carries the piece and the active count" grep -q ' df-idle .* active=1 ' <<<"$log"
 
-# Fleet f2: stop when every session is finished (loop mode)
-win f2 df-gone "exec sh"
-win f2 df-done pane-idle
+# --nudge, the fallback for a SendMessage held for approval: types only into an idle pane with an empty prompt box
+nudge_out=$(watch --nudge f1 p df-idle 2>&1)
 sleep 1
-doc df-done piece-done building
-(watch_bg f2 p >"$work/f2.out" 2>&1) &
-watcher=$!
-sleep 2
-check "a fleet with a session that still owns a building piece keeps being watched" kill -0 "$watcher"
-rm "$PLANS_DATA/df-done.json"
-for _ in 1 2 3 4 5 6 7 8; do
-  kill -0 "$watcher" 2>/dev/null || break
-  sleep 1
+check "--nudge prints NUDGED for an idle pane" grep -qx "NUDGED df-idle" <<<"$nudge_out"
+check "--nudge types the text, submitted, one line" test "$(typed_lines f1 df-idle)" -eq 1
+check "--nudge text reaches the pane" grep -q "Fleet watchdog" "$work/typed-f1-df-idle"
+check "--nudge is logged" test "$(grep -c ' df-idle NUDGE sent' <<<"$(log_of p)")" -eq 1
+for n in busy perm typed nobox exit shell-child; do
+  watch --nudge f1 p "df-$n" >/dev/null 2>&1
+  check "--nudge refuses df-$n and types nothing" test "$(typed_lines f1 df-$n)" -eq 0
 done
-check "the watcher stops by itself when all sessions finished" test -z "$(ps -o stat= -p "$watcher" | grep -v Z)"
-wait "$watcher"
-check "the watcher exits 0 when all finished" test $? -eq 0
-check "FINISHED is printed" grep -qx FINISHED "$work/f2.out"
-check "the log says all sessions finished" grep -q 'all fleet sessions finished' <<<"$(log_of p)"
+check "--nudge refuses an unknown window" bash -c "cd $work && TMUX=$tmux_env '$skill/watch.sh' --nudge f1 p nosuch >/dev/null 2>&1; test \$? -ne 0"
+watch --nudge f1 p df-idle >/dev/null 2>&1
+check "--nudge never reaches the same-named window of another session" test "$(typed_lines other df-idle)" -eq 0
+
+# All finished is printed by a check
+win f4 df-held pane-idle
+sleep 1
+doc df-held piece-held building
+watch f4 p >/dev/null 2>&1
+doc df-held piece-held review "owner: look at it"
+out=$(watch f4 p 2>&1)
+check "a session whose pieces are all held gives all finished" test "$out" = "all finished"
 
 # A session that never owned a piece is not finished
 win f3 df-new pane-idle
 sleep 1
-out=$(watch --once f3 p 2>&1)
-check "a session that has not claimed yet is not finished" test -z "$out"
+out=$(watch f3 p 2>&1)
+check "a session that has not claimed yet is not finished" test "$out" = ok
 
-# A held piece (review, waiting on the owner) counts as finished
-win f4 df-held pane-idle
-sleep 1
-doc df-held piece-held building
-watch --once f4 p >/dev/null 2>&1
-doc df-held piece-held review "owner: look at it"
-out=$(watch --once f4 p 2>&1)
-check "a session whose pieces are all held is finished" grep -qx FINISHED <<<"$out"
+# A fleet session that is gone
+out=$(watch nosuchfleet p 2>&1)
+check "a missing fleet session prints STOPPED and exits 0" test $? -eq 0 -a "${out%% *}" = STOPPED
 
-# A signal: the loop stops clean, prints STOPPED, logs it and leaves no child or lock
-win f5 df-live pane-busy
-sleep 1
-doc df-live piece-live building
-(watch_bg f5 q >"$work/f5.out" 2>&1) &
-watcher=$!
-sleep 2
-kill -TERM "$watcher"
-wait "$watcher"
-check "a signal stops the watcher with exit 0" test $? -eq 0
-check "a signal prints INTERRUPTED, not STOPPED" grep -qx INTERRUPTED "$work/f5.out"
-check "a signal is logged" grep -q 'interrupted by a signal' <<<"$(log_of q)"
-check "the lock is released after a signal" watch --once f5 q
-check "the fleet window is left alone by the signal" test "$(typed_lines f5 df-live)" -eq 0
-
-# A fleet session that is gone ends the watch
-out=$(watch --once nosuchfleet p 2>&1)
-check "a missing fleet session stops the watch with STOPPED" test $? -eq 0 -a "$out" = STOPPED
-
-# Two watchers on one fleet: one runs, one nudge
-win f6 df-two pane-idle
-sleep 1
-doc df-two piece-two building
-watch --once f6 r >/dev/null 2>&1
-sleep 4
-(watch --once f6 r >"$work/w1.out" 2>&1) &
-(watch --once f6 r >"$work/w2.out" 2>&1) &
-wait
-sleep 2
-check "two watchers at once nudge once" test "$(typed_lines f6 df-two)" -eq 1
-
-# A session that left claude with an unfinished piece is lost, so the fleet is not finished
+# A lost session keeps the fleet from finishing
 win f7 df-lost "exec sh"
 win f7 df-fine pane-idle
 sleep 1
 doc df-lost piece-lost building
 doc df-fine piece-fine building
-out=$(watch --once f7 s 2>&1)
-check "a lost session is reported" grep -qx "LOST df-lost" <<<"$out"
+out=$(watch f7 s 2>&1)
+check "a lost session is reported" grep -q "^LOST df-lost" <<<"$out"
 rm "$PLANS_DATA/df-fine.json"
-out=$(watch --once f7 s 2>&1)
-check "a lost session keeps the fleet from finishing" test -z "$(grep FINISHED <<<"$out")"
+out=$(watch f7 s 2>&1)
+check "a lost session keeps the fleet from finishing" test -z "$(grep 'all finished' <<<"$out")"
 rm "$PLANS_DATA/df-lost.json"
-out=$(watch --once f7 s 2>&1)
-check "the fleet finishes once the lost session owns nothing" grep -qx FINISHED <<<"$out"
+out=$(watch f7 s 2>&1)
+check "the fleet finishes once the lost session owns nothing" test "$out" = "all finished"
 
-# Two fleets on one project: each has its own lock and state, so both run and each nudges its own stall
+# Two fleets on one project: each has its own lock and state
 win f8a df-p pane-idle
 win f8b df-q pane-idle
 sleep 1
 doc df-p piece-p building
 doc df-q piece-q building
-(watch_bg f8a z >"$work/f8a.out" 2>&1) &
-watcher=$!
-sleep 1
-watch --once f8b z >/dev/null 2>&1
-sleep 4
-out=$(watch --once f8b z 2>&1)
-check "a second fleet on the same project is not blocked by the first fleet's lock" test -z "$(grep -i 'another watcher' <<<"$out")"
-check "the second fleet nudges its own stall" test "$(typed_lines f8b df-q)" -eq 1
+watch f8a z >/dev/null 2>&1
+watch f8b z >/dev/null 2>&1
 check "the two fleets keep separate state files" test -s "$work/.logs/z/fleet-watch-f8a.state" -a -s "$work/.logs/z/fleet-watch-f8b.state"
-kill -TERM "$watcher"
-wait "$watcher"
+sleep 4
+out=$(watch f8b z 2>&1)
+check "the second fleet reports its own stall" grep -q "^STUCK df-q" <<<"$out"
+exec 8>"$work/.logs/z/fleet-watch-f8a.lock"
+flock -n 8
+out=$(watch f8a z 2>&1)
+check "a check that finds the lock held prints ok" test "$out" = ok
+exec 8>&-
+out=$(watch f8b z 2>&1)
+check "a second check does not report a stall twice" test "$out" = ok
 
 # A failed `plans ls` is not an empty list: the fleet does not finish on it
 win f9 df-z pane-idle
 sleep 1
 doc df-z piece-z building
-watch --once f9 y >/dev/null 2>&1
+watch f9 y >/dev/null 2>&1
 touch "$PLANS_DATA/FAIL"
-out=$(watch --once f9 y 2>&1)
-check "a failed plans ls does not finish the fleet" test -z "$(grep FINISHED <<<"$out")"
+out=$(watch f9 y 2>&1)
+check "a failed plans ls does not finish the fleet" test -z "$(grep 'all finished' <<<"$out")"
 check "a failed plans ls is logged" grep -q 'df-z plans ls failed' <<<"$(log_of y)"
 rm "$PLANS_DATA/FAIL"
+
+# State survives across runs: a stall is timed over separate runs, and a reported one stays quiet
+win f10 df-s pane-idle
+sleep 1
+doc df-s piece-s building
+watch f10 s2 >/dev/null 2>&1
+check "the state file exists after one run" test -s "$work/.logs/s2/fleet-watch-f10.state"
+sleep 4
+out=$(watch f10 s2 2>&1)
+check "the stall is found on a later run from the state alone" grep -q "^STUCK df-s" <<<"$out"
+out=$(watch f10 s2 2>&1)
+check "and is quiet on the run after" test "$out" = ok
+
+# The planner's loop: the form in SKILL.md passes the repo's wait-loop guard
+loop_cmd=$(loop_line f p)
+check "SKILL.md has the loop line" test -n "$loop_cmd"
+guard_out=$(jq -n --arg c "$(grep -m1 '^sleep 1800; while' "$skill/SKILL.md")" '{tool_input: {command: $c}}' | "$guard")
+check "the loop is not refused by guard-wait-loops.sh" test -z "$guard_out"
+
+# Loop: sleeps through ok, exits once on a problem with the line, and a handled stall does not wake it again
+win l1 df-l pane-idle
+sleep 1
+doc df-l piece-l building
+(watch_loop l1 l >"$work/l1.out" 2>&1) &
+loop_pid=$!
+sleep 2.5
+check "the loop keeps sleeping while every check prints ok" kill -0 "$loop_pid"
+check "the loop prints nothing while it sleeps" test ! -s "$work/l1.out"
+for _ in $(seq 1 12); do
+  kill -0 "$loop_pid" 2>/dev/null || break
+  sleep 1
+done
+check "the loop exits on a problem" test -z "$(ps -o stat= -p "$loop_pid" | grep -v Z)"
+wait "$loop_pid"
+check "the loop exits 0 on a problem" test $? -eq 0
+check "the loop prints the problem line" grep -q '^STUCK df-l' "$work/l1.out"
+# The planner handled it and restarts the loop: the same stall must not wake it again
+(watch_loop l1 l >"$work/l1b.out" 2>&1) &
+loop_pid=$!
+sleep 7
+check "a restarted loop keeps sleeping on a stall already handled" kill -0 "$loop_pid"
+check "and prints nothing" test ! -s "$work/l1b.out"
+# It exits on all finished
+rm "$PLANS_DATA/df-l.json"
+doc df-l piece-l review "owner: look"
+for _ in $(seq 1 12); do
+  kill -0 "$loop_pid" 2>/dev/null || break
+  sleep 1
+done
+check "the loop exits on all finished" test -z "$(ps -o stat= -p "$loop_pid" | grep -v Z)"
+wait "$loop_pid"
+check "the loop prints all finished" grep -qx 'all finished' "$work/l1b.out"
+
+# A crashed check exits the loop with a message instead of spinning
+printf '#!/bin/sh\necho boom >&2\nexit 3\n' >"$work/bin/crash-watch"
+chmod +x "$work/bin/crash-watch"
+(watch_loop l1 l "$work/bin/crash-watch" >"$work/crash.out" 2>&1) &
+loop_pid=$!
+for _ in $(seq 1 6); do
+  kill -0 "$loop_pid" 2>/dev/null || break
+  sleep 1
+done
+check "a crashed check exits the loop" test -z "$(ps -o stat= -p "$loop_pid" | grep -v Z)"
+wait "$loop_pid"
+check "the crash message names the exit status" grep -q 'exit 3' "$work/crash.out"
+check "the crash message carries the check's own output" grep -q boom "$work/crash.out"
 
 # Bad arguments
 check "no arguments are refused" bash -c "cd $work && '$skill/watch.sh' >/dev/null 2>&1; test \$? -eq 2"
 check "a bad fleet name is refused" bash -c "cd $work && '$skill/watch.sh' 'a b' p >/dev/null 2>&1; test \$? -eq 2"
+check "--nudge without a name is refused" bash -c "cd $work && '$skill/watch.sh' --nudge f1 p >/dev/null 2>&1; test \$? -eq 2"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

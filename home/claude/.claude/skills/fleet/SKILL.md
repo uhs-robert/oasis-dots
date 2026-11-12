@@ -1,6 +1,6 @@
 ---
 name: fleet
-description: Plan and launch a fleet of full-auto orchestrator sessions for a repo's idea docs. Scouts size the pieces, the owner answers the logistics and design questions up front, the decisions go into the plan docs, and one tmux window per bundle runs an orchestrator. A watchdog logs and nudges stalled sessions. Use when the owner asks to plan a fleet, an overnight run or parallel orchestrators.
+description: Plan and launch a fleet of full-auto orchestrator sessions for a repo's idea docs. Scouts size the pieces, the owner answers the logistics and design questions up front, the decisions go into the plan docs, and one tmux window per bundle runs an orchestrator. A silent watchdog wakes the planner only when a session stalls. Use when the owner asks to plan a fleet, an overnight run or parallel orchestrators.
 argument-hint: "[project] [pieces to leave out]"
 ---
 
@@ -85,15 +85,34 @@ Check each item against the scout reports and ask the owner about each one that 
 
 ## Watchdog
 
-The watchdog only watches. It never claims a piece, merges or answers a permission prompt.
+The watchdog is silent until a session needs the planner. `watch.sh` makes one check per run. It never types into a pane, claims a piece, merges or answers a permission prompt.
 
-Start it with the `Monitor` tool on `~/.claude/skills/fleet/watch.sh <fleet-session> <project>`. It prints one line per event: `NUDGED`, `STALL`, `PROMPT`, `EXITED`, `LOST`, `FINISHED`, `STOPPED` or `INTERRUPTED`. It ends by itself on `FINISHED` (every session is done) or `STOPPED` (the fleet's tmux session is gone). A monitor expires after 30 minutes at most, and the expiry sends a signal. On `INTERRUPTED`, start `watch.sh` again. The state file, kept per fleet, carries the stall timing over.
+Start one background loop with the `Bash` tool and `run_in_background`, with this command (fill in the fleet session and the project):
 
-If `Monitor` is not available, run `/loop 10m` with the instruction to run `watch.sh --once <fleet-session> <project>`. Cancel the loop when the output says `FINISHED` or `STOPPED`.
+```
+sleep 1800; while true; do out=$(~/.claude/skills/fleet/watch.sh <fleet-session> <project> 2>&1); rc=$?; if [ "$rc" -ne 0 ] || [ "$out" != ok ]; then echo "$out"; echo "watch.sh exit $rc"; exit 0; fi; sleep 1800; done
+```
 
-A session is stuck when it runs claude, sits idle with an empty prompt box and owns a piece in `building` status with `waiting_on` empty. In addition, for 30 minutes it shows no activity. Activity is a pane change, a commit, a plan doc change, a new `.logs` file or a changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`. The nudge is a line of text typed into the pane. One stall gets one nudge. A session that is busy, waits on a permission prompt or has text in its prompt box gets none.
+It sleeps first, so its first check does not compare against a manual run. It checks every 30 minutes and exits only on a result that is not `ok`. That exit wakes the planner, and a healthy night costs no tokens. A check that crashes also exits the loop, with its output and exit status, so the loop never spins on a broken check.
 
-`LOST` means claude exited while the session still owns unfinished pieces. Such a session never counts as finished, so the watchdog keeps running until you deal with it. On `PROMPT`, `STALL`, `EXITED` or `LOST`, look at the pane with `tmux capture-pane`, then tell the owner. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
+A check prints `ok`, `all finished`, or one line per problem:
+
+- `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns a piece in `building` status with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
+- `PROMPT <name>`: the session waits on a permission prompt.
+- `LOST <name>`: claude exited while the session still owns unfinished pieces. Such a session never counts as finished.
+- `EXITED <name>`: claude exited with nothing unfinished.
+- `STOPPED <fleet>`: the fleet's tmux session is gone.
+
+When the loop exits, read its output, then:
+
+1. `all finished`: stop. No loop runs.
+2. Look at each named session with `tmux capture-pane -p -t <fleet-session>:<name>`.
+3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the building piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `STOPPED`.
+4. Start the loop again with the same command.
+
+One stall wakes the planner once. The check keeps the stall in its state file, so the restarted loop stays quiet on it until the pane or the progress moves again. The state, kept per fleet, also carries the stall timing across runs. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
+
+A session in another permission mode than the fleet sessions (`auto`) can have its `SendMessage` held for approval or lost. A test from an `auto` session reached an `auto` fleet session, but it could not cover a default-mode sender. So after a nudge, check the pane after a few minutes. If a `[Cross-session delivery notice]` says the message is held, or the session did not react, run `~/.claude/skills/fleet/watch.sh --nudge <fleet-session> <project> <name>`. It types the nudge text into that window only when the pane is idle with an empty prompt box and a claude process below it, and it logs the nudge.
 
 ## Placeholders
 
@@ -117,4 +136,4 @@ Fill these in `launch-prompt.txt` and `roster.md`:
 ## Scripts
 
 - `~/.claude/skills/fleet/launch.sh <fleet-session> <budget> <name>=<prompt-file>...` creates the tmux session with one window per bundle, each running `CLAUDE_CONTEXT_BUDGET=<budget> claude -n <name> --permission-mode auto "<prompt>"`. It refuses a session or window name that exists, kills a half-made session on failure and checks each pane for the prompt. It prints `tmux switch-client -t <fleet-session>`: tell the owner to run it, because the windows live in a separate tmux session.
-- `~/.claude/skills/fleet/watch.sh [--once] <fleet-session> <project>` is the watchdog above.
+- `~/.claude/skills/fleet/watch.sh <fleet-session> <project>` is one watchdog check. `watch.sh --nudge <fleet-session> <project> <name>` is the fallback nudge.
