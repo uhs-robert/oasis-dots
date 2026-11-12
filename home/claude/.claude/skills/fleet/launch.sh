@@ -96,8 +96,10 @@ for i in "${!names[@]}"; do
     abort "could not create window ${names[i]}"
 done
 
-# Confirm each pane shows the start of its prompt, which means claude started and took it. A dead pane or a missing
-# prompt after the wait is reported, not fixed: the owner or planner looks at the pane.
+# Confirm each window started claude: a claude process runs under the pane's shell, or the pane shows the start of the
+# prompt. The prompt alone is not enough, because a working session scrolls or redraws it away. #{pane_current_command}
+# is no help: the window shell runs claude without job control, so tmux reports the shell. A window whose claude
+# exited, or that shows neither signal after the wait, is reported, not fixed: the owner or planner looks at the pane.
 confirm_seconds=${FLEET_CONFIRM_SECONDS:-45}
 unconfirmed=0
 for i in "${!names[@]}"; do
@@ -105,7 +107,9 @@ for i in "${!names[@]}"; do
   head_of_prompt=$(grep -m1 . "${files[i]}" | cut -c1-20)
   seen=0
   for ((waited = 0; waited < confirm_seconds * 2; waited++)); do
-    if tmux capture-pane -p -t "=$fleet:=${names[i]}" 2>/dev/null | grep -qF -- "$head_of_prompt"; then
+    target="=$fleet:=${names[i]}"
+    if pgrep -x -P "$(tmux display-message -p -t "$target" '#{pane_pid}' 2>/dev/null)" claude >/dev/null 2>&1 ||
+      tmux capture-pane -p -t "$target" 2>/dev/null | grep -qF -- "$head_of_prompt"; then
       seen=1
       break
     fi
@@ -114,7 +118,7 @@ for i in "${!names[@]}"; do
   if ((seen)); then
     echo "started ${names[i]}"
   else
-    echo "UNCONFIRMED ${names[i]}: its pane does not show the prompt" >&2
+    echo "UNCONFIRMED ${names[i]}: no claude runs in it and its pane does not show the prompt" >&2
     unconfirmed=1
   fi
 done

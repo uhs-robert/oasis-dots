@@ -27,7 +27,7 @@ sleep 120
 STANDIN
 chmod +x "$work/bin/claude"
 mkdir "$work/silentbin"
-printf '#!/bin/sh\nsleep 120\n' >"$work/silentbin/claude"
+printf '#!/bin/sh\nexit 1\n' >"$work/silentbin/claude"
 chmod +x "$work/silentbin/claude"
 
 check() {
@@ -156,7 +156,7 @@ t kill-session -t =fleet1
 launch fleet5 1000 df-a="$work/prompt-a.txt" df-y6="$work/prompt-b.txt" >/dev/null 2>&1
 check "a name is free again after its fleet is killed" test $? -eq 0
 
-# A claude that never shows its prompt: reported with exit 4, and the fleet keeps running
+# A claude that dies at start: reported with exit 4, and the fleet keeps running
 out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet6 1000 df-s="$work/prompt-b.txt" df-y7="$work/prompt-b.txt" 2>&1)
 check "an unconfirmed start exits 4" test $? -eq 4
 check "an unconfirmed start names the window" grep -q "UNCONFIRMED df-s" <<<"$out"
@@ -184,6 +184,14 @@ rm -rf "$nogit"
 check "launch-prompt.txt carries <merge_rule>" grep -q '<merge_rule>' "$skill/launch-prompt.txt"
 check "roster.md carries <merge_rule>" grep -q '<merge_rule>' "$skill/roster.md"
 check "the templates name no merge command to ban" test -z "$(grep -l 'gh. merge' "$skill/launch-prompt.txt" "$skill/roster.md" "$skill/SKILL.md")"
+
+# A claude that is working but no longer shows its prompt (scrolled or redrawn away) is confirmed by its process
+mkdir "$work/busybin"
+printf '#!/bin/sh\nclear\necho working\nread -r _\n' >"$work/busybin/claude"
+chmod +x "$work/busybin/claude"
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/busybin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet14 1000 df-w="$work/prompt-b.txt" 2>&1)
+rc=$?
+check "a running claude that no longer shows its prompt is confirmed" test "$rc" -eq 0 -a -n "$(grep '^started df-w' <<<"$out")"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
