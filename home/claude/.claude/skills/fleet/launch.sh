@@ -5,12 +5,15 @@
 #   <context-budget>  tokens, exported as CLAUDE_CONTEXT_BUDGET so the context-budget hook sees it
 #   <name>=<file>     one window per pair, named <name>, which is also the `claude -n` name; the prompt file is the
 #                     filled launch-prompt.txt
-# Exit 0 when every window shows its prompt, 2 on a bad argument or a clash (nothing was created), 3 when tmux failed
+# Exit 0 when every window shows its prompt, 2 on a bad argument, a single bundle or a clash (nothing was created), 3 when tmux failed
 # part way (the new session is killed again), 4 when a window did not show its prompt within the confirm time (the
 # fleet keeps running; look at the panes).
 #
-# Like spawn-successor.sh, a sanctioned change to the owner's tmux server, because guard-tmux-socket.sh does not look
-# inside scripts. It only creates the one new session and kills it again on failure. It never touches another one.
+# It only creates the one new session and kills it again on failure. It never touches another one. (guard-tmux-socket.sh
+# blocks only a bare `tmux kill-server`, so no script needs an exception to it.)
+#
+# A fleet is two or more bundles. For one orchestrator use ../orchestrator-handoff/spawn-orchestrator.sh: it keeps
+# the caller's tmux session and lets the owner choose the model and the permission mode, which this script does not.
 #
 # The first bundle is the session's first window, so there is no spare empty window to name or close.
 # The window command reads the prompt with $(cat 'file') instead of quoting the text, so it works under any
@@ -51,6 +54,8 @@ for pair in "$@"; do
   names+=("$name")
   files+=("$file")
 done
+
+[[ ${#names[@]} -ge 2 ]] || refuse "a fleet needs two or more bundles; for one orchestrator run ~/.claude/skills/orchestrator-handoff/spawn-orchestrator.sh <name> <prompt-file>"
 
 tmux has-session -t "=$fleet" 2>/dev/null && refuse "a tmux session named $fleet exists"
 if existing=$(tmux list-windows -a -F '#{window_name}' 2>/dev/null); then
