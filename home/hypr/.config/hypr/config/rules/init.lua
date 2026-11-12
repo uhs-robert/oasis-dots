@@ -131,6 +131,15 @@ local set_window_rules = function()
     size = "(monitor_w*0.7) (monitor_h*0.7)",
   })
 
+  -- DesertFox editor.toml launches its editor window with this class.
+  hl.window_rule({
+    name = "desertfox-editor",
+    match = { class = "^desertfox-editor$" },
+    float = true,
+    center = true,
+    size = "(monitor_w*0.7) (monitor_h*0.7)",
+  })
+
   -- bottom-half-screen: generic terminal dropdown, slides up from bottom. Any command
   -- launched with `--class bottom-half-screen` gets this treatment.
   hl.window_rule({
