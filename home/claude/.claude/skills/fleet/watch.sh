@@ -1,48 +1,59 @@
 #!/usr/bin/env bash
-# Watches the sessions of a fleet: logs each one's state, nudges one that has stalled, stops when all are finished.
-# Usage: watch.sh [--once] <fleet-session> <project>
-#   default  loops until every fleet session is finished or a signal arrives (run it through Monitor)
-#   --once   one pass, for /loop where the loop supplies the timing; the state carries over in a file
-# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_INTERVAL_SECONDS (600), FLEET_NUDGE_TEXT.
-# Output: one line per event, nothing for a quiet pass, so Monitor wakes the model only for these:
-#   NUDGED <name>   a stalled session got the nudge text
-#   STALL <name>    a stalled session could not be nudged (text waiting in its prompt box, or no prompt box)
-#   PROMPT <name>   a session waits on a permission prompt; the watchdog never answers it
-#   EXITED <name>   a session left claude with no unfinished pieces
-#   LOST <name>     a session left claude while it still owns unfinished pieces; it never counts as finished
-#   FINISHED        every fleet session is finished; the watchdog has stopped
-#   STOPPED         the fleet's tmux session is gone; the watchdog has stopped
-#   INTERRUPTED     a signal arrived, as when Monitor expires; start the watchdog again, its state carries over
-# The full per-session state goes to <main checkout>/.logs/<project>/fleet-watch.md, a line per session per pass and a
-# line per nudge. The state between passes is fleet-watch-<fleet>.state beside it, with a lock of the same stem.
+# One check of a fleet's sessions, for a planner that sleeps between checks and wakes only on a problem.
+# Usage: watch.sh <fleet-session> <project>
+#        watch.sh --nudge <fleet-session> <project> <name>
+# Output, and the exit status is 0 for all of these:
+#   ok             every session is moving or already handled; the planner's loop keeps sleeping
+#   all finished   every fleet session is finished
+#   one line per problem, each wakes the planner once per stall:
+#     STUCK <name>    idle with an empty prompt box, no activity for the stuck time, a `building` piece with
+#                     `waiting_on` empty
+#     PROMPT <name>   waits on a permission prompt; never answered by this script
+#     EXITED <name>   left claude with no unfinished pieces
+#     LOST <name>     left claude while it still owns unfinished pieces; never counts as finished
+#     STOPPED <fleet> the fleet's tmux session is gone
+# A stall that was reported prints `ok` on later checks until the pane or the progress moves again, so a loop that
+# restarts after the planner handled it does not wake on it twice. The state between checks is
+# <main checkout>/.logs/<project>/fleet-watch-<fleet>.state, with a lock of the same stem. The log is fleet-watch.md
+# beside it: a line per session per check, and each problem.
+# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_NUDGE_TEXT.
 #
 # Stuck means: the pane shows an empty prompt box, nothing moved in the pane, no commit on the session's branches and
 # no change to its plan docs, .logs folders or branch worktree for the stuck time, and the session owns a piece in
-# `building` status that is not waiting on anything (`waiting_on` empty).
-# One stall gets one nudge: the stall ends only when the pane or the progress moves again.
+# `building` status that is not waiting on anything (`waiting_on` empty). The stuck time spans several checks, so the
+# state file carries when the pane last changed.
 #
-# Watch only. It reads panes and plan docs, types only the nudge text, and only into an idle pane of the named fleet
-# session where a claude process runs, found by pane id from that session's own window list. It never claims a
-# piece, merges or answers a prompt.
+# Never types into a pane by default. The planner nudges through SendMessage. `--nudge` is the fallback for a session
+# that holds SendMessage for approval: it types the nudge text into the named window, only when that window is idle
+# with an empty prompt box and a claude process below it, and logs the nudge.
 # Like launch.sh, a sanctioned use of the owner's tmux server, since guard-tmux-socket.sh does not look inside scripts.
 set -uo pipefail
 
-once=0
-if [[ ${1:-} == --once ]]; then
-  once=1
+mode=check
+if [[ ${1:-} == --nudge ]]; then
+  mode=nudge
   shift
 fi
-[[ $# -eq 2 ]] || {
-  echo "usage: watch.sh [--once] <fleet-session> <project>" >&2
+usage() {
+  echo "usage: watch.sh <fleet-session> <project> | watch.sh --nudge <fleet-session> <project> <name>" >&2
   exit 2
 }
+if [[ $mode == nudge ]]; then
+  [[ $# -eq 3 ]] || usage
+  target=$3
+  [[ $target =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || {
+    echo "watch.sh: bad window name" >&2
+    exit 2
+  }
+else
+  [[ $# -eq 2 ]] || usage
+fi
 fleet=$1 project=$2
 [[ $fleet =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ && $project =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
   echo "watch.sh: bad fleet session or project name" >&2
   exit 2
 }
 stuck_seconds=${FLEET_STUCK_SECONDS:-1800}
-interval=${FLEET_INTERVAL_SECONDS:-600}
 nudge_text=${FLEET_NUDGE_TEXT:-"Fleet watchdog: you look idle while a piece of yours is in building status. Continue it, or set waiting_on and say why you are held."}
 
 main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") || {
@@ -55,25 +66,21 @@ log_file=$log_dir/fleet-watch.md
 state_file=$log_dir/fleet-watch-$fleet.state
 [[ -e $log_file ]] || printf '# Fleet watch: %s\n\n' "$fleet" >"$log_file"
 
-# One watcher per fleet, so two of them never nudge the same stall. State and lock are per fleet, because two fleets
-# can work on the same project.
+# One check per fleet at a time, so two of them never report the same stall. State and lock are per fleet, because
+# two fleets can work on the same project.
 lock_file=$log_dir/fleet-watch-$fleet.lock
 exec 9>"$lock_file"
 flock -n 9 || {
-  echo "watch.sh: another watcher holds $lock_file" >&2
+  if [[ $mode == nudge ]]; then
+    echo "NOT NUDGED: a check holds the lock, try again"
+    exit 1
+  fi
+  # The other check reports the problems, so this one has nothing to add.
+  echo ok
   exit 0
 }
 
 log() { printf -- '- %s %s\n' "$(date +%FT%T)" "$*" >>"$log_file"; }
-
-sleeper=
-on_signal() {
-  [[ -z $sleeper ]] || kill "$sleeper" 2>/dev/null
-  log "interrupted by a signal"
-  echo INTERRUPTED
-  exit 0
-}
-trap on_signal INT TERM
 
 # Per window, from the state file: the pane hash, when it last changed, whether the session ever owned a piece, and
 # the hash and time at which a stall event was last handled (acted_*).
@@ -139,11 +146,36 @@ claude_runs_in() { # <pid>
 
 hash_of() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
 
-nudge() { # <pane id> <name>
-  tmux send-keys -t "$1" -l "$nudge_text" || return 1
-  # Text and Enter in one call leaves the text unsent in the prompt box, so Enter follows after a pause.
-  sleep 0.5
-  tmux send-keys -t "$1" Enter
+# The fallback for SendMessage: the guarded typing of the nudge text into one window of the fleet session.
+nudge() { # <window name>
+  local row pane dead pane_pid text
+  row=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null |
+    awk -F'|' -v n="$1" '$2 == n {print; exit}')
+  [[ -n $row ]] || {
+    echo "NOT NUDGED $1: no such window in $fleet"
+    return 1
+  }
+  IFS='|' read -r pane _ dead pane_pid <<<"$row"
+  text=$(tmux capture-pane -p -t "$pane" 2>/dev/null)
+  if [[ $dead == 1 ]] || ! claude_runs_in "$pane_pid"; then
+    echo "NOT NUDGED $1: no claude process in the pane"
+  elif grep -qE 'Do you want to|❯ 1\. |\(y/n\)' <<<"$(tail -n 15 <<<"$text")"; then
+    echo "NOT NUDGED $1: a permission prompt is on screen"
+  elif grep -qE '… \([0-9]+(m [0-9]+)?s' <<<"$text"; then
+    echo "NOT NUDGED $1: the session is busy"
+  elif ! prompt_box_empty "$text"; then
+    echo "NOT NUDGED $1: text in the prompt box, or no prompt box"
+  else
+    tmux send-keys -t "$pane" -l "$nudge_text" || return 1
+    # Text and Enter in one call leaves the text unsent in the prompt box, so Enter follows after a pause.
+    sleep 0.5
+    tmux send-keys -t "$pane" Enter
+    log "$1 NUDGE sent: $nudge_text"
+    echo "NUDGED $1"
+    return 0
+  fi
+  log "$1 NOT NUDGED"
+  return 1
 }
 
 pass() {
@@ -203,10 +235,10 @@ pass() {
       if [[ -z ${acted_hash[$name]:-} ]]; then
         if ((active > 0)); then
           log "$name LOST claude exited with unfinished pieces: $ids"
-          echo "LOST $name"
+          problems+=("LOST $name: claude exited with unfinished pieces: $ids")
         else
           log "$name EXITED claude exited, no unfinished pieces"
-          echo "EXITED $name"
+          problems+=("EXITED $name: claude exited, no unfinished pieces")
         fi
         acted_hash[$name]=$new_hash acted_at[$name]=$now
       fi
@@ -214,24 +246,15 @@ pass() {
     prompt)
       if [[ -z ${acted_hash[$name]:-} ]]; then
         log "$name PROMPT waits on a permission prompt; not answered"
-        echo "PROMPT $name"
+        problems+=("PROMPT $name: waits on a permission prompt, not answered")
         acted_hash[$name]=$new_hash acted_at[$name]=$now
       fi
       ;;
     stuck)
       if [[ -z ${acted_hash[$name]:-} ]]; then
-        if prompt_box_empty "$text" && nudge "$pane" "$name"; then
-          log "$name NUDGE sent: $nudge_text"
-          echo "NUDGED $name"
-        else
-          log "$name STALL not nudged: text in the prompt box, no prompt box or send failed"
-          echo "STALL $name"
-        fi
-        # The nudge changes the pane, so the stall is keyed to the pane as it is after the nudge.
-        sleep 1
-        acted_hash[$name]=$(hash_of "$(tmux capture-pane -p -t "$pane" 2>/dev/null)")
-        acted_at[$name]=$(date +%s)
-        hash[$name]=${acted_hash[$name]}
+        log "$name STUCK idle ${quiet}s with a building piece: $ids"
+        problems+=("STUCK $name: idle $((quiet / 60))m with a building piece: $ids")
+        acted_hash[$name]=$new_hash acted_at[$name]=$now
       fi
       ;;
     esac
@@ -249,22 +272,22 @@ pass() {
   return 0
 }
 
-while :; do
-  pass
-  rc=$?
-  if ((rc == 2)); then
-    log "fleet session $fleet is gone"
-    echo STOPPED
-    exit 0
-  fi
-  if ((all_finished)); then
-    log "all fleet sessions finished"
-    echo FINISHED
-    exit 0
-  fi
-  ((once)) && exit 0
-  sleep "$interval" &
-  sleeper=$!
-  wait "$sleeper"
-  sleeper=
-done
+problems=()
+if [[ $mode == nudge ]]; then
+  nudge "$target"
+  exit $?
+fi
+pass
+if (($? == 2)); then
+  log "fleet session $fleet is gone"
+  echo "STOPPED $fleet: the fleet's tmux session is gone"
+  exit 0
+fi
+if ((${#problems[@]})); then
+  printf '%s\n' "${problems[@]}"
+elif ((all_finished)); then
+  log "all fleet sessions finished"
+  echo "all finished"
+else
+  echo ok
+fi
