@@ -93,7 +93,7 @@ The service is wanted by `graphical-session.target`, so it starts and stops with
 
 The service does not see a `GITHUB_DIR` that only the shell exports. Without the roots file (`~/.config/plans/roots`, one directory per line) it uses the default roots and can miss repos that `plans ls --all` finds. The file replaces the defaults, so list every root in it, including the dotfiles checkout.
 
-The board has a column per status and a lane per repo, then per project. The header holds a search box for each of repo, owner, project, status and kind, and a Needs me checkbox. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
+The board has a column per status and a lane per repo, then per project. The header starts with a compass icon and the word "plans" (the icon alone on the phone layout). A click on it scrolls the board back to its top left and leaves open panels alone. The header holds a search box for each of repo, owner, project, status and kind, and a Needs me checkbox. A card shows the id, kind, owner, rank, `waiting_on`, the PR link and a badge per `depends_on` entry. A doc outside the front matter subset shows as a red error card. The board refreshes within a second when an agent changes a doc, and it finds a new repo within 30 seconds.
 
 | Key | Action |
 | --- | --- |
