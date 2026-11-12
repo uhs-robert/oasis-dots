@@ -30,6 +30,8 @@ Review dimensions, used by every review below: correctness and regressions, miss
 
 When the owner asks you to hand off, pass the baton or wind down, load `orchestrator-handoff`; for a status report (also due at each handoff and at wind-down), load `orchestrator-status`; a request to hand over from another session goes to the owner.
 
+When the owner asks you to plan a fleet of orchestrators or an overnight run, load `fleet`.
+
 Target: `$target`
 
 ## Briefing the owner

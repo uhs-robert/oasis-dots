@@ -10,6 +10,8 @@
   },
   "permissions": {
     "allow": [
+      "Bash(/home/roberth/.claude/skills/fleet/launch.sh:*)",
+      "Bash(/home/roberth/.claude/skills/fleet/watch.sh:*)",
       "Bash(/home/roberth/.claude/skills/merge-prs/merge-prs.sh:*)",
       "Bash(/home/roberth/.claude/skills/merge-prs/resolve-thread.sh:*)",
       "Bash(/home/roberth/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
@@ -45,6 +47,8 @@
       "Bash(sed -n:*)",
       "Bash(tail:*)",
       "Bash(wc:*)",
+      "Bash(~/.claude/skills/fleet/launch.sh:*)",
+      "Bash(~/.claude/skills/fleet/watch.sh:*)",
       "Bash(~/.claude/skills/merge-prs/merge-prs.sh:*)",
       "Bash(~/.claude/skills/merge-prs/resolve-thread.sh:*)",
       "Bash(~/.claude/skills/orchestrator-handoff/spawn-successor.sh:*)",
