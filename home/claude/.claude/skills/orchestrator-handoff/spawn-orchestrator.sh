@@ -34,9 +34,17 @@ shift 2
 model="" budget=""
 while (($#)); do
   case $1 in
-    --model) [[ $# -ge 2 ]] || usage; model=$2; shift 2 ;;
-    --budget) [[ $# -ge 2 ]] || usage; budget=$2; shift 2 ;;
-    *) usage ;;
+  --model)
+    [[ $# -ge 2 ]] || usage
+    model=$2
+    shift 2
+    ;;
+  --budget)
+    [[ $# -ge 2 ]] || usage
+    budget=$2
+    shift 2
+    ;;
+  *) usage ;;
   esac
 done
 
@@ -66,7 +74,7 @@ fi
 
 quoted=${file//\'/\'\\\'\'}
 command="claude -n $name"
-[[ -z $model ]] || command="$command --model $model"
+[[ -z $model ]] || command="$command --model '$model'"
 command="$command \"\$(cat '$quoted')\"; exec \${SHELL:-bash}"
 [[ -z $budget ]] || command="CLAUDE_CONTEXT_BUDGET=$budget $command"
 

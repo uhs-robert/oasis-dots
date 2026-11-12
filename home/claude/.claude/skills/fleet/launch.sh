@@ -5,7 +5,8 @@
 #   <context-budget>  tokens, exported as CLAUDE_CONTEXT_BUDGET so the context-budget hook sees it
 #   <name>=<file>     one window per pair, named <name>, which is also the `claude -n` name; the prompt file is the
 #                     filled launch-prompt.txt
-# Exit 0 when every window shows its prompt, 2 on a bad argument, a single bundle or a clash (nothing was created), 3 when tmux failed
+# Exit 0 when every window shows its prompt, 2 on a bad argument, a single bundle or a clash (nothing was created),
+# 3 when tmux failed
 # part way (the new session is killed again), 4 when a window did not show its prompt within the confirm time (the
 # fleet keeps running; look at the panes).
 #
