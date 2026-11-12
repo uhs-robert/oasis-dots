@@ -28,6 +28,7 @@ while [ $# -gt 0 ]; do
   [ "$1" = --owner ] && owner=$2
   shift
 done
+[ -e "$PLANS_DATA/FAIL" ] && exit 1
 cat "$PLANS_DATA/$owner.json" 2>/dev/null || echo '[]'
 STANDIN
 # Pane stand-ins. A pane that shows an empty prompt box and appends every line typed into it to $TYPED.
@@ -294,6 +295,17 @@ check "the second fleet nudges its own stall" test "$(typed_lines f8b df-q)" -eq
 check "the two fleets keep separate state files" test -s "$work/.logs/z/fleet-watch-f8a.state" -a -s "$work/.logs/z/fleet-watch-f8b.state"
 kill -TERM "$watcher"
 wait "$watcher"
+
+# A failed `plans ls` is not an empty list: the fleet does not finish on it
+win f9 df-z pane-idle
+sleep 1
+doc df-z piece-z building
+watch --once f9 y >/dev/null 2>&1
+touch "$PLANS_DATA/FAIL"
+out=$(watch --once f9 y 2>&1)
+check "a failed plans ls does not finish the fleet" test -z "$(grep FINISHED <<<"$out")"
+check "a failed plans ls is logged" grep -q 'df-z plans ls failed' <<<"$(log_of y)"
+rm "$PLANS_DATA/FAIL"
 
 # Bad arguments
 check "no arguments are refused" bash -c "cd $work && '$skill/watch.sh' >/dev/null 2>&1; test \$? -eq 2"

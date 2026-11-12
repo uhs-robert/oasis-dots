@@ -87,6 +87,9 @@ refused "a missing prompt file is refused" fleet2 1000 df-c="$work/none.txt"
 refused "a relative prompt path is refused" fleet2 1000 df-c=prompt-c.txt
 refused "a prompt path with a newline is refused" fleet2 1000 "df-c=$work/pro
 mpt.txt"
+refused "an uppercase name is refused (not a plans session name)" fleet2 1000 "DF-c=$work/prompt-c.txt"
+refused "a name without a hyphen is refused (not a plans session name)" fleet2 1000 "dfc=$work/prompt-c.txt"
+refused "a name ending in a hyphen is refused (not a plans session name)" fleet2 1000 "df-c-=$work/prompt-c.txt"
 refused "a window name with a dot is refused" fleet2 1000 "df.c=$work/prompt-c.txt"
 refused "a window name with a space is refused" fleet2 1000 "df c=$work/prompt-c.txt"
 refused "a name starting with a dash is refused" fleet2 1000 "-x=$work/prompt-c.txt"
@@ -102,6 +105,22 @@ out=$(launch fleet7 1000 "df-q=$work/dir with 'quote' and space/prompt q.txt" 2>
 check "a prompt path with a space and a quote launches" test $? -eq 0
 check "the prompt of such a path reaches claude" grep -q "You are df-q, line one" <<<"$(pane_of fleet7 df-q)"
 t kill-session -t =fleet7
+before=$(sessions)
+
+# A reused fleet name does not inherit the old watcher's state, unless that watcher still holds its lock
+mkdir -p "$work/.logs/p"
+echo stale >"$work/.logs/p/fleet-watch-fleet8.state"
+echo keep >"$work/.logs/p/fleet-watch-fleet9.state"
+flock "$work/.logs/p/fleet-watch-fleet9.lock" sleep 20 &
+holder=$!
+sleep 0.5
+launch fleet8 1000 df-r="$work/prompt-c.txt" >/dev/null 2>&1
+launch fleet9 1000 df-t="$work/prompt-c.txt" >/dev/null 2>&1
+check "a new fleet removes the stale state of its name" test ! -e "$work/.logs/p/fleet-watch-fleet8.state"
+check "a state file whose watcher holds the lock stays" test -e "$work/.logs/p/fleet-watch-fleet9.state"
+kill "$holder"
+t kill-session -t =fleet8
+t kill-session -t =fleet9
 before=$(sessions)
 
 # A tmux that fails on new-window part way: the new session is killed again and the first fleet is untouched
