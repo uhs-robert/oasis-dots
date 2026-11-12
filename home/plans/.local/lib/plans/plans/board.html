@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>plans</title>
+<link id="favicon" rel="icon" type="image/svg+xml" href="data:,">
 <style>
   /* Oasis night dark, the fallback when no theme applies (repos/oasis.nvim/extras/css/themes/dark/oasis_night_dark.css).
      The themes below come from the generator, not the runtime. --dim is syntax-bracket, not fg-dim: fg-dim is
@@ -232,7 +233,7 @@
 <body>
 <header>
   <h1><button id="title-btn" type="button" aria-label="plans: scroll the list to the top left" title="Scroll to top left">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8" fill="currentColor"/></svg>
+    <svg id="title-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.2 7.8 14.1 14.1 7.8 16.2 9.9 9.9 16.2 7.8" fill="currentColor"/></svg>
     <span id="title-word">plans</span>
   </button></h1>
   <div class="combo-picker" id="repo-picker">
@@ -670,6 +671,18 @@ function end_preview() {
   apply_theme();
 }
 // theme-logic:end
+
+// Outside the theme-logic block, which the node tests run without a DOM. The observer catches every theme change.
+// The tab icon is the title's compass, drawn in the theme's accent: a favicon cannot read the page's CSS variables.
+function paint_favicon() {
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  const icon = element("title-icon").cloneNode(true);
+  icon.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  icon.setAttribute("color", accent);
+  element("favicon").href = `data:image/svg+xml,${encodeURIComponent(icon.outerHTML)}`;
+}
+new MutationObserver(paint_favicon).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+paint_favicon();
 
 apply_theme();
 
