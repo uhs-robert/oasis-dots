@@ -13,8 +13,8 @@
 # inside scripts. It only creates the one new session and kills it again on failure. It never touches another one.
 #
 # The first bundle is the session's first window, so there is no spare empty window to name or close.
-# The window command reads the prompt with $(cat file) instead of quoting the text, so it works under any
-# default shell. That is why prompt paths are limited to plain characters.
+# The window command reads the prompt with $(cat 'file') instead of quoting the text, so it works under any
+# default shell. The path is single-quoted with the POSIX escape, not printf %q, whose $'...' form is not POSIX.
 set -uo pipefail
 # shellcheck source=../orchestrator-handoff/window-names.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../orchestrator-handoff/window-names.sh"
@@ -44,7 +44,7 @@ for pair in "$@"; do
   tmux_safe_name "$name" || refuse "bad window name: $name"
   [[ $name != "$fleet" ]] || refuse "window name equals the fleet session name: $name"
   [[ " ${names[*]:-} " != *" $name "* ]] || refuse "name given twice: $name"
-  [[ $file == /* && $file =~ ^[A-Za-z0-9._/-]+$ ]] || refuse "the prompt path must be absolute and plain: $file"
+  [[ $file == /* && $file != *$'\n'* ]] || refuse "the prompt path must be absolute and on one line: $file"
   [[ -s $file ]] || refuse "no prompt file: $file"
   names+=("$name")
   files+=("$file")
@@ -60,17 +60,22 @@ fi
 main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") || refuse "not in a git repository"
 
 command_for() { # <name> <prompt-file>
-  echo "CLAUDE_CONTEXT_BUDGET=$budget claude -n $1 --permission-mode auto \"\$(cat $2)\"; exec \${SHELL:-bash}"
+  local quoted=${2//\'/\'\\\'\'}
+  echo "CLAUDE_CONTEXT_BUDGET=$budget claude -n $1 --permission-mode auto \"\$(cat '$quoted')\"; exec \${SHELL:-bash}"
 }
 
+# Only after new-session succeeded is the session ours to kill. If new-session fails, a session of that name can
+# exist because another process made it in the gap since the check above, and it must stay.
 abort() {
   echo "launch.sh: $* ; killing session $fleet" >&2
   tmux kill-session -t "=$fleet" 2>/dev/null
   exit 3
 }
 
-tmux new-session -d -s "$fleet" -n "${names[0]}" -c "$main_checkout" "$(command_for "${names[0]}" "${files[0]}")" ||
-  abort "could not create the session"
+tmux new-session -d -s "$fleet" -n "${names[0]}" -c "$main_checkout" "$(command_for "${names[0]}" "${files[0]}")" || {
+  echo "launch.sh: could not create the session" >&2
+  exit 3
+}
 for i in "${!names[@]}"; do
   ((i == 0)) && continue
   tmux new-window -d -t "=$fleet:" -n "${names[i]}" -c "$main_checkout" "$(command_for "${names[i]}" "${files[i]}")" ||

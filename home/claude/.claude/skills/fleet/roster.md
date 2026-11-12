@@ -28,7 +28,7 @@ Sessions that are not part of this fleet but work in the same repo. Their merges
 
 ## Owner rules for this run
 
-- Merge through `ship-batch` only, once `merge-prs.sh --check` passes and the reviewer agent approves with no revisions.
+- Merge through the repo's merge step, <merge_step>, only. Run it once its check passes and the reviewer agent approves with no revisions.
 - <hand_check_rule>
 - <release_rule>
 - <excluded_pieces_rule>
