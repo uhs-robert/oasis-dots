@@ -71,6 +71,15 @@ box#vertical-tabs,
   --tf-bevel-outside: var(--toolbox-background-color, var(--tf-bg));
 }}
 
+/* Firefox sets overflow: hidden on #vertical-tabs, which cuts the bevel that sits over its border. !important is needed
+   (without it Firefox's rule wins). Plain overflow: visible lets the tab strip grow past the box, so clip with a margin of
+   the border width and min-height: 0, which overflow: hidden implied, keeps the strip scrolling inside the box. */
+box#vertical-tabs {{
+  overflow: clip !important;
+  overflow-clip-margin: {w} !important;
+  min-height: 0 !important;
+}}
+
 {after} {{
   content: "";
   position: absolute;

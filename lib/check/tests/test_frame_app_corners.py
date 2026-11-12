@@ -38,6 +38,12 @@ class FirefoxCss(unittest.TestCase):
         self.assertIn("--tf-rounding: 14px;", css)
         self.assertNotIn("clip-path", css)
 
+    def test_chamfer_unclips_the_vertical_tabs_box(self):
+        # Firefox's own `#vertical-tabs { overflow: hidden }` cuts the bevel that sits over the border; only !important beats it.
+        # overflow: visible would let the tab strip outgrow the box, so it is a clip with the border's margin and no min-height.
+        css = gen.firefox_css(frame("chamfer", 12))
+        self.assertIn("box#vertical-tabs {\n  overflow: clip !important;\n  overflow-clip-margin: var(--border-width, 1px) !important;\n  min-height: 0 !important;\n}", css)
+
     def test_square_and_pixel_have_no_rounding(self):
         for corner in ("square", "pixel"):
             css = gen.firefox_css(frame(corner, 8))
