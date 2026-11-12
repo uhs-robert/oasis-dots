@@ -1,6 +1,6 @@
 ---
 name: fleet
-description: Plan and launch a fleet of full-auto orchestrator sessions for a repo's idea docs. Scouts size the pieces, the owner answers the logistics and design questions up front, the decisions go into the plan docs, and one tmux window per bundle runs an orchestrator. A silent watchdog wakes the planner only when a session stalls. Use when the owner asks to plan a fleet, an overnight run or parallel orchestrators; for one orchestrator, use orchestrator-handoff/spawn-orchestrator.sh instead.
+description: Plan and launch a fleet of full-auto orchestrator sessions for a repo's idea docs. Scouts size the pieces, the owner answers the logistics and design questions up front, the decisions go into the plan docs, and one tmux window per bundle runs an orchestrator. A silent watchdog wakes the planner only when a session stalls. Use when the owner asks to plan a fleet, an overnight run or parallel orchestrators; for one orchestrator, use ~/.claude/skills/orchestrator-handoff/spawn-orchestrator.sh instead.
 argument-hint: "[project] [pieces to leave out]"
 ---
 

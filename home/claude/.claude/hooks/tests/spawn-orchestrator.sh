@@ -64,10 +64,24 @@ check "claude gets -n <name> and the prompt as the only arguments" grep -q "stan
 check "claude gets the name" grep -qx "arg:df-one" <<<"$pane"
 # shellcheck disable=SC2016 # the dollar sign is literal test text
 check "the prompt arrives as one argument, quotes and dollar intact" grep -qF 'second line with "quotes" and $dollar' <<<"$pane"
-check "no permission mode flag" test -z "$(grep -c -e '--permission-mode' <<<"$pane" | grep -v '^0$')"
+check "no permission mode flag" bash -c '! grep -q -e "--permission-mode" <<<"$1"' _ "$pane"
 check "the window opens in the repo root" test "$(t display-message -p -t '=main:=df-one' '#{pane_current_path}')" = "$(realpath "$work")"
 check "the caller keeps its name" test "$(t display-message -p -t "$caller" '#{window_name}')" = caller
-check "the caller's window stays active" test "$(t display-message -p -t "$caller" '#{window_active}')" = 1 -o "$(t display-message -p -t main:0 '#{window_active}')" = 1
+check "the new window is not made active" test "$(t display-message -p -t '=main:=df-one' '#{window_active}')" = 0
+
+# A bracketed model must not glob against a file in the cwd
+touch "$work/opus1"
+spawn df-six "$work/prompt.txt" --model 'opus[1m]' >/dev/null 2>&1
+settle
+check "a bracketed model reaches --model unglobbed" grep -qx "arg:opus\[1m\]" <<<"$(pane_of '=main:=df-six')"
+rm "$work/opus1"
+
+# Run from a linked worktree, the window still opens in the main checkout
+git -C "$work" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git -C "$work" worktree add -q "$work/wt" -b wt-branch
+(cd "$work/wt" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') TMUX_PANE=$caller PATH=$work/bin:$PATH "$skill/spawn-orchestrator.sh" df-seven "$work/prompt.txt" >/dev/null 2>&1)
+settle
+check "from a linked worktree the window opens in the main checkout" test "$(t display-message -p -t '=main:=df-seven' '#{pane_current_path}')" = "$(realpath "$work")"
 
 # With a model and a budget
 spawn df-two "$work/prompt.txt" --model opus --budget 424242 >/dev/null 2>&1
