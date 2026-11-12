@@ -189,7 +189,7 @@ check "the templates name no merge command to ban" test -z "$(grep -l 'gh. merge
 mkdir "$work/busybin"
 printf '#!/bin/sh\nclear\necho working\nread -r _\n' >"$work/busybin/claude"
 chmod +x "$work/busybin/claude"
-out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/busybin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet14 1000 df-w="$work/prompt-b.txt" 2>&1)
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/busybin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet14 1000 df-w="$work/prompt-b.txt" df-w2="$work/prompt-b.txt" 2>&1)
 rc=$?
 check "a running claude that no longer shows its prompt is confirmed" test "$rc" -eq 0 -a -n "$(grep '^started df-w' <<<"$out")"
 
@@ -199,7 +199,7 @@ printf '#!/bin/sh\nexec "%s/wrapbin/runner" "%s/busybin/claude"\n' "$work" "$wor
 # shellcheck disable=SC2016 # $1 is for the runner to expand
 printf '#!/bin/sh\n"$1"\nexit\n' >"$work/wrapbin/runner"
 chmod +x "$work/wrapbin/claude" "$work/wrapbin/runner"
-out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/wrapbin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet15 1000 df-x="$work/prompt-b.txt" 2>&1)
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/wrapbin:$PATH FLEET_CONFIRM_SECONDS=3 "$skill/launch.sh" fleet15 1000 df-x="$work/prompt-b.txt" df-x2="$work/prompt-b.txt" 2>&1)
 rc=$?
 check "a claude below a wrapper process is confirmed" test "$rc" -eq 0 -a -n "$(grep '^started df-x' <<<"$out")"
 
