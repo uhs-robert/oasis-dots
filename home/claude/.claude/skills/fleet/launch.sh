@@ -47,7 +47,7 @@ for pair in "$@"; do
   [[ $name != "$fleet" ]] || refuse "window name equals the fleet session name: $name"
   [[ " ${names[*]:-} " != *" $name "* ]] || refuse "name given twice: $name"
   [[ $file == /* && $file != *$'\n'* ]] || refuse "the prompt path must be absolute and on one line: $file"
-  [[ -s $file ]] || refuse "no prompt file: $file"
+  { [[ -s $file ]] && grep -q . "$file"; } || refuse "no prompt file, or it has no text: $file"
   names+=("$name")
   files+=("$file")
 done
@@ -59,7 +59,8 @@ if existing=$(tmux list-windows -a -F '#{window_name}' 2>/dev/null); then
   done
 fi
 
-main_checkout=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") || refuse "not in a git repository"
+git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || refuse "not in a git repository"
+main_checkout=$(dirname "$git_common_dir")
 
 command_for() { # <name> <prompt-file>
   local quoted=${2//\'/\'\\\'\'}
@@ -94,7 +95,8 @@ done
 confirm_seconds=${FLEET_CONFIRM_SECONDS:-45}
 unconfirmed=0
 for i in "${!names[@]}"; do
-  head_of_prompt=$(head -n 1 "${files[i]}" | cut -c1-20)
+  # The first non-empty line: an empty marker would match any pane.
+  head_of_prompt=$(grep -m1 . "${files[i]}" | cut -c1-20)
   seen=0
   for ((waited = 0; waited < confirm_seconds * 2; waited++)); do
     if tmux capture-pane -p -t "=$fleet:=${names[i]}" 2>/dev/null | grep -qF -- "$head_of_prompt"; then

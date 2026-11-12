@@ -119,7 +119,7 @@ watch() { (cd "$work" && TMUX=$tmux_env FLEET_STUCK_SECONDS=${stuck:-3} "$skill/
 # of the test. Its output is what would wake the planner.
 loop_line() { # <fleet> <project> [script]
   grep -m1 '^sleep 1800; while' "$skill/SKILL.md" |
-    sed -e "s|sleep 1800|sleep 1|g" -e "s|~/.claude/skills/fleet/watch.sh|${3:-$skill/watch.sh}|" \
+    sed -e "s|sleep 1800|sleep 1|g" -e "s|timeout 900|timeout 2|" -e "s|~/.claude/skills/fleet/watch.sh|${3:-$skill/watch.sh}|" \
       -e "s|<fleet-session>|$1|" -e "s|<project>|$2|"
 }
 # watch_loop <fleet> <project> [script]: run as `(watch_loop ...) &`, the loop being the background pid
@@ -156,6 +156,7 @@ git -C "$work" branch -q piece-wt
 git -C "$work" worktree add -q "$work/wt" piece-wt
 doc df-wt piece-wt building "" piece-wt
 doc other-owner x review
+doc df-exit-clean piece-ec merged
 # a fresh plan doc, and a fresh commit on a branch, each count as progress
 doc df-branch piece-branch building "" piece-branch
 touch -d '1 hour ago' "$work/.plans/p/piece-branch.md"
@@ -344,6 +345,79 @@ check "a crashed check exits the loop" test -z "$(ps -o stat= -p "$loop_pid" | g
 wait "$loop_pid"
 check "the crash message names the exit status" grep -q 'exit 3' "$work/crash.out"
 check "the crash message carries the check's own output" grep -q boom "$work/crash.out"
+
+# A check that hangs ends the loop through timeout, with exit 124, instead of hanging it
+printf '#!/bin/sh\nsleep 30\n' >"$work/bin/hang-watch"
+chmod +x "$work/bin/hang-watch"
+(watch_loop l1 l "$work/bin/hang-watch" >"$work/hang.out" 2>&1) &
+loop_pid=$!
+for _ in $(seq 1 6); do
+  kill -0 "$loop_pid" 2>/dev/null || break
+  sleep 1
+done
+hung=0
+if kill -0 "$loop_pid" 2>/dev/null; then
+  hung=1
+  kill "$loop_pid"
+fi
+wait "$loop_pid" 2>/dev/null
+check "a hung check ends the loop" test "$hung" -eq 0
+check "the hang message names exit 124" grep -q 'exit 124' "$work/hang.out"
+
+# A session that exits before its first claim is lost, and the fleet does not finish on the others
+win f12 df-nc "exec sh"
+win f12 df-ok pane-idle
+sleep 1
+doc df-ok piece-ok review "owner: look"
+out=$(watch f12 nc 2>&1)
+check "an exit before the first claim is LOST, never claimed" grep -q "^LOST df-nc: .*first claim" <<<"$out"
+check "an exit before the first claim is not EXITED" test -z "$(grep '^EXITED df-nc' <<<"$out")"
+out=$(watch f12 nc 2>&1)
+check "a session that never claimed keeps the fleet from finishing" test -z "$(grep 'all finished' <<<"$out")"
+
+# A closed window keeps its unfinished pieces in the finish check
+win f13 df-g1 pane-idle
+win f13 df-g2 pane-idle
+sleep 1
+doc df-g1 piece-g1 review "owner: look"
+doc df-g2 piece-g2 building
+watch f13 gw >/dev/null 2>&1
+t kill-window -t "=f13:=df-g2"
+out=$(watch f13 gw 2>&1)
+check "a closed window that owns a building piece is reported GONE" grep -q "^GONE df-g2" <<<"$out"
+check "the fleet is not finished while that window is closed" test -z "$(grep 'all finished' <<<"$out")"
+out=$(watch f13 gw 2>&1)
+check "GONE is reported once and still blocks finishing" test "$out" = ok
+doc df-g2 piece-g2 merged
+out=$(watch f13 gw 2>&1)
+check "the fleet finishes once the closed window's pieces are done" test "$out" = "all finished"
+
+# --nudge refuses a pane that changed since the check reported it stuck
+win f11 df-c pane-idle
+sleep 1
+doc df-c piece-c building
+watch f11 nc2 >/dev/null 2>&1
+sleep 4
+out=$(watch f11 nc2 2>&1)
+check "the stall is reported before the pane changes" grep -q "^STUCK df-c" <<<"$out"
+# one line typed and submitted: the box is empty again, but the pane is not the one that was reported
+t send-keys -t "=f11:=df-c" -l "y"
+sleep 0.5
+t send-keys -t "=f11:=df-c" Enter
+sleep 1
+typed_before=$(typed_lines f11 df-c)
+out=$(watch --nudge f11 nc2 df-c 2>&1)
+check "--nudge refuses a pane that moved since the report" grep -q "NOT NUDGED df-c" <<<"$out"
+check "and types nothing" test "$(typed_lines f11 df-c)" -eq "$typed_before"
+out=$(watch --nudge f1 p df-fresh 2>&1)
+check "--nudge refuses a session no check reported stuck" grep -q "NOT NUDGED df-fresh" <<<"$out"
+
+# Outside a git repository a check creates nothing
+nogit=$(mktemp -d)
+(cd "$nogit" && TMUX=$tmux_env "$skill/watch.sh" f1 p >/dev/null 2>&1)
+check "a check outside a git repository exits 2" test $? -eq 2
+check "and leaves no .logs behind" test ! -e "$nogit/.logs"
+rm -rf "$nogit"
 
 # Bad arguments
 check "no arguments are refused" bash -c "cd $work && '$skill/watch.sh' >/dev/null 2>&1; test \$? -eq 2"

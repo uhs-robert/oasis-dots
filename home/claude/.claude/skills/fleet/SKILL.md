@@ -16,7 +16,7 @@ Arguments: `$ARGUMENTS`
 
 - Each fleet session runs `/orchestrator auto` and claims its own docs with `plans claim --as <its ListAgents name>`. The planner leaves `owner_session` empty and never claims.
 - Fleet sessions skip the interview and the plan approval, because the planner asked the design forks up front. They still run the overlap check.
-- Merges go through the repo's own merge step only. Never run `merge-prs.sh` with a PR number or the `gh` merge command. Read the merge step from the repo's `AGENTS.md` or `CLAUDE.md`, and ask the owner if neither names one. The launch prompt carries it in `<merge_step>`.
+- Merges go through the repo's own merge step only, and through no other merge command. Read the merge step from the repo's `AGENTS.md` or `CLAUDE.md`, and ask the owner if neither names one. The launch prompt carries the rule in `<merge_rule>`.
 - Session names do not start with the repo directory name, because orchestrators already in that repo use such names. Use a short prefix of your own, then the bundle.
 - Sessions coordinate by `SendMessage`, found through `ListAgents`. Nobody coordinates the fleet unless the owner chose a coordinator.
 
@@ -90,24 +90,25 @@ The watchdog is silent until a session needs the planner. `watch.sh` makes one c
 Start one background loop with the `Bash` tool and `run_in_background`, with this command (fill in the fleet session and the project):
 
 ```
-sleep 1800; while true; do out=$(~/.claude/skills/fleet/watch.sh <fleet-session> <project> 2>&1); rc=$?; if [ "$rc" -ne 0 ] || [ "$out" != ok ]; then echo "$out"; echo "watch.sh exit $rc"; exit 0; fi; sleep 1800; done
+sleep 1800; while true; do out=$(timeout 900 ~/.claude/skills/fleet/watch.sh <fleet-session> <project> 2>&1); rc=$?; if [ "$rc" -ne 0 ] || [ "$out" != ok ]; then echo "$out"; echo "watch.sh exit $rc"; exit 0; fi; sleep 1800; done
 ```
 
-It sleeps first, so its first check does not compare against a manual run. It checks every 30 minutes and exits only on a result that is not `ok`. That exit wakes the planner, and a healthy night costs no tokens. A check that crashes also exits the loop, with its output and exit status, so the loop never spins on a broken check.
+It sleeps first, so its first check does not compare against a manual run. It checks every 30 minutes and exits only on a result that is not `ok`. That exit wakes the planner, and a healthy night costs no tokens. A check that crashes or hangs past 15 minutes (`timeout 900`, exit 124) also exits the loop, with its output and exit status, so the loop never spins on or hangs behind a broken check.
 
 A check prints `ok`, `all finished`, or one line per problem:
 
 - `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns a piece in `building` status with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
 - `PROMPT <name>`: the session waits on a permission prompt.
-- `LOST <name>`: claude exited while the session still owns unfinished pieces. Such a session never counts as finished.
+- `LOST <name>`: claude exited while the session still owns unfinished pieces, or before its first claim. Such a session never counts as finished.
 - `EXITED <name>`: claude exited with nothing unfinished.
+- `GONE <name>`: the session's tmux window is gone while it still owns unfinished pieces, or never claimed. It never counts as finished.
 - `STOPPED <fleet>`: the fleet's tmux session is gone.
 
 When the loop exits, read its output, then:
 
-1. `all finished`: stop. No loop runs.
+1. `all finished` or `STOPPED`: tell the owner and stop. Do not start the loop again.
 2. Look at each named session with `tmux capture-pane -p -t <fleet-session>:<name>`.
-3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the building piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `STOPPED`.
+3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the building piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
 4. Start the loop again with the same command.
 
 One stall wakes the planner once. The check keeps the stall in its state file, so the restarted loop stays quiet on it until the pane or the progress moves again. The state, kept per fleet, also carries the stall timing across runs. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
@@ -127,7 +128,8 @@ Fill these in `launch-prompt.txt` and `roster.md`:
 | `<work_tokens>` | the work sized for the session, about 60 percent of the budget |
 | `<pieces_in_order>` | the piece ids in build order, with a note where another session waits on one |
 | `<main_checkout>` | the absolute path of the repo's main checkout |
-| `<merge_step>` | the repo's merge command or skill. Read it from the repo's `AGENTS.md` or `CLAUDE.md`. If neither names one, ask the owner |
+| `<merge_step>` | the repo's merge command or skill, used inside `<merge_rule>`. Read it from the repo's `AGENTS.md` or `CLAUDE.md`. If neither names one, ask the owner |
+| `<merge_rule>` | the owner's answer on finished work, in one or two sentences. To merge: "Merge only through the repo's merge step, `<merge_step>`, and through no other merge command. Run it once its check passes and the reviewer agent approves with no revisions." To stop at review-ready PRs: "Do not merge. Stop when each PR is review-ready." |
 | `<hand_check_rule>` | the owner's hand-check choice, in one sentence |
 | `<date>`, `<coordinator_line>` | the roster's date, and one sentence on whether a coordinator runs |
 | `<release_rule>`, `<excluded_pieces_rule>` | the owner's release and exclusion rules, one sentence each |

@@ -2,7 +2,7 @@
 # Runs the fleet skill's launch.sh against a private tmux server (-L, never the owner's default one) with a stand-in
 # `claude`, then checks the windows, the environment, the refusals and that a failure leaves nothing behind.
 set -uo pipefail
-skill=$(cd "$(dirname "$0")" && pwd)/../../skills/fleet
+skill=${FLEET_SKILL_DIR:-$(cd "$(dirname "$0")" && pwd)/../../skills/fleet}
 pass=0 fail=0
 
 work=$(mktemp -d)
@@ -158,6 +158,29 @@ out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=
 check "an unconfirmed start exits 4" test $? -eq 4
 check "an unconfirmed start names the window" grep -q "UNCONFIRMED df-s" <<<"$out"
 check "an unconfirmed fleet is left running" grep -qw fleet6 <<<"$(sessions)"
+
+# A prompt file whose first line is blank gets a marker from its first text line, never an empty one that matches any pane
+printf '\n/orchestrator auto. You are df-e, line one.\n' >"$work/prompt-blank.txt"
+out=$(cd "$work" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/silentbin:$PATH FLEET_CONFIRM_SECONDS=1 "$skill/launch.sh" fleet10 1000 df-e="$work/prompt-blank.txt" 2>&1)
+check "a blank first line does not confirm a silent pane" test $? -eq 4
+launch fleet11 1000 df-e2="$work/prompt-blank.txt" >/dev/null 2>&1
+check "a blank first line still confirms a pane that shows the prompt" grep -q "You are df-e, line one" <<<"$(pane_of fleet11 df-e2)"
+printf '\n\n' >"$work/prompt-empty.txt"
+before=$(sessions)
+launch fleet12 1000 df-f="$work/prompt-empty.txt" >/dev/null 2>&1
+check "a prompt file with no text is refused" test $? -eq 2 -a "$(sessions)" = "$before"
+
+# Outside a git repository nothing is launched
+nogit=$(mktemp -d)
+before=$(sessions)
+(cd "$nogit" && TMUX=$(t display-message -p '#{socket_path},#{pid},0') PATH=$work/bin:$PATH "$skill/launch.sh" fleet13 1000 df-g="$work/prompt-a.txt" >/dev/null 2>&1)
+check "a launch outside a git repository is refused and creates nothing" test $? -eq 2 -a "$(sessions)" = "$before"
+rm -rf "$nogit"
+
+# Both templates carry the merge rule placeholder
+check "launch-prompt.txt carries <merge_rule>" grep -q '<merge_rule>' "$skill/launch-prompt.txt"
+check "roster.md carries <merge_rule>" grep -q '<merge_rule>' "$skill/roster.md"
+check "the templates name no merge command to ban" test -z "$(grep -l 'gh. merge' "$skill/launch-prompt.txt" "$skill/roster.md" "$skill/SKILL.md")"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
