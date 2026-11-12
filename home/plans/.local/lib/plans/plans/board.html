@@ -1972,9 +1972,10 @@ element("help-btn").addEventListener("click", () => {
   else open_help();
   element("help-btn").blur();
 });
-// The page itself scrolls, in both axes. Panels stay open: this only moves the list.
+// The page scrolls in both axes, and the phone tab strip scrolls on its own. Panels stay open: this only moves the list.
 element("title-btn").addEventListener("click", () => {
   window.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+  element("tabs").scrollTo({ left: 0, behavior: "smooth" });
   element("title-btn").blur();
 });
 element("help").addEventListener("click", (event) => { if (event.target === element("help")) close_help(); });
