@@ -167,8 +167,8 @@ impl<'c> Matcher<'c> {
     pub fn first_match_among(&self, integration: usize, text: &str, listed: impl Fn(&str) -> bool) -> IntegrationMatch {
         let config = &self.config.integrations[integration];
         let mut rejections = Vec::new();
-        for index in 0..config.verbs.len() {
-            if !listed(&config.verbs[index].action) {
+        for (index, verb) in config.verbs.iter().enumerate() {
+            if !listed(&verb.action) {
                 continue;
             }
             if !self.may_match(integration, index, text) {
@@ -188,7 +188,6 @@ impl<'c> Matcher<'c> {
             let Some(captures) = regex.captures(text.as_bytes()) else {
                 continue;
             };
-            let verb = &config.verbs[index];
             if let Some(required) = self.unmet_requirement(verb) {
                 rejections.push(Rejection {
                     verb: index,
