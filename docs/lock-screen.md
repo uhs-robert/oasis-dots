@@ -42,7 +42,7 @@ Hypridle and the Power menu lock through `~/.config/hypr/scripts/lock-screen.sh`
 
 Four skins can play audio from the games that inspired them, and the `Goldeneye` skin can use frames cut from the game. None of it ships. Without it a skin stays silent or skips its intro. [Custom sounds and music](sounds.md#game-audio-you-import) lists the importer scripts and the tools they need.
 
-To build the GoldenEye frames, run `scripts/goldeneye-frames`. It needs `ffmpeg`, `yt-dlp` and python with `PIL` and `numpy`. Without frames the skin draws its own bezel and a simple arm intro.
+To build the GoldenEye frames, run `home/quickshell/.config/quickshell/scripts/goldeneye-frames`. It needs `ffmpeg`, `yt-dlp` and python with `PIL` and `numpy`. Without frames the skin draws its own bezel and a simple arm intro.
 
 ## Music on the lock
 

@@ -34,11 +34,11 @@ Options worth knowing:
 
 | Option | What it does |
 | --- | --- |
-| Controller glyphs | On console styles, how key hints draw: All buttons, Labeled, D-pad or Off |
+| Controller glyphs | On console styles, how key hints draw: All, Labeled, D-pad or Off |
 | Model | On `gameboy`, Color (your palette) or Original (grey shell) |
 | Island shape | The outline of the bar's islands. Any style can borrow any shape, except `neovim` |
 | Island opacity | How see-through the island fills are, from 100% down to 0% |
-| Screen frame | Off by default. Plain adds bands in the bar's color round the rest of the screen. Not on `neovim` or `terminal` |
+| Screen frame | Off by default. On adds bands in the bar's color round the rest of the screen |
 | Watch colours | On `goldeneye` only, see below |
 
 Theme options also has skin rows for the picker, overview, workspaces, OSD, weather, KeepTabs, toasts and animations. Each defaults to the style's own, and you can borrow another style's. A borrowed skin draws in your palette.
