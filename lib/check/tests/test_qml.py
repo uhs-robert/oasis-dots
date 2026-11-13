@@ -1,5 +1,6 @@
 """Tests the qmllint step's pure parts (lib/check/steps/qml.py) on tiny trees; none of them runs qmllint."""
 
+import json
 import os
 import sys
 import tempfile
@@ -185,6 +186,10 @@ class ReportPassesTest(unittest.TestCase):
 
     def test_empty_report_for_an_empty_tree_passes(self):
         self.assertEqual(self.passes(b"", file_count=0), (True, []))
+
+    def test_warnings_that_is_no_list_fails(self):
+        for warnings in ({}, ""):
+            self.assertFalse(self.passes(json.dumps({"files": [{"filename": "F", "warnings": warnings}]}).encode())[0])
 
     def test_unreadable_report_fails_even_with_no_files(self):
         passed, calls = self.passes(b"not json", file_count=0)

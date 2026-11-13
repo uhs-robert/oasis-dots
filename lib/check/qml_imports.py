@@ -181,7 +181,7 @@ def strip_code(line, state, keep_strings=False):
         elif c == "/" and regex_may_start("".join(out).rstrip()) and regex_end(line, i) > 0:
             # A regex literal may hold a quote or backtick that opens no string.
             end = regex_end(line, i)
-            out.append(line[i:end + 1])
+            out.append(line[i:end + 1] if keep_strings else "//")
             i = end
         else:
             if c in "\"'`":
