@@ -6,8 +6,8 @@ import "../BarLayout.js" as BarLayout
 import qs.features.bar
 
 // Lualine's section a: the HyprVim mode from the Hyprland submap, with an arrow into the next section. In a column
-// (`vertical`) there is no room for the label, so it is a square tile with only the glyph, its arrow pointing down
-// into the next section (the caller sizes it, BarLayout.mode_chip_column_length).
+// (`vertical`) there is no room for the label, so it is a square tile with the glyph (a submap's first letter while one
+// is on), its arrow pointing down into the next section (the caller sizes it, BarLayout.mode_chip_column_length).
 Item {
     id: root
 
@@ -19,6 +19,7 @@ Item {
     // Across the bar: the arrow is drawn as on a row and turned in a column.
     readonly property real thick: root.vertical ? root.width : root.height
     readonly property real arrow: BarLayout.lualine_arrow(root.thick)
+    readonly property bool column_letter: root.vertical && SubmapState.submap_name !== ""
 
     implicitWidth: root.vertical ? root.height : Math.ceil(content.width) + 20 + root.arrow
 
@@ -43,11 +44,24 @@ Item {
         spacing: 7
 
         Text {
+            visible: !root.column_letter
             anchors.verticalCenter: parent.verticalCenter
             text: "\u{e62b}"
             color: Theme.bg_crust
             font.family: Style.bar_font_family
             font.pixelSize: Style.bar_font_size + 1
+        }
+
+        // The column has no room for the label, so a submap shows its first letter in place of the glyph: the colour
+        // alone cannot tell apart submaps that share one, and a lualine bar hides the submap tab.
+        Text {
+            visible: root.column_letter
+            anchors.verticalCenter: parent.verticalCenter
+            text: Modes.label(SubmapState.submap_name).charAt(0)
+            color: Theme.bg_crust
+            font.family: Style.bar_font_family
+            font.pixelSize: Style.bar_font_size + 1
+            font.bold: true
         }
 
         Text {
