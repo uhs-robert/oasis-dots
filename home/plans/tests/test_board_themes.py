@@ -94,6 +94,13 @@ class GeneratedThemesTest(unittest.TestCase):
                          "board.html is stale: run home/plans/.local/lib/plans/gen_board_themes.py")
 
 
+def empty_roots(state):
+    # An empty roots file means no repos. A missing one would fall back to the owner's real checkouts.
+    path = os.path.join(state, "roots")
+    open(path, "w", encoding="utf-8").close()
+    return path
+
+
 class DesktopThemeTest(unittest.TestCase):
     def read_with(self, content):
         with tempfile.TemporaryDirectory() as state:
@@ -125,7 +132,7 @@ class DesktopThemeTest(unittest.TestCase):
 
     def test_the_board_json_carries_it_and_survives_a_missing_file(self):
         with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
-            board = server.Board(os.path.join(state, "roots.json"))
+            board = server.Board(empty_roots(state))
             self.assertIn("desktop_theme", board.as_json())
             self.assertIsNone(board.as_json()["desktop_theme"])
 
@@ -136,8 +143,9 @@ class DesktopThemeWatchTest(unittest.TestCase):
     def test_the_version_follows_the_state_file(self):
         with tempfile.TemporaryDirectory() as state, mock.patch.dict(os.environ, {"XDG_STATE_HOME": state}):
             path = os.path.join(state, "hypr", "theme")
-            board = server.Board(os.path.join(state, "roots.json"))
+            board = server.Board(empty_roots(state))
             board.poll(rescan=True)
+            self.assertEqual(board.repo_roots, [])
             version = board.version
             board.poll()
             self.assertEqual(board.version, version, "no change, no bump")
