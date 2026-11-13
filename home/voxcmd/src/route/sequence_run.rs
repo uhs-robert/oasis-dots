@@ -197,7 +197,7 @@ impl Runner<'_> {
                         label: Some(&option.label),
                         confirmed: false,
                         active_before: Some(said.active_before),
-                        spoken: false,
+                        spoken: self.rt.came_by_voice,
                     };
                     let mut command = self.rt.shell.command(shell, &env, false);
                     process::run_with_timeout(&mut command, timeout.min(time_left))

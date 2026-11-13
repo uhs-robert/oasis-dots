@@ -50,6 +50,8 @@ pub struct Router<'c> {
     resolve_wall: Cell<Duration>,
     /// `StepContext::open_surface` of the step being routed; the correction retry reads it too.
     assumed_surface: Cell<Option<usize>>,
+    /// The phrase came by voice; candidate hooks read it as `VOXCMD_SPOKEN`.
+    heard_by_voice: bool,
 }
 
 /// The integrations one pass over the tiers tried, and what they offered.
@@ -84,7 +86,13 @@ impl<'c> Router<'c> {
             hooks: Memoized::new(hooks),
             resolve_wall: Cell::new(Duration::ZERO),
             assumed_surface: Cell::new(None),
+            heard_by_voice: false,
         }
+    }
+
+    pub fn heard_by_voice(mut self, by_voice: bool) -> Self {
+        self.heard_by_voice = by_voice;
+        self
     }
 
     pub fn config(&self) -> &'c Config {
@@ -118,6 +126,7 @@ impl<'c> Router<'c> {
         let texts = Texts {
             phrase: text,
             raw_transcript: text,
+            spoken: self.heard_by_voice,
         };
         self.resolve(&pending, texts)
             .into_iter()
@@ -382,6 +391,7 @@ impl<'c> Router<'c> {
             Texts {
                 phrase: text,
                 raw_transcript: raw,
+                spoken: self.heard_by_voice,
             },
         )) {
             self.take(pass, one.integration, resolved);
@@ -584,6 +594,7 @@ impl<'c> Router<'c> {
             Texts {
                 phrase: text,
                 raw_transcript: raw,
+                spoken: self.heard_by_voice,
             },
         );
         for resolved in resolved_all {

@@ -153,7 +153,7 @@ Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of wo
 | `VOXCMD_ARG_<NAME>_WORDS` | the words the placeholder captured |
 | `VOXCMD_PHRASE`, `VOXCMD_RAW_TRANSCRIPT` | the normalized phrase, and the transcript before normalization and replacements, with its punctuation, digits and symbols |
 | `VOXCMD_CONFIRMED` | `1` when the confirm card asked and was answered yes, else `0` |
-| `VOXCMD_SPOKEN` | `1` in a `[mode]` hook (`rewrite_hook`, `alive`, `ended`, `handle_turn`) when the turn came by voice. Other hooks always get `0` |
+| `VOXCMD_SPOKEN` | `1` when the command came by voice, in every hook and action. `0` for a typed phrase and the Tab list of Voice Help |
 | `VOXCMD_DRY_RUN` | `1` under `--dry-run`, unset otherwise |
 | `VOXCMD_ACTIVE_BEFORE` | in a `wait_hook`, the address of the window that was active before the step |
 | `VOXCMD_ACTION`, `VOXCMD_INTEGRATION` | the action id and the file stem |

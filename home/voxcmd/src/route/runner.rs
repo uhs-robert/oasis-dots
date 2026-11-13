@@ -254,7 +254,7 @@ pub fn with_runner<R>(heard: &Heard, act: impl FnOnce(&Runner) -> R) -> Result<R
     let config = Config::load(&config_dir).map_err(|message| CliError::usage("run", message))?;
     let shell = ShellHooks::for_config_dir(&config_dir);
     let hooks = Dispatch::new(shell.clone());
-    let router = Router::new(&config, &hooks);
+    let router = Router::new(&config, &hooks).heard_by_voice(heard.by_voice);
     let asker = AskWith::from_env();
     let runtime = Runtime {
         config: &config,

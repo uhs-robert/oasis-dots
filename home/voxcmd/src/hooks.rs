@@ -127,6 +127,8 @@ pub struct HookQuery<'a> {
     pub phrase: &'a str,
     /// The step as spoken, which some hooks read in place of the target.
     pub raw_transcript: &'a str,
+    /// The command came by voice, so the hook sees `VOXCMD_SPOKEN=1`.
+    pub spoken: bool,
 }
 
 pub trait Hooks: Sync {
@@ -173,13 +175,14 @@ impl<'a> Memoized<'a> {
 impl Hooks for Memoized<'_> {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let key = format!(
-            "{}\0{}\0{}\0{:?}\0{}\0{}",
+            "{}\0{}\0{}\0{:?}\0{}\0{}\0{}",
             integration.file.display(),
             query.action,
             query.target,
             query.args,
             query.phrase,
-            query.raw_transcript
+            query.raw_transcript,
+            query.spoken
         );
         let slot = self.slot(key);
         let mut asked = false;
@@ -322,6 +325,7 @@ impl ShellHooks {
             args: &[],
             phrase: "",
             raw_transcript: "",
+            spoken: false,
         };
         match self.candidates(integration, &query).lookup {
             Lookup::Candidates(lines) => lines,
@@ -416,7 +420,7 @@ impl Hooks for ShellHooks {
             label: None,
             confirmed: false,
             active_before: None,
-            spoken: false,
+            spoken: query.spoken,
         };
         let started = Instant::now();
         let outcome = process::run_with_timeout(&mut self.command(shell, &env, false), timeout);
@@ -658,6 +662,7 @@ mod tests {
                     args: &args,
                     phrase: "go tea",
                     raw_transcript,
+                    spoken: false,
                 },
             )
         }
@@ -736,6 +741,29 @@ mod tests {
         let run = fixture(hook, None, None).ask(&spoken);
         assert_eq!(run.lookup, Lookup::Candidates(vec![Candidate::plain(&spoken, "tea")]));
         assert!(!one.exists() && !two.exists(), "spoken text ran as a command");
+    }
+
+    #[test]
+    fn a_candidates_hook_sees_whether_the_command_came_by_voice() {
+        let fixture = fixture(r#"printf 'x\t%s\n' "$VOXCMD_SPOKEN""#, None, None);
+        let label_for = |spoken: bool| {
+            let run = fixture.hooks.candidates(
+                &fixture.integration,
+                &HookQuery {
+                    action: "go",
+                    target: "tea",
+                    args: &[],
+                    phrase: "go tea",
+                    raw_transcript: "go tea",
+                    spoken,
+                },
+            );
+            let Lookup::Candidates(lines) = run.lookup else {
+                panic!("{run:?}")
+            };
+            lines[0].label.clone()
+        };
+        assert_eq!((label_for(true).as_str(), label_for(false).as_str()), ("1", "0"));
     }
 
     #[test]
@@ -913,6 +941,7 @@ mod tests {
                     args: &[],
                     phrase: "go",
                     raw_transcript: "go",
+                    spoken: false,
                 },
             )
         };
