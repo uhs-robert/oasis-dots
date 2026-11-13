@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes, side_inset, is_stacked };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes, side_inset, inline_size, is_stacked };", T);
 const M = T.api;
 const plain = v => JSON.parse(JSON.stringify(v));
 
@@ -40,6 +40,9 @@ const cases = [
   ["a chamfer clears its diagonal and a square corner needs only the padding", () => [M.side_inset("chamfer", 8, 2, 30), M.side_inset("square", 8, 2, 30)], [8, 2]],
   ["the stacked title is the larger line and never above the bar font", () => { const z = M.stacked_sizes(26, 13); return [z.title > z.artist, z.title <= 13]; }, [true, true]],
   ["the old 16px inner height leaves both lines at the 6px floor, too small to read", () => { const z = M.stacked_sizes(16, 13); return [z.title, z.artist]; }, [6, 6]],
+  ["inline text fits the inner height with a 1.3 face down to 12 px", () => { const bad = []; for (let h = 12; h <= 30; h++) for (const base of [12, 16, 18]) { const z = M.inline_size(h, base, 1.3); if (Math.ceil(z * 1.3) > h || z > base) bad.push([h, base]); } return bad; }, []],
+  ["inline text with a tall face (1.7) still fits 14 px and 20 px inner heights", () => [14, 20].map(h => Math.ceil(M.inline_size(h, 18, 1.7) * 1.7) <= h), [true, true]],
+  ["inline text keeps the base size when it fits and never goes under 8 px", () => [M.inline_size(30, 13, 1.3), M.inline_size(5, 16, 1.3)], [13, 8]],
   ["stacked plate follows the chosen layout and both fields shown", () => [M.is_stacked("stacked", true, true), M.is_stacked("stacked", true, false), M.is_stacked("stacked", false, true), M.is_stacked("inline", true, true)], [true, false, false, false]],
 ];
 

@@ -42,6 +42,15 @@ function stacked_sizes(inner, base, ratio) {
     return { title: fitted_title, artist: artist };
 }
 
+// The largest pixel size up to `base` whose one text line, rounded up like QML does, fits `inner` px. Never below 8 px, so
+// an `inner` too small for that is the caller's to enlarge.
+function inline_size(inner, base, ratio) {
+    const line_ratio = Math.max(1, ratio || LINE);
+    let size = Math.max(8, base);
+    while (size > 8 && Math.ceil(size * line_ratio) > inner) size--;
+    return size;
+}
+
 // Whether the well uses the stacked plate (thin padding, tall plate): the layout the user chose with both fields shown,
 // not how many lines this track has, so a track with no artist does not resize the plate.
 function is_stacked(layout, show_title, show_artist) {
