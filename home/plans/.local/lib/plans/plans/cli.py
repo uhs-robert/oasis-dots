@@ -571,13 +571,27 @@ def rank_beside(ranked, anchor, args, path, refuse_taken_id):
         print(f"plans: left the rank of {entry['id']} alone: {entry['error']}", file=sys.stderr)
     for entry in uncertain:
         print(f"plans: the rank of {entry['id']} may have changed: {entry['error']}", file=sys.stderr)
-    # A skipped doc keeps its old rank, so the midpoint comes from the ranks that landed on disk.
-    above, below = (parse.load(neighbour.path).keys["rank"] if neighbour else None for neighbour in (above, below))
-    rank = placement.rank_between(above, below)
+    # A skipped doc keeps its old rank, so the neighbour comes from the order as it is on disk now.
+    now = sorted(fresh_docs(ranked), key=query.rank_order)
+    position = next(number for number, doc in enumerate(now) if doc.path == anchor.path)
+    if args.after:
+        above, below = now[position], now[position + 1] if position + 1 < len(now) else None
+    else:
+        above, below = now[position - 1] if position else None, now[position]
+    rank = placement.rank_between(above and above.keys["rank"], below and below.keys["rank"])
     if rank is None:
         raise Refused(f"the ranks around {anchor.id} could not be renumbered (see above), so there is no room beside it; "
                       "retry or place the doc with `plans set`")
     return rank
+
+
+def fresh_docs(docs):
+    """The docs as on disk now, without one that vanished or left the subset meanwhile."""
+    for doc in docs:
+        try:
+            yield parse.load(doc.path)
+        except (OSError, parse.ParseError):
+            continue
 
 
 def next_rank(docs):
