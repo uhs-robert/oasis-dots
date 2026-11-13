@@ -1,7 +1,7 @@
 local Config = require("config") ---@class Config
 local fallback = require("theme.fallback")
 
---- Tells DesertFox the desktop palette name with `desertfox theme <name>`, on every reload.
+--- Tells DesertFox the desktop theme name with `desertfox theme <name>`, on every reload.
 --- Best effort: it runs in the background with its output dropped, and skips silently when the CLI is missing or no
 --- browser is listening. Generate.all has no pcall, so nothing here may raise. A theme change while the browser is
 --- closed is not replayed until the next reload.
