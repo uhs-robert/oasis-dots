@@ -460,7 +460,7 @@ setup
 printf 'codex_pending_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 "$script" --check --wait-review 7 2>&1)
 show "$out"
-check "logs the change to Completed" "grep -Eq '#7 Codex review: Pending, reviewed .* -> Completed, reviewed [0-9a-f]+ after [0-9]+s' <<<\"\$out\""
+check "logs the change to Completed" "grep -Eq '#7 Codex review: Pending, reviewed [0-9a-f]+ -> Completed, reviewed [0-9a-f]+ after [0-9]+s' <<<\"\$out\""
 check "logs no heartbeat" "! grep -q 'still' <<<\"\$out\""
 
 echo "== --wait-review: a wait that stays unchanged logs a heartbeat, not one line per poll"
