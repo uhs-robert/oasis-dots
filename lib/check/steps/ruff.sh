@@ -22,7 +22,7 @@ done >>"$list"
 
 if [ "${1-}" = "--baseline" ]; then
   # Rules per file from ruff's JSON, as TOML lines.
-  xargs ruff check --no-cache --config 'lint.per-file-ignores = {}' --output-format json <"$list" | python3 -c '
+  xargs -d '\n' ruff check --no-cache --config 'lint.per-file-ignores = {}' --output-format json <"$list" | python3 -c '
 import json, os, sys
 by_file = {}
 for hit in json.load(sys.stdin):
@@ -34,4 +34,4 @@ for path in sorted(by_file):
   exit 0
 fi
 
-xargs ruff check --no-cache <"$list"
+xargs -d '\n' ruff check --no-cache <"$list"

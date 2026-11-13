@@ -3,7 +3,9 @@ are the raw $scopes of the shell runner the port replaced, leading space include
 """
 
 import os
+import re
 import shlex
+import subprocess
 import sys
 import unittest
 
@@ -33,8 +35,8 @@ CASES = [
     ("lib/check/steps/shaders.sh", " checkscope quickshell"),
     ("lib/check/steps/voxcmd-rust.sh", " checkscope voxrust"),
     ("lib/check/steps/docs-generated.sh", " checkscope docsgen"),
-    ("lib/docs/gen-keybinds", " checkscope docsgen"),
-    ("lib/docs/gen-ipc", " checkscope docsgen"),
+    ("lib/docs/gen-keybinds", "ruff checkscope docsgen"),
+    ("lib/docs/gen-ipc", "ruff checkscope docsgen"),
     ("lib/docs/docgen.py", "ruff checkscope docsgen"),
     # hypr: the Lua config and its tests; the generated keybind table reads the keymaps.
     ("home/hypr/tests/act-global.sh", " hypr docsgen"),
@@ -73,7 +75,7 @@ CASES = [
     ("home/voxcmd/tests/run-calendar.sh", " voxrest"),
     ("home/voxcmd/tests/run-wake.sh", " voxrest"),
     ("home/voxcmd/tests/sandbox.sh", " voxphrases voxclick voxrest"),
-    ("home/voxcmd/tests/firefox-profile", " voxphrases voxclick voxrest"),
+    ("home/voxcmd/tests/firefox-profile", "ruff voxphrases voxclick voxrest"),
     ("home/voxcmd/tests/fixtures/binds.json", " voxphrases voxclick"),
     ("home/voxcmd/tests/fixtures/overview.json", " voxclick"),
     ("home/voxcmd/tests/fixtures/ocr.tsv", " voxphrases"),
@@ -128,6 +130,8 @@ CASES = [
     # ruff: any .py edit adds it in front, and its config has a rule of its own instead of falling to "all".
     ("newdir/tool.py", "ruff all"),
     ("ruff.toml", " ruff"),
+    ("lib/check/steps/ruff.sh", " checkscope ruff"),
+    ("home/calendar/.local/bin/calendar-sync", "ruff install"),
     # Only the steps that always run look at these.
     ("extras/other/file", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
@@ -173,6 +177,18 @@ class PathScopes(unittest.TestCase):
         # docs-generated compares these two against what the generators print.
         self.assertEqual(scopes.path_scopes("docs/keybinds.md"), " docsgen")
         self.assertEqual(scopes.path_scopes("home/quickshell/.config/quickshell/README.md"), " docsgen")
+
+    def test_every_script_ruff_lints_reaches_ruff(self):
+        """ruff.sh lints extensionless scripts by their python shebang; a new one must be listed in RUFF_SCRIPTS."""
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        listed = subprocess.run(["git", "grep", "-lIE", "^#!.*python", "--", ":!*.py", ":!*.md"], cwd=repo,
+                                capture_output=True, text=True).stdout.split("\n")
+        for path in filter(None, listed):
+            with open(os.path.join(repo, path), errors="replace") as handle:
+                if not re.match(r"#!.*python", handle.readline()):
+                    continue
+            with self.subTest(path=path):
+                self.assertIn("ruff", scopes.path_scopes(path).split())
 
     def test_there_are_few_folder_scopes(self):
         folder_scopes = {step.scope for step in scopes.STEPS} - {"tree", "shell"}
