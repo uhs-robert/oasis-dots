@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/MediaText.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes, side_inset };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { clip, lines, format_time, ratio, marquee_running, marquee_cycle, stacked_sizes, side_inset, is_stacked };", T);
 const M = T.api;
 const plain = v => JSON.parse(JSON.stringify(v));
 
@@ -40,6 +40,7 @@ const cases = [
   ["a chamfer clears its diagonal and a square corner needs only the padding", () => [M.side_inset("chamfer", 8, 2, 30), M.side_inset("square", 8, 2, 30)], [8, 2]],
   ["the stacked title is the larger line and never above the bar font", () => { const z = M.stacked_sizes(26, 13); return [z.title > z.artist, z.title <= 13]; }, [true, true]],
   ["the old 16px inner height leaves both lines at the 6px floor, too small to read", () => { const z = M.stacked_sizes(16, 13); return [z.title, z.artist]; }, [6, 6]],
+  ["stacked plate follows the chosen layout and both fields shown", () => [M.is_stacked("stacked", true, true), M.is_stacked("stacked", true, false), M.is_stacked("stacked", false, true), M.is_stacked("inline", true, true)], [true, false, false, false]],
 ];
 
 let failed = 0;

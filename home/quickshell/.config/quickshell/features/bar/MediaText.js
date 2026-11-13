@@ -42,6 +42,12 @@ function stacked_sizes(inner, base, ratio) {
     return { title: fitted_title, artist: artist };
 }
 
+// Whether the well uses the stacked plate (thin padding, tall plate): the layout the user chose with both fields shown,
+// not how many lines this track has, so a track with no artist does not resize the plate.
+function is_stacked(layout, show_title, show_artist) {
+    return layout === "stacked" && !!show_title && !!show_artist;
+}
+
 function format_time(seconds) {
     const s = Math.max(0, Math.floor(seconds || 0));
     const h = Math.floor(s / 3600);

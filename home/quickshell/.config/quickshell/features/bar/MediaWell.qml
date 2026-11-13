@@ -41,8 +41,9 @@ Item {
 
     signal toggle_requested()
 
-    // A stacked title and artist need the plate's height, so the padding around them is thinner.
-    readonly property bool stacked: !root.vertical && !root.compact && root.text_lines.length > 1
+    // A stacked title and artist need the plate's height, so the padding around them is thinner. It follows the chosen
+    // layout, not this track's line count, so a track with no artist keeps the plate and centres its title.
+    readonly property bool stacked: !root.vertical && !root.compact && MediaText.is_stacked(root.text_layout, root.show_title, root.show_artist)
     readonly property int pad: root.stacked ? 2 : 4
     readonly property real art_size: root.vertical ? root.cell : root.height - root.pad * 2
     readonly property var text_lines: MediaText.lines(root.shown_player ? root.shown_player.trackTitle || "" : "", root.shown_player ? root.shown_player.trackArtist || "" : "", root.show_title, root.show_artist, root.text_layout, root.shown_player ? root.shown_player.identity || "" : "")
