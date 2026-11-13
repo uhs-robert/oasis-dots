@@ -119,17 +119,17 @@ worktree_of() { # <branch>
 # A session can wait on its own background build for longer than the stuck time with no commit, so a file changed
 # in the worktree of its branch counts as work too. One recent file is enough, so find stops at the first.
 latest_progress() { # <json of the session's docs>
-  local best=0 t id branch path worktree
-  while IFS=$'\t' read -r id branch path; do
+  local best=0 t id branch path doc_project worktree
+  while IFS=$'\t' read -r id branch path doc_project; do
     worktree=
     [[ -z $branch || $branch == none ]] || worktree=$(worktree_of "$branch")
     for t in $(stat -c %Y "$path" 2>/dev/null) \
-      $(find "$log_dir/$id" -type f -printf '%Ts\n' 2>/dev/null) \
+      $(find "$main_checkout/.logs/$doc_project/$id" -type f -printf '%Ts\n' 2>/dev/null) \
       $([[ -n $branch && $branch != none ]] && git -C "$main_checkout" log -1 --format=%ct "$branch" -- 2>/dev/null) \
       $([[ -n $worktree ]] && find "$worktree" \( -name .git -o -name node_modules \) -prune -o -type f -newermt "@$(($(date +%s) - stuck_seconds))" -printf '%Ts\n' -quit 2>/dev/null); do
       ((t > best)) && best=$t
     done
-  done < <(jq -r '.[] | [.id, .branch, .path] | @tsv' <<<"$1")
+  done < <(jq -r '.[] | [.id, .branch, .path, .project] | @tsv' <<<"$1")
   echo "$best"
 }
 
