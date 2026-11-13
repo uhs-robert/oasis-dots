@@ -174,13 +174,19 @@ pub enum Candidates {
 pub enum Provider {
     /// The text on the focused window, read by OCR.
     ScreenText,
+    /// The monitor a spoken position, slot or "laptop" names.
+    Monitors,
 }
 
 impl Provider {
-    pub const KNOWN: &'static str = "screen_text";
+    pub const KNOWN: &'static str = "screen_text, monitors";
 
     pub fn named(name: &str) -> Option<Self> {
-        (name == Self::KNOWN).then_some(Self::ScreenText)
+        match name {
+            "screen_text" => Some(Self::ScreenText),
+            "monitors" => Some(Self::Monitors),
+            _ => None,
+        }
     }
 }
 
@@ -608,7 +614,7 @@ pub fn parse_toml(file: &Path, text: &str) -> Result<Integration, String> {
                 (None, Some(name)) => {
                     let provider = Provider::named(&name).ok_or_else(|| {
                         format!(
-                            "{}: action {id}: unknown provider {name:?} (the known one is {})",
+                            "{}: action {id}: unknown provider {name:?} (the known ones are {})",
                             place("provider"),
                             Provider::KNOWN
                         )
@@ -896,7 +902,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unknown_provider_names_the_known_one() {
+    fn an_unknown_provider_names_the_known_ones() {
         let text = "verbs = []\n[actions.go]\nprovider = \"ocr\"\nrun = \"true\"\n";
         let error = parse_toml(Path::new("p.toml"), text).unwrap_err();
         assert!(

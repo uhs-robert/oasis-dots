@@ -1,5 +1,6 @@
 //! The built-in candidate providers: a `provider = "<name>"` line in an integration's toml sends the candidates lookup
 //! here instead of to a shell hook. Each provider is one `Provider` variant and one arm of `BuiltinHooks::candidates`.
+mod monitors;
 mod screen_text;
 
 use crate::click::capture::Tools;
@@ -41,6 +42,7 @@ impl Hooks for BuiltinHooks {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         match integration.candidates_for(query.action) {
             Some(Candidates::Builtin(Provider::ScreenText)) => self.screen_text(integration, query),
+            Some(Candidates::Builtin(Provider::Monitors)) => self.monitors(integration, query),
             _ => HookRun::unhooked(integration, query.action, ""),
         }
     }

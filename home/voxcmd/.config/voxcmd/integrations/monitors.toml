@@ -38,16 +38,16 @@ moved_window = '((this|the|that) )?((active|current|focused) )?window|it|this|th
 
 [actions.focus]
 run = 'focus_monitor "$VOXCMD_ID"'
-candidates = "monitor_candidates focus"
+provider = "monitors"
 
 [actions.move]
 run = 'move_window_to_monitor "$VOXCMD_ID"'
-candidates = "monitor_candidates move"
+provider = "monitors"
 
 [actions.focus_laptop]
 run = 'focus_monitor "$VOXCMD_ID"'
-candidates = "monitor_candidates focus_laptop"
+provider = "monitors"
 
 [actions.move_laptop]
 run = 'move_window_to_monitor "$VOXCMD_ID"'
-candidates = "monitor_candidates move_laptop"
+provider = "monitors"
