@@ -1264,6 +1264,31 @@ check(
 )
 assert_clean("other mouse")
 
+--- 43b. A fast leave and re-entry while the old mouse is still listed, and the new mouse reuses its name (and in the
+--- second case its address too): the wait must not take the old mouse for the new one, nor miss the new one.
+for _, case in ipairs({
+	{ name = "reused name", mode = "REUSE_NAME=1 DEVICE_LINGER=0.4 DEVICE_DELAY=0.5" },
+	{ name = "reused name and address", mode = "REUSE_NAME=1 REUSE_ADDRESS=1 DEVICE_LINGER=0.4 DEVICE_DELAY=0.5" },
+}) do
+	fresh(case.mode)
+	check(warm(), case.name .. ": the first daemon's mouse is listed")
+	Submap.reset()
+	Submap.enter("Cursor")
+	press("V")
+	check(
+		settle(function()
+			return count("ydotool click 0x40") == 1
+		end, 8),
+		case.name .. ": the press follows the new daemon's mouse"
+	)
+	check(count("did not list") == 0, case.name .. ": no notice that Hyprland lacks the mouse")
+	press("SPACE")
+	settle(function()
+		return count("ydotool click 0x80") == 1
+	end)
+	assert_clean(case.name)
+end
+
 --- 44. A reload in the middle of a manual drag and of a glide: the new config load lets go of the button and stops the
 --- old load's daemon.
 for _, case in ipairs({ { name = "manual", mode = "", key = "V" }, { name = "glide", mode = 'PICK="400 300"', key = "SHIFT + V" } }) do

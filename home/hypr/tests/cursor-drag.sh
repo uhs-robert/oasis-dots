@@ -34,14 +34,19 @@ cat >"$stub/hyprctl" <<'STUB'
 case $1 in
   eval) echo "$2" >>"$STUB_DIR/cb.queue" ;;
   # The daemon's mouse is listed once its device file exists. As on Hyprland, its keyboard takes the plain name and its
-  # mouse gets a -N suffix that changes with each start. PREEXISTING_MOUSE adds another daemon's mouse, listed throughout.
+  # mouse gets a -N suffix and its own address, both changing with each start. REUSE_NAME keeps the suffix and
+  # REUSE_ADDRESS the address of the first start, as a freed device can come back under both. PREEXISTING_MOUSE adds
+  # another daemon's mouse, listed throughout.
   devices)
     . "$STUB_DIR/mode" 2>/dev/null
     mice='{"address":"0x1","name":"keyd-virtual-pointer"},{"address":"0x3","name":null}'
     keyboards=''
     [ -n "$PREEXISTING_MOUSE" ] && mice="$mice"',{"address":"0x4","name":"ydotoold-virtual-device-90"}'
     if [ -f "$STUB_DIR/device" ]; then
-      mice="$mice"',{"address":"0x2","name":"ydotoold-virtual-device-'"$(cat "$STUB_DIR/device")"'"}'
+      serial=$(cat "$STUB_DIR/device")
+      suffix=$serial; [ -n "$REUSE_NAME" ] && suffix=1
+      address=$(printf '0x%x' $((0x1000 + serial))); [ -n "$REUSE_ADDRESS" ] && address=0x2
+      mice="$mice"',{"address":"'"$address"'","name":"ydotoold-virtual-device-'"$suffix"'"}'
       keyboards='{"address":"0x5","name":"ydotoold-virtual-device"}'
     fi
     echo "{\"mice\":[$mice],\"keyboards\":[$keyboards]}" ;;
@@ -62,13 +67,19 @@ esac
 # The virtual mouse shows up in `hyprctl devices` some time after the socket, or never (NO_DEVICE).
 serial=$(( $(cat "$STUB_DIR/serial" 2>/dev/null || echo 0) + 1 )); echo $serial >"$STUB_DIR/serial"
 [ -z "$NO_DEVICE" ] && (sleep "${DEVICE_DELAY:-0}"; kill -0 $$ 2>/dev/null && echo $serial >"$STUB_DIR/device") &
+export DEVICE_LINGER
 exec "$STUB_DIR/py/ydotoold" -I -c '
 import os, signal, socket, sys
 s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1])
 def stop(*_):
     open(sys.argv[2], "a").write("ydotoold stop\n")
-    try: os.remove(os.path.join(os.path.dirname(sys.argv[2]), "device"))
-    except OSError: pass
+    device = os.path.join(os.path.dirname(sys.argv[2]), "device")
+    if os.environ.get("DEVICE_LINGER"):
+        # Hyprland lists the mouse of a dead daemon for a moment longer.
+        os.spawnlp(os.P_NOWAIT, "sh", "sh", "-c", "sleep $1; rm -f $2", "sh", os.environ["DEVICE_LINGER"], device)
+    else:
+        try: os.remove(device)
+        except OSError: pass
     sys.exit(0)
 signal.signal(signal.SIGTERM, stop); signal.pause()' "$sock" "$STUB_DIR/log"
 STUB
