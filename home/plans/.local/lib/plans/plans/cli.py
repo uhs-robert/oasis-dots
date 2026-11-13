@@ -5,7 +5,7 @@ import json
 import os
 import sys
 
-from . import backup, gh, issues, liveness, parse, query, retire, roots, server, store, validate
+from . import backup, gh, issues, liveness, parse, placement, query, retire, roots, server, store, validate
 
 OK, FINDINGS, USAGE, STALE = 0, 1, 2, 3
 SESSION_ENV = "PLANS_SESSION"
@@ -118,6 +118,9 @@ def build_parser():
     new.add_argument("project")
     new.add_argument("id")
     new.add_argument("--kind", default="feature", choices=validate.KINDS)
+    place = new.add_mutually_exclusive_group()
+    place.add_argument("--after", metavar="ID", help="rank the new doc right after this doc (any project); the default is last")
+    place.add_argument("--before", metavar="ID", help="rank the new doc right before this doc (any project)")
     new.set_defaults(run=run_new)
 
     for name, help_text in (("close", "delete the doc and its log folder, and drop it from depends_on; run it after a merge"),
@@ -508,6 +511,8 @@ def run_new(args):
     if args.project == query.OLD_PROJECTS_DIR:
         raise UsageError(f"{query.OLD_PROJECTS_DIR!r} is the folder of the old layout; pick another project name")
     repo = current_repo()
+    ranked = sorted((doc for doc in repo.docs if isinstance(doc.keys.get("rank"), int)), key=query.rank_order)
+    anchor = anchor_of(repo, ranked, args)
 
     def refuse_taken_id():
         existing = query.find(repo.root, args.id)
@@ -518,11 +523,51 @@ def run_new(args):
     # another project.
     refuse_taken_id()
     path = os.path.join(repo.root, ".plans", args.project, args.id + ".md")
+    rank = next_rank(repo.docs) if anchor is None else rank_beside(ranked, anchor, args, path)
     try:
-        store.create(path, new_doc_text(args.project, args.id, args.kind, next_rank(repo.docs)), refuse_taken_id)
+        store.create(path, new_doc_text(args.project, args.id, args.kind, rank), refuse_taken_id)
     except FileExistsError:
         raise Refused(f"{path} exists") from None
     print(path)
+
+
+def anchor_of(repo, ranked, args):
+    """The doc `--after` or `--before` names, or None with neither flag. Any project, and nothing is written when the
+    id is unknown or the doc has no int rank."""
+    anchor_id = args.after or args.before
+    if anchor_id is None:
+        return None
+    found = query.find(repo.root, anchor_id)
+    if not found:
+        raise UsageError(f"no doc with id {anchor_id!r}")
+    anchor = next((doc for doc in ranked if doc.path == found[0]), None)
+    if anchor is None:
+        raise Refused(f"{anchor_id!r} has no whole-number rank to place the new doc beside")
+    return anchor
+
+
+def refuse_other_host_rank_write(doc):
+    if liveness.is_remote_owned(doc):
+        raise Refused(f"{doc.id} is owned on {liveness.owner_host_of(doc)}")
+
+
+def rank_beside(ranked, anchor, args, path):
+    """The rank for the new doc next to `anchor`: the midpoint of it and its neighbour. With no gap, the other docs
+    are renumbered in steps of RANK_STEP first, and a doc another host owns is left alone and named on stderr."""
+    index = ranked.index(anchor)
+    above, below = (anchor, ranked[index + 1] if index + 1 < len(ranked) else None) if args.after else (
+        ranked[index - 1] if index else None, anchor)
+    rank = placement.rank_between(above and above.keys["rank"], below and below.keys["rank"])
+    if rank is not None:
+        return rank
+    new_doc = parse.Doc(path, new_doc_text(args.project, args.id, args.kind, 0))
+    order = list(ranked)
+    order.insert(index + 1 if args.after else index, new_doc)
+    new_ranks = placement.renumbered_ranks(order)
+    _, skipped, uncertain = placement.renumber_others(order, new_doc, new_ranks, refuse_other_host_rank_write, (Refused,))
+    for entry in skipped + uncertain:
+        print(f"plans: left the rank of {entry['id']} alone: {entry['error']}", file=sys.stderr)
+    return new_ranks[path]
 
 
 def next_rank(docs):

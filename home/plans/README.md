@@ -18,7 +18,7 @@ plans set <id> key=value...           # e.g. plans set demo status=building depe
 plans note <id> --section NAME "text"  # append a bullet to a body section; Decisions bullets get today's date
 plans claim <id> [--as S] [--force]   # owner_session = S
 plans handoff --to T <id>... [--as S] [--force]
-plans new <project> <id> [--kind K]   # writes .plans/<project>/<id>.md, kind feature by default
+plans new <project> <id> [--kind K] [--after ID | --before ID]   # writes .plans/<project>/<id>.md, kind feature by default
 plans close <id> [--as S] [--force] [--dry-run]    # delete the doc and its log folder, drop it from depends_on
 plans cancel <id> [--as S] [--force] [--dry-run]   # close, plus the PR, the issue and a clean worktree
 plans lint [--gh] [--all]
@@ -47,7 +47,8 @@ A pid means something only on its own machine, so a doc also records the owner's
 - `cancel` drops a card you no longer want. In order, it closes the doc's PR unmerged with a comment (only if open), closes the issue as not planned (only if open, and not when another doc names the same issue), removes the worktree that has the doc's branch checked out (only if it has no uncommitted changes, and never the main checkout), then runs the `close` cleanup. The branch stays, local and remote, so the PR can be reopened. A step that fails stops the run. The doc stays, and the output says what is `done`, `skipped`, `failed` and `not run`. A dirty worktree is `skipped`, and the run goes on.
 - `close` and `cancel` refuse a doc that another session owns, as `claim` does, and a caller without a session name owns nothing. `--force` overrides that. `--dry-run` prints each `would:` line and changes nothing. They delete only the doc file and its own log folder, and refuse an id or project that is not a plain name. A `pr` or `issue` value that is no number or GitHub URL, and a branch that is no branch name, are refused.
 - `set` refuses `id`, `project`, `updated`, `owner_session_id`, `owner_session_pid` and `owner_host`, a value with a line break, an unknown key, and a value outside a closed set. A list takes `a,b` or `[a, b]`.
-- `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc, and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
+- `new` gives the doc every key, `status: idea`, a rank 10 past the last-ranked doc (or beside the doc `--after` or `--before` names, see below), and the five empty sections. It never overwrites a doc. It refuses an id the repo already uses, and the project name `projects` of the old layout.
+- `new --after <id>` and `new --before <id>` (not both) place the doc next to that doc, in any project, as a drop on the board does. The rank is the midpoint of the two neighbours. With no gap, `new` renumbers the other docs in steps of 10 first, then writes the doc. It skips a doc owned on another host and names it on stderr. An unknown id or a doc without a whole-number rank is an error, and nothing is written.
 - `lint` checks every rule below and prints `path:line: rule: message`. `lint --gh` also asks GitHub, through the `gh` CLI, for a merged or closed `pr`, a closed `issue` and a `branch` the remote no longer has.
 - `ls` and `lint` name each old layout and say "migrate this repo". The old layouts are `.planning/roadmap.md`, `.plans/roadmap.md`, `.plans/projects/` and root `.md` files that `info/exclude` hides. A doc with the old `kind: plan`, `tracker` or `handoff` counts too, and `ls` skips it.
 

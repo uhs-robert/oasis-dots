@@ -21,7 +21,7 @@ import urllib.parse
 
 from typing import NamedTuple
 
-from . import liveness, parse, query, retire, roots, store, validate
+from . import liveness, parse, placement, query, retire, roots, store, validate
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -36,7 +36,6 @@ WRITE_HEADER = "X-Plans-Board"
 MAX_BODY_BYTES = 64 * 1024
 # The board edits only these through /api/update. Rank changes go through /api/move, and the rest stays read-only.
 EDITABLE_KEYS = ("status", "owner_session")
-RANK_STEP = 10
 # Hyprland writes this launcher for the terminal it opens. $TERMINAL is the fallback outside that desktop.
 HYPR_TERMINAL = os.path.join("hypr", "bin", "term")
 FALLBACK_EDITOR = "nvim"
@@ -625,7 +624,7 @@ def update_doc(board, request):
 def move_doc(board, request):
     """Drop a card into a status column between two neighbours. Request: {path, basis: {status, rank}, status,
     above: path or null, below: path or null}. The new rank is the midpoint of the neighbours' ranks. When they leave
-    no gap, the repo's ranks are renumbered in steps of RANK_STEP."""
+    no gap, the repo's ranks are renumbered in steps of placement.RANK_STEP."""
     view, doc = board_doc(board, request)
     status = request.get("status")
     problem = validate.write_problem("status", status)
@@ -643,7 +642,7 @@ def move_doc(board, request):
     if above is None and below is None:
         rank = basis["rank"]
     else:
-        rank = rank_between(above and above.keys["rank"], below and below.keys["rank"])
+        rank = placement.rank_between(above and above.keys["rank"], below and below.keys["rank"])
     if rank is not None:
         # Both keys go in even when one keeps the shown value: store.update compares only the keys it writes, and an
         # agent's change to either must refuse the move.
@@ -674,36 +673,13 @@ def refuse_moved_neighbours(ranked, doc, status, above, below):
         raise Refused(409, "the cards around the drop changed since the board loaded; reload the board", keys=["rank"])
 
 
-def rank_between(above, below):
-    """A whole number strictly between the two ranks (None means no card on that side), or None when there is none.
-    A rank stays at 0 or above, because the front matter subset has no negative numbers."""
-    if above is None:
-        return below - RANK_STEP if below >= RANK_STEP else (below // 2 if below > 0 else None)
-    if below is None:
-        return above + RANK_STEP
-    return (above + below) // 2 if below - above >= 2 else None
-
-
 def renumber(order, moved, moved_basis, status):
     """Give `order` the ranks RANK_STEP, 2 * RANK_STEP and so on. The moved doc goes first, so a stale page refuses the
-    whole move. Each other doc is its own store.update: a doc that an agent re-ranked meanwhile keeps the agent's rank
-    and lands in `skipped`, as does a doc another host owns. A doc whose write failed partway lands in `uncertain`, and
-    the rest are renumbered."""
-    new_ranks = {doc.path: RANK_STEP * (index + 1) for index, doc in enumerate(order)}
+    whole move. The others follow as placement.renumber_others describes."""
+    new_ranks = placement.renumbered_ranks(order)
     store.update(moved_basis, {"status": status, "rank": new_ranks[moved.path]}, check_under_lock=refuse_remote_owned)
-    renumbered, skipped, uncertain = 1, [], []
-    for doc in order:
-        if doc is moved or doc.keys["rank"] == new_ranks[doc.path]:
-            continue
-        try:
-            store.update(doc, {"rank": new_ranks[doc.path]}, check_under_lock=refuse_remote_owned)
-            renumbered += 1
-        except (store.Conflict, store.Vanished, Refused, parse.ParseError, UnicodeDecodeError) as error:
-            skipped.append({"path": doc.path, "id": doc.id, "error": str(error)})
-        except OSError as error:
-            # As in run_action: the new rank may have landed, so this doc is neither renumbered nor skipped.
-            uncertain.append({"path": doc.path, "id": doc.id, "error": str(error)})
-    return {"renumbered": renumbered, "skipped": skipped, "uncertain": uncertain}
+    written, skipped, uncertain = placement.renumber_others(order, moved, new_ranks, refuse_remote_owned, (Refused,))
+    return {"renumbered": written + 1, "skipped": skipped, "uncertain": uncertain}
 
 
 def toggle_task(board, request):
