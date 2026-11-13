@@ -26,6 +26,7 @@ Item {
     required property real room_top
     required property real room_bottom
     required property bool lcd
+    required property var bar_square
     readonly property real engraving_height: root.st.frame_engraving !== "" ? Math.ceil(engraving_metrics.height) + 4 : 0
 
     anchors.fill: parent
@@ -59,6 +60,7 @@ Item {
             room_side: root.room_side
             room_top: root.room_top
             room_bottom: root.room_bottom
+            bar_square: root.bar_square
         }
     }
 

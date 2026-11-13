@@ -4,6 +4,7 @@ import qs.theme
 import qs.styles.gameboy.widgets as Gameboy
 import qs.ui.effects
 import qs.ui.frames
+import "../../../ui/frames/PanelCuts.js" as Cuts
 
 // A Game Boy around a small popup: the style's model draws the shell and controls, this the pixel screen.
 Item {
@@ -14,6 +15,8 @@ Item {
     property int room_side: 20
     property int room_top: 30
     property int room_bottom: 80
+    // The corners that touch the bar, which the shell draws square.
+    property var bar_square: Cuts.none
 
     readonly property int screen_top: root.room_top - 4
     readonly property int screen_bottom: root.height - root.room_bottom - 4
@@ -30,6 +33,7 @@ Item {
         Gameboy.ShellDmg {
             screen_top: root.screen_top
             pad_top: root.pad_top
+            bar_square: root.bar_square
         }
     }
 
@@ -39,6 +43,7 @@ Item {
         Gameboy.ShellColor {
             screen_top: root.screen_top
             pad_top: root.pad_top
+            bar_square: root.bar_square
         }
     }
 

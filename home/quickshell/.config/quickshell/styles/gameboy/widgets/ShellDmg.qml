@@ -7,6 +7,8 @@ Item {
 
     property int screen_top: 26
     property int pad_top: 0
+    // The corners that touch the bar are square.
+    property var bar_square: ({ top_left: false, top_right: false, bottom_left: false, bottom_right: false })
 
     readonly property color body: "#c6c4bd"
     readonly property color body_low: "#b0aea7"
@@ -18,8 +20,10 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 6
-        bottomRightRadius: 34
+        topLeftRadius: root.bar_square.top_left ? 0 : 6
+        topRightRadius: root.bar_square.top_right ? 0 : 6
+        bottomLeftRadius: root.bar_square.bottom_left ? 0 : 6
+        bottomRightRadius: root.bar_square.bottom_right ? 0 : 34
         border.width: 2
         border.color: root.edge
         gradient: Gradient {
