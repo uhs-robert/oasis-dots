@@ -56,6 +56,7 @@ PATH_SCOPES = [
     ("home/hypr/.config/hypr/scripts/lock-screen.sh", "hypr quickshell docsgen"),
     ("home/hypr/*", "hypr docsgen"),
     (".claude/skills/shadow/shadow.sh", "hypr"),
+    (".claude/skills/shadow/fake_player.py", "hypr"),
     ("system/etc/greetd/hyprland.lua", "hypr quickshell install"),
     ("system/etc/greetd/*.lua", "hypr quickshell"),
     ("system/etc/greetd/quickshell/*", "quickshell"),
