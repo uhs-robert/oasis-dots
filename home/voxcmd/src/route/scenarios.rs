@@ -92,6 +92,8 @@ struct CannedHooks {
     open_surface: Option<&'static str>,
     /// The raw transcript each hook call was given.
     raw_seen: std::sync::Mutex<Vec<String>>,
+    /// The stem and action of each hook call, which a yield without a start leaves out.
+    started: std::sync::Mutex<Vec<(String, String)>>,
 }
 
 impl CannedHooks {
@@ -114,6 +116,15 @@ impl CannedHooks {
         self
     }
 
+    fn fails(mut self, stem: &'static str, action: &'static str) -> Self {
+        self.lookups.insert((stem, action), Lookup::Broken);
+        self
+    }
+
+    fn started(&self, stem: &str) -> bool {
+        self.started.lock().unwrap().iter().any(|(started, _)| started == stem)
+    }
+
     fn surface(mut self, stem: &'static str) -> Self {
         self.open_surface = Some(stem);
         self
@@ -124,6 +135,10 @@ impl Hooks for CannedHooks {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let action = query.action;
         self.raw_seen.lock().unwrap().push(query.raw_transcript.to_string());
+        self.started
+            .lock()
+            .unwrap()
+            .push((integration.stem.clone(), action.to_string()));
         let mut run = HookRun::unhooked(integration, action, "canned");
         let key = self
             .lookups
@@ -144,6 +159,92 @@ impl Hooks for CannedHooks {
     fn surface_open(&self, integration: &Integration) -> bool {
         self.open_surface == Some(integration.stem.as_str())
     }
+}
+
+/// Apps and the real Monitors integration, whose `monitors` provider answers in process.
+fn monitors_config() -> Config {
+    let monitors = Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations/monitors.toml");
+    Config {
+        integrations: vec![
+            integration("apps", &fixture_text("apps")),
+            integration("monitors", &std::fs::read_to_string(monitors).expect("monitors.toml")),
+        ],
+        intents: Intents::default(),
+        replacements: Replacements::default(),
+    }
+}
+
+fn explain_monitors(phrase: &str, hooks: &CannedHooks) -> Explain {
+    let config = monitors_config();
+    let router = Router::new(&config, hooks);
+    explain_phrase(&router, phrase)
+}
+
+fn yielded_integrations(explain: &Explain) -> Vec<String> {
+    explain.steps[0]
+        .integrations
+        .iter()
+        .filter(|trace| matches!(trace.outcome, super::trace::IntegrationOutcome::YieldedByHook { .. }))
+        .map(|trace| trace.name.clone())
+        .collect()
+}
+
+#[test]
+fn a_monitor_the_provider_names_leaves_the_apps_hook_unstarted() {
+    let hooks = CannedHooks::default()
+        .says("monitors", "focus", &[("DP-1", "DP-1", Some("center"))])
+        .says("apps", "focus", &[("0x1", "Center monitor settings", None)]);
+    let explain = explain_monitors("go to the center monitor", &hooks);
+    let step = only_step(&explain);
+    assert_eq!(step.options.len(), 1, "{}", explain.text());
+    assert_eq!(step.options[0].integration, "Monitors");
+    assert!(!hooks.started("apps"), "{}", explain.text());
+    assert_eq!(yielded_integrations(&explain), ["Apps"]);
+}
+
+#[test]
+fn a_phrase_the_provider_offers_nothing_for_still_reaches_the_apps_hook() {
+    let hooks =
+        CannedHooks::default()
+            .says("monitors", "focus", &[])
+            .says("apps", "focus", &[("0x1", "uptime monitor", None)]);
+    let explain = explain_monitors("go to uptime monitor", &hooks);
+    let step = only_step(&explain);
+    assert!(hooks.started("apps"), "{}", explain.text());
+    assert_eq!(step.options.len(), 1, "{}", explain.text());
+    assert_eq!(step.options[0].integration, "Apps");
+}
+
+#[test]
+fn a_provider_that_fails_or_offers_only_weak_candidates_claims_nothing() {
+    let failing =
+        CannedHooks::default()
+            .fails("monitors", "focus")
+            .says("apps", "focus", &[("0x1", "Center monitor", None)]);
+    let explain = explain_monitors("go to the center monitor", &failing);
+    assert!(failing.started("apps"), "{}", explain.text());
+    assert_eq!(only_step(&explain).options[0].integration, "Apps");
+
+    let mut weak = CannedHooks::default().says("apps", "focus", &[("0x1", "Center monitor", None)]);
+    let mut weak_candidate = Candidate::plain("DP-1", "DP-1");
+    weak_candidate.weak = true;
+    weak.lookups
+        .insert(("monitors", "focus"), Lookup::Candidates(vec![weak_candidate]));
+    let explain = explain_monitors("go to the center monitor", &weak);
+    assert!(weak.started("apps"), "{}", explain.text());
+}
+
+#[test]
+fn a_phrase_with_no_monitor_answer_resolves_as_before() {
+    let hooks = CannedHooks::default().says("monitors", "focus_laptop", &[]).says(
+        "apps",
+        "focus",
+        &[("0x1", "Slack", Some("slack"))],
+    );
+    let explain = explain_monitors("focus slack", &hooks);
+    assert!(hooks.started("apps"), "{}", explain.text());
+    assert_eq!(only_step(&explain).options[0].integration, "Apps");
+    assert!(yielded_integrations(&explain).is_empty());
 }
 
 fn explain(phrase: &str, hooks: &CannedHooks) -> Explain {

@@ -99,6 +99,14 @@ impl HookRun {
         run
     }
 
+    /// A lookup answered as a yield without starting the hook, since another integration's built-in provider already
+    /// answered the phrase (`resolve_all`).
+    pub fn skipped_claimed(integration: &Integration, action: &str) -> Self {
+        let mut run = Self::unhooked(integration, action, "(not run: phrase claimed by a built-in provider)");
+        run.lookup = Lookup::Yield;
+        run
+    }
+
     /// A lookup that did not run a hook.
     pub fn unhooked(integration: &Integration, action: &str, command: &str) -> Self {
         Self {

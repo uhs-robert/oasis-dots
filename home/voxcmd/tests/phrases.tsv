@@ -466,6 +466,7 @@ go to the 10th monitor	Monitors/focus	no such monitor on the owner's four; the p
 what is a third of 9	Answers/calculate	a fraction word is not a position
 set a timer for thirty seconds	Timers/timer	"seconds" stays a time unit beside the ordinals
 go to the 11th monitor	Monitors/focus	no such monitor; the phrase is still ours
+go to uptime monitor	Firefox/focus_tab	a tab named like a monitor: the provider offers nothing for "uptime", so Firefox still answers
 go to monitor twenty first	Monitors/focus	no such monitor; the phrase is still ours
 set a timer for 30 seconds	Timers/timer	the ordinal words never take "seconds" from a timer
 go to the system monitor	none	not a monitor word, so left to the apps
