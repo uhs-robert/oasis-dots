@@ -62,6 +62,9 @@ class StripCodeTest(unittest.TestCase):
         self.assertEqual(self.strip("const p = /`/;", "import qs.b // z"), ["const p = /`/;", "import qs.b "])
         self.assertEqual(self.strip("a = b / 2 + `x", "y` // c"), ["a = b / 2 + `", "` "])
 
+    def test_division_before_a_template_stays_division(self):
+        self.assertEqual(self.strip("margin / 2 + `a`", "import qs.b // z"), ["margin / 2 + ``", "import qs.b "])
+
     def test_quote_does_not_carry_past_a_plain_string(self):
         self.assertEqual(self.strip('a: "x', "b // c"), ['a: "', "b "])
 
