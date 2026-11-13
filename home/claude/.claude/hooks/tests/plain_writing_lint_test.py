@@ -349,6 +349,33 @@ class Commands(StateDirectory):
         self.assertIn("the PR body", self.bash(f"echo $(( ')' + 1 )); {self.BAD_BODY}"))
         self.assertIsNone(self.bash('echo $(( "gh pr create --body x(" + 1 )) "It doesn\'t start."'))
 
+    def test_case_as_an_argument_is_not_a_case_block(self):
+        self.assertIn("the PR body", self.bash(f'x="$(echo case x in a)"; {self.BAD_BODY}'))
+        self.assertIn("the PR body", self.bash(f'gh pr create --title "$(echo case x in)" --body "It doesn\'t start."'))
+
+    def test_many_case_words_do_not_stall_the_parser(self):
+        started = time.monotonic()
+        lint.message_sources("echo $(" + "case a " * 20000 + ")")
+        self.assertLess(time.monotonic() - started, 5)
+
+    def test_backtick_inside_double_quotes_is_a_substitution(self):
+        self.assertIn("the PR body", self.bash('result="`gh pr create --body should`"'))
+        self.assertIn("the PR body", self.bash(f'echo "`date`"; {self.BAD_BODY}'))
+        self.assertIsNone(self.bash('echo "`date`" \'gh pr create --body should\''))
+
+    def test_separator_inside_a_substitution_keeps_the_heredoc_pipe(self):
+        command = "sed <<'EOF' -e \"$(printf %s s/x/x/; true)\" | gh pr create --body-file -\nIt doesn't start.\nEOF"
+        self.assertIn("the PR body", self.bash(command))
+
+    def test_commit_keeps_plain_messages_beside_a_substituted_one(self):
+        self.assertIn("contraction", self.bash("git commit -m \"fix: x\" -m \"It doesn't start.\" -m `date`"))
+        self.assertIsNone(self.bash('git commit -m "fix: x" -m "It starts." -m `date`'))
+
+    def test_ansi_c_escapes_are_decoded(self):
+        command = "gh pr create --body $'a\\x41\\u00e9\\101\\r\\e\\\\\\'\\q'"
+        self.assertEqual(lint.command_texts(command, self.root), [("pr", "aA\u00e9A\r\x1b\\'\\q")])
+        self.assertIn("the PR body", self.bash("gh pr create --body $'It doesn\\x27t start.'"))
+
     def test_body_file_path_with_a_nul_byte_does_not_hide_later_bodies(self):
         command = 'gh pr create --body-file "a\x00b"; gh issue create --body should'
         self.assertEqual(lint.command_texts(command, self.root), [("issue", "should")])
