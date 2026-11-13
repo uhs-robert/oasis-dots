@@ -14,7 +14,7 @@ import time
 import gi
 
 gi.require_version("Gio", "2.0")
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib  # noqa: E402 - the version call above must come first
 
 BUS_NAME = "org.mpris.MediaPlayer2.shadowfake"
 OBJECT_PATH = "/org/mpris/MediaPlayer2"
