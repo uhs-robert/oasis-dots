@@ -157,6 +157,25 @@ bc -d fake set 100%
 bc -d some_kbd_backlight set 50%
 [[ $(bc -d fake get) == 255 ]] || fail "a set on another device changed the fake"
 grep -q 'set 50%' "$logs/shim.log" || fail "the call was not logged"
+
+# Reads on other devices reach the real tool with their full arguments (the test points system_path at a recorder).
+real_dir=$work/realbin
+mkdir -p "$real_dir"
+printf '#!/bin/sh\necho "REAL $*" >>"%s/real.calls"\n' "$work" >"$real_dir/brightnessctl"
+chmod +x "$real_dir/brightnessctl"
+saved_system_path=$system_path
+system_path=$real_dir
+write_shims
+system_path=$saved_system_path
+write_backlight
+: >"$work/real.calls"
+bc -c leds -m info
+bc -d amdgpu_bl1 get
+bc -l
+bc -d amdgpu_bl1 set 50%
+[[ $(<"$work/real.calls") == "REAL -c leds -m info
+REAL -d amdgpu_bl1 get
+REAL -l" ]] || fail "passthrough reads did not reach the real tool: $(<"$work/real.calls")"
 rm -rf "$runtime"
 
 [[ $(git -C "$checkout_root" status --porcelain) == "$before" ]] || fail "the test changed the repo"

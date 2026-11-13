@@ -297,7 +297,7 @@ STEPS = [
     Step("ignored-integrations", "tree", "sh ./lib/check/steps/ignored-integrations.sh"),
 ]
 # Found by naming convention: a new test in one of these places is a step without an entry above.
-STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq"), "shadow-player": ("python3",), "shadow-audio": ("python3",), "cursor-drag": ("lua", "python3", "jq")})
+STEPS += discovered("home/hypr/tests/*.sh", "hypr", "bash %s", maybe_needs=("lua", "jq"), extra_needs={"shadow-action": ("lua", "jq"), "shadow-player": ("python3",), "shadow-audio": ("python3", "jq"), "cursor-drag": ("lua", "python3", "jq")})
 STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", always_needs=("node",), maybe_needs=("jq",))
 STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", maybe_needs=("qs", "python3"))
 STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh", "gpg"), extra_needs={"install-greeter-stage-zsh": ("jq",)})

@@ -369,7 +369,7 @@ for style in "${styles[@]}"; do
   check_blank "$style" osd quickshell-osd
 
   # The shadow's private sink and fake backlight, set to a different level each style so the OSD always fires.
-  level=$((30 + 7 * ${#shot_styles[@]}))
+  level=$((1 + (30 + 7 * ${#shot_styles[@]}) % 100))
   shot_styles+=("$style")
   "$shadow" volume "$name" "$level" && wait_layer quickshell-osd && "$shadow" wait "$name" osd volume >/dev/null && {
     sleep 0.4
