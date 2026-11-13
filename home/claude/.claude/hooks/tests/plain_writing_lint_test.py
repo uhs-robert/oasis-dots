@@ -318,6 +318,37 @@ class Commands(StateDirectory):
     def test_heredoc_piped_into_gh_is_its_body(self):
         self.assertIn("the PR body", self.bash("cat <<'EOF' | gh pr create --body-file -\nIt doesn't work.\nEOF"))
 
+    BAD_BODY = 'gh pr create --body "It doesn\'t start."'
+
+    def test_backtick_substitution_does_not_end_the_command(self):
+        self.assertIn("the PR body", self.bash('gh pr create --title `date | tr a b` --body "It doesn\'t start."'))
+        self.assertIn("the PR body", self.bash('x=`gh pr create --body "It doesn\'t start."`'))
+        self.assertIsNone(self.bash('echo `date` "It doesn\'t start."'))
+        self.assertIsNone(self.bash('echo `date` "gh pr create --body \'It doesn\'t\'"'))
+
+    def test_heredoc_of_an_earlier_command_is_not_the_body_of_a_later_pipe(self):
+        command = "cat <<'EOF' > f; echo hi | gh pr create --body-file -\nIt doesn't start.\nEOF"
+        self.assertIsNone(self.bash(command))
+        self.assertIsNone(self.bash(command.replace("; ", " && ")))
+        self.assertIn("the PR body", self.bash("cat <<'A' > f; cat <<'B' | gh pr create --body-file -\nx\nA\nIt doesn't start.\nB"))
+
+    def test_ansi_c_quote_with_an_escaped_quote_is_one_word(self):
+        self.assertIn("the PR body", self.bash(f"echo $'it\\'s'; {self.BAD_BODY}"))
+        self.assertIn("the PR body", self.bash("gh pr create --body $'It doesn\\'t start.'"))
+        self.assertIsNone(self.bash("echo $'say \\'" + self.BAD_BODY + "\\''"))
+
+    def test_case_pattern_paren_inside_a_substitution_does_not_close_it(self):
+        title = '"$(case $x in a) echo "a;b";; esac)"'
+        self.assertIn("the PR body", self.bash(f'gh pr create --title {title} --body "It doesn\'t start."'))
+        outer = 'echo "$(case $x in a) echo "x # y";; esac)"'
+        self.assertIn("the PR body", self.bash(f"{outer}; {self.BAD_BODY}"))
+        self.assertIsNone(self.bash(f'echo "$(case $x in a) echo "{self.BAD_BODY[:-1]}";; esac)"'))
+
+    def test_quotes_inside_arithmetic_hide_their_parentheses(self):
+        self.assertIn("the PR body", self.bash(f'echo $(( "))" + 1 )); {self.BAD_BODY}'))
+        self.assertIn("the PR body", self.bash(f"echo $(( ')' + 1 )); {self.BAD_BODY}"))
+        self.assertIsNone(self.bash('echo $(( "gh pr create --body x(" + 1 )) "It doesn\'t start."'))
+
     def test_body_file_path_with_a_nul_byte_does_not_hide_later_bodies(self):
         command = 'gh pr create --body-file "a\x00b"; gh issue create --body should'
         self.assertEqual(lint.command_texts(command, self.root), [("issue", "should")])
