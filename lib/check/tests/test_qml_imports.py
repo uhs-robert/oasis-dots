@@ -68,6 +68,18 @@ class StripCodeTest(unittest.TestCase):
     def test_quote_does_not_carry_past_a_plain_string(self):
         self.assertEqual(self.strip('a: "x', "b // c"), ['a: "', "b "])
 
+    def test_brace_in_a_string_inside_an_interpolation_keeps_the_template_open(self):
+        self.assertEqual(self.strip('a: `x ${ f("}") } y`', "import qs.b // z"), ['a: `${ f("") }`', "import qs.b "])
+
+    def test_backtick_in_a_string_inside_an_interpolation_ends_nothing(self):
+        self.assertEqual(self.strip("a: `x ${ f('`') } // y`", "import qs.b // z"), ["a: `${ f('') }`", "import qs.b "])
+
+    def test_escaped_quote_inside_an_interpolation_string(self):
+        self.assertEqual(self.strip(r'a: `${ f("\"}") } // y`', "b // c"), [r'a: `${ f("") }`', "b "])
+
+    def test_interpolation_depth_carries_across_lines_past_a_string_brace(self):
+        self.assertEqual(self.strip('a: `${ f("}",', "  g({ k: 1 }) } // y` // z", "b // c"), ['a: `${ f("",', "  g({ k: 1 }) }` ", "b "])
+
 
 class GreeterEntriesTest(unittest.TestCase):
     def test_reads_the_real_list(self):
