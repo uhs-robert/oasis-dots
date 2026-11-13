@@ -6,5 +6,5 @@ new_tab_page = "https://web.tabliss.io/"
 
 bridge = true
 
-# Follow the desktop palette; the Hyprland theme generator pushes its name with `desertfox theme`.
-palette = "desktop"
+# Follow the desktop theme; the Hyprland theme generator pushes its name with `desertfox theme`.
+theme = "desktop"
