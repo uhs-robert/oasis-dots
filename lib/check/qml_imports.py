@@ -111,6 +111,27 @@ def folder_imports(path, root):
             yield alias, base + target
 
 
+REGEX_LEAD = "=(,:;!&|?{[}+-*%<>~^"
+
+
+def regex_end(line, start):
+    """Index of the `/` closing a regex literal opened at start, or -1 when the line has none."""
+    in_class = False
+    i = start + 1
+    while i < len(line):
+        c = line[i]
+        if c == "\\":
+            i += 1
+        elif c == "[":
+            in_class = True
+        elif c == "]":
+            in_class = False
+        elif c == "/" and not in_class:
+            return i
+        i += 1
+    return -1
+
+
 def strip_code(line, state, keep_strings=False):
     """The line without comments and string contents (a string keeps its quotes; keep_strings keeps the contents
     too). state["in_block"] carries an open block comment to the next line, and state["quote"] an open template literal;
@@ -143,6 +164,11 @@ def strip_code(line, state, keep_strings=False):
         elif c == "/" and following == "*":
             state["in_block"] = True
             i += 1
+        elif c == "/" and "".join(out).rstrip()[-1:] in REGEX_LEAD and regex_end(line, i) > 0:
+            # A regex literal may hold a quote or backtick that opens no string.
+            end = regex_end(line, i)
+            out.append(line[i:end + 1])
+            i = end
         else:
             if c in "\"'`":
                 quote = c
