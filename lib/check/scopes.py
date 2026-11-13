@@ -25,8 +25,8 @@ VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_REST)
 VOXCMD_SUITES = " ".join(VOXCMD_SUITE_SCOPES)
 VOXCMD_SUITES_AND_CRATE = VOXCMD_SUITES + " " + VOX_RUST
 
-# Every matching entry adds its scope, ahead of the PATH_SCOPES one. Empty since markdown under lib/check maps to no steps.
-ADDITIVE_SCOPES = []
+# Every matching entry adds its scope, ahead of the PATH_SCOPES one. Any `.py` edit reaches ruff, whatever folder it is in.
+ADDITIVE_SCOPES = [("*.py", "ruff")]
 
 # The first matching entry wins, so order matters. Its scopes (space-separated) are what a change to that path reaches;
 # "all" reaches every step, and "" only the steps that always run. The final entry sends every path no rule claims to
@@ -39,6 +39,8 @@ PATH_SCOPES = [
     ("lib/check/lock.sh", "checkscope all"),
     ("justfile", "all"),
     (".claude/check-commands", "all"),
+    # The ruff config would otherwise fall to the final "all" entry.
+    ("ruff.toml", "ruff"),
     # Markdown runs no step, ahead of every folder rule; the two tables below are generated into .md files that the
     # docs-generated step compares, so those keep it.
     ("docs/keybinds.md", "docsgen"),
@@ -251,6 +253,7 @@ STEPS = [
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("plans", "install", "python3 -B -m unittest discover -s home/plans/tests -p 'test_*.py'", ("git",), skip_reason="the plans tests need git"),
     Step("qmllint", "quickshell", "python3 -B ./lib/check/steps/qml.py"),
+    Step("ruff", "ruff", "sh ./lib/check/steps/ruff.sh", ("ruff",), skip_reason="ruff not installed"),
     Step("shellcheck", "shell", 'status=0; [ ! -s "$CHECK_LOGS/plain.list" ] || xargs shellcheck <"$CHECK_LOGS/plain.list" || status=1; [ ! -s "$CHECK_LOGS/sourcing.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/sourcing.list" || status=1; [ ! -s "$CHECK_LOGS/agent.list" ] || xargs shellcheck -x -P SCRIPTDIR <"$CHECK_LOGS/agent.list" || status=1; exit $status', ("shellcheck",), skip_reason="shellcheck not installed"),
     Step("owner-test-bar", "hooks", "bash ./.claude/skills/owner-test-bar/tests/run.sh", ("jq",), skip_reason=HOOKS_SKIP),
     Step("ship-batch", "skills", "bash ./.claude/skills/ship-batch/tests/run.sh"),
