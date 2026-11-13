@@ -33,11 +33,23 @@ set +e +o pipefail
 run_id=$(((RANDOM << 15 | RANDOM) % 1000000))
 na=a$run_id
 nb=b$run_id
+nc=c$run_id
+nd=d$run_id
+# The failed-start cases wait out their timeouts, so poll faster than the real one (2 s and 1.2 s instead of 5 s and 3 s).
+wait_for() {
+  local tries=$1
+  shift
+  for _ in $(seq "$tries"); do
+    "$@" && return 0
+    sleep 0.02
+  done
+  return 1
+}
 # The real shadow_pids reads every /proc/*/environ; the sessions in the .sid files are what is under test here.
 shadow_pids() { :; }
 cleanup() {
   local n
-  for n in "$na" "$nb"; do
+  for n in "$na" "$nb" "$nc" "$nd"; do
     set_name "$n"
     kill_session pipewire
     rm -rf "$runtime"
@@ -137,6 +149,31 @@ brightness "$na" 40 || fail "brightness 40 failed"
 teardown >/dev/null 2>&1 || fail "teardown failed"
 [[ $(players_of | wc -l) == 0 ]] || fail "down left PipeWire running"
 [[ ! -d $runtime ]] || fail "down left the runtime dir"
+
+# A failed start (what `up` runs: abort_up on the EXIT trap after die) kills the PipeWire it launched, keeps the logs and
+# removes the runtime dir. The stub stays alive in both cases, so a missing kill shows as a player left behind.
+failed_start() {
+  local label=$1 want=$2 out rc
+  out=$( (trap abort_up EXIT; setup_audio 1) 2>&1)
+  rc=$?
+  [[ $rc == 1 ]] || fail "$label: exit code $rc, wanted 1"
+  [[ $out == *"$want"* ]] || fail "$label: error text missing '$want': $out"
+  [[ $out == *"logs kept in $logs"* ]] || fail "$label: abort_up did not name the kept logs: $out"
+  [[ $(players_of | wc -l) == 0 ]] || fail "$label: PipeWire left running"
+  [[ ! -d $runtime ]] || fail "$label: the runtime dir was left"
+  [[ ! -e $base/pipewire.sid ]] || fail "$label: pipewire.sid was left"
+  [[ -f $logs/pipewire.log ]] || fail "$label: the logs were not kept"
+}
+
+# Case: no sink appears (pw-dump lists nothing).
+make_shadow "$nc"
+printf '#!/bin/sh\necho []\n' >"$shim_dir/pw-dump"
+failed_start "no sink" "the shadow sink never appeared"
+
+# Case: no socket appears (the daemon runs but never binds).
+make_shadow "$nd"
+printf '#!/bin/bash\nexec -a "fakepipewire-test:$XDG_RUNTIME_DIR" sleep 300\n' >"$shim_dir/pipewire"
+failed_start "no socket" "PipeWire made no socket"
 
 # --no-audio starts nothing and brings the expected PipeWire error back.
 make_shadow "$nb"

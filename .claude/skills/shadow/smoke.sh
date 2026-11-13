@@ -375,12 +375,12 @@ for style in "${styles[@]}"; do
     sleep 0.4
     shoot "$style" osd_volume quickshell-osd
   } || missing+=("MISS $style volume osd")
-  sleep 3
+  "$shadow" wait "$name" osd closed >/dev/null || missing+=("MISS $style volume osd did not close")
   "$shadow" brightness "$name" "$level" && wait_layer quickshell-osd && "$shadow" wait "$name" osd brightness >/dev/null && {
     sleep 0.4
     shoot "$style" osd_brightness quickshell-osd
   } || missing+=("MISS $style brightness osd")
-  sleep 3
+  "$shadow" wait "$name" osd closed >/dev/null || missing+=("MISS $style brightness osd did not close")
   q popup open volume >/dev/null
   wait_layer quickshell-popup && "$shadow" wait "$name" popup volume >/dev/null && {
     sleep 0.5
