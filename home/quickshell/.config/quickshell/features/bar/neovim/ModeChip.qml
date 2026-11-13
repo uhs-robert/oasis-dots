@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import qs.theme
 import "../../../styles/neovim/widgets/Modes.js" as Modes
+import "../BarLayout.js" as BarLayout
 import qs.features.bar
 
 // Lualine's section a: the HyprVim mode from the Hyprland submap, with an arrow into the next section. In a column
@@ -17,7 +18,7 @@ Item {
     readonly property color fill: root.hovered ? Qt.tint(root.mode_color, Qt.alpha(Theme.fg_strong, 0.15)) : root.mode_color
     // Across the bar: the arrow is drawn as on a row and turned in a column.
     readonly property real thick: root.vertical ? root.width : root.height
-    readonly property real arrow: Math.round(root.thick * 0.4)
+    readonly property real arrow: BarLayout.lualine_arrow(root.thick)
 
     implicitWidth: root.vertical ? root.height : Math.ceil(content.width) + 20 + root.arrow
 

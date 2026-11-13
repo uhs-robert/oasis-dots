@@ -83,7 +83,7 @@ Item {
     readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.length, root.thickness, root.cap_width, root.cap_left, root.cap_right) : []
     // The rim path moved in by the border: where the fill's effects stop.
     readonly property var outline_inner: root.outlined ? Outlines.inset(root.outline_rim, root.border_width) : []
-    readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, root.thickness) : root.window ? 0 : root.octagon ? Math.round(root.thickness * 0.3) : root.lualine ? Math.round(root.thickness * 0.4) : root.visor ? Math.round(root.thickness * 0.8) : root.thickness / 2
+    readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, root.thickness) : root.window ? 0 : root.octagon ? Math.round(root.thickness * 0.3) : root.lualine ? BarLayout.lualine_arrow(root.thickness) : root.visor ? Math.round(root.thickness * 0.8) : root.thickness / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
