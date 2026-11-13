@@ -16,7 +16,8 @@
 # restarts after the planner handled it does not wake on it twice. The state between checks is
 # <main checkout>/.logs/<project>/fleet-watch-<fleet>.state, with a lock of the same stem. The log is fleet-watch.md
 # beside it: a line per session per check, and each problem.
-# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_NUDGE_TEXT.
+# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_NUDGE_TEXT, FLEET_ALL_PROJECTS (set to 1 to find a
+# session's docs in every plan project, for a fleet whose pieces span projects; <project> still names the log).
 #
 # Stuck means: the pane shows an empty prompt box, nothing moved in the pane, no commit on the session's branches and
 # no change to its plan docs, .logs folders or branch worktree for the stuck time, and the session owns a piece in
@@ -64,6 +65,9 @@ git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || {
 }
 main_checkout=$(dirname "$git_common_dir")
 log_dir=$main_checkout/.logs/$project
+# --owner already scopes the docs to one session, so dropping --project loses nothing.
+project_filter=(--project "$project")
+[[ ${FLEET_ALL_PROJECTS:-} == 1 ]] && project_filter=()
 mkdir -p "$log_dir"
 log_file=$log_dir/fleet-watch.md
 state_file=$log_dir/fleet-watch-$fleet.state
@@ -190,7 +194,7 @@ pass() {
     text=$(tmux capture-pane -p -t "$pane" 2>/dev/null)
     new_hash=$(hash_of "$text")
     # A failed lookup is not an empty list: an empty list would read as "owns nothing" and let the fleet finish.
-    if ! docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null) || [[ -z $docs ]]; then
+    if ! docs=$(plans ls --owner "$name" "${project_filter[@]}" --json 2>/dev/null) || [[ -z $docs ]]; then
       log "$name plans ls failed; session skipped this pass"
       all_finished=0
       continue
@@ -276,7 +280,7 @@ pass() {
   # finished on the windows that remain.
   for name in "${!changed_at[@]}"; do
     [[ -z ${seen[$name]:-} ]] || continue
-    if ! docs=$(plans ls --owner "$name" --project "$project" --json 2>/dev/null) || [[ -z $docs ]]; then
+    if ! docs=$(plans ls --owner "$name" "${project_filter[@]}" --json 2>/dev/null) || [[ -z $docs ]]; then
       log "$name window gone and plans ls failed"
       all_finished=0
       continue
