@@ -196,7 +196,7 @@ def main():
     bus = os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
     if (
         not runtime
-        or runtime.startswith("/run/user/")
+        or os.path.realpath(runtime).startswith("/run/user/")
         or bus != f"unix:path={runtime}/bus"
     ):
         sys.exit(
