@@ -460,22 +460,22 @@ setup
 printf 'codex_pending_reads=2\ncodex_commit=abc1234\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 "$script" --check --wait-review 7 2>&1)
 show "$out"
-check "logs the change to Completed" "grep -Eq '#7 Codex review: Pending -> Completed after [0-9]+s' <<<\"\$out\""
+check "logs the change to Completed" "grep -Eq '#7 Codex review: Pending, reviewed .* -> Completed, reviewed [0-9a-f]+ after [0-9]+s' <<<\"\$out\""
 check "logs no heartbeat" "! grep -q 'still' <<<\"\$out\""
 
 echo "== --wait-review: a wait that stays unchanged logs a heartbeat, not one line per poll"
 setup
-printf 'codex_pending_reads=99\n' >>"$GH_STATE"
+printf 'codex_pending_reads=9999\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=3 MERGE_PRS_WAIT_HEARTBEAT=1 timeout 30 "$script" --check --wait-review 7 2>&1)
 show "$out"
 # shellcheck disable=SC2034 # read by the check string below.
-beats=$(grep -c 'Codex review: still Pending, waited' <<<"$out")
+beats=$(grep -c 'Codex review: still Pending, reviewed .*, waited' <<<"$out")
 check "logs a heartbeat" "((beats >= 1))"
 check "logs at most one per second" "((beats <= 4))"
 
 echo "== --wait-review: Codex never starts on a fresh PR"
 setup
-printf 'codex_pending_reads=99\n' >>"$GH_STATE"
+printf 'codex_pending_reads=9999\n' >>"$GH_STATE"
 out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=1 timeout 30 "$script" --check --wait-review 7 2>&1)
 code=$?
 show "$out"
