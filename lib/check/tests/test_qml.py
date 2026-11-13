@@ -81,6 +81,14 @@ class FirstUnregisteredUseTest(TreeCase):
     def test_comments_strings_and_members_ignored(self):
         self.assertIsNone(self.use('// Foo {}\n/* Foo {\n*/ s: "Foo {"\nx.Foo {}\nSingleX.y\n'))
 
+    def test_regex_after_a_keyword_opens_no_template(self):
+        self.assertEqual(self.use("function p() { return /`/; }\nx: Single.value\n"), (2, "Single"))
+
+    def test_template_interpolation_is_code(self):
+        self.assertEqual(self.use("x: `a ${1}\n  b ${ {a: 1}.a + Single.value }\n  c`\n"), (2, "Single"))
+        self.assertEqual(self.use("x: `a\n  Single.value ${1}`\n"), None)
+        self.assertEqual(self.use("x: `a ${Single.value}`\n"), (1, "Single"))
+
     def test_prefix_is_not_a_use(self):
         self.assertIsNone(self.use("FooBaz {}\n", types=("Foo",)))
         self.assertEqual(self.use("FooBar {}\n", types=("Foo", "FooBar")), (1, "FooBar"))

@@ -112,6 +112,7 @@ def folder_imports(path, root):
 
 
 REGEX_LEAD = "=(,:;!&|?{[}+-*%<>~^"
+REGEX_KEYWORD = re.compile(r"(^|[^A-Za-z0-9_$.])(return|typeof|case|in|of|delete|void|throw|new|yield|await|instanceof)$")
 
 
 def regex_end(line, start):
@@ -132,11 +133,17 @@ def regex_end(line, start):
     return -1
 
 
+def regex_may_start(before):
+    """Whether a `/` after this code (comments and string contents already gone) starts a regex, not a division."""
+    return before[-1:] in REGEX_LEAD or bool(REGEX_KEYWORD.search(before))
+
+
 def strip_code(line, state, keep_strings=False):
     """The line without comments and string contents (a string keeps its quotes; keep_strings keeps the contents
-    too). state["in_block"] carries an open block comment to the next line, and state["quote"] an open template literal;
-    a "..." or '...' string ends with its line, as an unterminated one is an error in the file anyway."""
+    too). state["in_block"] carries an open block comment to the next line, and state["quote"] an open template literal
+    (state["depth"] the braces open in its `${...}`, whose contents stay code); a "..." or '...' string ends with its line, as an unterminated one is an error in the file anyway."""
     quote = state.get("quote", "")
+    depth = state.get("depth", 0)
     if keep_strings and "/" not in line and "`" not in line and not quote and not state["in_block"]:
         # No comment can start or end here, and every string is kept as it is.
         return line
@@ -149,8 +156,15 @@ def strip_code(line, state, keep_strings=False):
             if c == "*" and following == "/":
                 state["in_block"] = False
                 i += 1
+        elif depth:
+            depth += (c == "{") - (c == "}")
+            out.append(c)
         elif quote:
-            if c == "\\":
+            if c == "$" and following == "{" and quote == "`":
+                depth = 1
+                out.append("${")
+                i += 1
+            elif c == "\\":
                 if keep_strings:
                     out.append(line[i:i + 2])
                 i += 1
@@ -164,7 +178,7 @@ def strip_code(line, state, keep_strings=False):
         elif c == "/" and following == "*":
             state["in_block"] = True
             i += 1
-        elif c == "/" and "".join(out).rstrip()[-1:] in REGEX_LEAD and regex_end(line, i) > 0:
+        elif c == "/" and regex_may_start("".join(out).rstrip()) and regex_end(line, i) > 0:
             # A regex literal may hold a quote or backtick that opens no string.
             end = regex_end(line, i)
             out.append(line[i:end + 1])
@@ -175,6 +189,7 @@ def strip_code(line, state, keep_strings=False):
             out.append(c)
         i += 1
     state["quote"] = quote if quote == "`" else ""
+    state["depth"] = depth if quote == "`" else 0
     return "".join(out)
 
 
