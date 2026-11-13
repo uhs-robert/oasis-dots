@@ -90,6 +90,8 @@ Styles transform the appearance of the bar, popups, menus, pickers, fonts, sound
 
 Pick a style in `Settings > Style` (`SUPER + SPACE` then `S`) and it swaps live.
 
+More guides, including the bar, styles and the lock screen, are listed in [docs/README.md](docs/README.md).
+
 > [!NOTE]
 > **Styles include:** Oasis, Modern, Neovim, Terminal, CRT, NES, Game Boy, SNES, PSX, FF7, GoldenEye, PS2, TIE Fighter, Half-Life, Metroid and Reticle.
 
