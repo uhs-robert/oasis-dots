@@ -399,12 +399,6 @@ class MoveTest(WriteTest):
         self.assertEqual(status, 409)
         self.assertEqual([self.key(path, "rank") for path in (first, second, third, moved)], [40, 35, 30, 50])
 
-    def test_rank_between(self):
-        cases = [((None, 30), 20), ((None, 5), 2), ((None, 0), None), ((10, None), 20), ((10, 20), 15), ((10, 11), None),
-                 ((10, 10), None)]
-        for (above, below), expected in cases:
-            self.assertEqual(server.rank_between(above, below), expected, (above, below))
-
 
 class OpenTest(WriteTest):
     def test_open_runs_the_editor_in_the_hyprland_terminal(self):

@@ -687,6 +687,66 @@ class CliTest(unittest.TestCase):
         path = self.plans("new", "proj", "first").stdout.strip()
         self.assertEqual(parse.load(path).keys["rank"], 10)
 
+    def ranks(self):
+        docs = query.read_repo(self.repo).docs
+        return [doc.id for doc in sorted(docs, key=query.rank_order)], {doc.id: doc.keys["rank"] for doc in docs}
+
+    def test_new_after_takes_the_midpoint_and_renumbers_nothing(self):
+        self.add("a", 10)
+        self.add("b", 30, project="other")
+        self.plans("new", "proj", "mid", "--after", "a")
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks["mid"], ranks["a"], ranks["b"]), (["a", "mid", "b"], 20, 10, 30))
+
+    def test_new_before_takes_the_midpoint(self):
+        self.add("a", 10)
+        self.add("b", 30)
+        self.plans("new", "other", "mid", "--before", "b")
+        self.assertEqual(self.ranks()[0], ["a", "mid", "b"])
+
+    def test_new_after_the_last_and_before_the_first(self):
+        self.add("a", 10)
+        self.add("b", 20)
+        self.plans("new", "proj", "last", "--after", "b")
+        self.plans("new", "proj", "first", "--before", "a")
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks["last"], ranks["first"]), (["first", "a", "b", "last"], 30, 0))
+
+    def test_new_before_the_first_at_rank_zero_renumbers(self):
+        self.add("a", 0)
+        self.add("b", 10)
+        self.plans("new", "proj", "first", "--before", "a")
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks), (["first", "a", "b"], {"first": 10, "a": 20, "b": 30}))
+
+    def test_new_without_a_gap_renumbers_the_other_docs_in_steps_of_ten(self):
+        self.add("a", 5)
+        self.add("b", 6, project="other")
+        self.add("c", 7)
+        self.plans("new", "proj", "mid", "--after", "a")
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks), (["a", "mid", "b", "c"], {"a": 10, "mid": 20, "b": 30, "c": 40}))
+
+    def test_new_placement_refuses_and_writes_nothing(self):
+        self.add("a", 10)
+        self.add("norank", "none")
+        before = {path: self.read(path) for path in (self.add("b", 20), os.path.join(self.repo, ".plans/proj/a.md"))}
+        self.assertIn("no doc with id 'ghost'", self.plans("new", "proj", "x", "--after", "ghost", code=2).stderr)
+        self.assertIn("whole-number rank", self.plans("new", "proj", "x", "--before", "norank", code=1).stderr)
+        self.plans("new", "proj", "x", "--after", "a", "--before", "b", code=2)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/x.md")))
+        self.assertEqual({path: self.read(path) for path in before}, before)
+
+    def test_new_renumber_skips_a_doc_owned_on_another_host_and_says_so(self):
+        self.add("a", 5)
+        other = self.add_owned_on("away", 6, "far-1", "id-x", 100, "elsewhere.invalid")
+        self.add("c", 7)
+        before = self.read(other)
+        result = self.plans("new", "proj", "mid", "--after", "a")
+        self.assertIn("left the rank of away alone", result.stderr)
+        self.assertEqual(self.read(other), before)
+        self.assertEqual(self.ranks()[1]["mid"], 20)
+
     def test_lint(self):
         self.add("good", 10)
         self.assertEqual(self.plans("lint").stdout, "")

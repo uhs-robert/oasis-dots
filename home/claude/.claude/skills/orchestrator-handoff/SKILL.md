@@ -44,7 +44,7 @@ Bring each plan doc you own up to date, at the main checkout:
 - The Plan section: a large rewrite goes to a Haiku agent, a small addition to `plans note`.
 - An owner-stated context budget goes to the budget file, as the orchestrator skill says.
 
-Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in. A piece with no doc (a short task tracked only in chat) gets one with `plans new`. Append each merged piece to the session log, then delete its doc. Then give the status report.
+Write for a reader with no chat history: owner preferences stated in chat, verbal approvals and assumptions all go in. A piece with no doc (a short task tracked only in chat) gets one with `plans new ... --after <id>` (or `--before <id>`). Append each merged piece to the session log, then delete its doc. Then give the status report.
 
 The state the front matter does not hold goes in the baton instead: running agents, worktrees with branch, commit and whether pushed, standing approvals, and notes on work stopped mid-way.
 

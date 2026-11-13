@@ -34,7 +34,7 @@ Plain paragraphs:
 
 ## Ranking a new issue
 
-When the repo has plan docs (a `.plans/` folder read by the `plans` CLI), every new issue gets a rank on the day it is filed. In the same turn as `gh issue create`, propose where the issue goes in the order and ask the owner. The rank goes in the `## Plan` of the doc whose piece covers the issue, or else as a `- #N title` item in the `## Plan` of a new doc for that issue. Edit the doc only when you own it or nobody does. When another session owns it, send that session the rank and the line instead. With no covering doc, make one with `plans new <project> <id> --kind <kind>`, then `plans set <id> issue=N status=parked rank=<its place>`, and leave it unowned. Never gather issues in a shared doc. `plans next` reports every open issue that no doc ranks.
+When the repo has plan docs (a `.plans/` folder read by the `plans` CLI), every new issue gets a rank on the day it is filed. In the same turn as `gh issue create`, propose where the issue goes in the order and ask the owner. The rank goes in the `## Plan` of the doc whose piece covers the issue, or else as a `- #N title` item in the `## Plan` of a new doc for that issue. Edit the doc only when you own it or nobody does. When another session owns it, send that session the rank and the line instead. With no covering doc, make one with `plans new <project> <id> --kind <kind> --after <id>` (or `--before <id>`) at the place you proposed, then `plans set <id> issue=N status=parked`, and leave it unowned. Never gather issues in a shared doc. `plans next` reports every open issue that no doc ranks.
 
 ## Tracking issues
 
