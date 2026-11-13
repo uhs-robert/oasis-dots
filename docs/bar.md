@@ -91,7 +91,7 @@ The command prints one line of JSON:
 
 Each group of modules sits on an island. Settings > Theme options > Island shape picks the outline: slant, octagon, watch, window, rectangle, capsule, visor, chevron, lean, hex, ticket, tab, pixel or notch. None, underline and brackets draw no plate. Full bar draws one strip across the whole bar, and Floating strip sets that strip in from the screen edge. The row is not offered in a lualine bar (the NeoVim style), and a screen frame locks it to Full bar.
 
-Island opacity, in the same section, sets how see-through the fill is. It applies to every shape that draws a plate. Each style starts with its own shape and opacity.
+Island opacity, in the same section, sets how see-through the fill is. It applies to every shape that draws a plate. Each style starts with its own shape and opacity, see [Styles and themes](styles.md).
 
 ## Screen frame
 
@@ -99,7 +99,7 @@ Settings > Theme options > Screen frame draws bands round the screen's other edg
 
 ## Side bars
 
-Set `position` to `"left"` or `"right"`, or pick the edge in the bar editor, and the bar becomes a column. Its islands stack top, center and bottom, and popups open beside it. In the editor, `j` and `k` also select modules on a side bar. Over a popup, Ctrl+K and Ctrl+J walk down a column where Ctrl+H and Ctrl+L walk along a row. The side-bar behavior is changing, so the [bar README](../home/quickshell/.config/quickshell/features/bar/README.md#side-bars) holds the current details.
+Set `position` to `"left"` or `"right"`, or pick the edge in the bar editor, and the bar becomes a column. Its islands stack top, center and bottom, and popups open beside it. In the editor, `j` and `k` also select modules on a side bar. Over a popup, Ctrl+K and Ctrl+J walk down a column where Ctrl+H and Ctrl+L walk along a row. The [bar README](../home/quickshell/.config/quickshell/features/bar/README.md#side-bars) holds the current details.
 
 ## See also
 
