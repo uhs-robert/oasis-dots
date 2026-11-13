@@ -77,7 +77,7 @@ fn version() -> &'static str {
     Box::leak(version.into_boxed_str())
 }
 
-/// Each arm either calls the handler in the module the CLI table names, or names the port item that adds it.
+/// Each arm calls the handler in the module the CLI table names.
 fn dispatch(command: Command) -> Result<Option<String>, CliError> {
     match command {
         Command::Run(args) => route::runner::run(args).map(|()| None),

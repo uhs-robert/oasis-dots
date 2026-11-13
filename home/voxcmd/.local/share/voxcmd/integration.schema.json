@@ -33,7 +33,7 @@
                 "type": "boolean"
               },
               "leave_mode": {
-                "description": "A command that leaves the mode.",
+                "description": "The reason the action leaves the integration's mode with; needs a `[mode]` table.",
                 "type": "string"
               },
               "listen_for_pick": {
@@ -73,7 +73,7 @@
                 "type": "number"
               },
               "wait": {
-                "description": "A command to wait on after the action.",
+                "description": "A built-in condition to wait for after the action: `active_window_is_id`, `active_window_changed`, `window_gone` or `popup_open:<name>`.",
                 "type": "string"
               },
               "wait_hook": {
@@ -244,7 +244,7 @@
           "type": "boolean"
         },
         "open_ended": {
-          "description": "The mode hears free speech.",
+          "description": "Leaves the mode's time out of the session's.",
           "type": "boolean"
         },
         "private": {
@@ -277,7 +277,7 @@
           "type": "number"
         },
         "wake_listens": {
-          "description": "The wake word starts a turn in the mode.",
+          "description": "Kept in session.json; the wake listener no longer reads it.",
           "type": "boolean"
         }
       },
@@ -288,8 +288,10 @@
       "type": "string"
     },
     "picker": {
-      "description": "The action that picks among candidates.",
-      "type": "string"
+      "description": "How the integration's options are shown: `hints` numbers them over their boxes on screen.",
+      "enum": [
+        "hints"
+      ]
     },
     "private_labels": {
       "description": "Keep candidate labels out of the logs.",
@@ -338,7 +340,7 @@
             "type": "string"
           },
           "requires": {
-            "description": "A define the verb needs.",
+            "description": "An integration stem; the verb counts only while that integration is loaded.",
             "type": "string"
           }
         },

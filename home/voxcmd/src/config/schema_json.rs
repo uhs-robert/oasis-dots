@@ -14,23 +14,20 @@ pub fn run() -> String {
 }
 
 pub fn json_schema() -> Value {
-    let mut schema = table(FILE_KEYS, file_key, &["verbs"], true);
+    let mut schema = table(FILE_KEYS, file_key, &["verbs"]);
     let root = schema.as_object_mut().expect("a table is an object");
     root.insert("$schema".to_string(), json!(SCHEMA_DRAFT));
     root.insert("title".to_string(), json!("voxcmd integration"));
     schema
 }
 
-/// An object schema over `keys`. `closed` is `additionalProperties: false`, set only where `integrations check` also
-/// rejects an unknown key, so the editor never flags a key that `check` accepts.
-fn table(keys: &[&str], kind_of: fn(&str) -> Value, required: &[&str], closed: bool) -> Value {
+/// An object schema over `keys`, closed with `additionalProperties: false`. Every caller is a table where
+/// `integrations check` also rejects an unknown key, so the editor never flags a key that `check` accepts.
+fn table(keys: &[&str], kind_of: fn(&str) -> Value, required: &[&str]) -> Value {
     let properties: Map<String, Value> = keys.iter().map(|key| (key.to_string(), kind_of(key))).collect();
-    let mut object = json!({ "type": "object", "properties": properties });
+    let mut object = json!({ "type": "object", "properties": properties, "additionalProperties": false });
     if !required.is_empty() {
         object["required"] = json!(required);
-    }
-    if closed {
-        object["additionalProperties"] = json!(false);
     }
     object
 }
@@ -70,12 +67,12 @@ fn file_key(key: &str) -> Value {
         }),
         "verbs" => json!({
             "type": "array",
-            "items": table(VERB_KEYS, verb_key, &["action", "match"], true),
+            "items": table(VERB_KEYS, verb_key, &["action", "match"]),
             "description": "The phrases the integration takes, tried in order.",
         }),
         "help" => json!({
             "type": "array",
-            "items": table(HELP_KEYS, help_key, &["action"], true),
+            "items": table(HELP_KEYS, help_key, &["action"]),
             "description": "What `help` lists for an action: a hook (`list`), one static row (`id`, `label`) or the candidates.",
         }),
         "examples" => string_list("Example phrases."),
@@ -84,13 +81,16 @@ fn file_key(key: &str) -> Value {
             "additionalProperties": {
                 "oneOf": [
                     string("A shell command to run."),
-                    table(ACTION_KEYS, action_key, &[], true),
+                    table(ACTION_KEYS, action_key, &[]),
                 ],
             },
             "description": "The actions the verbs name.",
         }),
-        "picker" => string("The action that picks among candidates."),
-        "surface" => table(SURFACE_KEYS, surface_key, &["state_file"], true),
+        "picker" => json!({
+            "enum": ["hints"],
+            "description": "How the integration's options are shown: `hints` numbers them over their boxes on screen.",
+        }),
+        "surface" => table(SURFACE_KEYS, surface_key, &["state_file"]),
         "mode" => mode(),
         _ => json!({}),
     }
@@ -101,7 +101,7 @@ fn verb_key(key: &str) -> Value {
         "action" => string("The action to run."),
         "match" => string("The phrase pattern."),
         "label" => string("A name for the verb."),
-        "requires" => string("A define the verb needs."),
+        "requires" => string("An integration stem; the verb counts only while that integration is loaded."),
         _ => json!({}),
     }
 }
@@ -124,22 +124,23 @@ fn surface_key(key: &str) -> Value {
 }
 
 fn action_key(key: &str) -> Value {
-    let flag = |description: &str| boolean(description);
     match key {
         "run" => string("The shell command."),
         "candidates" => string("A shell command that prints the candidates."),
         "provider" => string("A built-in candidate source."),
         "candidate_arg" => string("Reserved; nothing reads it yet."),
         "no_match" => string("What to say when no candidate matches."),
-        "silent" => flag("Run without a spoken or notified result."),
-        "listen_for_pick" => flag("Listen for the pick instead of asking on screen."),
-        "free_text" => flag("Take any words as the target."),
-        "mode_switch" => flag("The action switches the session's mode."),
-        "mode_entry" => flag("The action opens the integration's mode."),
-        "enter_mode" => flag("The action enters the mode."),
-        "leave_mode" => string("A command that leaves the mode."),
-        "miss" => flag("The action is the miss handler."),
-        "wait" => string("A command to wait on after the action."),
+        "silent" => boolean("Run without a spoken or notified result."),
+        "listen_for_pick" => boolean("Listen for the pick instead of asking on screen."),
+        "free_text" => boolean("Take any words as the target."),
+        "mode_switch" => boolean("The action switches the session's mode."),
+        "mode_entry" => boolean("The action opens the integration's mode."),
+        "enter_mode" => boolean("The action enters the mode."),
+        "leave_mode" => string("The reason the action leaves the integration's mode with; needs a `[mode]` table."),
+        "miss" => boolean("The action is the miss handler."),
+        "wait" => string(
+            "A built-in condition to wait for after the action: `active_window_is_id`, `active_window_changed`, `window_gone` or `popup_open:<name>`.",
+        ),
         "wait_hook" => string("A hook to wait on after the action."),
         "timeout_secs" => json!({ "type": "number", "description": "Seconds before the action is given up." }),
         _ => json!({}),
@@ -161,8 +162,8 @@ fn mode() -> Value {
             "default_exits": boolean("Whether `<mode> stop` and `<mode> off` leave the mode."),
             "allows_switches": boolean("Whether other modes can be entered from this one."),
             "private": boolean("Keep the turns out of the logs."),
-            "open_ended": boolean("The mode hears free speech."),
-            "wake_listens": boolean("The wake word starts a turn in the mode."),
+            "open_ended": boolean("Leaves the mode's time out of the session's."),
+            "wake_listens": boolean("Kept in session.json; the wake listener no longer reads it."),
             "listen": {
                 "type": "object",
                 "additionalProperties": false,
@@ -241,6 +242,39 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// The keys serde accepts in a `deny_unknown_fields` table, read from its "expected ..." error (`a` or `b`, or one of
+    /// `a`, `b`, ...).
+    fn serde_keys(table_header: &str) -> Vec<String> {
+        let text = format!("verbs = []\n{table_header}\nzz_unknown = 1\n");
+        let error = super::super::schema::parse_toml(std::path::Path::new("m.toml"), &text).unwrap_err();
+        let list = error
+            .split(", expected ")
+            .nth(1)
+            .unwrap_or_else(|| panic!("no key list in: {error}"));
+        let mut names: Vec<String> = list.split('`').skip(1).step_by(2).map(str::to_string).collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn the_mode_tables_list_the_keys_serde_accepts() {
+        let schema = json_schema();
+        let mode = &schema["properties"]["mode"];
+        assert_eq!(property_names(mode), serde_keys("[mode]"));
+        assert_eq!(
+            property_names(&mode["properties"]["listen"]),
+            serde_keys("[mode.listen]")
+        );
+        assert_eq!(
+            property_names(&mode["properties"]["rewrite"]),
+            serde_keys("[mode.rewrite]")
+        );
+        assert_eq!(
+            property_names(&mode["properties"]["endings"]["items"]),
+            serde_keys("[[mode.endings]]")
+        );
     }
 
     #[test]
