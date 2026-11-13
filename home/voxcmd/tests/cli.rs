@@ -418,6 +418,19 @@ fn util_notify_prints_to_stderr_in_a_dry_run_or_without_notify_send() {
     assert_eq!(stderr(&none), "Title: Body\n");
 }
 
+/// The stub's `>>` redirect creates the file empty before `printf` fills it, so
+/// existence is not completeness. Wait for the `---` terminator the stub ends with.
+fn calls_when_complete(calls: &Path) -> String {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let text = std::fs::read_to_string(calls).unwrap_or_default();
+        if text.ends_with("---\n") || std::time::Instant::now() >= deadline {
+            return text;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
 #[test]
 fn util_notify_no_match_keeps_text_that_starts_with_a_dash_as_text() {
     let (dir, calls) = stub_notify_send();
@@ -428,12 +441,8 @@ fn util_notify_no_match_keeps_text_that_starts_with_a_dash_as_text() {
         &[],
     );
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while !calls.exists() && std::time::Instant::now() < deadline {
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
     assert_eq!(
-        std::fs::read_to_string(calls).unwrap(),
+        calls_when_complete(&calls),
         "-a\nvoxcmd\n--transient\n--action=help=Voice Help\n--\n-title\n-u\n---\n"
     );
 }
@@ -449,12 +458,8 @@ fn util_notify_no_match_offers_voice_help_without_waiting_for_the_toast() {
     );
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
     // The waiter is detached, so its call lands a moment after voxcmd has exited.
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while !calls.exists() && std::time::Instant::now() < deadline {
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
     assert_eq!(
-        std::fs::read_to_string(calls).unwrap(),
+        calls_when_complete(&calls),
         "-a\nvoxcmd\n--transient\n--action=help=Voice Help\nvoxcmd: no match\n\"zzz\"\n---\n"
     );
 }
