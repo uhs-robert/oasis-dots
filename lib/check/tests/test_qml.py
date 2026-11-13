@@ -175,6 +175,9 @@ class ReportPassesTest(unittest.TestCase):
     def test_clean_report_passes(self):
         self.assertEqual(self.passes(b'{"files": [{"filename": "F", "warnings": []}]}'), (True, []))
 
+    def test_empty_report_for_an_empty_tree_passes(self):
+        self.assertEqual(self.passes(b"", file_count=0), (True, []))
+
     def test_unreadable_report_fails_even_with_no_files(self):
         passed, calls = self.passes(b"not json", file_count=0)
         self.assertFalse(passed)

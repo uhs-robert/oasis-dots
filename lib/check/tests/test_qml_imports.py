@@ -58,6 +58,10 @@ class StripCodeTest(unittest.TestCase):
     def test_template_literal_across_lines(self):
         self.assertEqual(self.strip("a: `x // y", "import qs.b // z", "` + 1 // w"), ["a: `", "", "` + 1 "])
 
+    def test_backtick_in_a_regex_literal_opens_no_template(self):
+        self.assertEqual(self.strip("const p = /`/;", "import qs.b // z"), ["const p = /`/;", "import qs.b "])
+        self.assertEqual(self.strip("a = b / 2 + `x", "y` // c"), ["a = b / 2 + `", "` "])
+
     def test_quote_does_not_carry_past_a_plain_string(self):
         self.assertEqual(self.strip('a: "x', "b // c"), ['a: "', "b "])
 
