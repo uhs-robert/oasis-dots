@@ -269,6 +269,8 @@ expect_value "parse_day tomorrow" "$(days_after 1)" "$(parse_day tomorrow)"
 expect_value "parse_day rejects words" "fail" "$(parse_day banana || echo fail)"
 expect_value "parse_clock weekday" "$(date -d "$(days_after 1) 09:00" +%s)" "$(parse_clock "thursday at 9 am")"
 expect_value "parse_clock next weekday" "$(date -d "$(days_after 2) 15:00" +%s)" "$(parse_clock "next friday at 3 pm")"
+expect_value "parse_clock leading-zero four digits is 24-hour" "$(date -d "$(days_after 1) 07:30" +%s)" "$(parse_clock "tomorrow 0730")"
+expect_value "parse_clock leading-zero four digits, pm wins" "$(date -d "$(days_after 1) 19:30" +%s)" "$(parse_clock "tomorrow 0730 pm")"
 # The pinned weekday is a week out once its time has passed, and today before it.
 expect_value "parse_clock same weekday, time passed" "$(date -d "$(days_after 7) 09:00" +%s)" "$(parse_clock "wednesday at 9 am")"
 expect_value "parse_clock same weekday, time ahead" "$(date -d "$(days_after 0) 11:00" +%s)" "$(parse_clock "wednesday at 11 am")"
