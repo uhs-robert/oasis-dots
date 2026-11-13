@@ -463,6 +463,8 @@ def failing_findings(documents):
     try:
         for document in documents:
             for file in document["files"]:
+                if not isinstance(file["warnings"], list):
+                    raise TypeError("warnings is not a list")
                 for warning in file["warnings"]:
                     if not is_failing(warning):
                         continue

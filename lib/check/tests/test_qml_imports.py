@@ -59,7 +59,7 @@ class StripCodeTest(unittest.TestCase):
         self.assertEqual(self.strip("a: `x // y", "import qs.b // z", "` + 1 // w"), ["a: `", "", "` + 1 "])
 
     def test_backtick_in_a_regex_literal_opens_no_template(self):
-        self.assertEqual(self.strip("const p = /`/;", "import qs.b // z"), ["const p = /`/;", "import qs.b "])
+        self.assertEqual(self.strip("const p = /`/;", "import qs.b // z"), ["const p = //;", "import qs.b "])
         self.assertEqual(self.strip("a = b / 2 + `x", "y` // c"), ["a = b / 2 + `", "` "])
 
     def test_division_before_a_template_stays_division(self):
@@ -109,6 +109,11 @@ class KeepStringsTest(unittest.TestCase):
     def test_strings_survive_and_comments_do_not(self):
         state = {"in_block": False}
         self.assertEqual(qml_imports.strip_code('a: "//x" + \'b\' // c', state, keep_strings=True), 'a: "//x" + \'b\' ')
+
+    def test_regex_contents_are_hidden_unless_kept(self):
+        line = "x: /`Single.value/.test(v)"
+        self.assertNotIn("Single", qml_imports.strip_code(line, {"in_block": False}))
+        self.assertIn("Single", qml_imports.strip_code(line, {"in_block": False}, keep_strings=True))
 
 
 if __name__ == "__main__":
