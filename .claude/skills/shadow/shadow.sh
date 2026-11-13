@@ -559,6 +559,35 @@ set_voxtype() {
   echo "$state" >>"$runtime/voxtype-state"
 }
 
+player_listed() { "${shadow_env[@]}" playerctl -l 2>/dev/null | grep -qx shadowfake; }
+
+# A fake MPRIS player on the shadow's private bus, so the media popup has a track. It starts from shadow_env, never
+# client_env (it needs no Wayland), and only once the shadow's own bus socket exists. A second start replaces the first
+# (one player, one bus name), and stop on a dead player is a no-op.
+player() {
+  set_name "${1:-}"
+  local action=${2:-}
+  [[ $action =~ ^(start|stop)$ ]] || die "usage: shadow.sh player <name> {start|stop} [--title T] [--artist A]"
+  shift 2
+  if [[ $action == stop ]]; then
+    kill_session player
+    return 0
+  fi
+  local -a track=()
+  while (($# > 0)); do
+    case $1 in
+    --title | --artist) track+=("$1" "${2?$1 needs a value}") ;;
+    *) die "unknown player option '$1'" ;;
+    esac
+    shift 2
+  done
+  [[ -S $runtime/bus ]] || die "shadow '$name' has no bus at $runtime/bus; run: shadow.sh up $name"
+  kill_session player
+  setsid "${shadow_env[@]}" python3 "$skill_dir/fake_player.py" "${track[@]}" >>"$logs/player.log" 2>&1 </dev/null &
+  echo "$!" >"$base/player.sid"
+  wait_for 100 player_listed || die "the fake player did not appear on the shadow's bus within 5 s; see $logs/player.log"
+}
+
 client_count_above() { (($(shadow_hyprctl clients -j | jq length) > $1)); }
 
 # A client inside the shadow (default foot), so the bar's reserved zones can be judged against tiled windows. Each
@@ -599,7 +628,7 @@ status_one() {
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
   local component sid
-  for component in qs keyboard hypr host bus; do
+  for component in qs keyboard hypr host bus player; do
     sid=$(cat "$base/$component.sid" 2>/dev/null || true)
     if [[ -n $sid ]] && pgrep -s "$sid" >/dev/null; then echo "  $component: running (session $sid)"; else echo "  $component: not running"; fi
   done
@@ -647,7 +676,7 @@ teardown() {
     component=${sid_file##*/}
     kill_session "${component%.sid}"
   done
-  for component in qs keyboard hypr host bus; do kill_session "$component"; done
+  for component in player qs keyboard hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
   for pid in $(shadow_pids); do
@@ -683,7 +712,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|player <name> {start|stop} [--title T] [--artist A]|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 # Sourced by the tests, it only defines the functions.
@@ -694,6 +723,7 @@ ipc) ipc "$@" ;;
 action) action "$@" ;;
 keys) keys "$@" ;;
 voxtype) set_voxtype "$@" ;;
+player) player "$@" ;;
 spawn) spawn "$@" ;;
 hyprctl)
   set_name "${1:-}"

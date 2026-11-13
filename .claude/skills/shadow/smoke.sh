@@ -111,7 +111,7 @@ is_region_style() { [[ " ${region_styles[*]} " == *" $1 "* ]]; }
 if ((dry_run)); then
   echo "smoke: out $out"
   for s in "${styles[@]}"; do
-    echo "smoke: $s: style set, popup battery, osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
+    echo "smoke: $s: style set, popup battery, media popup (fake player), osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
   echo "smoke: hint bars (submap, Edit Bar, Edit Bar monitor select): goldeneye with the frame on (top bar, bottom bar), ps1 without it"
   "$shadow" status "$name" | head -1
@@ -176,6 +176,7 @@ state_files=(bars.json theme_options.json)
 state_saved=0
 # shellcheck disable=SC2329
 restore() {
+  "$shadow" player "$name" stop >/dev/null 2>&1 || true
   q popup close >/dev/null 2>&1 || true
   q screenshot close >/dev/null 2>&1 || true
   sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null 2>&1 || true
@@ -330,6 +331,9 @@ fi
 q popup close >/dev/null
 sleep 0.5
 
+# The media popup needs a player on the shadow's private bus.
+"$shadow" player "$name" start --title "Smoke Test Track" --artist "Smoke Artist" >/dev/null || missing+=("MISS fake player")
+
 for style in "${styles[@]}"; do
   echo "smoke: $style"
   q style set "$style" >/dev/null
@@ -345,6 +349,15 @@ for style in "${styles[@]}"; do
   } || missing+=("MISS $style popup")
   q popup close >/dev/null
   check_blank "$style" popup quickshell-popup
+  sleep 0.3
+
+  q popup open media >/dev/null
+  wait_layer quickshell-popup && "$shadow" wait "$name" popup media >/dev/null && {
+    sleep 0.5
+    shoot "$style" media quickshell-popup
+  } || missing+=("MISS $style media popup")
+  q popup close >/dev/null
+  check_blank "$style" media quickshell-popup
   sleep 0.3
 
   "$shadow" voxtype "$name" recording
