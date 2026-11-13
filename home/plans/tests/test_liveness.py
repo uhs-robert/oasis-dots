@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 from unittest import mock
@@ -72,9 +73,16 @@ class RealProcessTest(unittest.TestCase):
         self.addCleanup(process.kill)
         return process
 
+    def wait_until_claude(self, pid):
+        """Under heavy load /proc can still show the child before it runs the fake claude, so poll for a few seconds."""
+        deadline = time.monotonic() + 5
+        while not liveness.pid_runs_claude(pid) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertTrue(liveness.pid_runs_claude(pid))
+
     def test_a_running_claude_is_alive_and_dead_once_it_exits(self):
         process = self.spawn(self.claude)
-        self.assertTrue(liveness.pid_runs_claude(process.pid))
+        self.wait_until_claude(process.pid)
         process.kill()
         process.wait()
         self.assertFalse(liveness.pid_runs_claude(process.pid))
