@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import qs.theme
 import "../BarModules.js" as BarModules
+import "../BarLayout.js" as BarLayout
 import qs.features.bar
 import qs.features.popups
 
@@ -29,7 +30,7 @@ Item {
     // Across the bar. The caller can give it from the bar, so it never reads the size it sets.
     property real thick: root.vertical ? root.width : root.height
     readonly property real along: root.vertical ? root.height : root.width
-    readonly property int lead_width: Math.round(root.thick * 0.4) + 1
+    readonly property int lead_width: BarLayout.lualine_arrow(root.thick) + 1
 
     readonly property int first_shown: {
         for (let i = 0; i < cells.count; i++) {
@@ -46,7 +47,7 @@ Item {
         return -1;
     }
     readonly property bool shown: root.first_shown >= 0
-    readonly property real arrow: root.lead_bg.a > 0 ? Math.round(root.thick * 0.4) : 0
+    readonly property real arrow: root.lead_bg.a > 0 ? BarLayout.lualine_arrow(root.thick) : 0
     // Pushed by the end cells themselves, like the buffers do; bindings through itemAt() missed hover changes.
     property bool first_lit: false
     property bool last_lit: false
