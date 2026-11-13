@@ -54,8 +54,9 @@ Item {
     readonly property alias body_item: body
     // Width the clock's meeting chip adds, which the clock popup leaves out when it sizes from this island.
     property real popup_trim: 0
-    // Lualine: side islands end in arrows, the center one leans; content brings its own padding.
-    readonly property bool lualine: Style.bar_lualine && !root.vertical
+    // Lualine: side islands end in arrows, the center one leans; content brings its own padding. Down a column the
+    // arrows turn with the other layers.
+    readonly property bool lualine: Style.bar_lualine
     // Fill for the right cap when the content's last segment runs into it.
     property color cap_right_fill: "transparent"
     property color cap_left_fill: "transparent"
@@ -509,12 +510,14 @@ Item {
         Repeater {
             model: root.lualine && root.translucent ? layout.children : []
 
+            // Across the whole column, as a module centred in it may be narrower.
             Rectangle {
                 required property Item modelData
                 visible: modelData.visible && !(modelData.item && modelData.item.lualine_fill)
-                x: layout.x + modelData.x
-                width: modelData.width
-                height: body.height
+                x: root.vertical ? 0 : layout.x + modelData.x
+                y: root.vertical ? layout.y + modelData.y : 0
+                width: root.vertical ? body.width : modelData.width
+                height: root.vertical ? modelData.height : body.height
                 color: root.faded(root.bg_color)
             }
         }

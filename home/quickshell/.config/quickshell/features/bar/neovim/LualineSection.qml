@@ -7,6 +7,8 @@ import qs.features.popups
 
 // One lualine section of bar modules: a fill, an arrow in from the previous section, thin separators between components.
 // Hovered components light up as powerline segments, like the buffers.
+// In a column (`vertical`) the components stack downward and stay upright; the fills, arrows and separators are drawn
+// as on a row and turned (`turn`), so `along` and `thick` name the row's width and height.
 Item {
     id: root
 
@@ -23,7 +25,11 @@ Item {
     property bool accent: false
     // Set on the island's first section: its first component's fill goes to LualineState for the island cap.
     property string screen_name: ""
-    readonly property int lead_width: Math.round(root.height * 0.4) + 1
+    property bool vertical: false
+    // Across the bar. The caller can give it from the bar, so it never reads the size it sets.
+    property real thick: root.vertical ? root.width : root.height
+    readonly property real along: root.vertical ? root.height : root.width
+    readonly property int lead_width: Math.round(root.thick * 0.4) + 1
 
     readonly property int first_shown: {
         for (let i = 0; i < cells.count; i++) {
@@ -40,7 +46,7 @@ Item {
         return -1;
     }
     readonly property bool shown: root.first_shown >= 0
-    readonly property real arrow: root.lead_bg.a > 0 ? Math.round(root.height * 0.4) : 0
+    readonly property real arrow: root.lead_bg.a > 0 ? Math.round(root.thick * 0.4) : 0
     // Pushed by the end cells themselves, like the buffers do; bindings through itemAt() missed hover changes.
     property bool first_lit: false
     property bool last_lit: false
@@ -54,25 +60,33 @@ Item {
     }
 
     visible: root.shown
-    implicitWidth: root.arrow + Math.ceil(row.implicitWidth)
+    implicitWidth: root.vertical ? 0 : root.arrow + Math.ceil(row.implicitWidth)
+    implicitHeight: root.vertical ? root.arrow + Math.ceil(row.implicitHeight) : 0
+
+    // Swaps x and y: every fill is symmetric across the bar, so a swap turns it the same as a quarter turn would.
+    Matrix4x4 {
+        id: turn
+        matrix: Qt.matrix4x4(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+    }
 
     Shape {
         visible: root.arrow > 0
         width: root.arrow + 1
-        height: root.height
+        height: root.thick
+        transform: root.vertical ? [turn] : []
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             strokeWidth: -1
             fillColor: Style.islands_translucent ? "transparent" : root.lead_bg
-            PathRectangle { width: root.arrow; height: root.height }
+            PathRectangle { width: root.arrow; height: root.thick }
         }
 
         ShapePath {
             strokeWidth: -1
             fillColor: Style.islands_translucent ? "transparent" : root.first_lit ? root.hover_fill : root.fill
             PathPolyline {
-                path: [Qt.point(root.arrow, 0), Qt.point(root.arrow + 1, 0), Qt.point(root.arrow + 1, root.height), Qt.point(root.arrow, root.height), Qt.point(0, root.height / 2), Qt.point(root.arrow, 0)]
+                path: [Qt.point(root.arrow, 0), Qt.point(root.arrow + 1, 0), Qt.point(root.arrow + 1, root.thick), Qt.point(root.arrow, root.thick), Qt.point(0, root.thick / 2), Qt.point(root.arrow, 0)]
             }
         }
 
@@ -82,7 +96,7 @@ Item {
             strokeWidth: -1
             fillColor: Style.islands_translucent ? Style.island_fill(root.lead_bg) : "transparent"
             PathPolyline {
-                path: [Qt.point(0, 0), Qt.point(root.arrow, 0), Qt.point(0, root.height / 2), Qt.point(root.arrow, root.height), Qt.point(0, root.height), Qt.point(0, 0)]
+                path: [Qt.point(0, 0), Qt.point(root.arrow, 0), Qt.point(0, root.thick / 2), Qt.point(root.arrow, root.thick), Qt.point(0, root.thick), Qt.point(0, 0)]
             }
         }
 
@@ -90,30 +104,41 @@ Item {
             strokeWidth: -1
             fillColor: Style.islands_translucent ? Style.island_fill(root.first_lit ? root.hover_fill : root.fill) : "transparent"
             PathPolyline {
-                path: [Qt.point(root.arrow, 0), Qt.point(root.arrow, root.height), Qt.point(0, root.height / 2), Qt.point(root.arrow, 0)]
+                path: [Qt.point(root.arrow, 0), Qt.point(root.arrow, root.thick), Qt.point(0, root.thick / 2), Qt.point(root.arrow, 0)]
             }
         }
     }
 
     // Translucent, each component fills its own part instead (cells below), so a lit one does not stack on this, and
     // this keeps only the sliver the rounded-up width leaves after them.
-    Rectangle {
-        x: root.arrow + (Style.islands_translucent ? row.width : 0)
-        width: root.width - x
-        height: root.height
-        color: Style.island_fill(root.fill)
+    // A turned item's x and y are in the section's own frame, so the offset goes on a child of the turned one.
+    Item {
+        width: root.along
+        height: root.thick
+        transform: root.vertical ? [turn] : []
+
+        Rectangle {
+            x: root.arrow + (Style.islands_translucent ? (root.vertical ? row.height : row.width) : 0)
+            width: root.along - x
+            height: root.thick
+            color: Style.island_fill(root.fill)
+        }
     }
 
-    Row {
+    Grid {
         id: row
-        x: root.arrow
-        height: root.height
+        x: root.vertical ? 0 : root.arrow
+        y: root.vertical ? root.arrow : 0
+        width: root.vertical ? root.width : undefined
+        height: root.vertical ? undefined : root.height
+        // Only the column count changes with the orientation, so a flip never passes through a grid too small.
+        columns: root.vertical ? 1 : Math.max(1, cells.count)
 
         Repeater {
             id: cells
             model: root.entries
 
-            Row {
+            Grid {
                 id: cell
                 required property var modelData
                 required property int index
@@ -133,7 +158,9 @@ Item {
                 }
 
                 visible: cell.wanted
-                height: root.height
+                width: root.vertical ? root.width : undefined
+                height: root.vertical ? undefined : root.height
+                columns: root.vertical ? 1 : 2
 
                 onLitChanged: cell.sync()
                 onFirstChanged: cell.sync()
@@ -160,30 +187,12 @@ Item {
                 // Fixed width, so lighting a component never shifts the row under the pointer.
                 Item {
                     visible: !cell.first
-                    width: root.lead_width
-                    height: root.height
+                    width: root.vertical ? root.width : root.lead_width
+                    height: root.vertical ? root.lead_width : root.height
 
                     MouseArea {
                         anchors.fill: parent
                         onClicked: cell.activate()
-                    }
-
-                    Shape {
-                        visible: root.separators && !cell.lit && !cell.prev_lit
-                        anchors.centerIn: parent
-                        width: 6
-                        height: 16
-                        preferredRendererType: Shape.CurveRenderer
-
-                        ShapePath {
-                            strokeWidth: 1.2
-                            strokeColor: root.accent ? Qt.alpha(Theme.bg_crust, 0.55) : Style.text_muted
-                            fillColor: "transparent"
-                            startX: 5
-                            startY: 1
-                            PathLine { x: 1; y: 8 }
-                            PathLine { x: 5; y: 15 }
-                        }
                     }
 
                     // Translucent: this gap's own fill, under the separator. A Rectangle where both sides match, since
@@ -195,55 +204,80 @@ Item {
                         color: Style.island_fill(cell.lit ? root.hover_fill : root.fill)
                     }
 
-                    // Otherwise the component before's colour beside this one's arrow.
-                    Shape {
-                        visible: Style.islands_translucent && cell.lit !== cell.prev_lit
-                        z: -1
-                        anchors.fill: parent
-                        preferredRendererType: Shape.CurveRenderer
+                    // The separator and arrows as on a row, turned in a column.
+                    Item {
+                        width: root.lead_width
+                        height: root.thick
+                        transform: root.vertical ? [turn] : []
 
-                        ShapePath {
-                            strokeWidth: -1
-                            fillColor: Style.island_fill(cell.prev_lit ? root.hover_fill : root.fill)
-                            PathPolyline {
-                                path: [Qt.point(0, 0), Qt.point(root.lead_width, 0), Qt.point(0, root.height / 2), Qt.point(root.lead_width, root.height), Qt.point(0, root.height), Qt.point(0, 0)]
+                        Shape {
+                            visible: root.separators && !cell.lit && !cell.prev_lit
+                            anchors.centerIn: parent
+                            width: 6
+                            height: 16
+                            preferredRendererType: Shape.CurveRenderer
+
+                            ShapePath {
+                                strokeWidth: 1.2
+                                strokeColor: root.accent ? Qt.alpha(Theme.bg_crust, 0.55) : Style.text_muted
+                                fillColor: "transparent"
+                                startX: 5
+                                startY: 1
+                                PathLine { x: 1; y: 8 }
+                                PathLine { x: 5; y: 15 }
                             }
                         }
 
-                        ShapePath {
-                            strokeWidth: -1
-                            fillColor: Style.island_fill(cell.lit ? root.hover_fill : root.fill)
-                            PathPolyline {
-                                path: [Qt.point(root.lead_width, 0), Qt.point(root.lead_width, root.height), Qt.point(0, root.height / 2), Qt.point(root.lead_width, 0)]
+                        // Translucent where the sides differ: the component before's colour beside this one's arrow.
+                        Shape {
+                            visible: Style.islands_translucent && cell.lit !== cell.prev_lit
+                            z: -1
+                            anchors.fill: parent
+                            preferredRendererType: Shape.CurveRenderer
+
+                            ShapePath {
+                                strokeWidth: -1
+                                fillColor: Style.island_fill(cell.prev_lit ? root.hover_fill : root.fill)
+                                PathPolyline {
+                                    path: [Qt.point(0, 0), Qt.point(root.lead_width, 0), Qt.point(0, root.thick / 2), Qt.point(root.lead_width, root.thick), Qt.point(0, root.thick), Qt.point(0, 0)]
+                                }
+                            }
+
+                            ShapePath {
+                                strokeWidth: -1
+                                fillColor: Style.island_fill(cell.lit ? root.hover_fill : root.fill)
+                                PathPolyline {
+                                    path: [Qt.point(root.lead_width, 0), Qt.point(root.lead_width, root.thick), Qt.point(0, root.thick / 2), Qt.point(root.lead_width, 0)]
+                                }
                             }
                         }
-                    }
 
-                    // Right-side lualine arrows point left: this component's fill over the one before it.
-                    Shape {
-                        visible: cell.lit !== cell.prev_lit && !Style.islands_translucent
-                        anchors.fill: parent
-                        preferredRendererType: Shape.CurveRenderer
+                        // Right-side lualine arrows point left: this component's fill over the one before it.
+                        Shape {
+                            visible: cell.lit !== cell.prev_lit && !Style.islands_translucent
+                            anchors.fill: parent
+                            preferredRendererType: Shape.CurveRenderer
 
-                        ShapePath {
-                            strokeWidth: -1
-                            fillColor: cell.prev_lit ? root.hover_fill : root.fill
-                            PathRectangle { width: root.lead_width; height: root.height }
-                        }
+                            ShapePath {
+                                strokeWidth: -1
+                                fillColor: cell.prev_lit ? root.hover_fill : root.fill
+                                PathRectangle { width: root.lead_width; height: root.thick }
+                            }
 
-                        ShapePath {
-                            strokeWidth: -1
-                            fillColor: cell.lit ? root.hover_fill : root.fill
-                            PathPolyline {
-                                path: [Qt.point(root.lead_width - 1, 0), Qt.point(root.lead_width, 0), Qt.point(root.lead_width, root.height), Qt.point(root.lead_width - 1, root.height), Qt.point(0, root.height / 2), Qt.point(root.lead_width - 1, 0)]
+                            ShapePath {
+                                strokeWidth: -1
+                                fillColor: cell.lit ? root.hover_fill : root.fill
+                                PathPolyline {
+                                    path: [Qt.point(root.lead_width - 1, 0), Qt.point(root.lead_width, 0), Qt.point(root.lead_width, root.thick), Qt.point(root.lead_width - 1, root.thick), Qt.point(0, root.thick / 2), Qt.point(root.lead_width - 1, 0)]
+                                }
                             }
                         }
                     }
                 }
 
                 Rectangle {
-                    width: loader.implicitWidth + pad_left + pad_right
-                    height: root.height
+                    width: root.vertical ? root.width : loader.implicitWidth + pad_left + pad_right
+                    height: root.vertical ? loader.implicitHeight + pad_left + pad_right : root.height
                     color: cell.lit ? Style.island_fill(root.hover_fill) : Style.islands_translucent ? Style.island_fill(root.fill) : "transparent"
                     readonly property int pad_left: cell.first ? 10 : 4
                     readonly property int pad_right: cell.last ? 10 : 5
@@ -256,8 +290,11 @@ Item {
 
                     Loader {
                         id: loader
-                        x: parent.pad_left
+                        // pad_left in along the bar, centred across it. The anchor stays set in a column and the offset
+                        // moves it to pad_left: an anchor dropped when the bar turns would leave the module where it was.
+                        x: root.vertical ? Math.round((parent.width - implicitWidth) / 2) : parent.pad_left
                         anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: root.vertical ? parent.pad_left + height / 2 - parent.height / 2 : 0
                         Component.onCompleted: setSource(cell.modelData.url, Object.assign({ compact: cell.modelData.compact }, root.module_props))
                         onLoaded: {
                             if (item.hasOwnProperty("on_accent")) item.on_accent = Qt.binding(() => root.accent);

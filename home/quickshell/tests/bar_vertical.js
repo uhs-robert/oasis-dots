@@ -1,13 +1,20 @@
 // Runs VerticalLayout.js under node: the column a side-bar module may use, text that fits it and the stacked clock.
-// The script is a QML `.pragma library` file, loaded with that line stripped.
+// Also BarLayout.js's lualine geometry down a column: section c and the mode chip.
+// The scripts are QML `.pragma library` files, loaded with those lines stripped; BarLayout's `.import` of BarModules is
+// stood in by loading that first.
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const src = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar/VerticalLayout.js"), "utf8").replace(/^\.(pragma|import).*$/gm, "");
+const script = rel => fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar", rel), "utf8").replace(/^\.(pragma|import).*$/gm, "");
 const L = vm.createContext({});
-vm.runInContext(src, L);
+vm.runInContext(script("VerticalLayout.js"), L);
+const modules = vm.createContext({});
+vm.runInContext(script("BarModules.js"), modules);
+const BL = vm.createContext({ BarModules: modules });
+vm.runInContext(script("BarLayout.js"), BL);
+const island = (x, y, width, height, visible = true) => ({ x, y, width, height, visible });
 
 // A text's metric: width = glyph_per_px * size + fixed (letter spacing).
 const m = (glyph_per_px, fixed = 0) => ({ glyph_per_px, fixed });
@@ -48,6 +55,15 @@ const cases = [
   ["a hidden part adds no spacing", () => L.stack_height([16, 0, 12], 2), 30],
   ["an empty stack is flat", () => L.stack_height([], 2), 0],
   ["a single visible part has no spacing", () => L.stack_height([0, 12], 2), 12],
+  ["lualine arrows are 0.4 of the bar, rounded", () => [BL.lualine_arrow(24), BL.lualine_arrow(34)], [10, 14]],
+  ["the column mode chip is a square tile plus its arrow", () => BL.mode_chip_column_length(34), 48],
+  // A 34 px column on a 1080 px screen: the a/b island is 120 tall at the top, the x/y/z island starts at 700.
+  ["section c down a column runs from the a/b island's end to the x/y/z island", () => BL.lualine_c_extent(true, island(0, 0, 34, 120), island(0, 700, 34, 380), 0, 1080), { start: 120, end: 700 }],
+  ["a column reads y and height, not x and width", () => BL.lualine_c_extent(true, island(5, 0, 34, 120), island(5, 700, 34, 380), 0, 1080), BL.lualine_c_extent(true, island(900, 0, 77, 120), island(900, 700, 77, 380), 0, 1080)],
+  ["a row reads x and width", () => BL.lualine_c_extent(false, island(0, 0, 200, 24), island(1500, 0, 420, 24), 0, 1920), { start: 200, end: 1500 }],
+  ["section c is in strip coordinates", () => BL.lualine_c_extent(false, island(40, 0, 200, 24), island(1500, 0, 380, 24), 40, 1880), { start: 200, end: 1460 }],
+  ["with no a/b island section c starts at the strip's start", () => BL.lualine_c_extent(true, island(0, 0, 34, 120, false), island(0, 700, 34, 380), 0, 1080), { start: 0, end: 700 }],
+  ["with no x/y/z island section c runs to the strip's end", () => BL.lualine_c_extent(true, island(0, 0, 34, 120), island(0, 700, 34, 380, false), 0, 1080), { start: 120, end: 1080 }],
 ];
 
 let failed = 0;
