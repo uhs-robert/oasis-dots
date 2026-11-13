@@ -60,8 +60,8 @@ Singleton {
     readonly property string position_source: BarLayout.position_source(root.tracked, BarSettings.state, root.screen_key)
     // False when `x` in VISUAL would change nothing, so the hint does not offer it.
     readonly property bool can_forget: JSON.stringify(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key)) !== JSON.stringify(BarSettings.state)
-    // A lualine bar on a row draws its modules by section; on a column it falls back to islands.
-    readonly property bool sectioned: root.lualine && !root.vertical
+    // A lualine bar draws its modules by section, on a row or down a column.
+    readonly property bool sectioned: root.lualine
     readonly property var order: BarLayout.nav_order(root.view, root.sectioned)
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0

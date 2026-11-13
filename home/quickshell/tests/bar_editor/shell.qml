@@ -393,6 +393,18 @@ ShellRoot {
         root.check_hint_keys("HIDDEN carrying a module", "carrying", false, false);
         root.check_hint_keys("VISUAL with nothing saved", "visual", false, false);
         root.check_hint_keys("VISUAL with a saved edge", "visual", false, true);
+        // A lualine side bar draws by section like a top one, so the editor walks it in section order: clock (z) last.
+        for (const position of ["top", "left"]) {
+            BarEditor.close();
+            BarSettings.set_state(BarLayout.normalize(null));
+            root.install(root.standard());
+            BarEditor.lualine = true;
+            BarEditor.tracked_of = s => Object.assign({}, root.layout_rule, { position: position });
+            BarEditor.open("B");
+            root.check("a lualine bar on " + position + " walks in section order", [BarEditor.sectioned, BarEditor.order], [true, ["start", "workspaces", "tray", "volume", "clock"]]);
+        }
+        BarEditor.close();
+        BarEditor.lualine = false;
     }
 
     // The window cannot load offscreen, so the hint plate is checked on a stand-in screen-sized parent.
