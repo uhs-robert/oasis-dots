@@ -351,7 +351,7 @@ class Commands(StateDirectory):
 
     def test_case_as_an_argument_is_not_a_case_block(self):
         self.assertIn("the PR body", self.bash(f'x="$(echo case x in a)"; {self.BAD_BODY}'))
-        self.assertIn("the PR body", self.bash(f'gh pr create --title "$(echo case x in)" --body "It doesn\'t start."'))
+        self.assertIn("the PR body", self.bash('gh pr create --title "$(echo case x in)" --body "It doesn\'t start."'))
 
     def test_quoted_case_subject_may_hold_the_word_in(self):
         for subject in ("'foo in bar'", '"foo in bar"', "$'foo in bar'", "$'it\\'s in bar'"):
