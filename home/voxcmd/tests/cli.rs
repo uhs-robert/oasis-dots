@@ -530,8 +530,9 @@ fn explain_runs_toml_hooks_in_a_dry_run_and_reports_a_failing_one() {
 }
 
 /// A phrase nothing takes goes through the normal pass and then the near-miss pass. The hook of an action with two
-/// verbs is asked the same thing in each when the target is the same, and runs once; a near miss that names another
-/// target ("tea" for "the tea") is another query and runs its own hook.
+/// verbs is asked the same thing by each verb of a pass, and runs once; the near-miss pass asks it again, since a
+/// hook may answer a near miss differently (`VOXCMD_NEAR_MISS`), and a near miss that names another target ("tea" for
+/// "the tea") is another query as well.
 #[test]
 fn explain_runs_each_distinct_hook_query_once_per_phrase() {
     let config = tempfile::tempdir().unwrap();
@@ -558,7 +559,7 @@ fn explain_runs_each_distinct_hook_query_once_per_phrase() {
             .map(str::to_string)
             .collect::<Vec<_>>()
     };
-    assert_eq!(targets_asked("find tea"), ["tea"]);
+    assert_eq!(targets_asked("find tea"), ["tea", "tea"]);
     assert_eq!(targets_asked("find the tea"), ["the tea", "tea"]);
 }
 

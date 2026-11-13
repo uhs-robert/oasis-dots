@@ -266,6 +266,7 @@ fn toml_hook(mode: &TomlMode, shell: &str, phrase: &str) -> Command {
         confirmed: false,
         active_before: None,
         spoken: true,
+        near_miss: false,
     };
     hooks.command(shell, &env, false)
 }

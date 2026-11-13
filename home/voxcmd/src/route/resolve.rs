@@ -93,6 +93,7 @@ pub fn resolve(config: &Config, hooks: &dyn Hooks, pending: &PendingMatch, texts
             phrase: texts.phrase,
             raw_transcript: texts.raw_transcript,
             spoken: texts.spoken,
+            near_miss: pending.near_miss.is_some(),
         };
         hooks.candidates(integration, &query)
     });

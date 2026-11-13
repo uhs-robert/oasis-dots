@@ -129,6 +129,8 @@ pub struct HookQuery<'a> {
     pub raw_transcript: &'a str,
     /// The command came by voice, so the hook sees `VOXCMD_SPOKEN=1`.
     pub spoken: bool,
+    /// The match is a near miss, so the hook sees `VOXCMD_NEAR_MISS=1` and may offer nothing.
+    pub near_miss: bool,
 }
 
 pub trait Hooks: Sync {
@@ -175,14 +177,15 @@ impl<'a> Memoized<'a> {
 impl Hooks for Memoized<'_> {
     fn candidates(&self, integration: &Integration, query: &HookQuery) -> HookRun {
         let key = format!(
-            "{}\0{}\0{}\0{:?}\0{}\0{}\0{}",
+            "{}\0{}\0{}\0{:?}\0{}\0{}\0{}\0{}",
             integration.file.display(),
             query.action,
             query.target,
             query.args,
             query.phrase,
             query.raw_transcript,
-            query.spoken
+            query.spoken,
+            query.near_miss
         );
         let slot = self.slot(key);
         let mut asked = false;
@@ -228,6 +231,8 @@ pub struct HookEnv<'a> {
     pub active_before: Option<&'a str>,
     /// Whether the command came by voice (2.4).
     pub spoken: bool,
+    /// Whether the match is a near miss.
+    pub near_miss: bool,
 }
 
 impl ShellHooks {
@@ -326,6 +331,7 @@ impl ShellHooks {
             phrase: "",
             raw_transcript: "",
             spoken: false,
+            near_miss: false,
         };
         match self.candidates(integration, &query).lookup {
             Lookup::Candidates(lines) => lines,
@@ -345,6 +351,7 @@ impl ShellHooks {
             confirmed: false,
             active_before: None,
             spoken: false,
+            near_miss: false,
         };
         let failed = |why: &str| {
             debug(&format!("hook failed: {} {action} help list: {why}", integration.name));
@@ -381,6 +388,7 @@ impl ShellHooks {
         set("VOXCMD_SHARE_DIR", self.share_dir.display().to_string());
         set("VOXCMD_INTEGRATION_DIR", self.integration_dir.display().to_string());
         set("VOXCMD_SPOKEN", flag(env.spoken));
+        set("VOXCMD_NEAR_MISS", flag(env.near_miss));
         set("VOXCMD_SELF", crate::ask::this_binary().display().to_string());
         if self.dry_run {
             set("VOXCMD_DRY_RUN", "1".to_string());
@@ -421,6 +429,7 @@ impl Hooks for ShellHooks {
             confirmed: false,
             active_before: None,
             spoken: query.spoken,
+            near_miss: query.near_miss,
         };
         let started = Instant::now();
         let outcome = process::run_with_timeout(&mut self.command(shell, &env, false), timeout);
@@ -663,6 +672,7 @@ mod tests {
                     phrase: "go tea",
                     raw_transcript,
                     spoken: false,
+                    near_miss: false,
                 },
             )
         }
@@ -756,6 +766,31 @@ mod tests {
                     phrase: "go tea",
                     raw_transcript: "go tea",
                     spoken,
+                    near_miss: false,
+                },
+            );
+            let Lookup::Candidates(lines) = run.lookup else {
+                panic!("{run:?}")
+            };
+            lines[0].label.clone()
+        };
+        assert_eq!((label_for(true).as_str(), label_for(false).as_str()), ("1", "0"));
+    }
+
+    #[test]
+    fn a_candidates_hook_sees_whether_the_match_is_a_near_miss() {
+        let fixture = fixture(r#"printf 'x\t%s\n' "$VOXCMD_NEAR_MISS""#, None, None);
+        let label_for = |near_miss: bool| {
+            let run = fixture.hooks.candidates(
+                &fixture.integration,
+                &HookQuery {
+                    action: "go",
+                    target: "tea",
+                    args: &[],
+                    phrase: "go tea",
+                    raw_transcript: "go tea",
+                    spoken: false,
+                    near_miss,
                 },
             );
             let Lookup::Candidates(lines) = run.lookup else {
@@ -787,6 +822,7 @@ mod tests {
         assert_eq!(seen["VOXCMD_INTEGRATIONS"], "t other");
         assert_eq!(seen["VOXCMD_INTEGRATION_DIR"], integration_dir);
         assert_eq!(seen["VOXCMD_SPOKEN"], "0");
+        assert_eq!(seen["VOXCMD_NEAR_MISS"], "0");
         assert_eq!(seen["VOXCMD_SELF"], crate::ask::this_binary().display().to_string());
         assert!(seen["VOXCMD_SHARE_DIR"].ends_with("share/voxcmd"), "{seen:?}");
         // Only a chosen option has an id and label, only a wait an active window, only a dry run VOXCMD_DRY_RUN.
@@ -820,6 +856,7 @@ mod tests {
             confirmed: true,
             active_before: Some("0xabc"),
             spoken: true,
+            near_miss: true,
         });
         let get = |name: &str| env.get(name).map(String::as_str);
         assert_eq!(get("VOXCMD_ARG_APP"), Some("editor"));
@@ -832,8 +869,12 @@ mod tests {
             (Some("7"), Some("Seven"), Some("1"))
         );
         assert_eq!(
-            (get("VOXCMD_ACTIVE_BEFORE"), get("VOXCMD_SPOKEN")),
-            (Some("0xabc"), Some("1"))
+            (
+                get("VOXCMD_ACTIVE_BEFORE"),
+                get("VOXCMD_SPOKEN"),
+                get("VOXCMD_NEAR_MISS")
+            ),
+            (Some("0xabc"), Some("1"), Some("1"))
         );
     }
 
@@ -851,6 +892,7 @@ mod tests {
             confirmed: false,
             active_before: None,
             spoken: false,
+            near_miss: false,
         };
         let command = fixture.hooks.command("true", &env, false);
         let cleared: Vec<String> = command
@@ -942,6 +984,7 @@ mod tests {
                     phrase: "go",
                     raw_transcript: "go",
                     spoken: false,
+                    near_miss: false,
                 },
             )
         };

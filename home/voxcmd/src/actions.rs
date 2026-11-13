@@ -333,6 +333,7 @@ fn action_command(
         confirmed,
         active_before: None,
         spoken: rt.came_by_voice,
+        near_miss: false,
     };
     rt.shell.command(&option.command, &env, true)
 }

@@ -153,6 +153,7 @@ Near-miss hints (see [Near misses](#near-misses)) read a pattern as a list of wo
 | `VOXCMD_ARG_<NAME>_WORDS` | the words the placeholder captured |
 | `VOXCMD_PHRASE`, `VOXCMD_RAW_TRANSCRIPT` | the normalized phrase, and the transcript before normalization and replacements, with its punctuation, digits and symbols |
 | `VOXCMD_CONFIRMED` | `1` when the confirm card asked and was answered yes, else `0` |
+| `VOXCMD_NEAR_MISS` | `1` when a `candidates` hook runs for a [near miss](#near-misses), else `0`. A hook may print nothing then |
 | `VOXCMD_SPOKEN` | `1` when the command came by voice, in every hook and action. `0` for a typed phrase and the Tab list of Voice Help |
 | `VOXCMD_DRY_RUN` | `1` under `--dry-run`, unset otherwise |
 | `VOXCMD_ACTIVE_BEFORE` | in a `wait_hook`, the address of the window that was active before the step |
@@ -281,7 +282,7 @@ A verb pattern is a fixed sequence, so "kitchen blinds raise" misses `raise the 
 - Each slot needs a word of its own. Then, with `{target}`, at least one other non-filler word must be left, all in one run with no slot word between them, and the words left (from the first to the last, filler inside included) are the target; without a placeholder no non-filler word may be left, so stray speech stays a no match, as does a phrase missing a word.
 - A verb that cannot be read reliably is skipped, never guessed at: character classes, anchors, `.`, `*`, `+`, a `?` after a single character, a group glued to a word, `{target}` inside a group, a required group with nested alternatives, a typed placeholder other than `{number}`, and a pattern with no slot of its own (`{target}` alone). A phrase of more than 16 words is not tried.
 
-Each near miss then goes through the normal matching of its integration (candidates, [word matching](#word-matching)) and every resulting option is forced weak; a target that names no candidate offers nothing, rather than the action's `no_match` report, so the picker always opens, and listens for the reply when the phrase was spoken. Nothing runs without a pick. At most ten options are offered, the ones with the fewest words left over first. Voice session turns and the steps of a [sequence](#sequences) skip the tier. `--dry-run` marks such an option `[near miss]`.
+Each near miss then goes through the normal matching of its integration (candidates, [word matching](#word-matching)) and every resulting option is forced weak (a `candidates` hook sees `VOXCMD_NEAR_MISS=1` and may offer nothing); a target that names no candidate offers nothing, rather than the action's `no_match` report, so the picker always opens, and listens for the reply when the phrase was spoken. Nothing runs without a pick. At most ten options are offered, the ones with the fewest words left over first. Voice session turns and the steps of a [sequence](#sequences) skip the tier. `--dry-run` marks such an option `[near miss]`.
 
 A phrase that matches nothing even so goes to the [no-match log](#no-match-log).
 
