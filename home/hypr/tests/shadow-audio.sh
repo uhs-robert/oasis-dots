@@ -103,11 +103,14 @@ else
   env_file=$runtime/pipewire.env
   grep -qx "PIPEWIRE_RUNTIME_DIR=$runtime" "$env_file" || fail "PIPEWIRE_RUNTIME_DIR is not the shadow's: $(grep PIPEWIRE "$env_file")"
   grep -qx "XDG_RUNTIME_DIR=$runtime" "$env_file" || fail "XDG_RUNTIME_DIR is not the shadow's"
-  grep -qx "PIPEWIRE_CONFIG_DIR=$base/pw-config" "$env_file" || fail "PIPEWIRE_CONFIG_DIR is not the shadow-only dir: $(grep PIPEWIRE "$env_file")"
-  [[ -d $base/pw-config && -z $(ls -A "$base/pw-config") ]] || fail "the shadow-only config dir is missing or not empty"
   grep -qx "HOME=$shadow_home" "$env_file" || fail "HOME is not the shadow's"
   grep -q 'owner-pw\|owner-bus' "$env_file" && fail "an owner variable reached PipeWire: $(grep 'owner-' "$env_file")"
   grep -qx "ARGS -c $base/pipewire.conf" "$env_file" || fail "pipewire args wrong: $(grep ARGS "$env_file")"
+fi
+# The shadow env must not hide the client config: pw-dump loads it before it connects, so no daemon is needed.
+if command -v pw-dump >/dev/null; then
+  pw_out=$("${shadow_env[@]}" timeout 5 /usr/bin/env PATH="$system_path" pw-dump 2>&1 </dev/null)
+  [[ $pw_out == *"load config"* ]] && fail "pw-dump cannot load its config in the shadow env: $pw_out"
 fi
 [[ $(players_of | wc -l) == 1 ]] || fail "expected one PipeWire process, got $(players_of | wc -l)"
 [[ ! -e $base/no-audio ]] || fail "a shadow with audio was marked no-audio"
@@ -203,6 +206,9 @@ bc -d amdgpu_bl1 -r
 bc -c leds --save set 1
 bc -sd amdgpu_bl1 set 1
 bc -d amdgpu_bl1 set 5 -r
+bc --rest
+bc --sav -d amdgpu_bl1 set 1
+bc -d amdgpu_bl1 --restor
 [[ ! -s $work/real.calls ]] || fail "a save or restore call reached the real tool: $(<"$work/real.calls")"
 [[ $(fake_value) == 128 ]] || fail "a save or restore call changed the fake device: $(fake_value)"
 : >"$work/real.calls"

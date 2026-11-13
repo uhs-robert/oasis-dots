@@ -77,7 +77,6 @@ set_env() {
     HOME="$shadow_home" USER="$USER" LOGNAME="$USER" PATH="$shim_dir:$system_path" LANG="${LANG:-C.UTF-8}" TERM=dumb
     SHADOW_SHIM_LOG="$logs/shim.log" TMUX_TMPDIR="$runtime"
     XDG_RUNTIME_DIR="$runtime" PIPEWIRE_RUNTIME_DIR="$runtime"
-    PIPEWIRE_CONFIG_DIR="$base/pw-config"
     XDG_CONFIG_HOME="$shadow_home/.config" XDG_STATE_HOME="$shadow_home/.local/state"
     XDG_CACHE_HOME="$shadow_home/.cache" XDG_DATA_HOME="$shadow_home/.local/share"
     DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus"
@@ -172,8 +171,6 @@ machine_wide_commands=(
 # here, since the bar's Pipewire service reads the default sink from it. libpipewire-module-access is needed: without
 # it every client connect hangs.
 write_pipewire_conf() {
-  # Empty on purpose: PIPEWIRE_CONFIG_DIR points here, so no drop-in from /etc/pipewire or /usr/share/pipewire loads.
-  mkdir -p "$base/pw-config"
   cat >"$base/pipewire.conf" <<'CONF'
 context.properties = {
     core.daemon = true
@@ -233,7 +230,7 @@ write_backlight() {
 }
 
 # Replaces the generic brightnessctl stub: info, get, max and set on the fake device work, other devices only log.
-# Save and restore (-s, -r) are dropped for every device, since -r writes the real backlight.
+# Save and restore (-s, -r and any --s*/--r* abbreviation getopt accepts) are dropped for every device, since -r writes the real backlight.
 write_brightnessctl_stub() {
   local real
   real=$(PATH=$system_path type -P brightnessctl || true)
@@ -257,7 +254,7 @@ while [ $# -gt 0 ]; do
   -n[0-9]*) min=${1#-n} ;;
   --min-value=*) min=${1#*=} ;;
   -l | --list) cmd=list ;;
-  -s | --save | -r | --restore) refuse=1 ;;
+  -s | -r | --s* | --r*) refuse=1 ;;
   -[a-zA-Z][a-zA-Z]*) case $1 in *[sr]*) refuse=1 ;; esac ;;
   info | i) cmd=info ;;
   get | g) cmd=get ;;
@@ -269,7 +266,7 @@ done
 }
 parse_args "$@"
 # Save and restore write the device's saved state, and -r writes the real backlight, so no call that carries them goes on.
-case " $* " in *\ -s\ * | *\ --save\ * | *\ -r\ * | *\ --restore\ *) refuse=1 ;; esac
+case " $* " in *\ -s\ * | *\ -r\ * | *\ --s* | *\ --r*) refuse=1 ;; esac
 [ "$refuse" = 1 ] && exit 0
 is_fake=0
 case $dev in fake | */fake) is_fake=1 ;; esac
