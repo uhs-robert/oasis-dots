@@ -120,7 +120,7 @@ worktree_of() { # <branch>
 # in the worktree of its branch counts as work too. One recent file is enough, so find stops at the first.
 latest_progress() { # <json of the session's docs>
   local best=0 t id branch path doc_project worktree
-  while IFS=$'\t' read -r id branch path doc_project; do
+  while IFS=$'\x1f' read -r id branch path doc_project; do
     worktree=
     [[ -z $branch || $branch == none ]] || worktree=$(worktree_of "$branch")
     for t in $(stat -c %Y "$path" 2>/dev/null) \
@@ -129,7 +129,7 @@ latest_progress() { # <json of the session's docs>
       $([[ -n $worktree ]] && find "$worktree" \( -name .git -o -name node_modules \) -prune -o -type f -newermt "@$(($(date +%s) - stuck_seconds))" -printf '%Ts\n' -quit 2>/dev/null); do
       ((t > best)) && best=$t
     done
-  done < <(jq -r '.[] | [.id, .branch, .path, .project] | @tsv' <<<"$1")
+  done < <(jq -r '.[] | [.id, .branch, .path, .project] | join("\u001f")' <<<"$1")
   echo "$best"
 }
 
