@@ -1,52 +1,21 @@
 # shellcheck shell=bash
 # Names monitors for voice: by position ("left", "top right", "center"), by slot ("monitor two", "the second screen", "the
-# 2nd display", the one SUPER + CTRL + 2 focuses) or as the built-in panel ("laptop"). Sourced by overview.sh and monitors.sh
-# (the integration). The position words come from monitor-places.jq, which mirrors the Quickshell overview's own rule (features/overview/Voice.js) so the two never disagree.
+# 2nd display", the one SUPER + CTRL + 2 focuses) or as the built-in panel ("laptop"). Sourced by overview.sh and the
+# tests; monitors.toml uses the Rust provider (src/provider/monitors.rs). The position words come from overview.json's
+# "monitors", which mirror the Quickshell overview's own rule (features/overview/Voice.js), so the two never disagree.
 
 monitors_share_dir="${BASH_SOURCE[0]%/*}"
 # shellcheck source-path=SCRIPTDIR source=spoken-position.sh
 source "$monitors_share_dir/spoken-position.sh"
 
-# Prints the monitor name of each slot, space separated ("-" for an empty one). Hyprland's Lua owns the slot order, and
-# `hyprctl eval` prints nothing back, so the answer goes through a file, as the overview gets it. Prints nothing when
-# Hyprland cannot answer, which leaves every slot unknown.
-monitor_slot_names() {
-  local file="${XDG_RUNTIME_DIR:-/tmp}/voxcmd/monitor-slots"
-  mkdir -p "${file%/*}"
-  rm -f "$file"
-  hyprctl eval "local W = require('lib.workspaces'); local t = {}; for i = 1, 10 do t[i] = W.get_monitor_for_slot(i) or '-' end; local f = io.open('$file', 'w'); f:write(table.concat(t, ' ')); f:close()" >/dev/null 2>&1 || true
-  cat "$file" 2>/dev/null || true
-}
-
-# Prints the connected monitors as overview.json's "monitors" array: [{id, slot, horizontal, vertical, focused}].
-monitor_places() {
-  local monitors
-  monitors=$(hyprctl monitors -j 2>/dev/null) || return 1
-  jq -c --arg slots "$(monitor_slot_names)" -f "$monitors_share_dir/monitor-places.jq" <<<"$monitors"
-}
-
-monitor_position_words='left|right|middle|center|centre|top|bottom'
 monitor_builtin_words='laptop|builtin|built in|internal'
 
 # Prints the slot a word names: a number ("two", "2") or an ordinal ("second", "2nd"), or fails. A slot past the monitors
 # count says there is no such monitor, as "nine" does.
 monitor_slot_word() { spoken_position "$1"; }
 
-# Succeeds when every word of $1 (with "monitor", "screen" or "display" around it dropped) is one this file understands, so
-# "system monitor" is left to the apps and "bottom right" is answered even when no monitor sits there.
-monitor_words_known() {
-  local words="$1" word
-  words="${words#the }"
-  words="${words% monitor}" words="${words% screen}" words="${words% display}"
-  words="${words#monitor }" words="${words#screen }" words="${words#display }"
-  [ -n "$words" ] || return 1
-  for word in $words; do
-    [[ "$word" =~ ^($monitor_position_words|laptop|builtin|built|in|internal|number)$ ]] || monitor_slot_word "$word" >/dev/null || return 1
-  done
-}
-
 # monitor_named <words> <monitors json>: prints the name of the monitor the words name, or an "error:" line. The JSON is
-# monitor_places' or overview.json's "monitors".
+# overview.json's "monitors" or monitor-places.jq's output.
 monitor_named() {
   local words="$1" monitors="$2" found count named slot slot_asked=""
   words="${words#the }"

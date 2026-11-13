@@ -1,24 +1,7 @@
 # shellcheck shell=bash
 # Hook library of monitors.toml: sourced before every hook and action of the integration.
 
-# shellcheck source-path=SCRIPTDIR/../../../.local/share/voxcmd source=monitor-words.sh
-source "$VOXCMD_SHARE_DIR/monitor-words.sh"
-
-# id<TAB>label<TAB>match_text for the one monitor the target words name, or the reason they name none ("error:..."
-# becomes the label and fails the action). $1 is the action. Words that are no monitor vocabulary at all ("system
-# monitor") print nothing, which leaves the phrase to the apps.
-monitor_candidates() {
-  local target=$VOXCMD_ARG_TARGET monitor
-  if [[ "$1" == *_laptop ]]; then
-    [[ "${target#the }" =~ ^($monitor_builtin_words)$ ]] || return 0
-  else
-    monitor_words_known "$target" || return 0
-  fi
-  monitor=$(monitor_named "$target" "$(monitor_places)")
-  printf '%s\t%s\t%s\n' "$monitor" "${monitor#error:}" "$target"
-}
-
-# $1 is a monitor name or an "error:" line from monitor_candidates. Names go into a Lua string, so only a connector name passes.
+# $1 is a monitor name or an "error:" line from the monitors provider. Names go into a Lua string, so only a connector name passes.
 monitor_dispatch() {
   local output
   [[ "$1" =~ ^[A-Za-z0-9_.:-]+$ ]] || {

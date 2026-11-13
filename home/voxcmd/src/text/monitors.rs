@@ -1,4 +1,5 @@
-//! monitor position words and slots (was monitor-words.sh; monitor-places.jq stays until the 3.3 provider)
+//! monitor position words and slots (was monitor-words.sh; the overview and the layout agreement test still use that
+//! and monitor-places.jq)
 use super::speech::spoken_position;
 use serde::Deserialize;
 
