@@ -42,9 +42,9 @@ class FolderImportsTest(TreeCase):
 
 
 class StripCodeTest(unittest.TestCase):
-    def strip(self, *lines):
+    def strip(self, *lines, keep_strings=False):
         state = {"in_block": False}
-        return [qml_imports.strip_code(line, state) for line in lines]
+        return [qml_imports.strip_code(line, state, keep_strings) for line in lines]
 
     def test_comment_markers_inside_strings(self):
         self.assertEqual(self.strip('a: "//x" // y', "b: '/*' + 1"), ['a: "" ', "b: '' + 1"])
@@ -79,6 +79,16 @@ class StripCodeTest(unittest.TestCase):
 
     def test_interpolation_depth_carries_across_lines_past_a_string_brace(self):
         self.assertEqual(self.strip('a: `${ f("}",', "  g({ k: 1 }) } // y` // z", "b // c"), ['a: `${ f("",', "  g({ k: 1 }) }` ", "b "])
+
+    def test_quote_in_a_regex_literal_inside_an_interpolation_opens_no_string(self):
+        self.assertEqual(self.strip("a: `${ /'/.test(v) } // y`", "import qs.b // z"), ["a: `${ /'/.test(v) }`", "import qs.b "])
+
+    def test_interpolation_strings_keep_their_contents_with_keep_strings(self):
+        self.assertEqual(self.strip('a: `x ${ f("}") } // y`', "import qs.b // z", keep_strings=True), ['a: `x ${ f("}") } // y`', "import qs.b "])
+        self.assertEqual(self.strip("a: `${ f('`') } y`", "b // c", keep_strings=True), ["a: `${ f('`') } y`", "b "])
+        self.assertEqual(self.strip(r'a: `${ f("\"}") } y`', "b // c", keep_strings=True), [r'a: `${ f("\"}") } y`', "b "])
+        self.assertEqual(self.strip('a: `${ f("}",', "  g({ k: 1 }) } // y` // z", "b // c", keep_strings=True), ['a: `${ f("}",', "  g({ k: 1 }) } // y` ", "b "])
+        self.assertEqual(self.strip("a: `${ /'/.test(v) } y`", "b // c", keep_strings=True), ["a: `${ /'/.test(v) } y`", "b "])
 
 
 class GreeterEntriesTest(unittest.TestCase):
