@@ -758,13 +758,21 @@ class CliTest(unittest.TestCase):
         self.assertIn("left the rank of away alone", result.stderr)
         self.assertEqual(self.read(away), before)
         order, ranks = self.ranks()
-        self.assertEqual((order, ranks["mid"]), (["away", "a", "mid", "c"], 23))
+        self.assertEqual((order, ranks["mid"]), (["away", "mid", "a", "c"], 8))
 
-    def test_new_refuses_when_a_skipped_neighbour_leaves_no_room(self):
+    def test_new_before_a_remote_owned_anchor_sits_directly_before_it(self):
         self.add("a", 5)
         self.add_owned_on("away", 6, "far-1", "id-x", 100, "elsewhere.invalid")
         self.add("c", 7)
-        # away keeps 6 while a becomes 10, so the doc cannot sit between them.
+        self.plans("new", "proj", "mid", "--before", "away")
+        order, ranks = self.ranks()
+        self.assertEqual(order.index("mid") + 1, order.index("away"), (order, ranks))
+
+    def test_new_refuses_when_a_skipped_neighbour_leaves_no_room(self):
+        self.add("a", 1)
+        self.add("b", 2)
+        self.add_owned_on("away", 11, "far-1", "id-x", 100, "elsewhere.invalid")
+        # a becomes 10 while away keeps 11, so no whole number fits between them.
         result = self.plans("new", "proj", "mid", "--after", "a", code=1)
         self.assertIn("the ranks around a could not be renumbered", result.stderr)
         self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/mid.md")))
