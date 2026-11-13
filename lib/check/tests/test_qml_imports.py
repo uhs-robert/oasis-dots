@@ -34,6 +34,9 @@ class FolderImportsTest(TreeCase):
     def test_version_token(self):
         self.assertEqual(self.imports("import qs.b 1.0 as B\n"), [("B", self.path("b"))])
 
+    def test_commented_out_imports_do_not_count(self):
+        self.assertEqual(self.imports('// import qs.b\n/* import qs.c\n*/ import qs.d\n'), [(None, self.path("d"))])
+
     def test_other_imports_ignored(self):
         self.assertEqual(self.imports("import QtQuick\nimport qsx.b\n"), [])
 
@@ -51,6 +54,12 @@ class StripCodeTest(unittest.TestCase):
 
     def test_block_comment_across_lines(self):
         self.assertEqual(self.strip("a /* b", "c */ d", "e"), ["a ", " d", "e"])
+
+    def test_template_literal_across_lines(self):
+        self.assertEqual(self.strip("a: `x // y", "import qs.b // z", "` + 1 // w"), ["a: `", "", "` + 1 "])
+
+    def test_quote_does_not_carry_past_a_plain_string(self):
+        self.assertEqual(self.strip('a: "x', "b // c"), ['a: "', "b "])
 
 
 class GreeterEntriesTest(unittest.TestCase):

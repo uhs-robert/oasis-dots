@@ -8,8 +8,7 @@ warnings, members read through untyped `parent`/`Loader.item`, or known gaps in 
 URL from a folder nothing reached from shell.qml imports fails when it instantiates, declares a property of, or reads a
 singleton among its siblings' types (#531).
 
-Known gaps, to be fixed on their own: commented-out imports count when reading imports, a string's quote does not
-carry across lines, a repeated import is reported twice, and a report the filter cannot read is reported but passes.
+Known gap, left on purpose: the trees are linted one after the other, not in parallel (saves about 10 s).
 
   python3 -B lib/check/steps/qml.py [--keep-stage DIR]
 
@@ -52,7 +51,7 @@ OPAQUE_STUB = re.compile(rf"^{WS}*Component \{{ isTypeOpaque: true;.*\}}{WS}*$")
 # The ids that always fail, the ids that fail unless the message is a known gap, and the rest of the filter: see
 # failing_findings.
 ALWAYS_FAILING = {
-    "syntax", "import", "read-only-property", "required", "non-list-property", "duplicated-name",
+    "syntax", "syntax.duplicate-ids", "import", "read-only-property", "required", "non-list-property", "duplicated-name",
     "duplicate-property-binding", "duplicate-inline-component", "duplicate-enum-entries", "alias-cycle",
     "inheritance-cycle", "unresolved-alias", "missing-enum-entry", "var-used-before-declaration",
 }
@@ -245,7 +244,7 @@ def unregistered_use_message(path, directory, root):
 
 def unregistered_messages(root, reached):
     """Flags files outside the registered folders that use their siblings, or an unregistered folder imported without
-    "as". An import repeated, or of the file's own folder, is reported each time."""
+    "as". A message repeated by a repeated import, or an import of the file's own folder, prints once."""
     registered = set(reached)
     holders = set()
     for directory, dirnames, filenames in os.walk(root):
@@ -261,7 +260,7 @@ def unregistered_messages(root, reached):
                 target = os.path.realpath(target)
                 if alias is None and os.path.isdir(target) and target not in registered:
                     messages.append(unregistered_use_message(path, target, root))
-    return [message for message in messages if message is not None]
+    return list(dict.fromkeys(message for message in messages if message is not None))
 
 
 def qt_qml_dirs(qmllint):
@@ -499,17 +498,26 @@ def lint_tree(qmllint, stage, tree, reached, module_copy, qt_dir):
     report = run_qmllint(qmllint, stage, tree, module_copy, qt_dir, files)
     with open(os.path.join(stage, tree + ".json"), "wb") as file:
         file.write(report)
+    return report_passes(report, len(files), tree_dir, prefix) and passed
+
+
+def report_passes(report, file_count, tree_dir, prefix):
+    """Prints the report's real errors to stderr; returns whether it is readable, covers every file and has none."""
     documents = parse_documents(report)
-    linted = 0 if documents is None else sum(len(document["files"]) for document in documents)
-    if linted != len(files):
-        write_out(sys.stderr, [f"qmllint: linted {linted} of {len(files)} files in {prefix}"])
+    if documents is None:
+        write_out(sys.stderr, [f"qmllint: unreadable report in {prefix}"])
         return False
+    linted = sum(len(document["files"]) for document in documents)
+    if linted != file_count:
+        write_out(sys.stderr, [f"qmllint: linted {linted} of {file_count} files in {prefix}"])
+        return False
+    passed = True
     try:
-        findings = failing_findings(documents or [])
+        findings = failing_findings(documents)
     except ReportShapeError as error:
-        # Reported, but not a failure in itself: a known gap (see the module docstring).
         write_out(sys.stderr, [f"qmllint: unexpected report shape in {prefix}: {error}"])
         findings = error.findings
+        passed = False
     findings = "\n".join(findings).rstrip("\n")
     if findings:
         write_out(sys.stderr, [relabel(line, tree_dir, prefix) for line in findings.split("\n")])
