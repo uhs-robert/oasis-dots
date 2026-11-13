@@ -148,6 +148,7 @@ def strip_code(line, state, keep_strings=False):
         # No comment can start or end here, and every string is kept as it is.
         return line
     out = []
+    inner_quote = ""  # a "..." or '...' string open inside the `${...}`; ends with its line like any plain string
     i = 0
     while i < len(line):
         c = line[i]
@@ -156,8 +157,21 @@ def strip_code(line, state, keep_strings=False):
             if c == "*" and following == "/":
                 state["in_block"] = False
                 i += 1
+        elif depth and inner_quote:
+            if c == "\\":
+                if keep_strings:
+                    out.append(line[i:i + 2])
+                i += 1
+            elif c == inner_quote:
+                inner_quote = ""
+                out.append(c)
+            elif keep_strings:
+                out.append(c)
         elif depth:
-            depth += (c == "{") - (c == "}")
+            if c in "\"'":
+                inner_quote = c
+            else:
+                depth += (c == "{") - (c == "}")
             out.append(c)
         elif quote:
             if c == "$" and following == "{" and quote == "`":
