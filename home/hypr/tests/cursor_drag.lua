@@ -260,6 +260,7 @@ local function fresh(mode, keep_session)
 		for index in pairs(pumped) do
 			pumped[index] = nil
 		end
+		lost_ready = 0
 		set_pointer(100, 100)
 	end
 	pointer_reads = math.huge
@@ -334,6 +335,9 @@ local function settle_timed(cond, secs)
 	end, secs)
 end
 
+-- `drag_ready` callbacks a scenario deleted on purpose, so `ready()` does not wait for them.
+local lost_ready = 0
+
 local function drag_ready_callbacks()
 	local n = 0
 	for _, line in ipairs(pumped) do
@@ -348,11 +352,10 @@ local function ready()
 	local pressed = settle(function()
 		return count("ydotool click 0x40") >= 1
 	end)
-	-- The press script's `drag_ready` callback arms the pause. A lost callback (scenarios 27 and 28) never arrives, so the
-	-- wait is capped and the scenario goes on.
+	-- The press script's `drag_ready` callback arms the pause.
 	settle(function()
-		return drag_ready_callbacks() >= count("ydotool click 0x40")
-	end, 20)
+		return drag_ready_callbacks() + lost_ready >= count("ydotool click 0x40")
+	end)
 	advance(150) -- the pause between the press and the nudge
 	return pressed
 		and settle(function()
@@ -898,6 +901,7 @@ while not read_file(stub .. "/cb.queue"):find("drag_ready", 1, true) and os.time
 end
 check(count("ydotool click 0x40") == 1, "lost ready: the press went out")
 os.remove(stub .. "/cb.queue") -- `drag_ready` never arrives
+lost_ready = lost_ready + 1
 pump()
 check(count("ydotool click 0x80") == 0, "lost ready: nothing released before the backstop")
 advance(3100)
