@@ -85,13 +85,14 @@ def staged_files(qs_files, entries):
 def folder_imports(path, root):
     """Yields (alias or None, folder) for each folder import in the file. A quoted import is relative to the importing
     file, `import qs.a.b` to the tree root. The folder is not resolved; script imports are skipped. Only single-line
-    imports are read, and commented-out ones count."""
+    imports are read."""
     try:
         lines = read_lines(path)
     except OSError:
         return
+    state = {"in_block": False}
     for line in lines:
-        for statement in line.split(";"):
+        for statement in strip_code(line, state, keep_strings=True).split(";"):
             if match := QS_IMPORT.match(statement):
                 target = QS_IMPORT_HEAD.sub("", match.group(0), count=1)
                 target = FROM_FIRST_SPACE.sub("", target, count=1).replace(".", "/")
@@ -112,13 +113,13 @@ def folder_imports(path, root):
 
 def strip_code(line, state, keep_strings=False):
     """The line without comments and string contents (a string keeps its quotes; keep_strings keeps the contents
-    too). state["in_block"] carries an open block comment to the next line; a string's quote does not carry, so a
-    template literal's later lines read as code."""
-    if keep_strings and "/" not in line and not state["in_block"]:
+    too). state["in_block"] carries an open block comment to the next line, and state["quote"] an open template literal;
+    a "..." or '...' string ends with its line, as an unterminated one is an error in the file anyway."""
+    quote = state.get("quote", "")
+    if keep_strings and "/" not in line and "`" not in line and not quote and not state["in_block"]:
         # No comment can start or end here, and every string is kept as it is.
         return line
     out = []
-    quote = ""
     i = 0
     while i < len(line):
         c = line[i]
@@ -147,6 +148,7 @@ def strip_code(line, state, keep_strings=False):
                 quote = c
             out.append(c)
         i += 1
+    state["quote"] = quote if quote == "`" else ""
     return "".join(out)
 
 

@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -136,6 +137,7 @@ class FailingFindingsTest(unittest.TestCase):
         ({"id": "unqualified", "message": "Unqualified access", "suggestions": [{"documentEdits": [{"replacement": "pragma ComponentBehavior: Bound"}]}]}, None),
         ({"id": "unqualified", "message": "Unqualified access", "suggestions": [{"message": "Use root", "replacement": "root"}]}, "/s/F.qml:1:2: Unqualified access [unqualified]"),
         ({"id": "unqualified", "message": "Something else"}, None),
+        ({"id": "syntax.duplicate-ids", "message": "Found a duplicated id."}, "/s/F.qml:1:2: Found a duplicated id. [syntax.duplicate-ids]"),
         ({"id": "unused-imports", "message": "Unused import"}, None),
     ]
 
@@ -163,6 +165,29 @@ class RelabelTest(unittest.TestCase):
     def test_stage_path_replaced_as_a_string(self):
         self.assertEqual(qml.relabel("/t/a.b/shell/F.qml: in /t/a.b/shell/x", "/t/a.b/shell", "repo"), "repo/F.qml: in repo/x")
         self.assertEqual(qml.relabel("/t/aXb/shell/F.qml", "/t/a.b/shell", "repo"), "/t/aXb/shell/F.qml")
+
+
+class ReportPassesTest(unittest.TestCase):
+    def passes(self, report_bytes, file_count=1):
+        with mock.patch.object(qml, "write_out") as out:
+            return qml.report_passes(report_bytes, file_count, "/s", "p"), out.call_args_list
+
+    def test_clean_report_passes(self):
+        self.assertEqual(self.passes(b'{"files": [{"filename": "F", "warnings": []}]}'), (True, []))
+
+    def test_unreadable_report_fails_even_with_no_files(self):
+        passed, calls = self.passes(b"not json", file_count=0)
+        self.assertFalse(passed)
+        self.assertIn("unreadable report", calls[0].args[1][0])
+
+    def test_unexpected_shape_fails(self):
+        self.assertFalse(self.passes(b'{"files": [{"filename": "F"}]}')[0])
+
+
+class UnregisteredMessagesTest(TreeCase):
+    def test_a_repeated_import_prints_once(self):
+        write_tree(self.root, {"u/U.qml": "", "b/B.qml": "import qs.u\nimport qs.u\nU {}\n"})
+        self.assertEqual(len(qml.unregistered_messages(self.root, [self.root])), 1)
 
 
 if __name__ == "__main__":
