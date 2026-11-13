@@ -44,7 +44,8 @@ impl PauseChecks {
             pause_secs: settings.number("pause_check_secs")?,
             wait_secs: settings.number("pause_check_wait_secs")?,
             recent_frames: VecDeque::new(),
-            recent_capacity: (settings.number("pause_check_clip_secs")? / FRAME_SECS).round() as usize,
+            // At least one frame: at zero the deque never evicts and the clip grows into the whole recording.
+            recent_capacity: ((settings.number("pause_check_clip_secs")? / FRAME_SECS).round() as usize).max(1),
             trace,
             last_quiet_secs: 0.0,
             running: None,
@@ -58,6 +59,13 @@ impl PauseChecks {
 
     /// Called with each frame once the detector has counted it.
     pub fn after_frame(&mut self, frame: &[i16], detector: &SpeechThenSilence) {
+        self.queue_pause(frame, detector);
+        self.start_waiting();
+    }
+
+    /// Keeps the frame for the clip and queues a check when it begins a pause. The frame that stops the recording
+    /// gets this but no `start_waiting`, which the stop's wait does itself.
+    pub fn queue_pause(&mut self, frame: &[i16], detector: &SpeechThenSilence) {
         if self.recent_frames.len() == self.recent_capacity {
             self.recent_frames.pop_front();
         }
@@ -74,7 +82,6 @@ impl PauseChecks {
                 ));
             }
         }
-        self.start_waiting();
     }
 
     fn check_is_running(&mut self) -> bool {

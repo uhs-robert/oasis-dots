@@ -36,8 +36,10 @@ impl Rig {
     }
 
     fn trace(&self) -> Vec<String> {
-        std::fs::read_to_string(self.trace_path())
-            .unwrap()
+        let log = std::fs::read_to_string(self.trace_path()).unwrap();
+        // The detector may be mid-way through writing the last line.
+        let complete = log.rfind('\n').map_or("", |end| &log[..end]);
+        complete
             .lines()
             .map(|line| line.split_once("] ").unwrap().1.to_string())
             .collect()
@@ -562,6 +564,28 @@ fn it_stops_once_a_check_that_heard_no_ending_is_over() {
     std::fs::write(&checks.gate, "").unwrap();
     assert_eq!(feeder.finish(), 0);
     wait_for_path(&checks.run_path("1.done"));
+}
+
+#[test]
+fn a_pause_check_as_long_as_the_silence_is_still_checked_before_the_stop() {
+    let rig = Rig::new();
+    let checks = Checks::new(&rig);
+    let mut feeder = checks.feed(&["--pcm", "-"], &[("VOXCMD_AUTOSTOP_SILENCE_SECS", "0.6")]);
+    feeder.write(&word(2.0, -18.0));
+    assert_eq!(feeder.finish(), 0);
+    assert_eq!(checks.made(), 1, "the pause that stops the recording is checked too");
+}
+
+#[test]
+fn a_clip_shorter_than_a_frame_is_one_frame_not_the_whole_recording() {
+    let rig = Rig::new();
+    let checks = Checks::new(&rig);
+    let mut feeder = checks.feed(&["--pcm", "-"], &[("VOXCMD_AUTOSTOP_PAUSE_CHECK_CLIP_SECS", "0.01")]);
+    feeder.write(&word(2.0, -18.0));
+    wait_for_path(&checks.run_path("1.done"));
+    feeder.write(&pcm(&["noise:0.5:-55"]));
+    feeder.finish();
+    assert_eq!(checks.clip(1).3, 480);
 }
 
 #[test]
