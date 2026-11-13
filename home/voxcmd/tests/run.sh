@@ -961,7 +961,7 @@ typed() { grep '^wtype ' "$log" | sed 's/^wtype //'; }
 make_profile
 out=$("$firefox_tab" tabs)
 check "the profile installs.ini names is read, not profiles.ini's Default=1" "[[ \$(jq length <<<\"\$out\") -gt 0 ]]"
-check "the store decodes, matches and all, and hidden tabs are left out" "[[ \$(jq '[.[] | select(.window == 0)] | length' <<<\"\$out\") == 4 ]]"
+check "the store decodes, matches and all, and hidden tabs are left out" "[[ \$(jq '[.[] | select(.window == 0)] | length' <<<\"\$out\") == 5 ]]"
 check "a tab's title is its current history entry's" "jq -e 'any(.[]; .title == \"Example Docs - Getting started\" and .selected)' <<<\"\$out\" >/dev/null"
 check "a window is found by its selected tab's title" "[[ \$(jq -r '[.[] | select(.window == 0) | .address] | unique | join(\" \")' <<<\"\$out\") == 0x3001 ]]"
 check "or by any of its tabs while the store lags" "[[ \$(jq -r '[.[] | select(.window == 1) | .address] | unique | join(\" \")' <<<\"\$out\") == 0x3002 ]]"

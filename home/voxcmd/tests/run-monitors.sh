@@ -147,6 +147,9 @@ route_of() { SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/owner.json") voxcmd expla
 check "set a timer for 30 seconds stays with Timers" "[[ \$(route_of 'set a timer for 30 seconds') == Timers/timer ]]"
 check "move firefox to workspace 3 stays with Apps" "[[ \$(route_of 'move firefox to workspace 3') == Apps/move ]]"
 check "go to firefox stays with Apps" "[[ \$(route_of 'go to firefox') == Apps/focus ]]"
+# The Monitors provider answers first and the shell hooks of a monitor phrase yield unstarted (resolve_all).
+trace_of() { SANDBOX_MONITORS_JSON=$(cat "$layouts_dir/owner.json") voxcmd explain "$1" 2>/dev/null; }
+check "a monitor the provider names yields the Firefox and Apps hooks unstarted" "t=\$(trace_of 'go to the center monitor'); grep -q 'Firefox (firefox.toml, normal): the focus_tab hook yielded' <<<\$t && grep -q 'Apps (apps.toml, normal): the focus hook yielded' <<<\$t && grep -q 'hook Firefox focus_tab: 0 line(s) in 0.0 ms' <<<\$t"
 check "a monitor that is no monitor word is left to the apps" "[[ \$(route_of 'go to the system monitor') != Monitors/* ]]"
 check "move two and four to the left monitor is not ours with the overview closed" "[[ \$(route_of 'move two and four to the left monitor') != Monitors/* ]]"
 

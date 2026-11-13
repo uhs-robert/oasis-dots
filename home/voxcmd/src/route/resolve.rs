@@ -7,7 +7,7 @@
 //! `[]` means "nothing matches", so the integration's `no_match` action may take the phrase (hooks.rs `Lookup`).
 use super::matcher::Arg;
 use crate::config::Config;
-use crate::config::schema::{Integration, TargetMatch};
+use crate::config::schema::{Candidates, Integration, Provider, TargetMatch};
 use crate::exit::CliError;
 use crate::hooks::{Candidate, HookQuery, HookRun, Hooks, Lookup};
 use regex::RegexBuilder;
@@ -193,28 +193,82 @@ pub struct Texts<'a> {
 
 /// Resolves matches side by side, hooks being queries of live state that need not wait on each other, and returns
 /// them in the order given.
+///
+/// The in-process `monitors` provider goes first, alone. When it names a monitor (a non-weak candidate, an error
+/// candidate included, since the phrase is then ours), the shell-hooked matches of the phrase are answered as a yield
+/// without starting: a Firefox tab lookup costs 45 ms and could only offer a tab named like a monitor. When it offers
+/// nothing, or errors, they run as usual. `screen_text` is never claimed over, as it answers a different surface.
 pub fn resolve_all(config: &Config, hooks: &dyn Hooks, pending: &[PendingMatch], texts: Texts) -> Vec<Resolved> {
-    let hooked = pending
-        .iter()
-        .filter(|one| {
-            config.integrations[one.integration]
-                .candidates_for(&one.verb_action)
-                .is_some()
-        })
-        .count();
-    if hooked < 2 {
-        return pending.iter().map(|one| resolve(config, hooks, one, texts)).collect();
+    let mut resolved: Vec<Option<Resolved>> = pending.iter().map(|_| None).collect();
+    let mut claimed = false;
+    for (slot, one) in resolved.iter_mut().zip(pending) {
+        if provider_of(config, one) == Some(Provider::Monitors) {
+            let answer = resolve(config, hooks, one, texts);
+            claimed |= one.near_miss.is_none() && answer.options.iter().any(|option| !option.weak);
+            *slot = Some(answer);
+        }
     }
-    std::thread::scope(|scope| {
-        let running: Vec<_> = pending
-            .iter()
-            .map(|one| scope.spawn(move || resolve(config, hooks, one, texts)))
-            .collect();
-        running
-            .into_iter()
-            .map(|handle| handle.join().expect("a resolve thread panicked"))
-            .collect()
-    })
+    if claimed {
+        for (slot, one) in resolved.iter_mut().zip(pending) {
+            if slot.is_none() && shell_hooked(config, one) {
+                *slot = Some(yielded(config, one));
+            }
+        }
+    }
+    let rest: Vec<usize> = (0..pending.len()).filter(|&index| resolved[index].is_none()).collect();
+    let hooked = rest.iter().filter(|&&index| hooked(config, &pending[index])).count();
+    if hooked < 2 {
+        for &index in &rest {
+            resolved[index] = Some(resolve(config, hooks, &pending[index], texts));
+        }
+    } else {
+        let answers: Vec<Resolved> = std::thread::scope(|scope| {
+            let running: Vec<_> = rest
+                .iter()
+                .map(|&index| {
+                    let one = &pending[index];
+                    scope.spawn(move || resolve(config, hooks, one, texts))
+                })
+                .collect();
+            running
+                .into_iter()
+                .map(|handle| handle.join().expect("a resolve thread panicked"))
+                .collect()
+        });
+        for (&index, answer) in rest.iter().zip(answers) {
+            resolved[index] = Some(answer);
+        }
+    }
+    resolved
+        .into_iter()
+        .map(|answer| answer.expect("every match resolved"))
+        .collect()
+}
+
+fn hooked(config: &Config, one: &PendingMatch) -> bool {
+    config.integrations[one.integration]
+        .candidates_for(&one.verb_action)
+        .is_some()
+}
+
+fn provider_of(config: &Config, one: &PendingMatch) -> Option<Provider> {
+    match config.integrations[one.integration].candidates_for(&one.verb_action) {
+        Some(Candidates::Builtin(provider)) => Some(*provider),
+        _ => None,
+    }
+}
+
+fn shell_hooked(config: &Config, one: &PendingMatch) -> bool {
+    hooked(config, one) && provider_of(config, one).is_none()
+}
+
+/// The answer of a match whose hook is not started, as `resolve` gives a hook that yields.
+fn yielded(config: &Config, one: &PendingMatch) -> Resolved {
+    let integration = &config.integrations[one.integration];
+    Resolved {
+        options: Vec::new(),
+        hook: Some(HookRun::skipped_claimed(integration, &one.verb_action)),
+    }
 }
 
 // ---- matching a target against candidates ---------------------------------------------------------------------------
