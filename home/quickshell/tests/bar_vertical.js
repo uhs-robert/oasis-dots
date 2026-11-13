@@ -7,13 +7,13 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const script = rel => fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/bar", rel), "utf8").replace(/^\.(pragma|import).*$/gm, "");
+const script = rel => fs.readFileSync(path.join(__dirname, "../.config/quickshell", rel), "utf8").replace(/^\.(pragma|import).*$/gm, "");
 const L = vm.createContext({});
-vm.runInContext(script("VerticalLayout.js"), L);
+vm.runInContext(script("features/bar/VerticalLayout.js"), L);
 const modules = vm.createContext({});
-vm.runInContext(script("BarModules.js"), modules);
+vm.runInContext(script("features/bar/BarModules.js"), modules);
 const BL = vm.createContext({ BarModules: modules });
-vm.runInContext(script("BarLayout.js"), BL);
+vm.runInContext(script("features/bar/BarLayout.js"), BL);
 const island = (x, y, width, height, visible = true) => ({ x, y, width, height, visible });
 
 // A text's metric: width = glyph_per_px * size + fixed (letter spacing).
