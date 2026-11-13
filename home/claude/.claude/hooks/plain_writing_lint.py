@@ -58,7 +58,9 @@ ATTACHED_ONLY_OPTIONS = "Su"
 HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
 # A `case` or `esac` keyword. The `)` after a case pattern does not close the substitution around the `case`.
 # `case` counts only where a command starts (see command_starts_at), so the word as an argument opens no block.
-CASE_OPEN = re.compile(r"case\s+[^\n;|&]{1,200}?\s+in\b")
+CASE_WORD = re.compile(r"case\s+")
+CASE_IN = re.compile(r"[ \t]+in\b")
+CASE_SUBJECT_LIMIT = 200
 CASE_CLOSE = re.compile(r"(?<![^\s;])esac\b")
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
 HTML_BLOCK_TAGS = (
@@ -332,8 +334,27 @@ def command_starts_at(command, index):
     return before == 0 or command[before - 1] in "\n;&|(){`" or re.search(r"\b(?:then|do|else)$", command[max(0, before - 5):before]) is not None
 
 
-def case_open_at(command, index):
-    return CASE_OPEN.match(command, index) if command_starts_at(command, index) else None
+def case_open_end(command, index):
+    """The index after `case <subject> in` for a `case` that starts a command at index, or None. Quotes in the
+    subject are skipped whole, so an ` in ` inside them does not end the header."""
+    word = CASE_WORD.match(command, index)
+    if not word or not command_starts_at(command, index):
+        return None
+    position = word.end()
+    limit = position + CASE_SUBJECT_LIMIT
+    while position < min(len(command), limit):
+        char = command[position]
+        if command.startswith("$'", position):
+            position = quote_end(command, position + 2, "'")
+        elif char in "'\"":
+            position = quote_end(command, position + 1, char)
+        elif char in "\n;|&":
+            return None
+        elif char in " \t" and CASE_IN.match(command, position):
+            return CASE_IN.match(command, position).end()
+        else:
+            position += 1
+    return None
 
 
 ANSI_ESCAPE = re.compile(r"\\(?:x([0-9a-fA-F]{1,2})|u([0-9a-fA-F]{1,4})|U([0-9a-fA-F]{1,8})|([0-7]{1,3})|(.))", re.S)
@@ -465,16 +486,16 @@ def read_command_words(command, start, bodies_end_by_line, in_backticks=False):
             nesting.append("`")
             word.append(char)
         elif inner in ("(", "case", "`"):
-            case_open = case_open_at(command, index) if char == "c" else None
+            case_open = case_open_end(command, index) if char == "c" else None
             case_close = CASE_CLOSE.match(command, index) if char == "e" and inner == "case" else None
             if case_open or case_close:
-                keyword = case_open or case_close
+                keyword_end = case_open or case_close.end()
                 if case_open:
                     nesting.append("case")
                 else:
                     nesting.pop()
-                word.append(keyword.group())
-                index = keyword.end() - 1
+                word.append(command[index:keyword_end])
+                index = keyword_end - 1
             elif char == ")" and inner == "(":
                 nesting.pop()
                 word.append(char)
@@ -709,9 +730,9 @@ def message_sources(command):
             nesting.append("`")
         elif char == ")" and inner == "(":
             nesting.pop()
-        elif char == "c" and nesting and case_open_at(command, index):
+        elif char == "c" and nesting and case_open_end(command, index):
             nesting.append("case")
-            index = case_open_at(command, index).end() - 1
+            index = case_open_end(command, index) - 1
         elif char == "e" and inner == "case" and CASE_CLOSE.match(command, index):
             nesting.pop()
             index += 3

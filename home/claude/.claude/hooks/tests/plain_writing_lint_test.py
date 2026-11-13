@@ -353,6 +353,14 @@ class Commands(StateDirectory):
         self.assertIn("the PR body", self.bash(f'x="$(echo case x in a)"; {self.BAD_BODY}'))
         self.assertIn("the PR body", self.bash(f'gh pr create --title "$(echo case x in)" --body "It doesn\'t start."'))
 
+    def test_quoted_case_subject_may_hold_the_word_in(self):
+        for subject in ("'foo in bar'", '"foo in bar"', "$'foo in bar'", "$'it\\'s in bar'"):
+            with self.subTest(subject):
+                command = f'x=$(case {subject} in *) echo ok;; esac); {self.BAD_BODY}'
+                self.assertIn("the PR body", self.bash(command))
+                inside = f'gh pr create --title "$(case {subject} in *) echo t;; esac)" --body "It doesn\'t start."'
+                self.assertIn("the PR body", self.bash(inside))
+
     def test_many_case_words_do_not_stall_the_parser(self):
         started = time.monotonic()
         lint.message_sources("echo $(" + "case a " * 20000 + ")")
