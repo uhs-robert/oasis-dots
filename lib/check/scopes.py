@@ -25,8 +25,29 @@ VOXCMD_SUITE_SCOPES = (VOX_PHRASES, VOX_CLICK, VOX_REST)
 VOXCMD_SUITES = " ".join(VOXCMD_SUITE_SCOPES)
 VOXCMD_SUITES_AND_CRATE = VOXCMD_SUITES + " " + VOX_RUST
 
-# Every matching entry adds its scope, ahead of the PATH_SCOPES one. Any `.py` edit reaches ruff, whatever folder it is in.
-ADDITIVE_SCOPES = [("*.py", "ruff")]
+# The extensionless Python scripts that lib/check/steps/ruff.sh finds by shebang; test_scopes.py fails when it finds one
+# that is not listed here.
+RUFF_SCRIPTS = [
+    "home/calendar/.local/bin/calendar-sync",
+    "home/plans/.local/bin/plans",
+    "home/quickshell/.config/quickshell/scripts/frame-app-corners",
+    "home/quickshell/.config/quickshell/scripts/gen-style-exports",
+    "home/quickshell/.config/quickshell/scripts/goldeneye-frames",
+    "home/quickshell/.config/quickshell/scripts/scroll-capture",
+    "home/quickshell/.config/quickshell/scripts/synth-sounds",
+    "home/qutebrowser/.config/qutebrowser/convert_firefox_bookmarks_to_quickmarks",
+    "home/qutebrowser/.local/share/qutebrowser/userscripts/qute-bitwarden",
+    "home/voxcmd/.local/bin/voxcmd-autostop",
+    "home/voxcmd/.local/share/voxcmd/firefox-tab",
+    "home/voxcmd/tests/firefox-fake-host",
+    "home/voxcmd/tests/firefox-profile",
+    "home/voxtype/.local/bin/voxtype-duck",
+    "lib/docs/gen-ipc",
+    "lib/docs/gen-keybinds",
+]
+
+# Every matching entry adds its scope, ahead of the PATH_SCOPES one. Any `.py` edit and each ruff script reaches ruff.
+ADDITIVE_SCOPES = [("*.py", "ruff")] + [(path, "ruff") for path in RUFF_SCRIPTS]
 
 # The first matching entry wins, so order matters. Its scopes (space-separated) are what a change to that path reaches;
 # "all" reaches every step, and "" only the steps that always run. The final entry sends every path no rule claims to
@@ -41,6 +62,7 @@ PATH_SCOPES = [
     (".claude/check-commands", "all"),
     # The ruff config would otherwise fall to the final "all" entry.
     ("ruff.toml", "ruff"),
+    ("lib/check/steps/ruff.sh", "checkscope ruff"),
     # Markdown runs no step, ahead of every folder rule; the two tables below are generated into .md files that the
     # docs-generated step compares, so those keep it.
     ("docs/keybinds.md", "docsgen"),
