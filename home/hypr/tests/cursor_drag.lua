@@ -92,7 +92,7 @@ end
 
 --- Delete the callbacks not yet pumped, for a scenario that needs them lost.
 local function drop_spool()
-	os.execute("rm -f " .. shell_quote(spool) .. "/*")
+	os.execute("rm -f " .. shell_quote(spool) .. "/* " .. shell_quote(spool) .. "/.tmp.*")
 end
 
 --- Spool callbacks as the stub does: write, then rename.
@@ -1438,27 +1438,17 @@ local fx, fy = pointer()
 check(fx == 400 and fy == 300, "glide focus: the drop lands on the target")
 assert_clean("glide focus")
 
---- 50. Many stub callbacks land while pump() runs: none is lost, split or reordered (the lost `drag_ready` race).
+--- 50. A callback the stub is still writing (a dot-named file) is not pumped; once renamed into place it runs once.
 fresh()
-local burst = 60
-local before_burst = #pumped
-os.execute(
-	"env -i PATH="
-		.. stub
-		.. "/bin STUB_DIR="
-		.. stub
-		.. " sh -c 'i=1; while [ $i -le "
-		.. burst
-		.. " ]; do "
-		.. stub
-		.. "/hyprctl eval \"burst_seen = (burst_seen or 0) + 1\" & i=$((i+1)); sleep 0.005; done; wait' >/dev/null 2>&1 &"
-)
-settle(function()
-	return #pumped - before_burst >= burst
-end)
-check(#pumped - before_burst == burst, "callback burst: all " .. burst .. " callbacks pumped once, got " .. (#pumped - before_burst))
-check(burst_seen == burst, "callback burst: every callback ran")
-assert_clean("callback burst")
+local unfinished = spool .. "/.tmp.unfinished"
+write_file(unfinished, "unfinished_seen = (unfinished_seen or 0) + 1\n")
+pump()
+check(unfinished_seen == nil, "unfinished callback: a dot-named spool file is not pumped")
+os.rename(unfinished, spool .. "/9999999999999999999.unfinished")
+pump()
+pump()
+check(unfinished_seen == 1, "unfinished callback: runs exactly once after the rename, got " .. tostring(unfinished_seen))
+assert_clean("unfinished callback")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)
