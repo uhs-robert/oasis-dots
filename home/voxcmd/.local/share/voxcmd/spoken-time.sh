@@ -164,11 +164,14 @@ parse_clock() {
   # Hour, then minutes, each digits or number words ("three thirty", "seven oh five").
   parse_words=("${clock_words[@]}")
   local parse_at=0 amount_milli hour minute=0
+  # "0730" is military style: a four-digit run with a leading zero is a 24-hour time, never the evening twin.
+  local twenty_four_hour=""
   [ "${#parse_words[@]}" -gt 0 ] || return 1
   if [[ "${parse_words[0]}" =~ ^[0-9]{3,4}$ ]]; then
     hour=$((10#${parse_words[0]} / 100))
     minute=$((10#${parse_words[0]} % 100))
     parse_at=1
+    [[ "${parse_words[0]}" == 0??? ]] && twenty_four_hour=1
   else
     read_amount && [ $((amount_milli % 1000)) = 0 ] || return 1
     hour=$((amount_milli / 1000))
@@ -196,7 +199,7 @@ parse_clock() {
     [ "$anchor" = next ] || [ -n "$day" ] || day=today
   fi
   # No am or pm on a 1 to 12 hour: the sooner of the morning and evening time.
-  [ -n "$meridiem" ] || [ "$hour" -lt 1 ] || [ "$hour" -gt 12 ] || hours=("$((hour % 12))" "$((hour % 12 + 12))")
+  [ -n "$meridiem" ] || [ -n "$twenty_four_hour" ] || [ "$hour" -lt 1 ] || [ "$hour" -gt 12 ] || hours=("$((hour % 12))" "$((hour % 12 + 12))")
   for base in "${bases[@]}"; do
     [ -z "$day" ] || [ "$(day_date "$day")" = "$base" ] || continue
     for hour in "${hours[@]}"; do

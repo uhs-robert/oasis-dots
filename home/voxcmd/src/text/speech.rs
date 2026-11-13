@@ -437,7 +437,10 @@ pub fn parse_clock(text: &str, anchor: Anchor, clock: &Clock) -> Option<i64> {
     let mut at = 0;
     let mut hour;
     let mut minute = 0;
+    // "0730" is military style: a four-digit run with a leading zero is a 24-hour time, never the evening twin.
+    let mut twenty_four_hour = false;
     if clock_words[0].len() >= 3 && clock_words[0].len() <= 4 && is_digits(clock_words[0]) {
+        twenty_four_hour = clock_words[0].len() == 4 && clock_words[0].starts_with('0');
         let number: i64 = clock_words[0].parse().ok()?;
         hour = number / 100;
         minute = number % 100;
@@ -485,7 +488,7 @@ pub fn parse_clock(text: &str, anchor: Anchor, clock: &Clock) -> Option<i64> {
         day = Some(Day::Today);
     }
     // No am or pm on a 1 to 12 hour: the sooner of the morning and evening time.
-    let hours = if meridiem.is_none() && (1..=12).contains(&hour) {
+    let hours = if meridiem.is_none() && !twenty_four_hour && (1..=12).contains(&hour) {
         vec![hour % 12, hour % 12 + 12]
     } else {
         vec![hour]
@@ -769,6 +772,16 @@ mod tests {
             Some("2026-10-15 15:30")
         );
         assert_eq!(at(&clock, "13 pm", Anchor::Next), None);
+    }
+
+    #[test]
+    fn a_four_digit_time_with_a_leading_zero_is_24_hour() {
+        let clock = wednesday_afternoon();
+        assert_eq!(at(&clock, "0730", Anchor::Next).as_deref(), Some("2026-10-15 07:30"));
+        assert_eq!(at(&clock, "0730", Anchor::Today).as_deref(), Some("2026-10-14 07:30"));
+        assert_eq!(at(&clock, "0730 pm", Anchor::Next).as_deref(), Some("2026-10-14 19:30"));
+        assert_eq!(at(&clock, "730", Anchor::Next).as_deref(), Some("2026-10-14 19:30"));
+        assert_eq!(at(&clock, "1130", Anchor::Next).as_deref(), Some("2026-10-14 23:30"));
     }
 
     #[test]
