@@ -815,6 +815,7 @@ PanelWindow {
                     room_top: root.device_top
                     room_bottom: root.device_bottom
                     lcd: root.lcd
+                    bar_square: root.bar_square
                 }
             ]
 

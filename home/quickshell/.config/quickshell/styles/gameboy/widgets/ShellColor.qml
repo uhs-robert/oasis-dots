@@ -8,6 +8,8 @@ Item {
 
     property int screen_top: 26
     property int pad_top: 0
+    // The corners that touch the bar are square.
+    property var bar_square: ({ top_left: false, top_right: false, bottom_left: false, bottom_right: false })
 
     readonly property color body: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.fg_strong, 0.1))
     readonly property color body_low: Qt.tint(Theme.theme_secondary, Qt.alpha(Theme.bg_crust, 0.3))
@@ -17,9 +19,10 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 10
-        bottomLeftRadius: 28
-        bottomRightRadius: 28
+        topLeftRadius: root.bar_square.top_left ? 0 : 10
+        topRightRadius: root.bar_square.top_right ? 0 : 10
+        bottomLeftRadius: root.bar_square.bottom_left ? 0 : 28
+        bottomRightRadius: root.bar_square.bottom_right ? 0 : 28
         border.width: 2
         border.color: root.edge
         gradient: Gradient {
