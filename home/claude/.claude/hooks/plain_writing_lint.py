@@ -730,9 +730,13 @@ def message_sources(command):
             nesting.append("`")
         elif char == ")" and inner == "(":
             nesting.pop()
+            if len(nesting) < pipeline_depth:
+                # The group that held the heredoc is closed, and a `|` after it pipes the group's output.
+                pipeline_open, pipeline_depth = True, len(nesting)
         elif char == "c" and nesting and case_open_end(command, index):
+            # Only the keyword is consumed: the subject may hold a `$(...)` that runs a command.
             nesting.append("case")
-            index = case_open_end(command, index) - 1
+            index += 3
         elif char == "e" and inner == "case" and CASE_CLOSE.match(command, index):
             nesting.pop()
             index += 3
