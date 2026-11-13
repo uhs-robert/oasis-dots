@@ -24,7 +24,8 @@ Item {
     // The chip draws its own section fill, so a translucent island leaves its colour out from behind it.
     readonly property bool lualine_fill: root.lualine
 
-    // In a column the chip is a square tile that fits the island; the strip's full-height chip would be the bar's width.
+    // In a column the chip is a square tile; the strip's full-height chip would be the bar's width. A lualine column
+    // overrides this size from Bar.qml: there the chip is section a, the column's width with its arrow below.
     readonly property real chip_side: root.bar_height - 8
     implicitWidth: root.lualine && chip_loader.item ? (root.vertical ? root.chip_side : chip_loader.item.implicitWidth) : root.well ? root.well_size : icon.implicitSize
     implicitHeight: root.lualine ? (root.vertical ? root.chip_side : root.bar_height) : root.well ? root.well_size : icon.implicitSize
