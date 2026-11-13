@@ -883,6 +883,12 @@ timers_run_with "$timers_state_two" "cancel the bank reminder"
 check "a named cancel with two running picks the one the words name" "grep -Fxq 'systemctl --user stop voxcmd-timer-2000.timer' '$log' && ! grep -q 'voxcmd-timer-1000' '$log'"
 timers_run_with "$timers_state_one" "cancel the laundry timer"
 check "a name no running timer has reports no match and stops nothing" "timers_toast | grep -q 'No timer or reminder matches \"laundry\"' && ! grep -q '^systemctl --user stop' '$log'"
+# A near miss ("timer pasta cancel") with nothing running offers nothing, not the placeholder row as a lone picker row;
+# with a timer running it is still offered.
+out=$(SANDBOX_TIMERS_JSON='[]' VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" explain "timer pasta cancel" 2>&1)
+check "a near miss of cancel with nothing running offers no placeholder row" "grep -q 'result:      no match' <<<\"\$out\" && ! grep -q '^option' <<<\"\$out\""
+out=$(SANDBOX_TIMERS_JSON=$timers_state_one VOXCMD_CONFIG_DIR=$timers_config "$voxcmd" explain "timer pasta cancel" 2>&1)
+check "a near miss of cancel with a timer running still offers it" "grep -q 'near miss.*action=cancel target=.pasta. id=.voxcmd-timer-1000.timer' <<<\"\$out\""
 # cancel_timer is the action's own guard, run through the hook library as an action does.
 timers_guard() (
   VOXCMD_SHARE_DIR=$share_dir VOXCMD_SELF=$voxcmd
