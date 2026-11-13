@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Type mode: one dictation into the focused window. It is one voxtype recording, typed once it ends: on "cortana stop"
 # and the other endings below, said before a pause, the voice key or Stop Voice, at voxtype's recording limit, or after
 # 10 s of quiet once something was said. "cortana cancel", or 10 s with nothing said at all, ends it typing nothing.

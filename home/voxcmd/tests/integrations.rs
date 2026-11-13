@@ -767,3 +767,38 @@ fn the_shipped_click_toml_is_the_fixture_the_other_tests_read() {
         "click.toml and tests/fixtures/integrations/click.toml must stay the same file: copy one over the other"
     );
 }
+
+const SCHEMA_LINE: &str = "#:schema ../../../.local/share/voxcmd/integration.schema.json";
+
+#[test]
+fn the_committed_schema_is_what_the_command_prints() {
+    let committed = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/.local/share/voxcmd/integration.schema.json"
+    );
+    let output = Command::new(env!("CARGO_BIN_EXE_voxcmd"))
+        .args(["integrations", "schema"])
+        .output()
+        .expect("the binary runs");
+    assert_eq!(
+        std::fs::read_to_string(committed).unwrap(),
+        String::from_utf8_lossy(&output.stdout),
+        "the committed schema is stale: run `voxcmd integrations schema > home/voxcmd/.local/share/voxcmd/integration.schema.json`"
+    );
+}
+
+#[test]
+fn every_shipped_integration_starts_with_the_schema_line() {
+    let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/.config/voxcmd/integrations");
+    let mut checked = 0;
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|extension| extension != "toml") {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(text.lines().next(), Some(SCHEMA_LINE), "{}", path.display());
+        checked += 1;
+    }
+    assert!(checked > 0, "no shipped integrations found in {dir}");
+}

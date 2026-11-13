@@ -1,7 +1,7 @@
 //! the integration types the router reads, and the serde types of an integration TOML (1.1 section 2) that load into them
 //!
 //! `Integration` is the only shape the router sees. So far it holds the subset of 1.1's schema that routing reads;
-//! unknown TOML keys are accepted until `integrations check` (2.6) reports them.
+//! the loader accepts unknown TOML keys, and `integrations check` reports them.
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

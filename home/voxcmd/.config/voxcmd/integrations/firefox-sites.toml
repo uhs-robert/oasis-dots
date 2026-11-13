@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Opens a bookmark, a site from history or a domain when "open X" names no app: "open example", "open example.com".
 # A fallback, so apps, keybinds and every other integration's "open" come first. Format: ~/.config/voxcmd/README.md
 name = "Firefox"

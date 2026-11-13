@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Media playback (playerctl) and output volume (pamixer). Format: ~/.config/voxcmd/README.md
 name = "Media"
 

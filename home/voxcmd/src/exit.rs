@@ -54,11 +54,6 @@ impl CliError {
         Self::failed(subcommand, "")
     }
 
-    /// A subcommand whose handler lands in a later item of the port; `phase_item` names it ("2.2").
-    pub fn not_implemented(subcommand: &str, phase_item: &str) -> Self {
-        Self::failed(subcommand, format!("not implemented yet ({phase_item})"))
-    }
-
     pub fn exit_code(&self) -> ExitCode {
         ExitCode::from(self.exit as u8)
     }
@@ -67,17 +62,5 @@ impl CliError {
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "voxcmd: {}: {}", self.subcommand, self.message)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn message_has_the_stderr_contract_shape() {
-        let error = CliError::not_implemented("util notify", "2.3");
-        assert_eq!(error.to_string(), "voxcmd: util notify: not implemented yet (2.3)");
-        assert_eq!(error.exit, Exit::Failed);
     }
 }

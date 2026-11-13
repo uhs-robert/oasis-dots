@@ -5,6 +5,7 @@ pub mod examples;
 pub mod intents;
 pub mod list;
 pub mod schema;
+pub mod schema_json;
 pub mod voice_env;
 
 use crate::text::normalize::Replacements;

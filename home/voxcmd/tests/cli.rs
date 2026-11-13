@@ -22,27 +22,16 @@ fn stderr(output: &Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
-/// (argv, subcommand named in the message, port item that implements it)
-const NOT_IMPLEMENTED: &[(&[&str], &str, &str)] = &[
-    (&["integrations", "schema"], "integrations schema", "2.6"),
-    // `--` ends the flags, so a phrase can start with a dash.
-];
-
 mod common;
 mod executable;
 
 #[test]
-fn unimplemented_subcommands_exit_1_naming_their_port_item() {
-    for (args, subcommand, item) in NOT_IMPLEMENTED {
-        let output = voxcmd(args);
-        assert_eq!(output.status.code(), Some(1), "{args:?}: {}", stderr(&output));
-        assert_eq!(stdout(&output), "", "{args:?} printed to stdout");
-        assert_eq!(
-            stderr(&output),
-            format!("voxcmd: {subcommand}: not implemented yet ({item})\n"),
-            "{args:?}"
-        );
-    }
+fn integrations_schema_prints_a_json_schema() {
+    let output = voxcmd(&["integrations", "schema"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    let schema: serde_json::Value = serde_json::from_str(&stdout(&output)).expect("stdout is json");
+    assert_eq!(schema["type"], "object");
+    assert!(schema["$schema"].is_string(), "{schema}");
 }
 
 #[test]

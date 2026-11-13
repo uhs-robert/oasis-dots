@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Screen recording through the screenshot tool's own wf-recorder flags (hypr/scripts/screenshot.sh), so the bar's
 # recording chip, the file names under ~/Videos/Recordings and the "Recording Saved!" notification stay the same as
 # from the Print key. Format: ~/.config/voxcmd/README.md
