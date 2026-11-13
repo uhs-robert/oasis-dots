@@ -257,11 +257,12 @@ fn wait_for_verdict(
             Err(_) => return Verdict::NothingToDo,
         };
         let verdict = detector.feed(&frame);
-        if verdict == Some(Verdict::Silence)
-            && pause_checks.enabled()
-            && !pause_checks.wait_for_pending_checks(recording_state.as_deref_mut())
-        {
-            return Verdict::NothingToDo;
+        if verdict == Some(Verdict::Silence) && pause_checks.enabled() {
+            // With pause_check_secs at silence_secs, this frame is the pause's first, so it has no check queued yet.
+            pause_checks.queue_pause(&frame, detector);
+            if !pause_checks.wait_for_pending_checks(recording_state.as_deref_mut()) {
+                return Verdict::NothingToDo;
+            }
         }
         if let Some(verdict) = verdict {
             return verdict;
