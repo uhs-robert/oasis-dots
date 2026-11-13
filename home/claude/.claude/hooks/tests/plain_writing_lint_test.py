@@ -361,6 +361,16 @@ class Commands(StateDirectory):
                 inside = f'gh pr create --title "$(case {subject} in *) echo t;; esac)" --body "It doesn\'t start."'
                 self.assertIn("the PR body", self.bash(inside))
 
+    def test_separator_inside_a_group_keeps_the_pipe_after_the_group(self):
+        command = "(cat <<'EOF'; true) | gh pr create --body-file -\nIt doesn't start.\nEOF"
+        self.assertIn("the PR body", self.bash(command))
+        self.assertIsNone(self.bash(command.replace(") |", "); echo |")))
+
+    def test_gh_inside_a_case_subject_substitution_is_checked(self):
+        self.assertIn("the PR body", self.bash('(case "$(gh pr create --body should)" in *) echo ok;; esac)'))
+        self.assertIn("the PR body", self.bash('(case `gh pr create --body should` in *) echo ok;; esac)'))
+        self.assertIsNone(self.bash('(case "gh pr create --body should" in *) echo ok;; esac)'))
+
     def test_many_case_words_do_not_stall_the_parser(self):
         started = time.monotonic()
         lint.message_sources("echo $(" + "case a " * 20000 + ")")
