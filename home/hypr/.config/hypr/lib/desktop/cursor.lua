@@ -291,7 +291,7 @@ local STOP_DAEMON = [[stop_daemon() { [ "$(cat "/proc/$1/comm" 2>/dev/null)" = y
 --- start, which also keeps another daemon's mouse (a ydotool service, a daemon still going away) from counting as this
 --- one. The name alone is not enough: after a fast leave and re-entry the new mouse can reuse the old one's name. And
 --- the address can come back too, so a snapshot pair is dropped once it is seen gone, and the pair
---- returning later counts as new. `strings` drops a null name.
+--- returning later counts as new. A pair removed and re-added between two polls stays unseen. `strings` drops a null name.
 local MICE_LISTED = [=[[.mice[]? | select(.name | strings) | {address, name}]]=]
 local NEW_YDOTOOLD_MOUSE = [=[
   ([$mice[] | select(.name | ascii_downcase | startswith("ydotoold")) | select(IN($before[]) | not)] | length > 0) as $new
