@@ -35,16 +35,6 @@ na=a$run_id
 nb=b$run_id
 nc=c$run_id
 nd=d$run_id
-# The failed-start cases wait out their timeouts, so poll faster than the real one (2 s and 1.2 s instead of 5 s and 3 s).
-wait_for() {
-  local tries=$1
-  shift
-  for _ in $(seq "$tries"); do
-    "$@" && return 0
-    sleep 0.02
-  done
-  return 1
-}
 # The real shadow_pids reads every /proc/*/environ; the sessions in the .sid files are what is under test here.
 shadow_pids() { :; }
 cleanup() {
@@ -154,10 +144,26 @@ teardown >/dev/null 2>&1 || fail "teardown failed"
 # removes the runtime dir. The stub stays alive in both cases, so a missing kill shows as a player left behind.
 failed_start() {
   local label=$1 want=$2 out rc
-  out=$( (trap abort_up EXIT; setup_audio 1) 2>&1)
+  # Polls faster than the real wait_for so the timeouts cost 2 s and 1.2 s; scoped to this call so the passing start keeps the real one.
+  out=$(
+    (
+      wait_for() {
+        local tries=$1
+        shift
+        for _ in $(seq "$tries"); do
+          "$@" && return 0
+          sleep 0.02
+        done
+        return 1
+      }
+      trap abort_up EXIT
+      setup_audio 1
+    ) 2>&1
+  )
   rc=$?
   [[ $rc == 1 ]] || fail "$label: exit code $rc, wanted 1"
   [[ $out == *"$want"* ]] || fail "$label: error text missing '$want': $out"
+  [[ $out == *"== pipewire.log"*"pipewire stub: $label"* ]] || fail "$label: abort_up did not tail pipewire.log: $out"
   [[ $out == *"logs kept in $logs"* ]] || fail "$label: abort_up did not name the kept logs: $out"
   [[ $(players_of | wc -l) == 0 ]] || fail "$label: PipeWire left running"
   [[ ! -d $runtime ]] || fail "$label: the runtime dir was left"
@@ -168,11 +174,12 @@ failed_start() {
 # Case: no sink appears (pw-dump lists nothing).
 make_shadow "$nc"
 printf '#!/bin/sh\necho []\n' >"$shim_dir/pw-dump"
+sed -i '2i echo "pipewire stub: no sink" >&2' "$shim_dir/pipewire"
 failed_start "no sink" "the shadow sink never appeared"
 
 # Case: no socket appears (the daemon runs but never binds).
 make_shadow "$nd"
-printf '#!/bin/bash\nexec -a "fakepipewire-test:$XDG_RUNTIME_DIR" sleep 300\n' >"$shim_dir/pipewire"
+printf '#!/bin/bash\necho "pipewire stub: no socket" >&2\nexec -a "fakepipewire-test:$XDG_RUNTIME_DIR" sleep 300\n' >"$shim_dir/pipewire"
 failed_start "no socket" "PipeWire made no socket"
 
 # --no-audio starts nothing and brings the expected PipeWire error back.
