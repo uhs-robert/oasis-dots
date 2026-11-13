@@ -16,8 +16,9 @@ system_path=/usr/local/bin:/usr/bin:/bin
 owner_state="${XDG_STATE_HOME:-$HOME/.local/state}"
 owner_data="${XDG_DATA_HOME:-$HOME/.local/share}"
 owner_config="${XDG_CONFIG_HOME:-$HOME/.config}"
-# The shadow has no PipeWire socket by design, so the bar's PipeWire connect error is expected.
-expected_errors='quickshell.service.pipewire'
+# With --no-audio the shadow has no PipeWire socket, so the bar's PipeWire connect error is expected; otherwise nothing is.
+expected_errors_no_audio='quickshell.service.pipewire'
+expected_errors_audio='^$'
 fail_pattern='ERROR|TypeError|ReferenceError|Binding loop|is not a type|Could not set initial property|File not found|is not installed|Cannot assign'
 
 die() {
@@ -54,6 +55,9 @@ set_name() {
 # Anchored on "=<runtime>" plus "/" or the end, so shadow "demo" never matches "demo2".
 carries_runtime() { grep -qzE "^[A-Z_]+=$runtime(/.*)?\$" "$1" 2>/dev/null; }
 
+# The pattern of bar log lines that are expected in this shadow, which depends on whether it has a PipeWire.
+expected_errors() { if [[ -f $base/no-audio ]]; then echo "$expected_errors_no_audio"; else echo "$expected_errors_audio"; fi; }
+
 shadow_pids() {
   local env_file pid
   for env_file in /proc/[0-9]*/environ; do
@@ -72,7 +76,7 @@ set_env() {
   shadow_env=(env -i
     HOME="$shadow_home" USER="$USER" LOGNAME="$USER" PATH="$shim_dir:$system_path" LANG="${LANG:-C.UTF-8}" TERM=dumb
     SHADOW_SHIM_LOG="$logs/shim.log" TMUX_TMPDIR="$runtime"
-    XDG_RUNTIME_DIR="$runtime"
+    XDG_RUNTIME_DIR="$runtime" PIPEWIRE_RUNTIME_DIR="$runtime"
     XDG_CONFIG_HOME="$shadow_home/.config" XDG_STATE_HOME="$shadow_home/.local/state"
     XDG_CACHE_HOME="$shadow_home/.cache" XDG_DATA_HOME="$shadow_home/.local/share"
     DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime/bus"
@@ -155,11 +159,136 @@ machine_wide_commands=(
   'pkill:' 'killall:' 'kill:\ -0\ *'
   'systemctl:*\ is-active\ *|*\ is-enabled\ *|*\ status\ *|*\ show\ *|*\ list-units\ *'
   'loginctl:' 'shutdown:' 'reboot:' 'poweroff:' 'halt:' 'sudo:' 'pkexec:' 'keyd:'
-  'brightnessctl:*\ info\ *|*\ get\ *|*\ -l\ *|*\ --list\ *' 'ddcutil:'
+  'ddcutil:'
   'nmcli:*\ list\ *|*\ show\ *|*\ general\ *|*\ -g\ *' 'bluetoothctl:' 'rfkill:' 'powerprofilesctl:'
   'busctl:*\ introspect\ *|*\ tree\ *|*\ list\ *|*\ get-property\ *|*\ status\ *'
   'udisksctl:' 'checkupdates:' 'claude:' 'nm-connection-editor:' 'blueman-manager:'
 )
+
+# The shadow's own pipewire.conf: a null stereo sink as the default audio sink and nothing else that reaches hardware.
+# No libspa-alsa, bluez5, v4l2, libcamera or jack in the spa-libs, so the daemon cannot open the owner's sound card
+# or camera, and no WirePlumber is started. The `default` metadata object that WirePlumber would write is declared
+# here, since the bar's Pipewire service reads the default sink from it. libpipewire-module-access is needed: without
+# it every client connect hangs.
+write_pipewire_conf() {
+  cat >"$base/pipewire.conf" <<'CONF'
+context.properties = {
+    core.daemon = true
+    core.name = pipewire-0
+}
+context.spa-libs = {
+    audio.convert.* = audioconvert/libspa-audioconvert
+    support.*       = support/libspa-support
+}
+context.modules = [
+    { name = libpipewire-module-protocol-native }
+    { name = libpipewire-module-metadata }
+    { name = libpipewire-module-spa-node-factory }
+    { name = libpipewire-module-client-node }
+    { name = libpipewire-module-client-device }
+    { name = libpipewire-module-adapter }
+    { name = libpipewire-module-link-factory }
+    { name = libpipewire-module-access args = { } }
+    { name = libpipewire-module-session-manager }
+]
+context.objects = [
+    { factory = spa-node-factory
+        args = { factory.name = support.node.driver node.name = Dummy-Driver priority.driver = 200000 }
+    }
+    { factory = adapter
+        args = {
+            factory.name = support.null-audio-sink
+            node.name = shadow_sink
+            node.description = "Shadow Speakers"
+            media.class = Audio/Sink
+            audio.position = [ FL FR ]
+            monitor.channel-volumes = true
+            object.linger = true
+        }
+    }
+    { factory = metadata
+        args = {
+            metadata.name = default
+            metadata.values = [
+                { key = default.audio.sink type = "Spa:String:JSON" value = { name = shadow_sink } }
+                { key = default.configured.audio.sink type = "Spa:String:JSON" value = { name = shadow_sink } }
+            ]
+        }
+    }
+]
+CONF
+}
+
+# A fake backlight device under the runtime dir. The brightnessctl stub reports it as `../../../<runtime>/backlight/fake`,
+# which Backlight.qml appends to /sys/class/backlight/, so the bar reads these files without any QML change.
+fake_backlight_dir() { echo "$runtime/backlight/fake"; }
+
+write_backlight() {
+  mkdir -p "$(fake_backlight_dir)"
+  echo 255 >"$(fake_backlight_dir)/max_brightness"
+  echo 128 >"$(fake_backlight_dir)/brightness"
+}
+
+# Replaces the generic brightnessctl stub: info, get and set on the fake device work, other devices only log.
+write_brightnessctl_stub() {
+  local real
+  real=$(PATH=$system_path type -P brightnessctl || true)
+  # shellcheck disable=SC2016 # the stub expands these when it runs
+  {
+    cat <<'STUB'
+#!/bin/sh
+# Generated by shadow.sh: the fake backlight lives under $XDG_RUNTIME_DIR/backlight/fake; nothing touches /sys.
+echo "$(date +%T) brightnessctl $*" >>"${SHADOW_SHIM_LOG:-/dev/null}"
+fake="$XDG_RUNTIME_DIR/backlight/fake"
+dev= min=0 class= machine=0 cmd= value=
+while [ $# -gt 0 ]; do
+  case $1 in
+  -d | --device) dev=$2; shift ;;
+  --device=*) dev=${1#*=} ;;
+  -c | --class) class=$2; shift ;;
+  -m | --machine-readable) machine=1 ;;
+  -n | --min-value) case $2 in [0-9]*) min=$2; shift ;; esac ;;
+  -n[0-9]*) min=${1#-n} ;;
+  --min-value=*) min=${1#*=} ;;
+  info | get | set) cmd=$1; shift; value=${1:-}; break ;;
+  esac
+  shift
+done
+is_fake=0
+case $dev in fake | */fake) is_fake=1 ;; esac
+[ -z "$dev" ] && { [ -z "$class" ] || [ "$class" = backlight ]; } && is_fake=1
+if [ "$is_fake" = 1 ] && [ -d "$fake" ]; then
+  max=$(cat "$fake/max_brightness")
+  cur=$(cat "$fake/brightness")
+  case $cmd in
+  info)
+    pct=$(((cur * 100 + max / 2) / max))
+    if [ "$machine" = 1 ]; then echo "../../../${XDG_RUNTIME_DIR#/}/backlight/fake,backlight,$cur,$pct%,$max"; else echo "Device 'fake' of class 'backlight': Current brightness: $cur ($pct%)"; fi
+    ;;
+  get) echo "$cur" ;;
+  set)
+    case $value in
+    *%+) v=$((cur + (${value%\%+} * max + 50) / 100)) ;;
+    *%-) v=$((cur - (${value%\%-} * max + 50) / 100)) ;;
+    *%) v=$(((${value%\%} * max + 50) / 100)) ;;
+    +*) v=$((cur + ${value#+})) ;;
+    -*) v=$((cur - ${value#-})) ;;
+    *) v=$value ;;
+    esac
+    [ "$v" -lt "$min" ] && v=$min
+    [ "$v" -gt "$max" ] && v=$max
+    echo "$v" >"$fake/brightness"
+    ;;
+  esac
+  exit 0
+fi
+STUB
+    # Anything else (the keyboard backlight, other devices): reads reach the real tool, writes only log.
+    [[ -n $real ]] && printf 'case " $* " in *\ info\ *|*\ get\ *|*\ -l\ *|*\ --list\ *) exec %s "$@" ;; esac\n' "$real"
+    echo 'exit 0'
+  } >"$shim_dir/brightnessctl"
+  chmod +x "$shim_dir/brightnessctl"
+}
 
 write_shims() {
   local entry cmd reads real
@@ -178,6 +307,7 @@ write_shims() {
     } >"$shim_dir/$cmd"
     chmod +x "$shim_dir/$cmd"
   done
+  write_brightnessctl_stub
 }
 
 # The shadow has no voxtype daemon, so `voxtype status --follow` is replaced by a stream of the states written to
@@ -314,7 +444,7 @@ abort_up() {
 up() {
   set_name "${1:-}"
   shift
-  local size=1920x1080 desktop=0 from=
+  local size=1920x1080 desktop=0 from='' audio=1
   local branches=()
   while (($# > 0)); do
     case $1 in
@@ -324,6 +454,10 @@ up() {
       ;;
     --desktop)
       desktop=1
+      shift
+      ;;
+    --no-audio)
+      audio=0
       shift
       ;;
     --from)
@@ -364,6 +498,8 @@ up() {
   setsid "${shadow_env[@]}" dbus-daemon --session --nofork --address="unix:path=$runtime/bus" >"$logs/dbus.log" 2>&1 </dev/null &
   echo "$!" >"$base/bus.sid"
   wait_for 100 test -S "$runtime/bus" || die "session bus did not start; see $logs/dbus.log"
+  write_backlight
+  setup_audio "$audio"
 
   host_socket=$(start_host "$render_node")
   local t_host=$(($(now_ms) - t0))
@@ -401,12 +537,70 @@ up() {
   trap - EXIT
   sleep 1
   local errors
-  errors=$(sed 's/\x1b\[[0-9;]*m//g' "$logs/qs.log" | grep -E "$fail_pattern" | grep -vE "$expected_errors" || true)
+  errors=$(sed 's/\x1b\[[0-9;]*m//g' "$logs/qs.log" | grep -E "$fail_pattern" | grep -vE "$(expected_errors)" || true)
   echo "shadow: '$name' up from ${src#"$HOME"/} (source ${t_src} ms, host ${t_host} ms, hyprland ${t_hypr} ms, bar ${t_qs} ms)"
   [[ -z $errors ]] || {
     echo "$errors" >&2
     echo "shadow: the bar logged errors (above); full log $logs/qs.log" >&2
   }
+}
+
+pw_socket_ready() { [[ -S $runtime/pipewire-0 ]]; }
+
+# pw-cli and pw-dump against the shadow's own PipeWire, which `up` starts. The explicit PIPEWIRE_RUNTIME_DIR (shadow_env
+# has it too) and the socket check mean no call can reach the owner's PipeWire, whose socket is under /run/user.
+require_pw_socket() {
+  [[ -S $runtime/pipewire-0 && $runtime == /tmp/shadow-* ]] || die "shadow '$name' has no PipeWire socket at $runtime/pipewire-0 (started with --no-audio, or not up); refusing"
+}
+
+pw_run() { timeout 5 "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" "$@"; }
+
+sink_listed() { pw_run pw-dump 2>/dev/null | jq -e '.[] | select(.info.props["node.name"] == "shadow_sink")' >/dev/null; }
+
+sink_id() { pw_run pw-dump | jq -r '[.[] | select(.info.props["node.name"] == "shadow_sink") | .id] | first // empty'; }
+
+# Starts the shadow's private PipeWire from shadow_env, with only the generated conf. A shadow without audio is marked,
+# which turns the bar's PipeWire connect error back into an expected one.
+setup_audio() {
+  if (($1)); then
+    write_pipewire_conf
+    setsid "${shadow_env[@]}" pipewire -c "$base/pipewire.conf" >"$logs/pipewire.log" 2>&1 </dev/null &
+    echo "$!" >"$base/pipewire.sid"
+    wait_for 100 pw_socket_ready || die "PipeWire made no socket; see $logs/pipewire.log"
+    wait_for 100 sink_listed || die "the shadow sink never appeared in PipeWire; see $logs/pipewire.log"
+  else
+    touch "$base/no-audio"
+  fi
+}
+
+# Sets the shadow sink's volume or mutes it. The bar shows the cube root of the channel volume (WirePlumber's scale), so
+# 40 is stored as 0.4^3 and reads as 40% in the OSD.
+volume() {
+  set_name "${1:-}"
+  local what=${2:-} id vol
+  [[ $what =~ ^([0-9]|[1-9][0-9]|100|mute|unmute)$ ]] || die "usage: shadow.sh volume <name> {0-100|mute|unmute}"
+  require_pw_socket
+  id=$(sink_id)
+  [[ -n $id ]] || die "the shadow sink is not in the shadow's PipeWire graph"
+  case $what in
+  mute) pw_run pw-cli s "$id" Props '{ mute: true }' >/dev/null ;;
+  unmute) pw_run pw-cli s "$id" Props '{ mute: false }' >/dev/null ;;
+  *)
+    vol=$(awk -v p="$what" 'BEGIN { printf "%.6f", (p / 100) ^ 3 }')
+    pw_run pw-cli s "$id" Props "{ mute: false, channelVolumes: [ $vol, $vol ] }" >/dev/null
+    ;;
+  esac
+}
+
+# Sets the fake backlight (1-100 %) and asks the bar to re-read it, which raises the brightness OSD.
+brightness() {
+  set_name "${1:-}"
+  local pct=${2:-} dir
+  [[ $pct =~ ^([1-9][0-9]?|100)$ ]] || die "usage: shadow.sh brightness <name> <1-100>"
+  dir=$(fake_backlight_dir)
+  [[ $runtime == /tmp/shadow-* && -f $dir/max_brightness ]] || die "shadow '$name' has no fake backlight at $dir; refusing"
+  echo $((pct * $(<"$dir/max_brightness") / 100)) >"$dir/brightness"
+  ipc "$name" brightness refresh >/dev/null
 }
 
 # Drives the bar by action id, with the parameter checks hypr-act applies. The shadow's Hyprland loads no keymaps, so
@@ -628,12 +822,12 @@ status_one() {
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
   local component sid
-  for component in qs keyboard hypr host bus player; do
+  for component in qs keyboard hypr host bus player pipewire; do
     sid=$(cat "$base/$component.sid" 2>/dev/null || true)
     if [[ -n $sid ]] && pgrep -s "$sid" >/dev/null; then echo "  $component: running (session $sid)"; else echo "  $component: not running"; fi
   done
   local errors
-  errors=$(sed 's/\x1b\[[0-9;]*m//g' "$logs/qs.log" 2>/dev/null | grep -E "$fail_pattern" | grep -cvE "$expected_errors" || true)
+  errors=$(sed 's/\x1b\[[0-9;]*m//g' "$logs/qs.log" 2>/dev/null | grep -E "$fail_pattern" | grep -cvE "$(expected_errors)" || true)
   echo "  bar log: $logs/qs.log ($errors error lines)"
 }
 
@@ -676,7 +870,7 @@ teardown() {
     component=${sid_file##*/}
     kill_session "${component%.sid}"
   done
-  for component in player qs keyboard hypr host bus; do kill_session "$component"; done
+  for component in player qs pipewire keyboard hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
   for pid in $(shadow_pids); do
@@ -712,7 +906,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|player <name> {start|stop} [--title T] [--artist A]|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--no-audio] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|player <name> {start|stop} [--title T] [--artist A]|volume <name> {0-100|mute|unmute}|brightness <name> <1-100>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 # Sourced by the tests, it only defines the functions.
@@ -724,6 +918,8 @@ action) action "$@" ;;
 keys) keys "$@" ;;
 voxtype) set_voxtype "$@" ;;
 player) player "$@" ;;
+volume) volume "$@" ;;
+brightness) brightness "$@" ;;
 spawn) spawn "$@" ;;
 hyprctl)
   set_name "${1:-}"
