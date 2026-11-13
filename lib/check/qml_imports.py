@@ -168,7 +168,13 @@ def strip_code(line, state, keep_strings=False):
             elif keep_strings:
                 out.append(c)
         elif depth:
-            if c in "\"'":
+            if c == "/" and regex_may_start("".join(out).rstrip()) and regex_end(line, i) > 0:
+                # A regex literal may hold a quote or brace that opens no string and changes no depth.
+                end = regex_end(line, i)
+                out.append(line[i:end])
+                i = end
+                c = "/"
+            elif c in "\"'":
                 inner_quote = c
             else:
                 depth += (c == "{") - (c == "}")
