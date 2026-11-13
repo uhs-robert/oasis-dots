@@ -326,10 +326,11 @@ poll_review() {
       esac
     fi
     sleep "$review_poll_s"
+    waited=$((SECONDS - started))
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
-    waited=$((SECONDS - started))
-    wait_note "#$number Codex review" "$status${reviewed:+", reviewed ${reviewed:0:7}"}" "$waited" "$review_wait_s"
+    # The loop condition keeps the time from before the read, so a clock tick during the read cannot end the wait early.
+    wait_note "#$number Codex review" "$status${reviewed:+", reviewed ${reviewed:0:7}"}" "$((SECONDS - started))" "$review_wait_s"
   done
 }
 
