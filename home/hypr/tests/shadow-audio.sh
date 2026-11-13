@@ -147,6 +147,7 @@ failed_start() {
   # Polls faster than the real wait_for so the timeouts cost 2 s and 1.2 s; scoped to this call so the passing start keeps the real one.
   out=$(
     (
+      # shellcheck disable=SC2329 # setup_audio calls it, which shadows the real one
       wait_for() {
         local tries=$1
         shift
@@ -179,7 +180,11 @@ failed_start "no sink" "the shadow sink never appeared"
 
 # Case: no socket appears (the daemon runs but never binds).
 make_shadow "$nd"
-printf '#!/bin/bash\necho "pipewire stub: no socket" >&2\nexec -a "fakepipewire-test:$XDG_RUNTIME_DIR" sleep 300\n' >"$shim_dir/pipewire"
+cat >"$shim_dir/pipewire" <<'STUB'
+#!/bin/bash
+echo "pipewire stub: no socket" >&2
+exec -a "fakepipewire-test:$XDG_RUNTIME_DIR" sleep 300
+STUB
 failed_start "no socket" "PipeWire made no socket"
 
 # --no-audio starts nothing and brings the expected PipeWire error back.
