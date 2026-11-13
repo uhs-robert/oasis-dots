@@ -10,10 +10,14 @@ local stub = work .. "/stub"
 local run_dir = os.getenv("XDG_RUNTIME_DIR")
 
 local failures = 0
+local dump_state -- set below, once the log and the callback spool can be read
 local function check(ok, what)
 	if not ok then
 		failures = failures + 1
 		print("FAIL " .. what)
+		if dump_state then
+			dump_state(what)
+		end
 	end
 end
 
@@ -62,6 +66,42 @@ local function line_of(pattern)
 	end
 end
 
+local function shell_quote(text)
+	return "'" .. text:gsub("'", "'\\''") .. "'"
+end
+
+--- Callback files the stub hyprctl spooled and the pump has not read yet, oldest first (dot-named files are unfinished).
+local spool = stub .. "/cb.d"
+local function spool_files()
+	local files = {}
+	local list = io.popen("ls -1 " .. shell_quote(spool) .. " 2>/dev/null")
+	for name in list:read("a"):gmatch("[^\n]+") do
+		files[#files + 1] = spool .. "/" .. name
+	end
+	list:close()
+	return files
+end
+
+local function spool_text()
+	local parts = {}
+	for _, path in ipairs(spool_files()) do
+		parts[#parts + 1] = read_file(path)
+	end
+	return table.concat(parts)
+end
+
+--- Delete the callbacks not yet pumped, for a scenario that needs them lost.
+local function drop_spool()
+	os.execute("rm -f " .. shell_quote(spool) .. "/*")
+end
+
+--- Spool callbacks as the stub does: write, then rename.
+local function inject_callbacks(lines)
+	local tmp = spool .. "/.tmp.inject"
+	write_file(tmp, table.concat(lines, "\n") .. "\n")
+	os.rename(tmp, spool .. "/9999999999999999999.inject")
+end
+
 -- hl: shell commands run for real in the stub sandbox; the rest is recorded or virtual.
 local clock, timers, handlers = 0, {}, {}
 local pointer_reads = math.huge -- reads left before the pointer position goes unreadable
@@ -71,10 +111,6 @@ local function pointer()
 end
 local function set_pointer(x, y)
 	write_file(stub .. "/pointer", x .. " " .. y .. "\n")
-end
-
-local function shell_quote(text)
-	return "'" .. text:gsub("'", "'\\''") .. "'"
 end
 
 local base_dispatch = hl.dispatch
@@ -166,17 +202,28 @@ local pumped = {}
 -- `drag_ready` callbacks a scenario deleted on purpose, so `ready()` does not wait for them. Declared before `fresh()`,
 -- which resets it: a later declaration would leave `fresh()` writing a global.
 local lost_ready = 0
+-- A race between processes: on a failed check the evidence is gone by the time anyone looks, so print it at once.
+dump_state = function(what)
+	io.stderr:write("--- state at failed check: ", what, "\n--- stub log\n", log(), "--- pumped callbacks\n")
+	for _, line in ipairs(pumped) do
+		io.stderr:write(line, "\n")
+	end
+	io.stderr:write("--- unpumped callback spool\n", spool_text(), "---\n")
+end
+-- Each file holds one whole callback and is deleted after reading, so a stub writing during a pump lands in the next one.
 pump = function()
-	os.rename(stub .. "/cb.queue", stub .. "/cb.work")
-	for line in read_file(stub .. "/cb.work"):gmatch("[^\n]+") do
-		pumped[#pumped + 1] = line
-		local fn, err = load(line)
-		check(fn, "callback loads: " .. line .. " " .. tostring(err))
-		if fn then
-			fn()
+	for _, path in ipairs(spool_files()) do
+		local text = read_file(path)
+		os.remove(path)
+		for line in text:gmatch("[^\n]+") do
+			pumped[#pumped + 1] = line
+			local fn, err = load(line)
+			check(fn, "callback loads: " .. line .. " " .. tostring(err))
+			if fn then
+				fn()
+			end
 		end
 	end
-	os.remove(stub .. "/cb.work")
 end
 
 --- Pump callbacks until `cond` holds or `secs` pass.
@@ -241,12 +288,26 @@ local function device_listed()
 	return os.execute("test -f " .. stub .. "/device") == true
 end
 
+local function daemon_ready_callbacks()
+	local n = 0
+	for _, line in ipairs(pumped) do
+		if line:find("daemon_ready", 1, true) then
+			n = n + 1
+		end
+	end
+	return n
+end
+
+-- `daemon_ready` callbacks pumped before the latest submap entry: only a later one means that entry's daemon is up.
+local ready_mark = 0
+
 --- Wait until the daemon the submap entry started is ready (the module's `daemon_ready` callback has run).
 local function warm()
 	local listed = settle(device_listed)
-	sleep(0.2)
-	pump()
-	return listed
+	local ready = settle(function()
+		return daemon_ready_callbacks() > ready_mark
+	end)
+	return listed and ready
 end
 
 --- Load the keymaps fresh: a new Cursor module, state idle, binds registered.
@@ -258,7 +319,7 @@ local function fresh(mode, keep_session)
 	write_file(stub .. "/mode", mode or "")
 	if not keep_session then
 		write_file(stub .. "/log", "")
-		os.remove(stub .. "/cb.queue")
+		drop_spool()
 		os.execute("rm -rf " .. shell_quote(run_dir) .. "/*")
 		for index in pairs(pumped) do
 			pumped[index] = nil
@@ -274,6 +335,14 @@ local function fresh(mode, keep_session)
 	reload_handler = handlers["config.reloaded"]
 	Cursor = require("lib.desktop.cursor")
 	Submap = require("lib.key.submap")
+	if not Submap.enter_marks_ready then
+		local enter = Submap.enter
+		Submap.enter_marks_ready = true
+		Submap.enter = function(...)
+			ready_mark = daemon_ready_callbacks()
+			return enter(...)
+		end
+	end
 	binds_by = {}
 	for _, entry in ipairs(Stubs.binds) do
 		binds_by[entry.submap .. "|" .. entry.key] = entry
@@ -871,7 +940,7 @@ settle(function()
 	return count("ydotool click 0x80") == 1
 end)
 sleep(0.3)
-os.remove(stub .. "/cb.queue") -- the `drag_released` callback never arrives
+drop_spool() -- the `drag_released` callback never arrives
 pump()
 press("V")
 check(count("ydotool click 0x40") == 1, "lost release: still busy before the backstop")
@@ -896,11 +965,11 @@ press("V")
 press("SPACE") -- the press is on its way: the abort waits for `drag_ready`
 -- Waits for the queued `drag_ready` callback without pumping it: this scenario needs it lost.
 local press_deadline = os.time() + 30
-while not read_file(stub .. "/cb.queue"):find("drag_ready", 1, true) and os.time() < press_deadline do
+while not spool_text():find("drag_ready", 1, true) and os.time() < press_deadline do
 	sleep(0.03)
 end
 check(count("ydotool click 0x40") == 1, "lost ready: the press went out")
-os.remove(stub .. "/cb.queue") -- `drag_ready` never arrives
+drop_spool() -- `drag_ready` never arrives
 lost_ready = lost_ready + 1
 pump()
 check(count("ydotool click 0x80") == 0, "lost ready: nothing released before the backstop")
@@ -1156,13 +1225,13 @@ check(
 	"late callbacks: the reload stops the old daemon"
 )
 sleep(0.2)
-os.remove(stub .. "/cb.queue") -- the old script's own late callbacks are replayed below with the rest
+drop_spool() -- the old script's own late callbacks are replayed below with the rest
 Submap.enter("Cursor")
 warm()
 press("V")
 check(ready(), "late callbacks: the new drag presses")
 local releases = count("ydotool click 0x80")
-write_file(stub .. "/cb.queue", table.concat(old_callbacks, "\n") .. "\n")
+inject_callbacks(old_callbacks)
 pump()
 check(#old_callbacks == 4, "late callbacks: the old instance's callbacks were captured")
 check(Cursor.drag_active(), "late callbacks: the new drag is still held")
@@ -1368,6 +1437,28 @@ check(
 local fx, fy = pointer()
 check(fx == 400 and fy == 300, "glide focus: the drop lands on the target")
 assert_clean("glide focus")
+
+--- 50. Many stub callbacks land while pump() runs: none is lost, split or reordered (the lost `drag_ready` race).
+fresh()
+local burst = 60
+local before_burst = #pumped
+os.execute(
+	"env -i PATH="
+		.. stub
+		.. "/bin STUB_DIR="
+		.. stub
+		.. " sh -c 'i=1; while [ $i -le "
+		.. burst
+		.. " ]; do "
+		.. stub
+		.. "/hyprctl eval \"burst_seen = (burst_seen or 0) + 1\" & i=$((i+1)); sleep 0.005; done; wait' >/dev/null 2>&1 &"
+)
+settle(function()
+	return #pumped - before_burst >= burst
+end)
+check(#pumped - before_burst == burst, "callback burst: all " .. burst .. " callbacks pumped once, got " .. (#pumped - before_burst))
+check(burst_seen == burst, "callback burst: every callback ran")
+assert_clean("callback burst")
 
 print(failures == 0 and "cursor drag: all passed" or (failures .. " failed"))
 os.exit(failures == 0 and 0 or 1)

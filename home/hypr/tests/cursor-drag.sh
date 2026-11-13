@@ -10,9 +10,9 @@ work=$(mktemp -d)
 trap 'pkill -f "$work" 2>/dev/null; rm -rf "$work"' EXIT
 
 stub="$work/stub"
-mkdir -p "$stub/bin" "$work/run" "$work/home/.config/hypr/scripts"
+mkdir -p "$stub/bin" "$stub/cb.d" "$work/run" "$work/home/.config/hypr/scripts"
 # The only real tools the stubs and generated scripts use.
-for tool in sh sleep rm mv cat env python3 mkdir touch basename grep jq; do
+for tool in sh sleep rm mv cat env python3 mkdir touch basename grep jq date; do
   ln -s "$(command -v "$tool")" "$stub/bin/$tool" || exit 1
 done
 
@@ -32,7 +32,12 @@ done
 cat >"$stub/hyprctl" <<'STUB'
 #!/bin/sh
 case $1 in
-  eval) echo "$2" >>"$STUB_DIR/cb.queue" ;;
+  # One file per callback, written under a dot name and then renamed, so the pump never reads a half-written one and
+  # never races an append. The timestamp name keeps the callbacks in order.
+  eval)
+    tmp="$STUB_DIR/cb.d/.tmp.$$"
+    echo "$2" >"$tmp"
+    mv "$tmp" "$STUB_DIR/cb.d/$(date +%s%N).$$" ;;
   # The daemon's mouse is listed once its device file exists. As on Hyprland, its keyboard takes the plain name and its
   # mouse gets a -N suffix and its own address, both changing with each start. REUSE_NAME keeps the suffix and
   # REUSE_ADDRESS the address of the first start, as a freed device can come back under both. PREEXISTING_MOUSE adds
