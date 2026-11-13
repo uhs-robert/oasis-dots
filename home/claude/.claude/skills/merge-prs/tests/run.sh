@@ -1016,14 +1016,15 @@ gate --check 7
 check "with no suite it falls back to the commit date" "[[ $code == 0 ]] && grep -q 'has no check on the head 18' <<<\"\$out\""
 
 echo "== gate: a re-requested CodeRabbit review gets its own wait"
-# Each leg needs 2 polls (8 s) and the wait is 14 s: a wait that did not restart at the request would run out in the second
-# leg. Each poll also costs several stub calls, which take seconds under load, so a leg may run 3 s per poll over its pause.
+# Each leg reads "running" twice, then ends: its last running read is 1 poll in, so a restarted wait needs more than 4 s and
+# has 7 s to spare under load. The loop checks the deadline before each sleep and reads once more after it, so leg 2 without
+# a restart reads running at 8 s and 12 s and checks 12 s against the 11 s wait: it gives up before the final read.
 cr_setup "30 min"
 cr_run completed failure "25 min" "20 min"
 printf 'cr_running_reads=2\ncr_run_running=CodeRabbit|in_progress||%s|\ncr_after=CodeRabbit|completed|success|%s|%s\ncr_after_running_reads=2\n' \
   "$(iso '-25 min')" "$(iso '-1 min')" "$(iso '-10 min')" >>"$GH_STATE"
 cr_reviewed_head
-out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=4 MERGE_PRS_REVIEW_WAIT=14 timeout 120 "$script" --check --wait-review --request-review 7 2>&1)
+out=$(PATH="$here:$PATH" MERGE_PRS_REVIEW_POLL=4 MERGE_PRS_REVIEW_WAIT=11 timeout 120 "$script" --check --wait-review --request-review 7 2>&1)
 code=$?
 show "$out"
 check "the wait restarts at the request" "[[ $code == 0 ]] && grep -q '^ready:' <<<\"\$out\""
