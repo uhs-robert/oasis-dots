@@ -428,6 +428,9 @@ mod tests {
                 .find(|(name, _)| *name == "VOXCMD_SPOKEN")
                 .and_then(|(_, value)| value.map(|value| value.to_string_lossy().into_owned()))
         };
-        assert_eq!((spoken_for(true).as_deref(), spoken_for(false).as_deref()), (Some("1"), Some("0")));
+        assert_eq!(
+            (spoken_for(true).as_deref(), spoken_for(false).as_deref()),
+            (Some("1"), Some("0"))
+        );
     }
 }
