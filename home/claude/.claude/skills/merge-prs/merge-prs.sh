@@ -316,7 +316,7 @@ poll_review() {
   # Each poll gets the whole wait: a request made after an earlier poll ran out of time must still be waited for.
   waited=0 wait_beat=$SECONDS
   # The reviewed commit is part of the state: a wait for a review of the head can see it change while the status stays.
-  wait_seen="$status, reviewed ${reviewed:0:7}"
+  wait_seen=$status${reviewed:+", reviewed ${reviewed:0:7}"}
   while ((waited < review_wait_s)); do
     if [[ $status != Running && $status != Pending ]]; then
       case $until in
@@ -329,7 +329,7 @@ poll_review() {
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
     waited=$((SECONDS - started))
-    wait_note "#$number Codex review" "$status, reviewed ${reviewed:0:7}" "$waited" "$review_wait_s"
+    wait_note "#$number Codex review" "$status${reviewed:+", reviewed ${reviewed:0:7}"}" "$waited" "$review_wait_s"
   done
 }
 
