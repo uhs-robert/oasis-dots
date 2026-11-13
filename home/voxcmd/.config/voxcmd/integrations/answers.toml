@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Quick answers: spoken math through qalc, the time and date here and in other time zones; weather questions open
 # the bar's weather popup. Format: ~/.config/voxcmd/README.md
 name = "Answers"

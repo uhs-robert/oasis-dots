@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Google Calendar by voice: join or open the current meeting, say what is next, show a day in the bar's clock popup,
 # prefill a new event in Google's form, open the calendar. Events come from the cache calendar-sync writes.
 # Format: ~/.config/voxcmd/README.md

@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Launches the auto-launcher sessions by name, as picking one in the Session Launcher does. Format: ~/.config/voxcmd/README.md
 name = "Sessions"
 

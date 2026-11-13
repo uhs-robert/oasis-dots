@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Timers and reminders as transient systemd user timers. Format: ~/.config/voxcmd/README.md
 name = "Timers"
 

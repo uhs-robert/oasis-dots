@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Bare key presses in the focused window: "press enter", "hit escape", "press down three times". Format:
 # ~/.config/voxcmd/README.md
 name = "Keys"

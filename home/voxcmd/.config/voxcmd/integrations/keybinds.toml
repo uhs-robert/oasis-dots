@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Runs any described Hyprland keybind by saying its description. Format: ~/.config/voxcmd/README.md
 name = "Keybinds"
 # Tried only when no other integration can run the phrase, so "close window" works without a verb.

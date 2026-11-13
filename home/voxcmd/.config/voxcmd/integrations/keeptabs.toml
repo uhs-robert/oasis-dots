@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # Jumps to coding agents tracked by keeptabs, through keeptabs-pick like the bar's popup. Format: ~/.config/voxcmd/README.md
 name = "Agents"
 

@@ -1,0 +1,359 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "action_labels": {
+      "description": "Whether the action names are offered as labels.",
+      "type": "boolean"
+    },
+    "actions": {
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "description": "A shell command to run.",
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_arg": {
+                "description": "Reserved; nothing reads it yet.",
+                "type": "string"
+              },
+              "candidates": {
+                "description": "A shell command that prints the candidates.",
+                "type": "string"
+              },
+              "enter_mode": {
+                "description": "The action enters the mode.",
+                "type": "boolean"
+              },
+              "free_text": {
+                "description": "Take any words as the target.",
+                "type": "boolean"
+              },
+              "leave_mode": {
+                "description": "A command that leaves the mode.",
+                "type": "string"
+              },
+              "listen_for_pick": {
+                "description": "Listen for the pick instead of asking on screen.",
+                "type": "boolean"
+              },
+              "miss": {
+                "description": "The action is the miss handler.",
+                "type": "boolean"
+              },
+              "mode_entry": {
+                "description": "The action opens the integration's mode.",
+                "type": "boolean"
+              },
+              "mode_switch": {
+                "description": "The action switches the session's mode.",
+                "type": "boolean"
+              },
+              "no_match": {
+                "description": "What to say when no candidate matches.",
+                "type": "string"
+              },
+              "provider": {
+                "description": "A built-in candidate source.",
+                "type": "string"
+              },
+              "run": {
+                "description": "The shell command.",
+                "type": "string"
+              },
+              "silent": {
+                "description": "Run without a spoken or notified result.",
+                "type": "boolean"
+              },
+              "timeout_secs": {
+                "description": "Seconds before the action is given up.",
+                "type": "number"
+              },
+              "wait": {
+                "description": "A command to wait on after the action.",
+                "type": "string"
+              },
+              "wait_hook": {
+                "description": "A hook to wait on after the action.",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "description": "The actions the verbs name.",
+      "type": "object"
+    },
+    "confirm": {
+      "description": "Ask before running any verb.",
+      "type": "boolean"
+    },
+    "confirm_labels": {
+      "description": "Action labels that ask before running.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "define": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Named patterns a verb's `match` can use.",
+      "type": "object"
+    },
+    "examples": {
+      "description": "Example phrases.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "fallback": {
+      "description": "Tried only when no other integration offered an option.",
+      "type": "boolean"
+    },
+    "force_prefixes": {
+      "description": "Spoken prefixes that force this integration.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "help": {
+      "description": "What `help` lists for an action: a hook (`list`), one static row (`id`, `label`) or the candidates.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "The action this entry describes.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The id of a static row; needs `label`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "The label of a static row.",
+            "type": "string"
+          },
+          "list": {
+            "description": "A hook that prints the rows; excludes `id` and `label`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "match_ignore_words": {
+      "description": "Words dropped before a target is matched.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "mode": {
+      "additionalProperties": false,
+      "properties": {
+        "alive": {
+          "description": "A command that says whether the mode is still alive.",
+          "type": "string"
+        },
+        "allows_switches": {
+          "description": "Whether other modes can be entered from this one.",
+          "type": "boolean"
+        },
+        "bare_exits": {
+          "description": "Whether a bare `stop` leaves the mode.",
+          "type": "boolean"
+        },
+        "default_exits": {
+          "description": "Whether `<mode> stop` and `<mode> off` leave the mode.",
+          "type": "boolean"
+        },
+        "ended": {
+          "description": "A command run when the mode ends.",
+          "type": "string"
+        },
+        "endings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "The action to run.",
+                "type": "string"
+              },
+              "match": {
+                "description": "The pattern that ends the mode.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "action",
+              "match"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "exit_hint": {
+          "description": "Spoken hint on how to leave.",
+          "type": "string"
+        },
+        "exit_object": {
+          "description": "The word that follows `stop` or `off` to leave the mode.",
+          "type": "string"
+        },
+        "exit_phrases": {
+          "description": "Extra spoken phrases that leave the mode.",
+          "type": "string"
+        },
+        "handle_turn": {
+          "description": "The action that handles each turn.",
+          "type": "string"
+        },
+        "label": {
+          "description": "Name shown for the mode.",
+          "type": "string"
+        },
+        "listen": {
+          "additionalProperties": false,
+          "properties": {
+            "max_secs": {
+              "type": "number"
+            },
+            "no_speech_secs": {
+              "type": "number"
+            },
+            "silence_secs": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "one_recording": {
+          "description": "Keep one recording open across turns.",
+          "type": "boolean"
+        },
+        "open_ended": {
+          "description": "The mode hears free speech.",
+          "type": "boolean"
+        },
+        "private": {
+          "description": "Keep the turns out of the logs.",
+          "type": "boolean"
+        },
+        "rewrite": {
+          "additionalProperties": false,
+          "properties": {
+            "drop": {
+              "description": "Pattern; a turn that matches routes nothing.",
+              "type": "string"
+            },
+            "keep": {
+              "description": "Pattern; a turn that matches routes as spoken.",
+              "type": "string"
+            },
+            "prefix": {
+              "description": "Words put before any other turn.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "rewrite_hook": {
+          "description": "A hook that rewrites the turn.",
+          "type": "string"
+        },
+        "timeout_secs": {
+          "type": "number"
+        },
+        "wake_listens": {
+          "description": "The wake word starts a turn in the mode.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": {
+      "description": "Display name; the file stem when absent.",
+      "type": "string"
+    },
+    "picker": {
+      "description": "The action that picks among candidates.",
+      "type": "string"
+    },
+    "private_labels": {
+      "description": "Keep candidate labels out of the logs.",
+      "type": "boolean"
+    },
+    "silent": {
+      "description": "Run without a spoken or notified result.",
+      "type": "boolean"
+    },
+    "surface": {
+      "additionalProperties": false,
+      "properties": {
+        "state_file": {
+          "description": "File under the runtime dir whose `open` flag says the surface is open.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "state_file"
+      ],
+      "type": "object"
+    },
+    "target_match": {
+      "default": "fuzzy",
+      "description": "How a spoken target is matched to a candidate.",
+      "enum": [
+        "fuzzy",
+        "words"
+      ]
+    },
+    "verbs": {
+      "description": "The phrases the integration takes, tried in order.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "The action to run.",
+            "type": "string"
+          },
+          "label": {
+            "description": "A name for the verb.",
+            "type": "string"
+          },
+          "match": {
+            "description": "The phrase pattern.",
+            "type": "string"
+          },
+          "requires": {
+            "description": "A define the verb needs.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "match"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "verbs"
+  ],
+  "title": "voxcmd integration",
+  "type": "object"
+}

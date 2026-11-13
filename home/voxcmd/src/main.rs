@@ -79,7 +79,6 @@ fn version() -> &'static str {
 
 /// Each arm either calls the handler in the module the CLI table names, or names the port item that adds it.
 fn dispatch(command: Command) -> Result<Option<String>, CliError> {
-    let later = |subcommand: &str, phase_item: &str| Err(CliError::not_implemented(subcommand, phase_item));
     match command {
         Command::Run(args) => route::runner::run(args).map(|()| None),
         Command::Explain(args) => route::trace::run(args).map(Some),
@@ -120,7 +119,7 @@ fn dispatch(command: Command) -> Result<Option<String>, CliError> {
         Command::Integrations(IntegrationsCommand::List(json)) => config::list::run(json.json),
         Command::Integrations(IntegrationsCommand::Check { json, files }) => config::check::run(&files, json.json),
         Command::Integrations(IntegrationsCommand::Examples { json, route }) => config::examples::run(json.json, route),
-        Command::Integrations(IntegrationsCommand::Schema) => later("integrations schema", "2.6"),
+        Command::Integrations(IntegrationsCommand::Schema) => Ok(Some(config::schema_json::run())),
         Command::Help => {
             let code = route::runner::with_runner(&route::runner::Heard::default(), help::run)?;
             if code == 0 {

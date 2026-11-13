@@ -1,3 +1,4 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
 # The bar's notification center: clear it, open it, and show the newest notification again. Do not disturb lives in
 # system.toml. Format: ~/.config/voxcmd/README.md
 name = "Notifications"
