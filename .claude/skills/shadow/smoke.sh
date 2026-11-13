@@ -111,7 +111,7 @@ is_region_style() { [[ " ${region_styles[*]} " == *" $1 "* ]]; }
 if ((dry_run)); then
   echo "smoke: out $out"
   for s in "${styles[@]}"; do
-    echo "smoke: $s: style set, popup battery, media popup (fake player), osd (voxtype recording), which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
+    echo "smoke: $s: style set, popup battery, media popup (fake player), osd (voxtype recording), volume and brightness osd, volume popup, which-key (fixture payload), click hints (fixture boxes)$(is_region_style "$s" && echo ', region (pixel, select)')"
   done
   echo "smoke: hint bars (submap, Edit Bar, Edit Bar monitor select): goldeneye with the frame on (top bar, bottom bar), ps1 without it"
   "$shadow" status "$name" | head -1
@@ -334,6 +334,7 @@ sleep 0.5
 # The media popup needs a player on the shadow's private bus.
 "$shadow" player "$name" start --title "Smoke Test Track" --artist "Smoke Artist" >/dev/null || missing+=("MISS fake player")
 
+shot_styles=()
 for style in "${styles[@]}"; do
   echo "smoke: $style"
   q style set "$style" >/dev/null
@@ -366,6 +367,28 @@ for style in "${styles[@]}"; do
   } || missing+=("MISS $style osd")
   "$shadow" voxtype "$name" idle
   check_blank "$style" osd quickshell-osd
+
+  # The shadow's private sink and fake backlight, set to a different level each style so the OSD always fires.
+  level=$((30 + 7 * ${#shot_styles[@]}))
+  shot_styles+=("$style")
+  "$shadow" volume "$name" "$level" && wait_layer quickshell-osd && "$shadow" wait "$name" osd volume >/dev/null && {
+    sleep 0.4
+    shoot "$style" osd_volume quickshell-osd
+  } || missing+=("MISS $style volume osd")
+  sleep 3
+  "$shadow" brightness "$name" "$level" && wait_layer quickshell-osd && "$shadow" wait "$name" osd brightness >/dev/null && {
+    sleep 0.4
+    shoot "$style" osd_brightness quickshell-osd
+  } || missing+=("MISS $style brightness osd")
+  sleep 3
+  q popup open volume >/dev/null
+  wait_layer quickshell-popup && "$shadow" wait "$name" popup volume >/dev/null && {
+    sleep 0.5
+    shoot "$style" volume quickshell-popup
+  } || missing+=("MISS $style volume popup")
+  q popup close >/dev/null
+  check_blank "$style" volume quickshell-popup
+  sleep 0.3
 
   q hyprvim_whichkey open "$whichkey_payload" >/dev/null
   wait_layer quickshell-whichkey && {
