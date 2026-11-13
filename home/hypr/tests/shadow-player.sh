@@ -160,6 +160,12 @@ if command -v dbus-daemon >/dev/null && command -v playerctl >/dev/null && pytho
   grep -q refusing <<<"$refused" || fail "the player accepted the owner's bus"
   refused=$(env -i PATH="$PATH" DBUS_SESSION_BUS_ADDRESS="unix:path=$live/bus" timeout 5 python3 "$fake" 2>&1)
   grep -q refusing <<<"$refused" || fail "the player accepted an empty runtime dir"
+  # A `..` or symlink route into the owner's runtime dir is the same dir.
+  ln -s /run/user/1 "$work/owner-link"
+  for alias in /tmp/../run/user/1 "$work/owner-link"; do
+    refused=$(env -i PATH="$PATH" XDG_RUNTIME_DIR="$alias" DBUS_SESSION_BUS_ADDRESS="unix:path=$alias/bus" timeout 5 python3 "$fake" 2>&1)
+    grep -q refusing <<<"$refused" || fail "the player accepted the owner's runtime dir through $alias"
+  done
   refused=$(env -i PATH="$PATH" XDG_RUNTIME_DIR="$live" DBUS_SESSION_BUS_ADDRESS="unix:path=$live/other" timeout 5 python3 "$fake" 2>&1)
   grep -q refusing <<<"$refused" || fail "the player accepted a bus outside <runtime>/bus"
   kill "$player_pid" "$bus_pid" 2>/dev/null
