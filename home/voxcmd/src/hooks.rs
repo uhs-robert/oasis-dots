@@ -87,6 +87,9 @@ pub struct HookRun {
     /// The answer of an identical query already made for this phrase, not a run of its own (`millis` is 0).
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub reused: bool,
+    /// Not started because a built-in provider answered the phrase first (`resolve_all`).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub claimed: bool,
     #[serde(skip)]
     pub lookup: Lookup,
 }
@@ -104,6 +107,7 @@ impl HookRun {
     pub fn skipped_claimed(integration: &Integration, action: &str) -> Self {
         let mut run = Self::unhooked(integration, action, "(not run: phrase claimed by a built-in provider)");
         run.lookup = Lookup::Yield;
+        run.claimed = true;
         run
     }
 
@@ -121,6 +125,7 @@ impl HookRun {
             stderr_tail: Vec::new(),
             problem: None,
             reused: false,
+            claimed: false,
             lookup: Lookup::Unhooked,
         }
     }

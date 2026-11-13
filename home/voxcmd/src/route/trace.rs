@@ -140,6 +140,9 @@ pub enum IntegrationOutcome {
     },
     YieldedByHook {
         action: String,
+        /// The hook never started: a built-in provider answered the phrase.
+        #[serde(skip_serializing_if = "std::ops::Not::not")]
+        claimed: bool,
     },
     NotTried {
         reason: String,
@@ -321,13 +324,19 @@ fn why_lines(out: &mut String, step: &StepTrace, prefix: &str) {
                     near.action, near.leftover
                 );
             }
-            IntegrationOutcome::YieldedByHook { action } => {
+            IntegrationOutcome::YieldedByHook { action, claimed: true } => {
+                let _ = writeln!(
+                    out,
+                    "    {who}: the {action} hook did not run: the monitors provider answered"
+                );
+            }
+            IntegrationOutcome::YieldedByHook { action, claimed: false } => {
                 let _ = writeln!(out, "    {who}: the {action} hook yielded");
             }
             IntegrationOutcome::NoVerb { near_miss: None } | IntegrationOutcome::NotTried { .. } => {}
         }
     }
-    for hook in &step.hooks {
+    for hook in step.hooks.iter().filter(|hook| !hook.claimed) {
         let timing = if hook.reused {
             "reused".to_string()
         } else {

@@ -232,6 +232,36 @@ fn a_provider_that_fails_or_offers_only_weak_candidates_claims_nothing() {
         .insert(("monitors", "focus"), Lookup::Candidates(vec![weak_candidate]));
     let explain = explain_monitors("go to the center monitor", &weak);
     assert!(weak.started("apps"), "{}", explain.text());
+    assert!(
+        only_step(&explain)
+            .options
+            .iter()
+            .any(|option| option.integration == "Apps"),
+        "{}",
+        explain.text()
+    );
+}
+
+#[test]
+fn a_provider_error_claims_the_phrase_over_an_app_named_like_it() {
+    let hooks = CannedHooks::default()
+        .says(
+            "monitors",
+            "focus",
+            &[("error:no left monitor", "no left monitor", Some("left"))],
+        )
+        .says("apps", "focus", &[("0x1", "left monitor", None)]);
+    let explain = explain_monitors("go to the left monitor", &hooks);
+    let step = only_step(&explain);
+    assert!(!hooks.started("apps"), "{}", explain.text());
+    assert_eq!(step.options.len(), 1, "{}", explain.text());
+    assert_eq!(step.options[0].integration, "Monitors");
+    assert!(
+        explain
+            .text()
+            .contains("the focus hook did not run: the monitors provider answered")
+    );
+    assert!(!explain.text().contains("hook Apps focus"), "{}", explain.text());
 }
 
 #[test]
@@ -524,7 +554,7 @@ fn a_hook_that_yields_leaves_the_phrase_to_the_next_integration() {
     assert_eq!(step.options[0].integration, "Keybinds");
     assert!(step.integrations.iter().any(|trace| matches!(
         &trace.outcome,
-        super::trace::IntegrationOutcome::YieldedByHook { action } if action == "close"
+        super::trace::IntegrationOutcome::YieldedByHook { action, .. } if action == "close"
     )));
 }
 
