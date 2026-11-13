@@ -56,6 +56,9 @@ COMMIT_VALUE_OPTIONS = "mFCct"
 ATTACHED_ONLY_OPTIONS = "Su"
 # `<<<` is a here-string, not a heredoc.
 HEREDOC_OPENER = re.compile(r"(?<!<)<<(?!<)(?P<dash>-?)[ \t]*(?P<quote>['\"]?)(?P<delimiter>\w+)(?P=quote)")
+# A `case` or `esac` keyword. The `)` after a case pattern does not close the substitution around the `case`.
+CASE_OPEN = re.compile(r"(?<![^\s;&|(`])case\s+[^\n;|&]+?\s+in\b")
+CASE_CLOSE = re.compile(r"(?<![^\s;])esac\b")
 # CommonMark HTML blocks of kind 6 end at a blank line. Kind 1 (pre, script, style, textarea) ends at its close tag.
 HTML_BLOCK_TAGS = (
     "address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|"
@@ -319,14 +322,22 @@ def heredoc_bodies(command, newline, openers, bodies_end_by_line):
     return bodies, position
 
 
-def read_command_words(command, start, bodies_end_by_line):
+def quote_end(command, index, quote):
+    """The index after the `quote` that closes a quote whose content starts at `index`. A backslash escapes."""
+    while index < len(command) and command[index] != quote:
+        index += 2 if command[index] == "\\" else 1
+    return index + 1
+
+
+def read_command_words(command, start, bodies_end_by_line, in_backticks=False):
     """Read the shell words of the command at `start`, up to the first unquoted operator, newline or closing
-    `)`. Returns (words, heredocs, end). `heredocs` maps a word index to the body of a heredoc
-    opened inside that word, as in `--body "$(cat <<'EOF'`, and None to the command's own stdin heredoc.
+    `)`, or a closing backtick when `in_backticks`. Returns (words, heredocs, end). `heredocs` maps a word
+    index to the body of a heredoc opened inside that word, as in `--body "$(cat <<'EOF'`, and None to the
+    command's own stdin heredoc.
     The bodies it reads are noted in `bodies_end_by_line`, so the caller skips them at the newline."""
     words, heredocs, openers = [], {}, []
     word, in_word = [], False
-    nesting = []  # open quotes and substitutions, innermost last: "'", '"' or "("
+    nesting = []  # open quotes and substitutions, innermost last: "'", "$'", '"', "(", "case" or "`"
     index = start
 
     def end_word():
@@ -349,6 +360,17 @@ def read_command_words(command, start, bodies_end_by_line):
         if inner == "'":
             if char == "'":
                 nesting.pop()
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if inner == "$'":
+            # ANSI-C quotes: a backslash escapes, so `\'` does not close them.
+            if char == "'":
+                nesting.pop()
+            elif char == "\\" and index + 1 < len(command):
+                index += 1
+                word.append({"n": "\n", "t": "\t"}.get(command[index], command[index]))
             else:
                 word.append(char)
             index += 1
@@ -391,16 +413,38 @@ def read_command_words(command, start, bodies_end_by_line):
         if char in "'\"":
             nesting.append(char)
             in_word = True
+        elif command.startswith("$'", index):
+            nesting.append("$'")
+            in_word = True
+            index += 1
         elif command.startswith("$(", index):
             nesting.append("(")
             word.append("$(")
             index += 1
-        elif inner == "(":
-            if char == ")":
-                nesting.pop()
-            elif char == "(":
-                nesting.append("(")
+        elif char == "`" and inner == "`":
+            nesting.pop()
             word.append(char)
+        elif char == "`" and not (in_backticks and inner is None):
+            nesting.append("`")
+            word.append(char)
+        elif inner in ("(", "case", "`"):
+            case_open = CASE_OPEN.match(command, index) if char == "c" else None
+            case_close = CASE_CLOSE.match(command, index) if char == "e" and inner == "case" else None
+            if case_open or case_close:
+                keyword = case_open or case_close
+                if case_open:
+                    nesting.append("case")
+                else:
+                    nesting.pop()
+                word.append(keyword.group())
+                index = keyword.end() - 1
+            elif char == ")" and inner == "(":
+                nesting.pop()
+                word.append(char)
+            else:
+                if char == "(":
+                    nesting.append("(")
+                word.append(char)
         elif char in " \t":
             end_word()
         elif char == "#" and not word and not in_word:
@@ -519,11 +563,12 @@ def message_sources(command):
     one: also inside `$(...)` or after another command, but not in quoted text, a comment or a body. Each
     command reads only its own words, so text before it cannot hide it."""
     sources, bodies_end_by_line = [], {}
-    # Open contexts, innermost last: "'", '"', "(" for a command substitution or subshell, "((" for arithmetic
-    # and "a(" for a parenthesis inside arithmetic.
+    # Open contexts, innermost last: "'", '"', "(" for a command substitution or subshell, "((" for arithmetic,
+    # "a(" for a parenthesis inside arithmetic, "case" for a `case` block and "`" for a backtick substitution.
     nesting = []
     line_openers = []  # (delimiter, strip_tabs) of other commands' heredocs opened on the current line
     last_line_body = None  # body of the last heredoc of another command on this line, for `cat <<EOF | gh ...`
+    pipeline_open = False  # no `;`, `&&`, `||` or `&` since that heredoc, so a `|` still feeds it to the next command
     index = 0
 
     def take_line_bodies(newline):
@@ -555,7 +600,10 @@ def message_sources(command):
             index += 1
             continue
         if inner in ("((", "a("):
-            # Arithmetic: `<<` is a shift and quotes are rare, so only the parentheses count.
+            # Arithmetic: `<<` is a shift, so only the parentheses and quotes count.
+            if char in "'\"":
+                index = quote_end(command, index + 1, char)
+                continue
             if char == "(":
                 nesting.append("a(")
             elif char == ")":
@@ -569,7 +617,7 @@ def message_sources(command):
         if char == "\n":
             if line_openers:
                 take_line_bodies(index)
-            last_line_body = None
+            last_line_body, pipeline_open = None, False
             index = bodies_end_by_line.get(index, index + 1)
             continue
         if char == "#" and (index == 0 or command[index - 1] in " \t\n;&|("):
@@ -579,6 +627,7 @@ def message_sources(command):
         opener = HEREDOC_OPENER.match(command, index) if char == "<" else None
         if opener:
             line_openers.append((opener.group("delimiter"), opener.group("dash") == "-"))
+            pipeline_open = True
             index = opener.end()
             continue
         gh_command = GH_BODY_COMMAND.match(command, index) if char == "g" else None
@@ -589,8 +638,8 @@ def message_sources(command):
             # reads its own.
             if line_openers and newline != -1:
                 take_line_bodies(newline)
-            words, heredocs, end = read_command_words(command, index, bodies_end_by_line)
-            if last_line_body is not None and piped_in(command, index):
+            words, heredocs, end = read_command_words(command, index, bodies_end_by_line, in_backticks="`" in nesting)
+            if last_line_body is not None and pipeline_open and piped_in(command, index):
                 heredocs.setdefault(None, last_line_body)
             if gh_command:
                 kind, source = gh_command.group("kind"), gh_command_source(words, heredocs)
@@ -608,10 +657,25 @@ def message_sources(command):
             nesting.append("(")
             index += 2 if char == "$" else 1
             continue
+        if command.startswith("$'", index):
+            index = quote_end(command, index + 2, "'")
+            continue
         if char in "'\"":
             nesting.append(char)
-        elif char == ")" and nesting:
+        elif char == "`" and inner == "`":
             nesting.pop()
+        elif char == "`":
+            nesting.append("`")
+        elif char == ")" and inner == "(":
+            nesting.pop()
+        elif char == "c" and nesting and CASE_OPEN.match(command, index):
+            nesting.append("case")
+            index = CASE_OPEN.match(command, index).end() - 1
+        elif char == "e" and inner == "case" and CASE_CLOSE.match(command, index):
+            nesting.pop()
+            index += 3
+        elif char == ";" or (char == "&" and command[index - 1] not in "<>") or command.startswith("||", index):
+            pipeline_open = False
         index += 1
     return sources
 
