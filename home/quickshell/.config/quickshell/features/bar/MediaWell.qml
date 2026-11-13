@@ -56,9 +56,9 @@ Item {
         font.capitalization: root.font.capitalization
         font.letterSpacing: root.font.letterSpacing
     }
-    // Two stacked lines must fit the well's inner height, so they shrink with it.
+    // Text must fit the well's inner height, so it shrinks with it: a lone line is capped, two stacked lines share it.
     function line_size(small) {
-        if (root.text_lines.length < 2) return root.font.pixelSize;
+        if (root.text_lines.length < 2) return MediaText.inline_size(root.height - root.pad * 2, root.font.pixelSize, root.line_ratio);
         const sizes = MediaText.stacked_sizes(root.height - root.pad * 2, root.font.pixelSize, root.line_ratio);
         return small ? sizes.artist : sizes.title;
     }
@@ -268,7 +268,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 font.family: root.font.family
-                font.pixelSize: Math.max(8, root.font.pixelSize - 2)
+                font.pixelSize: Math.min(Math.max(8, root.font.pixelSize - 2), MediaText.inline_size(root.height - root.pad * 2 - 4, root.font.pixelSize, root.line_ratio))
                 color: Style.bar_fg
             }
         }
