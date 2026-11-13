@@ -103,6 +103,8 @@ else
   env_file=$runtime/pipewire.env
   grep -qx "PIPEWIRE_RUNTIME_DIR=$runtime" "$env_file" || fail "PIPEWIRE_RUNTIME_DIR is not the shadow's: $(grep PIPEWIRE "$env_file")"
   grep -qx "XDG_RUNTIME_DIR=$runtime" "$env_file" || fail "XDG_RUNTIME_DIR is not the shadow's"
+  grep -qx "PIPEWIRE_CONFIG_DIR=$base/pw-config" "$env_file" || fail "PIPEWIRE_CONFIG_DIR is not the shadow-only dir: $(grep PIPEWIRE "$env_file")"
+  [[ -d $base/pw-config && -z $(ls -A "$base/pw-config") ]] || fail "the shadow-only config dir is missing or not empty"
   grep -qx "HOME=$shadow_home" "$env_file" || fail "HOME is not the shadow's"
   grep -q 'owner-pw\|owner-bus' "$env_file" && fail "an owner variable reached PipeWire: $(grep 'owner-' "$env_file")"
   grep -qx "ARGS -c $base/pipewire.conf" "$env_file" || fail "pipewire args wrong: $(grep ARGS "$env_file")"
@@ -158,7 +160,31 @@ bc -d some_kbd_backlight set 50%
 [[ $(bc -d fake get) == 255 ]] || fail "a set on another device changed the fake"
 grep -q 'set 50%' "$logs/shim.log" || fail "the call was not logged"
 
-# Reads on other devices reach the real tool with their full arguments (the test points system_path at a recorder).
+# The short operations, the bare machine-readable read and relative steps (media.lua and voxcmd system.sh use these).
+fake_value() { cat "$(fake_backlight_dir)/brightness"; }
+bc -d fake set 50%
+bc s 10%+
+[[ $(fake_value) == 154 ]] || fail "s 10%+ wrote $(fake_value), wanted 154"
+bc s +10%
+[[ $(fake_value) == 180 ]] || fail "s +10% wrote $(fake_value), wanted 180"
+bc s 10%-
+[[ $(fake_value) == 154 ]] || fail "s 10%- wrote $(fake_value), wanted 154"
+bc s -10%
+[[ $(fake_value) == 128 ]] || fail "s -10% wrote $(fake_value), wanted 128"
+bc -n1 set 10%-
+[[ $(fake_value) == 102 ]] || fail "-n1 set 10%- wrote $(fake_value), wanted 102"
+bc s 40%
+[[ $(fake_value) == 102 ]] || fail "s 40% wrote $(fake_value), wanted 102"
+[[ $(bc g) == 102 ]] || fail "g: $(bc g)"
+[[ $(bc m) == 255 ]] || fail "m: $(bc m)"
+[[ $(bc i -m | cut -d, -f4) == 40% ]] || fail "i -m: $(bc i -m)"
+[[ $(bc -m | cut -d, -f4) == 40% ]] || fail "bare -m: $(bc -m)"
+bc -d fake set 5
+bc s +5
+[[ $(fake_value) == 10 ]] || fail "s +5 wrote $(fake_value), wanted 10"
+bc -d fake set 50%
+
+# Save and restore never run and never reach the real tool, which -r would write to the real backlight.
 real_dir=$work/realbin
 mkdir -p "$real_dir"
 printf '#!/bin/sh\necho "REAL $*" >>"%s/real.calls"\n' "$work" >"$real_dir/brightnessctl"
@@ -168,6 +194,20 @@ system_path=$real_dir
 write_shims
 system_path=$saved_system_path
 write_backlight
+: >"$work/real.calls"
+bc -r
+bc --restore
+bc -s set 10
+bc -d fake -s set 10%
+bc -d amdgpu_bl1 -r
+bc -c leds --save set 1
+bc -sd amdgpu_bl1 set 1
+bc -d amdgpu_bl1 set 5 -r
+[[ ! -s $work/real.calls ]] || fail "a save or restore call reached the real tool: $(<"$work/real.calls")"
+[[ $(fake_value) == 128 ]] || fail "a save or restore call changed the fake device: $(fake_value)"
+: >"$work/real.calls"
+
+# Reads on other devices reach the real tool with their full arguments (the test points system_path at a recorder).
 : >"$work/real.calls"
 bc -c leds -m info
 bc -d amdgpu_bl1 get
