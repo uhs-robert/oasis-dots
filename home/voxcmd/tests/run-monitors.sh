@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Tests for voxcmd's monitor phrases (monitors.sh): which monitor each word names on several layouts, the dispatch that
-# follows, phrases that must keep their old route, and that the words agree with the Quickshell overview's rule
-# (features/overview/Voice.js, mirrored by monitor-places.jq). run.sh runs this beside its own checks; run alone:
+# Tests for voxcmd's monitor phrases (the monitors provider and monitors.sh): which monitor each word names on several
+# layouts, the dispatch that follows, phrases that must keep their old route, and that monitor-places.jq agrees with the
+# Quickshell overview's rule (features/overview/Voice.js). The Rust port of the jq is checked by `cargo test`. run.sh runs this beside its own checks; run alone:
 # home/voxcmd/tests/run-monitors.sh
 # shellcheck disable=SC2034
 set -uo pipefail

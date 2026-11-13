@@ -15,7 +15,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 const BUILTIN_WORDS: [&str; 4] = ["laptop", "builtin", "built in", "internal"];
-const SLOT_LOOKUP_WITHIN: Duration = Duration::from_secs(2);
+/// The monitor list may take 2 s (hypr.rs), so a hung Hyprland costs 3 s in all, the budget the shell hook had.
+const SLOT_LOOKUP_WITHIN: Duration = Duration::from_secs(1);
 
 impl BuiltinHooks {
     pub(super) fn monitors(&self, integration: &Integration, query: &HookQuery) -> HookRun {
@@ -71,10 +72,15 @@ fn slot_names() -> String {
 
 /// The connected monitors with their words and slots. None when Hyprland does not list monitors.
 fn places() -> Vec<Place> {
-    let Some(monitors) = hypr::monitors() else {
-        return Vec::new();
-    };
-    places_of(&monitors, &slot_names())
+    places_from(hypr::monitors(), slot_names)
+}
+
+/// No monitor list is no places, and then the slot lookup is not asked.
+fn places_from(monitors: Option<Value>, slot_names: impl FnOnce() -> String) -> Vec<Place> {
+    match monitors {
+        Some(monitors) => places_of(&monitors, &slot_names()),
+        None => Vec::new(),
+    }
 }
 
 /// A monitor as monitor-places.jq reads it: its box in logical pixels, turned monitors swapping width and height.
@@ -271,5 +277,58 @@ mod tests {
         let places = words("owner", "HDMI-A-1 - DP-8");
         let slots: Vec<(&str, i64)> = places.iter().map(|place| (place.0.as_str(), place.1)).collect();
         assert_eq!(slots, [("HDMI-A-1", 1), ("DP-8", 3), ("eDP-1", 0), ("DP-13", 0)]);
+    }
+
+    /// The jq outputs in tests/fixtures/monitor-places/, named `<layout>.<slot names, spaces as _>.json` ("none": no
+    /// slot names), are what monitor-places.jq printed for the layout in tests/fixtures/monitors/.
+    #[test]
+    fn every_stored_jq_output_is_what_the_rust_port_gives() {
+        let fixtures = format!("{}/tests/fixtures", env!("CARGO_MANIFEST_DIR"));
+        let mut checked = 0;
+        for entry in std::fs::read_dir(format!("{fixtures}/monitor-places")).unwrap() {
+            let path = entry.unwrap().path();
+            let name = path.file_stem().unwrap().to_str().unwrap().to_string();
+            let (layout, slots) = name.split_once('.').unwrap();
+            let slots = if slots == "none" {
+                String::new()
+            } else {
+                slots.replace('_', " ")
+            };
+            let monitors: Value =
+                serde_json::from_str(&std::fs::read_to_string(format!("{fixtures}/monitors/{layout}.json")).unwrap())
+                    .unwrap();
+            let expected: Vec<Value> = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            let expected: Vec<(String, i64, String, String)> = expected
+                .iter()
+                .map(|place| {
+                    let text = |key: &str| place[key].as_str().unwrap().to_string();
+                    (
+                        text("id"),
+                        place["slot"].as_i64().unwrap(),
+                        text("horizontal"),
+                        text("vertical"),
+                    )
+                })
+                .collect();
+            let got: Vec<_> = places_of(&monitors, &slots)
+                .into_iter()
+                .map(|place| (place.id, place.slot, place.horizontal, place.vertical))
+                .collect();
+            assert_eq!(got, expected, "{name}");
+            checked += 1;
+        }
+        assert!(checked >= 30, "only {checked} stored outputs: was the directory lost?");
+    }
+
+    #[test]
+    fn no_monitor_list_gives_no_places_and_skips_the_slot_lookup() {
+        let asked = std::cell::Cell::new(false);
+        let lookup = || {
+            asked.set(true);
+            "DP-1".to_string()
+        };
+        assert!(places_from(None, lookup).is_empty());
+        assert!(!asked.get());
+        assert!(places_of(&serde_json::json!({"not": "a list"}), "DP-1").is_empty());
     }
 }
