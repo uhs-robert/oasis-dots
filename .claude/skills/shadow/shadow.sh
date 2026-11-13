@@ -453,7 +453,7 @@ abort_up() {
   local status=$? log
   trap - EXIT
   echo "shadow: '$name' failed to start; stopping what was launched (logs kept in $logs)" >&2
-  for log in qs hypr host dbus; do
+  for log in qs hypr host dbus pipewire; do
     [[ -s $logs/$log.log ]] || continue
     echo "== $log.log (last 10 lines)" >&2
     tail -n 10 "$logs/$log.log" | cut -c1-300 >&2
