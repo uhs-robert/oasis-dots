@@ -163,6 +163,9 @@ end
 
 --- Run the hyprctl eval callbacks the scripts queued (what Hyprland would run).
 local pumped = {}
+-- `drag_ready` callbacks a scenario deleted on purpose, so `ready()` does not wait for them. Declared before `fresh()`,
+-- which resets it: a later declaration would leave `fresh()` writing a global.
+local lost_ready = 0
 pump = function()
 	os.rename(stub .. "/cb.queue", stub .. "/cb.work")
 	for line in read_file(stub .. "/cb.work"):gmatch("[^\n]+") do
@@ -334,9 +337,6 @@ local function settle_timed(cond, secs)
 		return cond()
 	end, secs)
 end
-
--- `drag_ready` callbacks a scenario deleted on purpose, so `ready()` does not wait for them.
-local lost_ready = 0
 
 local function drag_ready_callbacks()
 	local n = 0
@@ -927,6 +927,7 @@ assert_clean("lost ready")
 
 --- 29. Drop then Esc while the release finishes: no false cancel notice.
 fresh()
+check(lost_ready == 0, "fresh clears the deleted-callback count")
 press("V")
 ready()
 press("SPACE")
