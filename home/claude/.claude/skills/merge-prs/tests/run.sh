@@ -809,7 +809,7 @@ cr_run completed success "25 min" "20 min"
 cr_reviewed_head
 comment 'chatgpt-codex-connector[bot]' '-5 min' 'You have reached your Codex usage limits for code reviews.'
 gate 7
-check "Codex is skipped with a note and the PR merges" "[[ $code == 0 ]] && grep -q 'note: #7 Codex is unavailable' <<<\"\$out\" && grep -q '^7 merged' <<<\"\$out\""
+check "Codex is skipped with a note and the PR merges" "[[ $code == 0 ]] && grep -q 'note: #7 Codex is unavailable (usage limit); not waiting for it. Run the Opus fallback review (review-fallback.md)' <<<\"\$out\" && grep -q '^7 merged' <<<\"\$out\""
 
 echo "== gate: Codex failed alone"
 gate_setup
