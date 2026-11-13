@@ -739,13 +739,54 @@ class CliTest(unittest.TestCase):
 
     def test_new_renumber_skips_a_doc_owned_on_another_host_and_says_so(self):
         self.add("a", 5)
-        other = self.add_owned_on("away", 6, "far-1", "id-x", 100, "elsewhere.invalid")
-        self.add("c", 7)
+        self.add("b", 6)
+        other = self.add_owned_on("away", 7, "far-1", "id-x", 100, "elsewhere.invalid")
+        self.add("c", 8)
         before = self.read(other)
         result = self.plans("new", "proj", "mid", "--after", "a")
         self.assertIn("left the rank of away alone", result.stderr)
         self.assertEqual(self.read(other), before)
-        self.assertEqual(self.ranks()[1]["mid"], 20)
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks["mid"]), (["away", "a", "mid", "b", "c"], 20))
+
+    def test_new_beside_a_remote_owned_anchor_uses_the_ranks_that_landed(self):
+        self.add("a", 5)
+        away = self.add_owned_on("away", 6, "far-1", "id-x", 100, "elsewhere.invalid")
+        self.add("c", 7)
+        before = self.read(away)
+        result = self.plans("new", "proj", "mid", "--after", "away")
+        self.assertIn("left the rank of away alone", result.stderr)
+        self.assertEqual(self.read(away), before)
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks["mid"]), (["away", "a", "mid", "c"], 23))
+
+    def test_new_refuses_when_a_skipped_neighbour_leaves_no_room(self):
+        self.add("a", 5)
+        self.add_owned_on("away", 6, "far-1", "id-x", 100, "elsewhere.invalid")
+        self.add("c", 7)
+        # away keeps 6 while a becomes 10, so the doc cannot sit between them.
+        result = self.plans("new", "proj", "mid", "--after", "a", code=1)
+        self.assertIn("the ranks around a could not be renumbered", result.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/mid.md")))
+
+    def test_new_refused_at_create_after_a_renumber_leaves_only_new_ranks(self):
+        self.add("a", 5)
+        self.add("b", 6)
+        with mock.patch.object(cli.store, "create", side_effect=FileExistsError), \
+                mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            with redirect_stderr(io.StringIO()):
+                code = cli.main(["new", "proj", "mid", "--after", "a"])
+        self.assertEqual(code, 1)
+        order, ranks = self.ranks()
+        self.assertEqual((order, ranks), (["a", "b"], {"a": 10, "b": 30}))
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/mid.md")))
+
+    def test_new_with_a_known_id_clash_renumbers_nothing(self):
+        self.add("a", 5)
+        self.add("b", 6)
+        self.add("mid", 100, project="other")
+        self.plans("new", "proj", "mid", "--after", "a", code=1)
+        self.assertEqual(self.ranks()[1], {"a": 5, "b": 6, "mid": 100})
 
     def test_lint(self):
         self.add("good", 10)
