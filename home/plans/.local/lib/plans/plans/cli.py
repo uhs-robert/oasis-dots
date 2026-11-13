@@ -523,7 +523,7 @@ def run_new(args):
     # another project.
     refuse_taken_id()
     path = os.path.join(repo.root, ".plans", args.project, args.id + ".md")
-    rank = next_rank(repo.docs) if anchor is None else rank_beside(ranked, anchor, args, path)
+    rank = next_rank(repo.docs) if anchor is None else rank_beside(ranked, anchor, args, path, refuse_taken_id)
     try:
         store.create(path, new_doc_text(args.project, args.id, args.kind, rank), refuse_taken_id)
     except FileExistsError:
@@ -551,7 +551,7 @@ def refuse_other_host_rank_write(doc):
         raise Refused(f"{doc.id} is owned on {liveness.owner_host_of(doc)}")
 
 
-def rank_beside(ranked, anchor, args, path):
+def rank_beside(ranked, anchor, args, path, refuse_taken_id):
     """The rank for the new doc next to `anchor`: the midpoint of it and its neighbour. With no gap, the other docs
     are renumbered in steps of RANK_STEP first, and a doc another host owns is left alone and named on stderr."""
     index = ranked.index(anchor)
@@ -560,14 +560,24 @@ def rank_beside(ranked, anchor, args, path):
     rank = placement.rank_between(above and above.keys["rank"], below and below.keys["rank"])
     if rank is not None:
         return rank
+    # A known id clash writes nothing: the check runs again before the first renumber write.
+    refuse_taken_id()
     new_doc = parse.Doc(path, new_doc_text(args.project, args.id, args.kind, 0))
     order = list(ranked)
     order.insert(index + 1 if args.after else index, new_doc)
     new_ranks = placement.renumbered_ranks(order)
     _, skipped, uncertain = placement.renumber_others(order, new_doc, new_ranks, refuse_other_host_rank_write, (Refused,))
-    for entry in skipped + uncertain:
+    for entry in skipped:
         print(f"plans: left the rank of {entry['id']} alone: {entry['error']}", file=sys.stderr)
-    return new_ranks[path]
+    for entry in uncertain:
+        print(f"plans: the rank of {entry['id']} may have changed: {entry['error']}", file=sys.stderr)
+    # A skipped doc keeps its old rank, so the midpoint comes from the ranks that landed on disk.
+    above, below = (parse.load(neighbour.path).keys["rank"] if neighbour else None for neighbour in (above, below))
+    rank = placement.rank_between(above, below)
+    if rank is None:
+        raise Refused(f"the ranks around {anchor.id} could not be renumbered (see above), so there is no room beside it; "
+                      "retry or place the doc with `plans set`")
+    return rank
 
 
 def next_rank(docs):
