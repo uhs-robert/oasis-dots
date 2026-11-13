@@ -414,6 +414,7 @@ impl<'c> Router<'c> {
             {
                 trace.outcome = IntegrationOutcome::YieldedByHook {
                     action: hook.action.clone(),
+                    claimed: hook.claimed,
                 };
             }
             pass.hooks.push(hook);
