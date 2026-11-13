@@ -6,16 +6,21 @@ import qs.features.bar
 import qs.features.media
 import qs.features.popups
 import "../BarLayout.js" as BarLayout
+import "../../../ui/frames/BandGeometry.js" as Band
 
 // The Bar-owned parts of NeoVim's lualine statusline, along one edge from `start` to `end`: section c's fill, the
 // window segment and cava slot inside it, and the x, y and z sections (`sections`). The mode chip and buffer tabs
 // (sections a and b) stay in the left island's modules, so the strip reads both islands for where c begins and ends.
+// The caller places it: `start` to `end` along the edge, `bar_height` across.
 Item {
     id: root
 
     property bool active: true
-    // "top" or "bottom": a bottom strip draws its cava upside down.
+    // The screen edge: a bottom strip draws its cava upside down, and on a left or right one the strip is a column.
     property string edge: "top"
+    // A column has no room for the window segment or the cava slot, so section c is its fill alone. The fills are drawn
+    // in the top-bar frame and turned onto the edge like an island's; the module content in the sections stays upright.
+    readonly property bool vertical: BarLayout.is_vertical(root.edge)
     // Along-edge extent, in the parent's coordinates.
     property real start: 0
     property real end: 0
@@ -36,27 +41,41 @@ Item {
     readonly property bool left_shown: !!root.left_island && root.left_island.visible
     readonly property bool right_shown: !!root.right_island && root.right_island.visible
     // Section c, in strip coordinates: from the left island's end to the right island's cap.
-    readonly property real c_start: root.left_shown ? root.left_island.x + root.left_island.width - root.start : 0
-    readonly property real c_end: (root.right_shown ? root.right_island.x : root.end) - root.start
+    readonly property var c_extent: BarLayout.lualine_c_extent(root.vertical, root.left_island ? { x: root.left_island.x, y: root.left_island.y, width: root.left_island.width, height: root.left_island.height, visible: root.left_shown } : null, root.right_island ? { x: root.right_island.x, y: root.right_island.y, width: root.right_island.width, height: root.right_island.height, visible: root.right_shown } : null, root.start, root.end)
+    readonly property real c_start: root.c_extent.start
+    readonly property real c_end: root.c_extent.end
     readonly property real section_c: root.c_end - root.c_start
+    readonly property real length: Math.max(0, root.end - root.start)
 
-    x: root.start
-    width: Math.max(0, root.end - root.start)
-    height: root.bar_height
+    width: root.vertical ? root.bar_height : root.length
+    height: root.vertical ? root.length : root.bar_height
     visible: root.active
+
+    // Places the fills, drawn for a top bar, onto a side edge. A top or bottom strip takes no transform at all: the fills
+    // are symmetric across the bar, so the bottom edge's mirror would change nothing, and any transform, even an
+    // identity one, changes how Qt batches the bar and so how its text is antialiased.
+    Matrix4x4 {
+        id: deco_frame
+        matrix: {
+            const m = Band.band_affine(root.edge, root.bar_height);
+            return Qt.matrix4x4(m[0], m[2], 0, m[4], m[1], m[3], 0, m[5], 0, 0, 1, 0, 0, 0, 0, 1);
+        }
+    }
 
     Rectangle {
         visible: !Style.islands_translucent
-        width: root.width
+        width: root.length
         height: root.bar_height
+        transform: root.vertical ? [deco_frame] : []
         color: Theme.bg_mantle
     }
 
     // Translucent, section c fills only between the islands, beside their arrow caps, so no fill stacks on it.
     Shape {
         visible: Style.islands_translucent
-        width: root.width
+        width: root.length
         height: root.bar_height
+        transform: root.vertical ? [deco_frame] : []
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
@@ -76,7 +95,7 @@ Item {
     // After the buffers: the focused app and a terminal's directory.
     Loader {
         id: segment_loader
-        active: root.active && root.left_shown
+        active: root.active && root.left_shown && !root.vertical
         x: root.c_start
         sourceComponent: WindowSegment {
             screen_name: root.screen_name
@@ -90,7 +109,7 @@ Item {
     Item {
         id: cava_slot
         readonly property real room: root.section_c - (segment_loader.item ? segment_loader.item.min_width : 0) - 16
-        readonly property bool shown: root.active && root.lists_cava && root.right_shown && MediaState.playing && PowerSource.on_ac && cava_slot.room >= 48
+        readonly property bool shown: root.active && !root.vertical && root.lists_cava && root.right_shown && MediaState.playing && PowerSource.on_ac && cava_slot.room >= 48
         visible: cava_slot.shown
         x: root.c_end - width - 8
         width: Math.max(0, Math.min(120, cava_slot.room))
@@ -150,14 +169,19 @@ Item {
     Component {
         id: sections_component
 
-        Row {
+        // A row on a top or bottom bar, a column down a side one.
+        Grid {
             readonly property var wire: (item, entry) => root.wire(item, entry)
             // The sections draw their own fills, so a translucent island leaves its colour out from behind them.
             readonly property bool lualine_fill: true
+            columns: root.vertical ? 1 : 3
 
             LualineSection {
                 id: x_section
-                height: root.right_island.height
+                vertical: root.vertical
+                thick: root.right_island.thickness
+                width: root.vertical ? root.right_island.width : implicitWidth
+                height: root.vertical ? implicitHeight : root.right_island.height
                 entries: root.lualine_entries.filter(e => BarLayout.lualine_section(e.base) === "x")
                 wire: parent.wire
                 module_props: root.module_props
@@ -167,7 +191,10 @@ Item {
 
             LualineSection {
                 id: y_section
-                height: root.right_island.height
+                vertical: root.vertical
+                thick: root.right_island.thickness
+                width: root.vertical ? root.right_island.width : implicitWidth
+                height: root.vertical ? implicitHeight : root.right_island.height
                 entries: root.lualine_entries.filter(e => BarLayout.lualine_section(e.base) === "y")
                 wire: parent.wire
                 module_props: root.module_props
@@ -178,7 +205,10 @@ Item {
             }
 
             LualineSection {
-                height: root.right_island.height
+                vertical: root.vertical
+                thick: root.right_island.thickness
+                width: root.vertical ? root.right_island.width : implicitWidth
+                height: root.vertical ? implicitHeight : root.right_island.height
                 entries: root.lualine_entries.filter(e => BarLayout.lualine_section(e.base) === "z")
                 wire: parent.wire
                 module_props: root.module_props

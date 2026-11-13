@@ -58,6 +58,26 @@ function lualine_section(entry) {
     return m ? m.section : "x";
 }
 
+// How deep a lualine arrow is, along the bar, on a bar `thickness` across: 0.4 of it, as the mode chip, the sections
+// and the island caps draw theirs.
+function lualine_arrow(thickness) {
+    return Math.round(thickness * 0.4);
+}
+
+// The mode chip's length down a lualine column: a square tile as wide as the column, then its arrow into section b.
+function mode_chip_column_length(thickness) {
+    return thickness + lualine_arrow(thickness);
+}
+
+// Section c of a lualine strip, along the bar from `start`: from the end of the a/b island to the x/y/z island's cap
+// (or the strip's end without one). Islands are { x, y, width, height, visible }; a column reads y and height.
+function lualine_c_extent(vertical, left, right, start, end) {
+    const along = island => vertical ? { from: island.y, size: island.height } : { from: island.x, size: island.width };
+    const c_start = left && left.visible ? along(left).from + along(left).size - start : 0;
+    const c_end = (right && right.visible ? along(right).from : end) - start;
+    return { start: c_start, end: c_end };
+}
+
 // Modules a lualine bar leaves out of its islands because it draws them itself in section c (the directory, cava).
 function lualine_draws_itself(entry) {
     return ["directory", "cava"].indexOf(entry.split(":")[0]) >= 0;

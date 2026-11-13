@@ -28,8 +28,8 @@ Item {
     readonly property string position: BarSettings.position_for(root.rule)
     // A left or right bar is a column: the islands stack top, center, bottom and `bar_height` is its width.
     readonly property bool vertical: BarLayout.is_vertical(root.position)
-    // Lualine's sections are horizontal only, so a side bar draws the style's islands instead.
-    readonly property bool lualine: Style.bar_lualine && !root.vertical
+    // A lualine statusline, on a row or down a column (the strip and sections turn their fills, not their modules).
+    readonly property bool lualine: Style.bar_lualine
     // The cava tail the center island has grown below its modules (0 on a top or bottom bar).
     readonly property real center_tail: center_cava.tail_span
     // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
@@ -215,7 +215,7 @@ Item {
     // Under a frame the statusline is a strip along the bar edge between the frame's sides, not out to the screen edges, so
     // the side bands keep the frame's colour. The corners of the hole start below the bar, so nothing here clips an arrow.
     readonly property real lualine_start: root.frame ? root.frame.start : 0
-    readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.width
+    readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.vertical ? root.height : root.width
 
     HoverHandler {
         onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
@@ -265,7 +265,9 @@ Item {
     // Lualine is one statusline: section c's fill runs behind the islands.
     Neovim.LualineStrip {
         id: lualine_strip
-        anchors.verticalCenter: parent.verticalCenter
+        // Plain x and y, not anchors: an anchor dropped when the bar turns would leave the strip where it was.
+        x: root.vertical ? root.cross_center : root.lualine_start
+        y: root.vertical ? root.lualine_start : root.cross_center
         active: root.lualine
         edge: root.position
         start: root.lualine_start
@@ -316,6 +318,10 @@ Item {
                 Layout.rightMargin: modelData.base === "start" && !root.lualine && !root.vertical ? -8 : 0
                 Layout.bottomMargin: modelData.base === "start" && !root.lualine && root.vertical ? -8 : 0
                 Layout.alignment: root.vertical ? Qt.AlignHCenter : 0
+                // Down a lualine column the mode chip is section a: the column's width, with its arrow below.
+                readonly property bool column_chip: modelData.base === "start" && root.lualine && root.vertical
+                Layout.preferredWidth: column_chip ? root.bar_height : -1
+                Layout.preferredHeight: column_chip ? BarLayout.mode_chip_column_length(root.bar_height) : -1
                 Component.onCompleted: setSource(modelData.url, root.props_for(modelData))
                 onLoaded: root.wire_module(item, modelData, left_island)
             }
@@ -494,7 +500,8 @@ Item {
         Loader {
             active: root.lualine
             visible: active
-            Layout.fillHeight: true
+            Layout.fillHeight: !root.vertical
+            Layout.fillWidth: root.vertical
             sourceComponent: lualine_strip.sections
         }
     }

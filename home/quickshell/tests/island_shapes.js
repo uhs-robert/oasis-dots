@@ -194,6 +194,14 @@ for (const s of shapes) {
   if (!O.has(s) && !O.stroke_only(s) && hand_drawn.indexOf(s) < 0) { failed++; console.log("FAIL island shape " + s + " has no vertical form"); }
 }
 if (/vertical_shape|transform: mirror/.test(island_src)) { failed++; console.log("FAIL Island.qml keeps a horizontal-only layer or a shape fallback"); }
+// Lualine is a vertical form too: the bar and its islands share one gate with no side-bar exception (a gate missed in
+// one gives a mixed bar), and the strip turns its fills onto whichever edge it is given rather than a fixed column.
+const lualine_gate = /readonly property bool lualine: Style\.bar_lualine\n/;
+for (const [name, src] of [["Bar.qml", read("features/bar/Bar.qml")], ["Island.qml", island_src]]) {
+  if (!lualine_gate.test(src)) { failed++; console.log("FAIL " + name + " gates lualine on more than the style, so a side bar falls back to islands"); }
+}
+const strip_src = read("features/bar/neovim/LualineStrip.qml");
+if (!/Band\.band_affine\(root\.edge, root\.bar_height\)/.test(strip_src) || !/vertical: root\.vertical/.test(strip_src)) { failed++; console.log("FAIL LualineStrip does not turn its fills onto its edge or does not pass the column to its sections"); }
 
 // A kit's fixed sizes (`set`) must be in plain_island_shape, or leaving the shape would keep them.
 const plain_keys = [...style.match(/plain_island_shape: \(\{([^}]*)\}\)/)[1].matchAll(/(\w+):/g)].map(m => m[1]);
