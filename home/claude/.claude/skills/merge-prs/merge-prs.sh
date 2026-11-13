@@ -642,7 +642,7 @@ gate_summary_comment() {
     load_comments "$number"
     push_time=$(head_push_time "$head") || exit 1
     if unavailable_hit "$name" "$push_time"; then
-      echo "note: #$number Codex is unavailable (usage limit); not waiting for it. Run the Opus fallback review (review-fallback.md) and note the unavailable reviewer in the PR body."
+      echo "note: #$number Codex is unavailable (usage limit); not waiting for it. If no local review covered this head, run the Opus fallback review (review-fallback.md) before merging, and note the unavailable reviewer in the PR body."
       return
     fi
   fi
