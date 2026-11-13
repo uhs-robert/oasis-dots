@@ -15,7 +15,6 @@ select = ["E4", "E7", "E9", "F"]
 # The gap: a new violation of an ignored rule in a listed file goes unseen, and any other new hit fails.
 # Regenerate the entries below with: sh lib/check/steps/ruff.sh --baseline (it ignores the entries already here).
 [lint.per-file-ignores]
-".claude/skills/shadow/fake_player.py" = ["E402"]
 "home/plans/tests/test_retire.py" = ["F401"]
 "home/plans/tests/test_server.py" = ["F401", "F811"]
 "home/plans/tests/test_server_laptop_key.py" = ["F401"]
