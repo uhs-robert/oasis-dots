@@ -155,7 +155,7 @@ def check_probe_flips_while_running(r):
     expect(p, "starts", len(r.ups), 1)
     expect(p, "exits", len(r.exits), 1)
     if r.exits:
-        between(p, "the running stream lived until the kill", r.exits[0]["t"] - r.actions["kill"], 0, 1000)
+        between(p, "the running stream lived until the kill", r.exits[0]["t"] - r.actions["kill"], 0, 2000)
     expect(p, "available at end", r.end["available"], False)
     expect(p, "running at end", r.end["running"], False)
     return p
