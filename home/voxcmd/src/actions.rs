@@ -372,4 +372,62 @@ mod tests {
         integration.settings.private_labels = true;
         assert_eq!(detail_suffix(&integration, "a\nb"), "");
     }
+
+    struct Silent;
+    impl Notifier for Silent {
+        fn notify(&self, _kind: crate::notify::Kind, _summary: &str, _body: &str) {}
+    }
+
+    #[test]
+    fn a_run_action_sees_whether_the_command_came_by_voice() {
+        let dir = tempfile::tempdir().unwrap();
+        let toml = "name = \"T\"\nverbs = [{ action = \"go\", match = 'go' }]\n[actions]\ngo = \"true\"\n";
+        std::fs::create_dir(dir.path().join("integrations")).unwrap();
+        std::fs::write(dir.path().join("integrations/t.toml"), toml).unwrap();
+        let config = Config::load(dir.path()).unwrap();
+        let shell = ShellHooks::new(dir.path(), ["t".to_string()], false);
+        let asker = crate::ask::AskWith::from_env();
+        let option = RouteOption {
+            integration: 0,
+            name: "T".into(),
+            file: dir.path().join("integrations/t.toml"),
+            fallback: false,
+            action: "go".into(),
+            verb_action: "go".into(),
+            target: String::new(),
+            args: Vec::new(),
+            id: String::new(),
+            label: String::new(),
+            command: "true".into(),
+            weak: false,
+            silent: false,
+            confirm: None,
+            candidates: 0,
+            near_miss: false,
+            leftover: 0,
+        };
+        let said = Spoken {
+            phrase: "go",
+            raw_transcript: "go",
+            active_before: "",
+            in_sequence: false,
+        };
+        let spoken_for = |came_by_voice: bool| {
+            let rt = Runtime {
+                config: &config,
+                shell: &shell,
+                asker: &asker,
+                notifier: &Silent,
+                came_by_voice,
+                heard_private: false,
+                in_session_turn: false,
+            };
+            let command = action_command(&rt, &config.integrations[0], &option, &said, false);
+            command
+                .get_envs()
+                .find(|(name, _)| *name == "VOXCMD_SPOKEN")
+                .and_then(|(_, value)| value.map(|value| value.to_string_lossy().into_owned()))
+        };
+        assert_eq!((spoken_for(true).as_deref(), spoken_for(false).as_deref()), (Some("1"), Some("0")));
+    }
 }
