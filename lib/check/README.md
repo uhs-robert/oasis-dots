@@ -49,6 +49,7 @@ A scope is a folder, and a change reaches the steps of the scopes its path falls
 | `hooks` | the agent hooks, and the `owner-test-bar`, `orchestrator`, `orchestrator-handoff` and `orchestrator-status` skills | the hook tests, owner-test-bar, reviewers (about a minute) |
 | `skills` | the `ship-batch` and `merge-prs` skills | their suites (5 to 11 minutes) |
 | `checkscope` | `lib/check`, the `lib/docs` generators | check-scope, check-cache |
+| `ruff` | every `*.py` (any folder), `ruff.toml` | ruff |
 | `docsgen` | the keymaps, the IpcHandler files, the `lib/docs` generators | docs-generated |
 
 A file that a step of another folder reads gets one row naming both scopes, ahead of its folder's row. Markdown reaches no scope, in any folder; the exceptions are the two files `docs-generated` compares (`docs/keybinds.md`, the Quickshell README), found by grepping the steps and tests for `.md`. Other `.md` mentions there are strings in test data.
@@ -69,6 +70,7 @@ Everything else (the voxcmd suites, the lint steps, the skill tests) is listed i
 The "needs" tools are optional unless stated. Each step's command and scope is in `scopes.py`.
 
 - `shellcheck`, `shfmt`: the installer, `lib/` (common, install, check), `demo/`, `home/voxcmd/tests/`, the Quickshell audio importers (`scripts/lib/*.sh`, `ff7-`, `goldeneye-`, `mgs2-`, `ocarina-audio`) and the tracked agent scripts under `.claude/` and `home/claude/.claude/` (by `*.sh` name or shell shebang; not `worktrees/` or `skills/synced/`); shfmt uses `-i 2`. Need shellcheck, shfmt.
+- `ruff`: `ruff check` with the root `ruff.toml` (rules E4, E7, E9, F) on every tracked `*.py` and every extensionless script with a python shebang, minus the qutebrowser `config.py` and `oasis_*.py`. Existing hits are baselined in `per-file-ignores`; `sh lib/check/steps/ruff.sh --baseline` prints the entries again. Lint only, no format. Needs ruff.
 - `stylua`, `luacheck`: Hyprland config (stylua) and Hyprland plus greetd Lua (luacheck, via `lib/check/steps/lua.sh`). Need stylua; luacheck or lua5.4/5.3/luajit with LuaFileSystem.
 - `qmllint`: Quickshell config and greeter (`lib/check/steps/qml.py`). Needs Qt 6 qmllint.
 - `qml-paths`: file paths built as strings in Quickshell QML and JS exist: `Qt.resolvedUrl`, `shellDir`, QML and JS imports, in the shell and in the greeter tree (`lib/common/greeter-files.sh`), and the files outside Quickshell that name a path in it (`lib/check/steps/qml_paths.py`).

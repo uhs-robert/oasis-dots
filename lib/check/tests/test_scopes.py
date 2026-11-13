@@ -14,8 +14,8 @@ import scopes  # noqa: E402
 CASES = [
     # The runner's own files run everything.
     ("lib/check.sh", " all"),
-    ("lib/check/runner.py", " checkscope all"),
-    ("lib/check/scopes.py", " checkscope all"),
+    ("lib/check/runner.py", "ruff checkscope all"),
+    ("lib/check/scopes.py", "ruff checkscope all"),
     ("lib/check/lock.sh", " checkscope all"),
     ("justfile", " all"),
     (".claude/check-commands", " all"),
@@ -25,17 +25,17 @@ CASES = [
     ("lib/check/registry.allow", " checkscope"),
     ("lib/check/qml-ipc.allow", " checkscope"),
     # A check module or allow list that a step of another folder reads reaches that folder as well.
-    ("lib/check/steps/qml.py", " checkscope quickshell"),
+    ("lib/check/steps/qml.py", "ruff checkscope quickshell"),
     ("lib/check/qml-layers.allow", " checkscope quickshell"),
-    ("lib/check/steps/qml_paths.py", " checkscope quickshell docsgen"),
-    ("lib/check/steps/qml_ipc.py", " checkscope docsgen"),
+    ("lib/check/steps/qml_paths.py", "ruff checkscope quickshell docsgen"),
+    ("lib/check/steps/qml_ipc.py", "ruff checkscope docsgen"),
     ("lib/check/steps/lua.sh", " checkscope hypr"),
     ("lib/check/steps/shaders.sh", " checkscope quickshell"),
     ("lib/check/steps/voxcmd-rust.sh", " checkscope voxrust"),
     ("lib/check/steps/docs-generated.sh", " checkscope docsgen"),
     ("lib/docs/gen-keybinds", " checkscope docsgen"),
     ("lib/docs/gen-ipc", " checkscope docsgen"),
-    ("lib/docs/docgen.py", " checkscope docsgen"),
+    ("lib/docs/docgen.py", "ruff checkscope docsgen"),
     # hypr: the Lua config and its tests; the generated keybind table reads the keymaps.
     ("home/hypr/tests/act-global.sh", " hypr docsgen"),
     ("home/hypr/tests/act_stubs.lua", " hypr docsgen"),
@@ -63,7 +63,7 @@ CASES = [
     ("home/quickshell/tests/polled_command/FakeIpc.qml", " quickshell"),
     ("home/quickshell/tests/notification_markup.js", " quickshell"),
     ("home/quickshell/tests/input_settings/vectors.tsv", " quickshell"),
-    ("home/quickshell/tests/bar_editor/run.py", " quickshell"),
+    ("home/quickshell/tests/bar_editor/run.py", "ruff quickshell"),
     ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag", " quickshell"),
     ("home/quickshell/.config/quickshell/ui/effects/scanlines.frag.qsb", " quickshell"),
     # voxcmd. A suite's own files reach that suite only; what several read reaches each of them.
@@ -116,8 +116,8 @@ CASES = [
     ("home/agents/.local/bin/agent-shims", " install"),
     ("home/agents/tests/agent_run.sh", " install"),
     # So does the plans CLI. Its README, like all Markdown, reaches none.
-    ("home/plans/.local/lib/plans/plans/store.py", " install"),
-    ("home/plans/tests/test_store.py", " install"),
+    ("home/plans/.local/lib/plans/plans/store.py", "ruff install"),
+    ("home/plans/tests/test_store.py", "ruff install"),
     ("home/plans/README.md", ""),
     # hooks: the agent hooks and the tests of the reviewers and owner-test-bar; skills: ship-batch and merge-prs.
     (".claude/hooks/guard-legacy-hyprctl.sh", " hooks"),
@@ -125,6 +125,9 @@ CASES = [
     (".claude/skills/owner-test-bar/owner-test-bar.sh", " hooks"),
     (".claude/skills/ship-batch/tests/run.sh", " skills"),
     ("home/claude/.claude/skills/merge-prs/tests/run.sh", " skills"),
+    # ruff: any .py edit adds it in front, and its config has a rule of its own instead of falling to "all".
+    ("newdir/tool.py", "ruff all"),
+    ("ruff.toml", " ruff"),
     # Only the steps that always run look at these.
     ("extras/other/file", ""),
     ("home/kitty/.config/kitty/kitty.conf", ""),
@@ -173,7 +176,7 @@ class PathScopes(unittest.TestCase):
 
     def test_there_are_few_folder_scopes(self):
         folder_scopes = {step.scope for step in scopes.STEPS} - {"tree", "shell"}
-        self.assertLessEqual(len(folder_scopes), 12, sorted(folder_scopes))
+        self.assertLessEqual(len(folder_scopes), 13, sorted(folder_scopes))
 
     def test_tests_are_found_by_naming_convention(self):
         """A tests/ file that follows a convention in scopes.py is a step without an entry of its own."""
