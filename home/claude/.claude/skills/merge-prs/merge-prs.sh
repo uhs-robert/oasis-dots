@@ -292,13 +292,29 @@ rereview_reason() {
   [[ -z $new_file ]] || rereview_why="$new_file was not in the reviewed changes"
 }
 
+# One stderr line per state change while a wait polls, plus a heartbeat every wait_beat_s so a long unchanged wait does not
+# look like a hang. The heartbeat is timed by the clock, not counted per poll, so a zero poll interval cannot flood the log.
+# Callers set wait_seen to the state they start from and wait_beat to $SECONDS.
+wait_beat_s=${MERGE_PRS_WAIT_HEARTBEAT:-60}
+wait_seen="" wait_beat=0
+wait_note() {
+  local what=$1 state=$2 elapsed=$3 limit=$4
+  if [[ $state != "$wait_seen" ]]; then
+    echo "merge-prs: $what: ${wait_seen:-?} -> $state after ${elapsed}s" >&2
+    wait_seen=$state wait_beat=$SECONDS
+  elif ((SECONDS - wait_beat >= wait_beat_s)); then
+    echo "merge-prs: $what: still $state, waited ${elapsed}s of ${limit}s" >&2
+    wait_beat=$SECONDS
+  fi
+}
+
 # Polls until the Codex review stops running and, given "head", until it covers the PR's head commit, or, given "retry",
 # until it is no longer the Failed one a re-request was made over.
 # Timed by the clock rather than by summing sleeps, so a zero poll interval still stops at the limit.
 poll_review() {
   local number=$1 until=${2:-} started=$SECONDS
   # Each poll gets the whole wait: a request made after an earlier poll ran out of time must still be waited for.
-  waited=0
+  waited=0 wait_seen=$status wait_beat=$SECONDS
   while ((waited < review_wait_s)); do
     if [[ $status != Running && $status != Pending ]]; then
       case $until in
@@ -311,6 +327,7 @@ poll_review() {
     waited=$((SECONDS - started))
     info=$(read_review "$number")
     IFS=$'\t' read -r open status reviewed head <<<"$info"
+    wait_note "#$number Codex review" "$status" "$waited" "$review_wait_s"
   done
 }
 
@@ -557,10 +574,13 @@ gate_check_run() {
   while :; do
     head=$(gh pr view "$number" --json headRefOid --jq .headRefOid) || die "cannot read the head of #$number"
     eval_check_run "$name" "$number" "$head"
+    # Once a wait has begun, every later read is reported, the last one too, so the end of the wait shows its final state.
+    ! $announced || wait_note "#$number $label review" "$cr_state" "$((SECONDS - started))" "$wait_s"
     case $cr_state in
     Pending | Running)
       $wait_review || break
       $announced || echo "merge-prs: #$number waiting up to ${wait_s}s for the $label review: $cr_msg" >&2
+      $announced || { wait_seen=$cr_state wait_beat=$SECONDS; }
       announced=true
       ;;
     Failed)
