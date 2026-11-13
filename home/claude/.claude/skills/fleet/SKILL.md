@@ -93,7 +93,7 @@ Start one background loop with the `Bash` tool and `run_in_background`, with thi
 sleep 1800; while true; do out=$(timeout 900 ~/.claude/skills/fleet/watch.sh <fleet-session> <project> 2>&1); rc=$?; if [ "$rc" -ne 0 ] || [ "$out" != ok ]; then echo "$out"; echo "watch.sh exit $rc"; exit 0; fi; sleep 1800; done
 ```
 
-When the fleet's pieces span several plan projects, run the check as `FLEET_ALL_PROJECTS=1 ~/.claude/skills/fleet/watch.sh <fleet-session> <project>`. The check then finds each session's docs in every project, and `<project>` only names the log and state directory.
+When the fleet's pieces span several plan projects, put the variable before `timeout` in the loop's check line: `out=$(FLEET_ALL_PROJECTS=1 timeout 900 ~/.claude/skills/fleet/watch.sh <fleet-session> <project> 2>&1)`. Placed after `timeout`, the variable makes `timeout` try to run it as a command, and the check exits 127. With the variable set, the check finds each session's docs in every project, and `<project>` only names the log and state directory.
 
 It sleeps first, so its first check does not compare against a manual run. It checks every 30 minutes and exits only on a result that is not `ok`. That exit wakes the planner, and a healthy night costs no tokens. A check that crashes or hangs past 15 minutes (`timeout 900`, exit 124) also exits the loop, with its output and exit status, so the loop never spins on or hangs behind a broken check.
 
