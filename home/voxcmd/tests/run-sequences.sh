@@ -58,6 +58,7 @@ verbs = [
   { action = "three", match = 'three' },
   { action = "gate", match = 'gate' },
   { action = "never", match = 'never' },
+  { action = "spoke", match = 'spoke' },
   { action = "fail", match = 'fail' },
   { action = "pick", match = 'pick {target}' },
   { action = "take", match = 'take {target}' },
@@ -75,6 +76,7 @@ take = { run = 'echo "ran take $VOXCMD_ARG_TARGET" >> "$SEQ_LOG"', free_text = t
 note = { run = 'echo "ran note" >> "$SEQ_LOG"', free_text = true, candidates = 'seq_unmatchable' }
 # The condition logs each poll, so a test waits for polls instead of sleeping.
 gate = { run = 'echo "ran gate" >> "$SEQ_LOG"', wait_hook = 'echo poll >> "$SEQ_LOG"; [ -e "$SEQ_GATE" ]' }
+spoke = { run = 'echo "spoken run $VOXCMD_SPOKEN" >> "$SEQ_LOG"', wait_hook = 'echo "spoken wait $VOXCMD_SPOKEN" >> "$SEQ_LOG"' }
 never = { run = 'echo "ran never" >> "$SEQ_LOG"', wait_hook = 'echo poll >> "$SEQ_LOG"; false' }
 STUB
 cat >"$seq_config/integrations/seq.sh" <<'STUB'
@@ -176,6 +178,12 @@ touch "$gate"
 wait "$seq_pid"
 check "it runs once the condition holds" "[[ \$(ran) == gate,two ]]"
 check "and the sequence file is gone" "[[ -z \$(sequence_files) ]]"
+# A typed phrase is not spoken: the wait hook and the run action both see VOXCMD_SPOKEN=0 (only a watcher marks a
+# phrase as heard, so the 1 side is not reachable from this script).
+fresh
+touch "$gate"
+seq_voxcmd "spoke and then two"
+check "a typed phrase gives its wait hook and its action VOXCMD_SPOKEN=0" "grep -qx 'spoken wait 0' '$log' && grep -qx 'spoken run 0' '$log'"
 
 fresh
 seq_env=(VOXCMD_STEP_TIMEOUT_SECS=0.3)

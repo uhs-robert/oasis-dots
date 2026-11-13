@@ -92,6 +92,7 @@ pub fn resolve(config: &Config, hooks: &dyn Hooks, pending: &PendingMatch, texts
             args: &pending.args,
             phrase: texts.phrase,
             raw_transcript: texts.raw_transcript,
+            spoken: texts.spoken,
         };
         hooks.candidates(integration, &query)
     });
@@ -185,6 +186,8 @@ pub struct Texts<'a> {
     pub phrase: &'a str,
     /// As spoken.
     pub raw_transcript: &'a str,
+    /// The command came by voice.
+    pub spoken: bool,
 }
 
 /// Resolves matches side by side, hooks being queries of live state that need not wait on each other, and returns

@@ -332,7 +332,7 @@ fn action_command(
         label: Some(&option.label),
         confirmed,
         active_before: None,
-        spoken: false,
+        spoken: rt.came_by_voice,
     };
     rt.shell.command(&option.command, &env, true)
 }
