@@ -21,17 +21,31 @@ fail() {
 # The owner's session bus, which must never reach the player.
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/owner-bus
 export XDG_CACHE_HOME=$work/cache
-trap 'teardown_all; rm -rf "$work"' EXIT
 cd "$work" || exit 1
 
 # shellcheck source=/dev/null # the shadow script, sourced for its functions only
 source "$checkout_root/.claude/skills/shadow/shadow.sh"
 set +e +o pipefail
 
-# Per-process names, so two runs of the suite at once never share a runtime dir.
-na=a${$: -6}
-nb=b${$: -6}
-teardown_all() { for n in "$na" "$nb"; do (set_name "$n" && teardown) >/dev/null 2>&1; done; }
+# Per-run names, so two runs of the suite at once never share a runtime dir (at most 8 characters).
+run_id=$(((RANDOM << 15 | RANDOM) % 1000000))
+na=a$run_id
+nb=b$run_id
+live_pids=()
+# The real shadow_pids reads every /proc/*/environ (seconds on a busy machine). Here the sessions in the .sid files
+# are what the test proves `teardown` sweeps, so the stray scan finds nothing.
+shadow_pids() { :; }
+cleanup() {
+  local n
+  for n in "$na" "$nb"; do
+    set_name "$n"
+    kill_session player
+    rm -rf "$runtime"
+  done
+  ((${#live_pids[@]} == 0)) || kill "${live_pids[@]}" 2>/dev/null
+  rm -rf "$work"
+}
+trap cleanup EXIT
 
 # A shadow dir with a bus socket (a python listener, since only `-S` is checked) and the recording stubs.
 make_shadow() {
@@ -39,20 +53,27 @@ make_shadow() {
   mkdir -p "$runtime" "$shim_dir" "$logs"
   python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$runtime/bus"
   cat >"$shim_dir/python3" <<'STUB'
-#!/bin/sh
-# Records the environment and arguments the player was started with, then idles like a player.
+#!/bin/bash
+# Records the environment and arguments the player was started with, marks itself ready, then idles like a player.
+# The argv0 marker lets the test count players with pgrep instead of scanning /proc environments.
 { env; echo "ARGS $*"; } >"$XDG_RUNTIME_DIR/player.env.$$"
-exec sleep 300
+touch "$XDG_RUNTIME_DIR/ready.$$"
+exec -a "fakeplayer-test:$XDG_RUNTIME_DIR" sleep 300
 STUB
+  # Lists shadowfake only once a live stub has written its record, like the real bus name appearing after startup.
   cat >"$shim_dir/playerctl" <<'STUB'
 #!/bin/sh
-echo shadowfake
+for f in "$XDG_RUNTIME_DIR"/ready.*; do
+  [ -e "$f" ] && kill -0 "${f##*.}" 2>/dev/null && echo shadowfake && exit 0
+done
+exit 1
 STUB
   chmod +x "$shim_dir/python3" "$shim_dir/playerctl"
   # The stubs shadow python3 for the player only; the bus socket above used the real one.
 }
 
-players_of() { shadow_pids | while read -r pid; do tr '\0' ' ' <"/proc/$pid/cmdline" | grep -q 'sleep 300' && echo "$pid"; done; }
+# Players running for the current shadow, by their argv0 marker.
+players_of() { pgrep -f "^fakeplayer-test:$runtime "; }
 
 # Case 1: start uses the shadow's env and bus only.
 make_shadow "$na"
@@ -73,7 +94,7 @@ fi
 player "$na" start --title "T two"
 [[ $(players_of | wc -l) == 1 ]] || fail "second start left $(players_of | wc -l) players, wanted 1"
 
-# Case 3: a refused start (no bus) and a bad option start nothing.
+# Case 3: a bad option and a missing action start nothing.
 (player "$na" start --bogus) 2>/dev/null && fail "unknown option accepted"
 (player "$na") 2>/dev/null && fail "missing action accepted"
 
@@ -97,7 +118,7 @@ set_name "$nb"
 mkdir -p "$runtime" "$logs"
 (player "$nb" start) 2>/dev/null && fail "start without a bus succeeded"
 [[ ! -e $base/player.sid ]] || fail "start without a bus left a player.sid"
-teardown >/dev/null 2>&1
+rm -rf "$runtime"
 
 # Case 7: the real script on a private bus.
 if command -v dbus-daemon >/dev/null && command -v playerctl >/dev/null && python3 -c 'import gi; gi.require_version("Gio", "2.0")' 2>/dev/null; then
@@ -105,10 +126,12 @@ if command -v dbus-daemon >/dev/null && command -v playerctl >/dev/null && pytho
   mkdir -p "$live"
   dbus-daemon --session --nofork --address="unix:path=$live/bus" >/dev/null 2>&1 &
   bus_pid=$!
+  live_pids+=("$bus_pid")
   wait_for 100 test -S "$live/bus"
   run_player() { env -i PATH="$PATH" XDG_RUNTIME_DIR="$live" DBUS_SESSION_BUS_ADDRESS="unix:path=$live/bus" "$@"; }
   run_player python3 "$checkout_root/.claude/skills/shadow/fake_player.py" --title "Live T" --artist "" >"$live/player.log" 2>&1 &
   player_pid=$!
+  live_pids+=("$player_pid")
   ok=0
   for _ in $(seq 100); do
     run_player playerctl -p shadowfake metadata title 2>/dev/null | grep -qx "Live T" && ok=1 && break
@@ -122,6 +145,7 @@ if command -v dbus-daemon >/dev/null && command -v playerctl >/dev/null && pytho
   # A second instance cannot take the name, so it must exit on its own.
   run_player python3 "$checkout_root/.claude/skills/shadow/fake_player.py" >/dev/null 2>&1 &
   second=$!
+  live_pids+=("$second")
   for _ in $(seq 100); do
     kill -0 "$second" 2>/dev/null || break
     sleep 0.05
@@ -130,8 +154,14 @@ if command -v dbus-daemon >/dev/null && command -v playerctl >/dev/null && pytho
     fail "a second player kept running"
     kill "$second"
   }
-  # The script refuses the owner's runtime dir.
-  env -i PATH="$PATH" XDG_RUNTIME_DIR=/run/user/1 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1/bus python3 "$checkout_root/.claude/skills/shadow/fake_player.py" >/dev/null 2>&1 && fail "the player accepted the owner's bus"
+  # The script refuses the owner's runtime dir, an unset runtime dir, and a bus that is not <runtime>/bus.
+  fake=$checkout_root/.claude/skills/shadow/fake_player.py
+  refused=$(env -i PATH="$PATH" XDG_RUNTIME_DIR=/run/user/1 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1/bus python3 "$fake" 2>&1)
+  grep -q refusing <<<"$refused" || fail "the player accepted the owner's bus"
+  refused=$(env -i PATH="$PATH" DBUS_SESSION_BUS_ADDRESS="unix:path=$live/bus" timeout 5 python3 "$fake" 2>&1)
+  grep -q refusing <<<"$refused" || fail "the player accepted an empty runtime dir"
+  refused=$(env -i PATH="$PATH" XDG_RUNTIME_DIR="$live" DBUS_SESSION_BUS_ADDRESS="unix:path=$live/other" timeout 5 python3 "$fake" 2>&1)
+  grep -q refusing <<<"$refused" || fail "the player accepted a bus outside <runtime>/bus"
   kill "$player_pid" "$bus_pid" 2>/dev/null
   wait "$player_pid" "$bus_pid" 2>/dev/null
 else

@@ -194,7 +194,11 @@ def main():
     # The one thing this script must never do is publish on the owner's session bus.
     runtime = os.environ.get("XDG_RUNTIME_DIR", "")
     bus = os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
-    if not bus or runtime.startswith("/run/user/") or runtime not in bus:
+    if (
+        not runtime
+        or runtime.startswith("/run/user/")
+        or bus != f"unix:path={runtime}/bus"
+    ):
         sys.exit(
             f"fake_player: refusing bus '{bus}' outside a private runtime dir ('{runtime}')"
         )
