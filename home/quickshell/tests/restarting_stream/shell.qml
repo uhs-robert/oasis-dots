@@ -39,7 +39,7 @@ ShellRoot {
         // A mark whose exit never came lapses, so a later crash counts.
         stale_mark: { settings: { probe: false, ttl: 200 }, actions: [[100, "expect_exit"], [600, "kill"]], end: 1000 },
         // The mark is refused while the stream is down, so it cannot swallow the next crash.
-        mark_after_exit: { settings: { probe: false }, actions: [[300, "kill"], [350, "expect_exit"], [1100, "kill"]], end: 1500 },
+        mark_after_exit: { settings: { probe: false }, actions: [[1000, "kill"], [1200, "expect_exit"], [2800, "kill"]], end: 4200 },
         // Repeated right-clicks make one planned exit; the next crash counts again.
         repeated_marks: { settings: { probe: false }, actions: [[300, "expect_exit"], [305, "expect_exit"], [310, "expect_exit"], [315, "kill"], [900, "kill"]], end: 1300 },
         // The tool is missing at start: one warning, no stream; installed later, the re-probe starts it.
@@ -49,7 +49,7 @@ ShellRoot {
         // A restart re-probes; the tool is gone, so no stream comes back, until it is installed again.
         removed_then_back: { settings: {}, actions: [[300, "absent"], [310, "kill"], [1200, "present"]], end: 4000 },
         // A probe failing while the stream runs leaves that stream alone; it is not restarted once it ends.
-        probe_flips_while_running: { settings: {}, actions: [[300, "absent"], [310, "reprobe"], [600, "kill"]], end: 2000 },
+        probe_flips_while_running: { settings: {}, actions: [[1000, "absent"], [1010, "reprobe"], [1800, "kill"]], end: 4000 },
         // wanted dropping during backoff: the pending restart must not start it.
         wanted_off_in_backoff: { settings: { probe: false }, actions: [[300, "kill"], [350, "wanted_false"]], end: 1200 },
         // wanted flapping during backoff starts it once, at the flap, and the old timer adds no second start.

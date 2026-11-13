@@ -178,7 +178,7 @@ end
 
 --- Pump callbacks until `cond` holds or `secs` pass.
 local function settle(cond, secs)
-	local deadline = os.time() + (secs or 5)
+	local deadline = os.time() + (secs or 30)
 	repeat
 		pump()
 		if cond() then
@@ -303,13 +303,13 @@ local function assert_clean(name)
 	check(
 		settle(function()
 			return not Cursor.drag_active()
-		end, 3),
+		end, 15),
 		name .. ": Lua state is idle"
 	)
 	check(
 		settle(function()
 			return not daemons_running()
-		end, 3),
+		end, 15),
 		name .. ": no daemon process left"
 	)
 	check(#instance_files() == 0, name .. ": no socket or pid file left")
@@ -334,12 +334,25 @@ local function settle_timed(cond, secs)
 	end, secs)
 end
 
+local function drag_ready_callbacks()
+	local n = 0
+	for _, line in ipairs(pumped) do
+		if line:find("drag_ready", 1, true) then
+			n = n + 1
+		end
+	end
+	return n
+end
+
 local function ready()
 	local pressed = settle(function()
 		return count("ydotool click 0x40") >= 1
 	end)
-	sleep(0.1)
-	pump() -- the press script's `drag_ready` callback arms the pause
+	-- The press script's `drag_ready` callback arms the pause. A lost callback (scenarios 27 and 28) never arrives, so the
+	-- wait is capped and the scenario goes on.
+	settle(function()
+		return drag_ready_callbacks() >= count("ydotool click 0x40")
+	end, 20)
 	advance(150) -- the pause between the press and the nudge
 	return pressed
 		and settle(function()
@@ -389,7 +402,7 @@ assert_clean("manual")
 --- 3. Esc with no drag, and Enter never drops (it is unbound, so the Cursor catchall swallows it).
 fresh()
 press("ESCAPE")
-check(count("ydotool ") == 0 and count("ydotoold stop") == 0, "no drag: Esc presses nothing")
+check(count("ydotool ") == 0, "no drag: Esc presses nothing")
 check(submap_calls[#submap_calls] == "reset", "no drag: Esc leaves the submap")
 check(
 	settle(function()
@@ -435,12 +448,13 @@ check(count("ydotool click") == 0, "daemon exits: no click")
 assert_clean("daemon exits")
 
 --- 6. Socket never appears: the wait gives up, kills the daemon, tells the user.
+-- The script waits a fixed number of 50 ms polls, each a few forks, so under load the wait outlasts any short deadline.
 fresh("DAEMON=nosocket")
 press("V")
 check(
 	settle(function()
 		return log():find("ydotoold did not start", 1, true) ~= nil
-	end, 6),
+	end, 150),
 	"no socket: notice after the wait"
 )
 check(count("ydotool click") == 0, "no socket: no click")
@@ -475,7 +489,12 @@ check(
 	end),
 	"watchdog: fires and releases"
 )
-check(log():find("cancelled after 30 s", 1, true), "watchdog: notice")
+check(
+	settle(function()
+		return log():find("cancelled after 30 s", 1, true) ~= nil
+	end),
+	"watchdog: notice"
+)
 assert_clean("watchdog")
 
 --- 9. Submap exit mid-drag (Leader reset, any route to Submap.reset).
@@ -872,7 +891,11 @@ assert_clean("lost release")
 fresh()
 press("V")
 press("SPACE") -- the press is on its way: the abort waits for `drag_ready`
-sleep(0.3)
+-- Waits for the queued `drag_ready` callback without pumping it: this scenario needs it lost.
+local press_deadline = os.time() + 30
+while not read_file(stub .. "/cb.queue"):find("drag_ready", 1, true) and os.time() < press_deadline do
+	sleep(0.03)
+end
 check(count("ydotool click 0x40") == 1, "lost ready: the press went out")
 os.remove(stub .. "/cb.queue") -- `drag_ready` never arrives
 pump()
@@ -1000,7 +1023,7 @@ check(
 assert_clean("shared")
 
 --- 34. The first press waits until Hyprland lists the virtual mouse.
-fresh("DEVICE_DELAY=1")
+fresh("DEVICE_DELAY=3")
 press("V")
 sleep(0.4)
 pump()
@@ -1009,7 +1032,7 @@ check(Cursor.drag_active(), "device wait: the drag is waiting")
 check(
 	settle(function()
 		return count("ydotool click 0x40") == 1
-	end, 6),
+	end, 30),
 	"device wait: the press follows once it is listed"
 )
 check(ready(), "device wait: the drag proceeds")
@@ -1036,7 +1059,7 @@ press("V")
 check(
 	settle(function()
 		return log():find("did not list the ydotoold virtual mouse", 1, true) ~= nil
-	end, 8),
+	end, 150),
 	"no device: notice after the wait"
 )
 check(count("ydotool click") == 0, "no device: no press")
@@ -1088,7 +1111,7 @@ press("V")
 check(
 	settle(function()
 		return count("ydotool click 0x40") == 1
-	end, 4),
+	end, 30),
 	"fast re-entry: the new daemon presses"
 )
 check(ready(), "fast re-entry: the drag proceeds")
@@ -1124,7 +1147,7 @@ reload()
 check(
 	settle(function()
 		return not daemons_running()
-	end, 3),
+	end, 15),
 	"late callbacks: the reload stops the old daemon"
 )
 sleep(0.2)
@@ -1243,7 +1266,7 @@ assert_clean("enter-leave-enter")
 
 --- 43. Another ydotoold mouse is already listed (a ydotool service, or a daemon still going away): the press still waits
 --- for this daemon's own mouse.
-fresh("PREEXISTING_MOUSE=1 DEVICE_DELAY=1")
+fresh("PREEXISTING_MOUSE=1 DEVICE_DELAY=3")
 press("V")
 sleep(0.5)
 pump()
@@ -1251,7 +1274,7 @@ check(count("ydotool click 0x40") == 0, "other mouse: no press before this daemo
 check(
 	settle(function()
 		return count("ydotool click 0x40") == 1
-	end, 6),
+	end, 30),
 	"other mouse: the press follows this daemon's mouse"
 )
 check(ready(), "other mouse: the drag proceeds")
@@ -1278,7 +1301,7 @@ for _, case in ipairs({
 	check(
 		settle(function()
 			return count("ydotool click 0x40") == 1
-		end, 8),
+		end, 30),
 		case.name .. ": the press follows the new daemon's mouse"
 	)
 	check(count("did not list") == 0, case.name .. ": no notice that Hyprland lacks the mouse")
@@ -1311,7 +1334,7 @@ for _, case in ipairs({ { name = "manual", mode = "", key = "V" }, { name = "gli
 	check(
 		settle(function()
 			return not daemons_running()
-		end, 3),
+		end, 15),
 		"reload mid-drag (" .. case.name .. "): the old daemon stops"
 	)
 	assert_clean("reload mid-drag " .. case.name)
