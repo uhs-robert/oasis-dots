@@ -789,6 +789,25 @@ class CliTest(unittest.TestCase):
         self.assertEqual((order, ranks), (["a", "b"], {"a": 10, "b": 30}))
         self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/mid.md")))
 
+    def test_new_refused_when_the_anchor_vanishes_during_a_renumber(self):
+        anchor = self.add("a", 5)
+        self.add("b", 6)
+        real = cli.placement.renumber_others
+
+        def renumber_then_delete_anchor(*args):
+            result = real(*args)
+            os.remove(anchor)
+            return result
+
+        with mock.patch.object(cli.placement, "renumber_others", side_effect=renumber_then_delete_anchor), \
+                mock.patch.object(cli.roots, "main_checkout", return_value=self.repo):
+            err = io.StringIO()
+            with redirect_stderr(err):
+                code = cli.main(["new", "proj", "mid", "--after", "a"])
+        self.assertEqual(code, 1)
+        self.assertIn("deleted since it was read", err.getvalue())
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".plans/proj/mid.md")))
+
     def test_new_with_a_known_id_clash_renumbers_nothing(self):
         self.add("a", 5)
         self.add("b", 6)

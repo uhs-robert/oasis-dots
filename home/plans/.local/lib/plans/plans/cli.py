@@ -573,7 +573,9 @@ def rank_beside(ranked, anchor, args, path, refuse_taken_id):
         print(f"plans: the rank of {entry['id']} may have changed: {entry['error']}", file=sys.stderr)
     # A skipped doc keeps its old rank, so the neighbour comes from the order as it is on disk now.
     now = sorted(fresh_docs(ranked), key=query.rank_order)
-    position = next(number for number, doc in enumerate(now) if doc.path == anchor.path)
+    position = next((number for number, doc in enumerate(now) if doc.path == anchor.path), None)
+    if position is None:
+        raise store.Vanished(anchor.path)
     if args.after:
         above, below = now[position], now[position + 1] if position + 1 < len(now) else None
     else:
