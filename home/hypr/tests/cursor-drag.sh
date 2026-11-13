@@ -76,7 +76,10 @@ def stop(*_):
     device = os.path.join(os.path.dirname(sys.argv[2]), "device")
     if os.environ.get("DEVICE_LINGER"):
         # Hyprland lists the mouse of a dead daemon for a moment longer.
-        os.spawnlp(os.P_NOWAIT, "sh", "sh", "-c", "sleep $1; rm -f $2", "sh", os.environ["DEVICE_LINGER"], device)
+        # It removes the file only while it still names this daemon, not a later one.
+        try: serial = open(device).read().strip()
+        except OSError: serial = ""
+        os.spawnlp(os.P_NOWAIT, "sh", "sh", "-c", "sleep $1; [ x$(cat $2) = x$3 ] && rm -f $2", "sh", os.environ["DEVICE_LINGER"], device, serial)
     else:
         try: os.remove(device)
         except OSError: pass

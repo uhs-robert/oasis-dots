@@ -1267,8 +1267,8 @@ assert_clean("other mouse")
 --- 43b. A fast leave and re-entry while the old mouse is still listed, and the new mouse reuses its name (and in the
 --- second case its address too): the wait must not take the old mouse for the new one, nor miss the new one.
 for _, case in ipairs({
-	{ name = "reused name", mode = "REUSE_NAME=1 DEVICE_LINGER=0.4 DEVICE_DELAY=0.5" },
-	{ name = "reused name and address", mode = "REUSE_NAME=1 REUSE_ADDRESS=1 DEVICE_LINGER=0.4 DEVICE_DELAY=0.5" },
+	{ name = "reused name", mode = "REUSE_NAME=1 DEVICE_LINGER=0.4 DEVICE_DELAY=1" },
+	{ name = "reused name and address", mode = "REUSE_NAME=1 REUSE_ADDRESS=1 DEVICE_LINGER=0.4 DEVICE_DELAY=1" },
 }) do
 	fresh(case.mode)
 	check(warm(), case.name .. ": the first daemon's mouse is listed")
