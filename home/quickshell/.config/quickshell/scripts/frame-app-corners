@@ -26,6 +26,7 @@ def yazi_border(frame):
 # TextFox's bordered panes, the only things a chamfer touches. Their own border-radius is --tf-rounding, so a chamfer
 # is --tf-rounding 0 plus a bevel drawn over each corner of these. It is painted by an ::after rather than cut with
 # clip-path or mask, because those also clip what overflows the pane: the URL bar's results, TextFox's title labels.
+# The URL bar's own background surfaces are the exception: they overlap page content, so urlbar_chamfer_css clips them.
 # (Firefox 158 has no `corner-shape: bevel`.)
 TEXTFOX_PANES = ["#tabbrowser-tabbox", "#sidebar-box", ".buttons-wrapper", "findbar", "#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs"]
 
@@ -112,6 +113,76 @@ box#vertical-tabs {{
 /* TextFox gives the find bar no side padding, so its first and last controls would sit under a corner. */
 findbar {{
   padding: 8px !important;
+}}
+""" + urlbar_chamfer_css(radius)
+
+
+def urlbar_chamfer_css(radius):
+    """The URL bar's cuts. Unlike the panes, its surfaces overlap page content (the dropdown's bottom corners), so no
+    outside colour can be painted over them: each surface is clipped to an octagon and the diagonal stroke the clip removes
+    is painted back as corner gradients. Firefox already clips both halves of the dropdown's joint background, so the
+    polygons below replace those clip-paths and keep the same seam."""
+    r = f"{radius}px"
+    stroke = lambda angle, line, w: f"linear-gradient({angle}deg, transparent 50%, {line} 50%, {line} calc(50% + {w}), transparent calc(50% + {w}))"
+    four = lambda line, w: ", ".join(stroke(a, line, w) for a in (135, 225, 315, 45))
+    full = "polygon(var(--uc-cut) 0, calc(100% - var(--uc-cut)) 0, 100% var(--uc-cut), 100% calc(100% - var(--uc-cut)), calc(100% - var(--uc-cut)) 100%, var(--uc-cut) 100%, 0 calc(100% - var(--uc-cut)), 0 var(--uc-cut))"
+    seam = "calc(100% - var(--urlbar-joint-background-overlap) + var(--urlbar-input-growth-open-block))"
+    return f"""
+/* The URL bar. Set up as custom properties so the three surfaces share one cut. The halo (the open background, 8px past
+   the input) takes a longer cut so it stays concentric with the input's: 2 - sqrt(2) = 0.586. Firefox's own rules are
+   author-origin, so every override here is !important. The open shadow is dropped (a clip would cut it) for a thin edge
+   in the pane stroke colour. */
+.urlbar {{
+  --uc-cut: {r};
+  --uc-halo-cut: calc(var(--uc-cut) + var(--urlbar-background-overhang-open) * 0.586);
+  --uc-edge: var(--tf-bevel-line);
+  --uc-edge-w: var(--border-width, 1px);
+  --uc-line: var(--toolbar-field-border-color);
+  --uc-line-w: var(--urlbar-input-container-border-width);
+  --urlbar-background-box-shadow-open: none !important;
+  --urlbar-background-border-open: var(--uc-edge-w) solid var(--uc-edge) !important;
+}}
+
+.urlbar[focused] {{
+  --uc-line: var(--toolbar-field-border-color-focus);
+  --uc-line-w: var(--urlbar-input-container-border-width-open);
+}}
+
+/* Closed and focused: the background's border is the ring. Open: the ring is the input container's outline. */
+.urlbar:not([popover-open]) > .urlbar-background,
+.urlbar[popover-open] > .urlbar-input-container {{
+  clip-path: {full} !important;
+  background-image: {four("var(--uc-line)", "var(--uc-line-w)")} !important;
+  background-position: left top, right top, right bottom, left bottom !important;
+  background-size: var(--uc-cut) var(--uc-cut) !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+}}
+
+/* Open: the halo's top corners; its bottom edge is the seam, where the view's half of the joint background starts. */
+.urlbar[popover-open] > .urlbar-background {{
+  clip-path: polygon(var(--uc-halo-cut) 0, calc(100% - var(--uc-halo-cut)) 0, 100% var(--uc-halo-cut), 100% {seam}, 0 {seam}, 0 var(--uc-halo-cut)) !important;
+  background-image: {stroke(135, "var(--uc-edge)", "var(--uc-edge-w)")}, {stroke(225, "var(--uc-edge)", "var(--uc-edge-w)")} !important;
+  background-position: left top, right top !important;
+  background-size: var(--uc-halo-cut) var(--uc-halo-cut) !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+}}
+
+/* Open: the view's half, bottom corners. */
+.urlbar > .urlbarView > .urlbarView-background {{
+  clip-path: polygon(0 var(--urlbar-joint-background-overlap), 100% var(--urlbar-joint-background-overlap), 100% calc(100% - var(--uc-halo-cut)), calc(100% - var(--uc-halo-cut)) 100%, var(--uc-halo-cut) 100%, 0 calc(100% - var(--uc-halo-cut))) !important;
+  background-image: {stroke(315, "var(--uc-edge)", "var(--uc-edge-w)")}, {stroke(45, "var(--uc-edge)", "var(--uc-edge-w)")} !important;
+  background-position: right bottom, left bottom !important;
+  background-size: var(--uc-halo-cut) var(--uc-halo-cut) !important;
+  background-repeat: no-repeat !important;
+  background-origin: border-box !important;
+}}
+
+/* TextFox's accent border on the view is hidden under the joint background except its top line (a black seam under the
+   input) and corner stubs, which would poke out of the cut. */
+.urlbar > .urlbarView {{
+  border-color: transparent !important;
 }}
 """
 
