@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests that the installer ships the Firefox autoconfig pair only when /usr/lib/firefox exists, that mozilla.cfg loads
+# Tests that the installer ships the Firefox autoconfig pair only when a profile has the script, that mozilla.cfg loads
 # the one named script and nothing else, and that uninstall.sh takes both files off.
 set -u
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
@@ -24,6 +24,10 @@ grep -qF 'const script_name = "bigicons.uc.js";' "$cfg" || fail 'mozilla.cfg doe
 if grep -q 'directoryEntries\|endsWith' "$cfg"; then fail 'mozilla.cfg globs the chrome folder'; fi
 grep -q 'script.exists()' "$cfg" || fail 'mozilla.cfg does not skip a missing script'
 grep -q 'reportError' "$cfg" || fail 'mozilla.cfg does not log load errors to the console'
+# A syntax error is not caught by the cfg's own try, and Firefox then refuses to start.
+if command -v node >/dev/null; then
+  node -e 'new Function(require("fs").readFileSync(process.argv[1], "utf8"))' "$cfg" || fail 'mozilla.cfg does not parse'
+fi
 # Firefox skips the first line, so it must be a comment.
 head -n1 "$cfg" | grep -q '^//' || fail 'first line of mozilla.cfg is not a comment'
 
@@ -33,9 +37,26 @@ if [[ -e $repo_dir/system/etc/pacman.d/hooks/firefox-autoconfig.hook ]]; then fa
 # install_system_files tests /usr/lib/firefox on the real machine, so only the guarded block is checked.
 grep -qF 'sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" || fail 'installer does not install autoconfig.js'
 grep -qF 'sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" || fail 'installer does not install mozilla.cfg'
-guard=$(grep -n 'if \[\[ -d /usr/lib/firefox \]\]' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
-first=$(grep -n 'system/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
-if [[ -z $guard || -z $first ]] || ! ((guard < first)); then fail 'firefox install is not guarded by /usr/lib/firefox existing'; fi
+guard=$(grep -n 'firefox_has_bigicons; then' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+cfg_line=$(grep -n 'sudo install .*system/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+pref_line=$(grep -n 'sudo install .*system/usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+if [[ -z $guard || -z $cfg_line ]] || ! ((guard < cfg_line)); then fail 'firefox install is not guarded by the script check'; fi
+# autoconfig.js names mozilla.cfg, and Firefox will not start when it points at a missing file.
+if [[ -z $pref_line ]] || ! ((cfg_line < pref_line)); then fail 'autoconfig.js is installed before mozilla.cfg'; fi
+grep -qF -- '--exclude=/usr/lib/firefox/' "$repo_dir/justfile" || fail 'system-apply does not exclude /usr/lib/firefox/'
+
+# The profile check follows symlinks and ignores a profile without the script.
+eval "$(awk '/^firefox_has_bigicons\(\) \{/,/^}/' "$repo_dir/lib/install/system.sh")"
+home_dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$home_dir"' EXIT
+HOME=$home_dir
+mkdir -p "$home_dir/.mozilla/firefox/a.default/chrome" "$home_dir/private"
+firefox_has_bigicons && fail 'profile without the script counts'
+: >"$home_dir/private/bigicons.uc.js"
+ln -s "$home_dir/private/bigicons.uc.js" "$home_dir/.mozilla/firefox/a.default/chrome/bigicons.uc.js"
+firefox_has_bigicons || fail 'symlinked script is not found'
+rm "$home_dir/private/bigicons.uc.js"
+firefox_has_bigicons && fail 'dangling symlink counts'
 
 # uninstall.sh runs main when sourced and removes only paths it lists, so the list is what is checked.
 grep -q 'firefox' "$repo_dir/uninstall.sh" || fail 'uninstall.sh does not list the firefox files'
