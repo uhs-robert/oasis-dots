@@ -116,6 +116,8 @@ remove_system_files() {
     /usr/local/share/betterbird-autoconfig/betterbird.cfg
     /opt/betterbird/defaults/pref/autoconfig.js
     /opt/betterbird/betterbird.cfg
+    /usr/lib/firefox/defaults/pref/autoconfig.js
+    /usr/lib/firefox/mozilla.cfg
     /etc/ssh/sshd_config.d/10-tailnet-only.conf
   )
   for f in "${files[@]}"; do

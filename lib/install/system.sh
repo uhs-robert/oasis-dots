@@ -21,6 +21,11 @@ install_system_files() {
   sudo install -Dm755 system/usr/local/bin/betterbird-autoconfig-setup /usr/local/bin/betterbird-autoconfig-setup
   sudo install -Dm644 system/opt/betterbird/defaults/pref/autoconfig.js /usr/local/share/betterbird-autoconfig/autoconfig.js
   sudo install -Dm644 system/opt/betterbird/betterbird.cfg /usr/local/share/betterbird-autoconfig/betterbird.cfg
+  # Firefox autoconfig: the package owns neither path (pacman -Qo), so upgrades leave them alone and no pacman hook is needed.
+  if [[ -d /usr/lib/firefox ]]; then
+    sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
+    sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg
+  fi
   success "System config files installed"
 
   if [[ -d /opt/betterbird ]]; then
