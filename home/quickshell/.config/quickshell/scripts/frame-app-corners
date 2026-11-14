@@ -36,6 +36,7 @@ def chamfer_css(radius):
     panes = ",\n".join(TEXTFOX_PANES)
     hovered = ",\n".join(f"{pane}:hover" for pane in TEXTFOX_PANES)
     after = ",\n".join(f"{pane}::after" for pane in TEXTFOX_PANES)
+    fullscreen = ",\n".join(f":root[inFullscreen] {pane}::after" for pane in TEXTFOX_PANES)
     # Each corner square is the window's background up to the diagonal, then the border-coloured stroke on the pane's
     # side of it. The gradient's 50% mark is the diagonal.
     corner = lambda angle, at: f"linear-gradient({angle}deg, var(--tf-bevel-outside) 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
@@ -100,6 +101,12 @@ box#vertical-tabs {{
   background: {corners};
   /* The same timing as TextFox's own border-color transition. */
   transition: --tf-bevel-line var(--tf-border-transition);
+}}
+
+/* Firefox sets inFullscreen for F11 and for DOM (video) fullscreen alike. TextFox zeroes the content box's border there but
+   never touches ::after, so the bevel triangles would sit over the video. The toolbars hide the same way, by owner choice. */
+{fullscreen} {{
+  display: none;
 }}
 
 /* TextFox gives the find bar no side padding, so its first and last controls would sit under a corner. */

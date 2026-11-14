@@ -57,7 +57,7 @@ class FirefoxCss(unittest.TestCase):
         self.assertNotIn("clip-path", css)
         self.assertNotIn("mask", css)
         for block in css.split("}"):
-            if "::after" in block:
+            if "::after" in block and ":root[inFullscreen]" not in block:
                 self.assertEqual([x.strip() for x in block.split("{")[0].split(",")], [p + "::after" for p in gen.TEXTFOX_PANES])
         self.assertIn("var(--tf-bevel-line)", css)
         self.assertIn("pointer-events: none;", css)
@@ -74,6 +74,12 @@ class FirefoxCss(unittest.TestCase):
         self.assertEqual(covered, ["#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs", ".buttons-wrapper"])
         for pane in ("#sidebar-box", "#tabbrowser-tabbox", "findbar"):
             self.assertNotIn(pane, covered)
+
+    def test_chamfer_hides_every_bevel_in_fullscreen(self):
+        # Firefox sets inFullscreen on :root for F11 and for DOM fullscreen, so one attribute covers both.
+        css = gen.firefox_css(frame("chamfer", 12))
+        block = css.split("{\n  display: none;\n}")[0].split("*/")[-1]
+        self.assertEqual([x.strip() for x in block.split(",")], [f":root[inFullscreen] {p}::after" for p in gen.TEXTFOX_PANES])
 
     def test_chamfer_outside_of_the_content_box_is_the_colour_behind_it(self):
         # #tabbrowser-tabbox sits on #browser, not on TextFox's --tf-bg, so a --tf-bg triangle shows as a mismatch outside each corner.
