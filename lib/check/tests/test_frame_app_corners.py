@@ -45,6 +45,7 @@ class FirefoxCss(unittest.TestCase):
             css = gen.firefox_css(frame(corner, 14))
             for name in ("--urlbar-border-radius", "--urlbarview-border-radius"):
                 self.assertIn(f"{name}: {px}px !important;", css, f"{corner} {name}")
+            self.assertIn(f".urlbar,\n#searchbar {{\n  --urlbar-background-border-top-radius-open: {px}px !important;", css, corner)
 
     def test_no_corner_leaves_the_urlbar_alone(self):
         self.assertNotIn("urlbar", gen.firefox_css({"on": False, "corner": "", "radius": 0}))
