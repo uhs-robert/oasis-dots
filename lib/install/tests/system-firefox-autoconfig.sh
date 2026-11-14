@@ -57,6 +57,10 @@ ln -s "$home_dir/private/bigicons.uc.js" "$home_dir/.mozilla/firefox/a.default/c
 firefox_has_bigicons || fail 'symlinked script is not found'
 rm "$home_dir/private/bigicons.uc.js"
 firefox_has_bigicons && fail 'dangling symlink counts'
+# The owner's profile lives under the XDG root.
+mkdir -p "$home_dir/.config/mozilla/firefox/b.default/chrome"
+: >"$home_dir/.config/mozilla/firefox/b.default/chrome/bigicons.uc.js"
+firefox_has_bigicons || fail 'script under ~/.config/mozilla/firefox is not found'
 
 # uninstall.sh runs main when sourced and removes only paths it lists, so the list is what is checked.
 grep -q 'firefox' "$repo_dir/uninstall.sh" || fail 'uninstall.sh does not list the firefox files'

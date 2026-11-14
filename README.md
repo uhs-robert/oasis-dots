@@ -368,7 +368,7 @@ Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim co
 
 ## 🦊 Firefox autoconfig
 
-`system/usr/lib/firefox/` holds `defaults/pref/autoconfig.js` and `mozilla.cfg`. They load one named script, `<profile>/chrome/bigicons.uc.js`, into each browser window (it draws the pinned tab icons at their full size). Firefox does not package these paths, so upgrades keep them and there is no pacman hook. A profile without the script loads nothing, and a failing script logs to the browser console. `install.sh` installs them only when Firefox is installed and a profile under `~/.mozilla/firefox` has `chrome/bigicons.uc.js` (symlinks count). `just system-apply` skips them. Install by hand with `sudo install -Dm644` for each file, undo with `sudo rm` on both paths.
+`system/usr/lib/firefox/` holds `defaults/pref/autoconfig.js` and `mozilla.cfg`. They load one named script, `<profile>/chrome/bigicons.uc.js`, into each browser window (it draws the pinned tab icons at their full size). Firefox does not package these paths, so upgrades keep them and there is no pacman hook. A profile without the script loads nothing, and a failing script logs to the browser console. `install.sh` installs them only when Firefox is installed and a profile under `~/.config/mozilla/firefox` or `~/.mozilla/firefox` has `chrome/bigicons.uc.js` (symlinks count). `just system-apply` skips them. Install by hand with `sudo install -Dm644` for each file, undo with `sudo rm` on both paths.
 
 ## 🍭 Extras
 
