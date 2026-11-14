@@ -38,6 +38,17 @@ class FirefoxCss(unittest.TestCase):
         self.assertIn("--tf-rounding: 14px;", css)
         self.assertNotIn("clip-path", css)
 
+    def test_urlbar_radius_follows_the_corner_setting(self):
+        # Firefox sets the urlbar radii on :root and a userChrome sheet is user-origin, so only !important beats it
+        # (checked in Firefox 160: without it the pill stayed at 24px).
+        for corner, px in [("round", 14), ("square", 0), ("pixel", 0), ("chamfer", 0)]:
+            css = gen.firefox_css(frame(corner, 14))
+            for name in ("--urlbar-border-radius", "--urlbarview-border-radius"):
+                self.assertIn(f"{name}: {px}px !important;", css, f"{corner} {name}")
+
+    def test_no_corner_leaves_the_urlbar_alone(self):
+        self.assertNotIn("urlbar", gen.firefox_css({"on": False, "corner": "", "radius": 0}))
+
     def test_chamfer_unclips_the_vertical_tabs_box(self):
         # Firefox's own `#vertical-tabs { overflow: hidden }` cuts the bevel that sits over the border; only !important beats it.
         # overflow: visible would let the tab strip outgrow the box, so it is a clip with the border's margin and no min-height.
