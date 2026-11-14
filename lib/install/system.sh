@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon and root's symlinks.
 
-# True when some Firefox profile has the script mozilla.cfg loads. -e follows symlinks, so a chrome folder linked into a private repo counts.
+# True when some Firefox profile (under either root) has the script mozilla.cfg loads. -e follows symlinks, so a chrome folder linked into a private repo counts.
 firefox_has_bigicons() {
   local script
-  for script in "$HOME"/.mozilla/firefox/*/chrome/bigicons.uc.js; do
+  # Both roots Firefox uses: ~/.config/mozilla/firefox (XDG, newer builds) and ~/.mozilla/firefox.
+  for script in "$HOME"/.config/mozilla/firefox/*/chrome/bigicons.uc.js "$HOME"/.mozilla/firefox/*/chrome/bigicons.uc.js; do
     [[ -e $script ]] && return 0
   done
   return 1
