@@ -24,6 +24,9 @@ BACKED_UP = (".plans", ".logs")
 # agents churn .logs/ all day.
 PARTIAL_SNAPSHOT = 3
 KEEP = ("--keep-hourly", "48", "--keep-daily", "30")
+# Agent rigs keep whole Firefox profiles under .logs/, and their caches were half the size and most of each hour's
+# upload. A bare `cache` would also drop any evidence folder of that name, so the site cache is matched by its path.
+EXCLUDES = ("--exclude", "cache2", "--exclude", "startupCache", "--exclude", "storage/default/*/cache")
 
 
 class BackupError(Exception):
@@ -109,9 +112,12 @@ def backup(out, config=None):
     if not paths:
         out("nothing to back up: no .plans/ or .logs/ under the roots")
         return
-    code = run_restic(["backup", "--tag", "plans", *paths], ok_codes=(0, PARTIAL_SNAPSHOT))
+    code = run_restic(["backup", "--tag", "plans", *EXCLUDES, *paths], ok_codes=(0, PARTIAL_SNAPSHOT))
     if code == PARTIAL_SNAPSHOT:
         out("warning: some files could not be read; the snapshot was still made")
+    # A run that systemd or a user killed leaves its lock behind, and every later forget then fails on it. Plain unlock
+    # removes only locks whose process is gone, so a live run elsewhere keeps its lock.
+    run_restic(["unlock"])
     # Group by host only: the paths change as repos come and go, and a path-based group would keep its last snapshot
     # for good.
     run_restic(["forget", "--prune", "--group-by", "host", *KEEP])

@@ -134,10 +134,21 @@ class TestBackup(BackupCase):
 
     def test_forget_keeps_the_agreed_retention(self):
         self.run_cli("backup")
-        forget = self.calls()[1]["args"]
+        forget = self.calls()[2]["args"]
         self.assertEqual(forget[:2], ["forget", "--prune"])
         self.assertIn("48", forget[forget.index("--keep-hourly") + 1])
         self.assertEqual(forget[forget.index("--keep-daily") + 1], "30")
+
+    def test_clears_stale_locks_before_forget(self):
+        self.run_cli("backup")
+        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "unlock", "forget"])
+        self.assertEqual(self.calls()[1]["args"], ["unlock"])
+
+    def test_skips_firefox_caches_but_not_other_cache_folders(self):
+        self.run_cli("backup")
+        args = self.calls()[0]["args"]
+        excludes = [args[i + 1] for i, a in enumerate(args) if a == "--exclude"]
+        self.assertEqual(excludes, ["cache2", "startupCache", "storage/default/*/cache"])
 
     def test_default_repo_is_the_drive_remote(self):
         with mock.patch.dict(os.environ):
@@ -159,7 +170,7 @@ class TestBackup(BackupCase):
         self.assertEqual(code, 0)
         self.assertIn("warning", out)
         self.notify.assert_not_called()
-        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "forget"])
+        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "unlock", "forget"])
 
     def test_any_failure_notifies_not_only_restic_errors(self):
         with mock.patch.object(backup, "backup_paths", side_effect=OSError("roots unreadable")):
