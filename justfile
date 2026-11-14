@@ -3,18 +3,18 @@
 default:
     @just --list
 
-system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/ --exclude=/etc/ssh/"
+system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/ --exclude=/usr/lib/firefox/ --exclude=/etc/ssh/"
 
 # Show pending changes between system/ and / (dry run, no sudo)
 system-diff:
     rsync -rlptv --omit-dir-times --chown=root:root --dry-run {{system_excludes}} system/ /
-    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config and Betterbird via install.sh"
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config, Betterbird and the Firefox autoconfig via install.sh"
 
 # Copy system/ into / for real, e.g. /etc, /usr/local/bin (needs sudo)
 system-apply:
     sudo rsync -rlptv --omit-dir-times --chown=root:root {{system_excludes}} system/ /
     sudo systemctl daemon-reload
-    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config and Betterbird via install.sh"
+    @echo "Skipped installer-managed files: greeter via just greeter-sync --install; SSH server via just ssh-server; tuigreet config, Betterbird and the Firefox autoconfig via install.sh"
 
 # Symlink one package from home/ into ~
 stow name:

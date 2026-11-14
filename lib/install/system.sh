@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # System-level setup: files rsynced into /, the default shell, keyd, power-profiles-daemon and root's symlinks.
 
+# True when some Firefox profile has the script mozilla.cfg loads. -e follows symlinks, so a chrome folder linked into a private repo counts.
+firefox_has_bigicons() {
+  local script
+  for script in "$HOME"/.mozilla/firefox/*/chrome/bigicons.uc.js; do
+    [[ -e $script ]] && return 0
+  done
+  return 1
+}
+
 install_system_files() {
   info "Installing system config files..."
   cd "$DOTFILES_DIR" || return 1
@@ -22,9 +31,13 @@ install_system_files() {
   sudo install -Dm644 system/opt/betterbird/defaults/pref/autoconfig.js /usr/local/share/betterbird-autoconfig/autoconfig.js
   sudo install -Dm644 system/opt/betterbird/betterbird.cfg /usr/local/share/betterbird-autoconfig/betterbird.cfg
   # Firefox autoconfig: the package owns neither path (pacman -Qo), so upgrades leave them alone and no pacman hook is needed.
-  if [[ -d /usr/lib/firefox ]]; then
-    sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
+  # It is a root-level chrome-code hook, so it goes in only for a user who has the script it loads. mozilla.cfg goes in first:
+  # autoconfig.js names it, and Firefox refuses to start when that file is missing.
+  if [[ -d /usr/lib/firefox ]] && firefox_has_bigicons; then
     sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg
+    sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
+  else
+    info "No Firefox profile has chrome/bigicons.uc.js, skipping the Firefox autoconfig"
   fi
   success "System config files installed"
 
