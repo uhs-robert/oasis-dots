@@ -166,7 +166,7 @@ The key passes through `xdg-open`'s command line and the browser's, where local 
 
 ## Backup
 
-`.plans/` and `.logs/` are git-ignored, so git holds no copy. `plans backup` snapshots both folders of every repo under the roots (the same repos as `--all`) with restic, encrypted, into the rclone remote `gdrive:backups/plans`. After each snapshot it prunes with keep-hourly 48 and keep-daily 30. Set `PLANS_BACKUP_REPO` or `PLANS_BACKUP_PASSWORD_FILE` to use another restic repo or password file.
+`.plans/` and `.logs/` are git-ignored, so git holds no copy. `plans backup` snapshots both folders of every repo under the roots (the same repos as `--all`) with restic, encrypted, into the rclone remote `gdrive:backups/plans`. It skips Firefox profile caches (`cache2`, `startupCache` and the per-site `storage/default/*/cache`), which agent rigs leave under `.logs/`. After each snapshot it clears stale locks (`restic unlock`, which leaves a live run's lock alone) and prunes with keep-hourly 48 and keep-daily 30. Set `PLANS_BACKUP_REPO` or `PLANS_BACKUP_PASSWORD_FILE` to use another restic repo or password file.
 
 One-time setup:
 
