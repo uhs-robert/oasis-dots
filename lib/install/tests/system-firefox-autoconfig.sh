@@ -68,4 +68,7 @@ for f in /usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/mozilla.c
   grep -qxF "    $f" "$repo_dir/uninstall.sh" || fail "uninstall.sh does not remove $f"
 done
 
+# Removing mozilla.cfg while autoconfig.js stays leaves Firefox unable to start.
+grep -qF 'kept: autoconfig.js is still installed' "$repo_dir/uninstall.sh" || fail 'uninstall.sh removes mozilla.cfg while autoconfig.js stays'
+
 exit $((failures > 0))
