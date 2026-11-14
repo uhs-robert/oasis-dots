@@ -121,7 +121,10 @@ remove_system_files() {
     /etc/ssh/sshd_config.d/10-tailnet-only.conf
   )
   for f in "${files[@]}"; do
-    if [[ -f "$f" ]]; then
+    # autoconfig.js names mozilla.cfg, and Firefox refuses to start when that file is missing, so keep the cfg while the pref stays.
+    if [[ $f == /usr/lib/firefox/mozilla.cfg && -f /usr/lib/firefox/defaults/pref/autoconfig.js ]]; then
+      warn "$f kept: autoconfig.js is still installed"
+    elif [[ -f "$f" ]]; then
       sudo rm -f "$f" && success "Removed $f"
     else
       warn "$f not found, skipping"
