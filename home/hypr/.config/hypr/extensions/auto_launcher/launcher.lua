@@ -124,7 +124,9 @@ end
 
 --- Polls for the app's new window, places it, and records which entry opened it.
 --- Backstop for single-instance apps, whose server-owned pid the exec rule can't bind to.
---- `on_done` runs once the window is placed, with its address, or after the poller gives up, with none.
+--- With `extra_windows`, polling goes on after the first window and places each later window of the same match on
+--- the next listed spot, in the order they appear. Each window gets the full 15 s wait, counted from the one before.
+--- `on_done` runs once the first window is placed, with its address, or after the poller gives up, with none.
 --- @param app AppEntry
 --- @param workspace integer|string
 --- @param before table<string, boolean> window addresses that existed before this app launched
@@ -133,23 +135,41 @@ end
 local function place_when_ready(app, workspace, before, claimed, on_done)
   local match_val = app.class or app.title
   local match_key = app.class and "class" or "title"
+  local extras = app.extra_windows or {}
+  local placed_count = 0
   local attempts = 0
   local t
+
+  local function report_first_window(address)
+    if on_done then on_done(address) end
+    on_done = nil
+  end
+
   t = hl.timer(function()
     attempts = attempts + 1
     for _, w in ipairs(hl.get_windows() or {}) do
       if w[match_key] == match_val and not before[w.address] and not claimed[w.address] then
         claimed[w.address] = true
-        t:set_enabled(false)
-        place(app, workspace, w.address)
-        Provenance.record(w.address, app)
-        if on_done then on_done(w.address) end
-        return
+        attempts = 0
+        placed_count = placed_count + 1
+        if placed_count == 1 then
+          place(app, workspace, w.address)
+          Provenance.record(w.address, app)
+          report_first_window(w.address)
+        else
+          -- Not recorded in provenance: capture would save it as a second launch of the same command.
+          local extra = extras[placed_count - 1]
+          place(extra, target_workspace(extra), w.address)
+        end
+        if placed_count > #extras then
+          t:set_enabled(false)
+          return
+        end
       end
     end
     if attempts >= 60 then
       t:set_enabled(false)
-      if on_done then on_done() end
+      report_first_window(nil)
     end
   end, { timeout = 250, type = "repeat" })
 end

@@ -21,6 +21,17 @@ Sessions.add("💼 Work", {
 Sessions.remove("🎮 Game") -- drop a default; Sessions.clear() drops them all
 ```
 
+An app that opens more than one window, such as a browser restoring its last session, can place the later windows with `extra_windows`. The launcher places the first new window on the entry's own spot and each later window of the same class on the next listed spot, in the order they open:
+
+```lua
+{
+  monitor = 3, ws = 1, cmd = "firefox", class = "firefox",
+  extra_windows = { { monitor = 2, ws = 1 } },
+}
+```
+
+Each spot takes `monitor` and `ws` (or `special`), plus `float`, `size` and `pos`. The field works in Lua sessions only. Sessions saved from Settings drop it.
+
 The launcher matches `class` exactly against the window class Hyprland reports. Flatpak Firefox reports `org.mozilla.firefox`, so set that class in your custom session.
 
 `Launcher.launch(name)` starts a session by exact name without the picker. voxcmd uses it for "open the work session" (see its [Sessions](../../../../../voxcmd/.config/voxcmd/README.md#sessions) section), with `Launcher.write_names(path)` to list them.

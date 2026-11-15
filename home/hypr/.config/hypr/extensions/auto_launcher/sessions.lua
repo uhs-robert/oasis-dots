@@ -23,6 +23,15 @@ local state_dir = require("lib.state")
 --- @field special string|nil special workspace name without the `special:` prefix; replaces monitor/ws
 --- @field float boolean|nil float the window before size/pos are applied
 --- @field guessed boolean|nil set by capture when cmd was reconstructed from /proc; the launcher still runs cmd, the flag only tells Settings to mark it for checking
+--- @field extra_windows ExtraWindow[]|nil spots for later windows of the same match, in order (a browser's restored windows); Lua sessions only, saved sessions drop it
+
+--- @class ExtraWindow
+--- @field monitor integer|nil 1-based monitor index; required unless `special` is set
+--- @field ws integer|nil workspace offset within the monitor (default: 1)
+--- @field special string|nil special workspace name without the `special:` prefix; replaces monitor/ws
+--- @field float boolean|nil float the window before size/pos are applied
+--- @field size [integer, integer]|nil window size as {w, h}
+--- @field pos [integer, integer]|nil window position as {x, y}
 
 --- @class SessionInfo
 --- @field apps AppEntry[]
