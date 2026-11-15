@@ -127,10 +127,10 @@ class TestBackup(BackupCase):
         shutil.rmtree(os.path.join(self.beta, ".logs"))
         code, out, _ = self.run_cli("backup")
         self.assertEqual(code, 0)
-        first = self.calls()[0]
-        paths = [a for a in first["args"] if a.startswith("/")]
+        backup_call = self.calls()[1]
+        paths = [a for a in backup_call["args"] if a.startswith("/")]
         self.assertEqual(paths, [f"{self.alpha}/.plans", f"{self.alpha}/.logs", f"{self.beta}/.plans"])
-        self.assertEqual((first["repo"], first["pw"]), ("stub-repo", self.password))
+        self.assertEqual((backup_call["repo"], backup_call["pw"]), ("stub-repo", self.password))
 
     def test_forget_keeps_the_agreed_retention(self):
         self.run_cli("backup")
@@ -139,22 +139,22 @@ class TestBackup(BackupCase):
         self.assertIn("48", forget[forget.index("--keep-hourly") + 1])
         self.assertEqual(forget[forget.index("--keep-daily") + 1], "30")
 
-    def test_clears_stale_locks_before_forget(self):
+    def test_clears_stale_locks_before_backup(self):
         self.run_cli("backup")
-        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "unlock", "forget"])
-        self.assertEqual(self.calls()[1]["args"], ["unlock"])
+        self.assertEqual([c["args"][0] for c in self.calls()], ["unlock", "backup", "forget"])
+        self.assertEqual(self.calls()[0]["args"], ["unlock"])
 
     def test_skips_firefox_caches_but_not_other_cache_folders(self):
         self.run_cli("backup")
-        args = self.calls()[0]["args"]
+        args = self.calls()[1]["args"]
         excludes = [args[i + 1] for i, a in enumerate(args) if a == "--exclude"]
-        self.assertEqual(excludes, ["cache2", "startupCache", "storage/default/*/cache"])
+        self.assertEqual(excludes, ["profiles/*/cache2", "profiles/*/startupCache", "profiles/*/storage/default/*/cache"])
 
     def test_default_repo_is_the_drive_remote(self):
         with mock.patch.dict(os.environ):
             os.environ.pop("PLANS_BACKUP_REPO")
             self.run_cli("backup")
-        self.assertEqual(self.calls()[0]["repo"], "rclone:gdrive:backups/plans")
+        self.assertEqual(self.calls()[1]["repo"], "rclone:gdrive:backups/plans")
 
     def test_failed_backup_exits_nonzero_and_notifies(self):
         with mock.patch.dict(os.environ, {"STUB_FAIL": "backup"}):
@@ -162,7 +162,7 @@ class TestBackup(BackupCase):
         self.assertEqual(code, 1)
         self.assertIn("backup failed", err)
         self.notify.assert_called_once()
-        self.assertEqual([c["args"][0] for c in self.calls()], ["backup"])  # no forget after a failed backup
+        self.assertEqual([c["args"][0] for c in self.calls()], ["unlock", "backup"])  # no forget after a failed backup
 
     def test_partial_snapshot_is_a_warning_and_still_prunes(self):
         with mock.patch.dict(os.environ, {"STUB_EXIT": "3"}):
@@ -170,7 +170,7 @@ class TestBackup(BackupCase):
         self.assertEqual(code, 0)
         self.assertIn("warning", out)
         self.notify.assert_not_called()
-        self.assertEqual([c["args"][0] for c in self.calls()], ["backup", "unlock", "forget"])
+        self.assertEqual([c["args"][0] for c in self.calls()], ["unlock", "backup", "forget"])
 
     def test_any_failure_notifies_not_only_restic_errors(self):
         with mock.patch.object(backup, "backup_paths", side_effect=OSError("roots unreadable")):
