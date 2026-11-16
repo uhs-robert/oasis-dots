@@ -36,7 +36,10 @@ setup_voxtype() {
     warn "Added $USER to input group, takes effect on next login"
   fi
 
+  # One env file for every unit that runs whisper: voxtype.service through gpu.conf, and voxcmd-wake.service, whose
+  # wake confirm spawns `voxtype transcribe` outside the daemon.
   local gpu_conf="$HOME/.config/systemd/user/voxtype.service.d/gpu.conf"
+  local gpu_env="$HOME/.config/voxtype/gpu.env"
   [[ -L "$gpu_conf" && ! -e "$gpu_conf" ]] && rm -f "$gpu_conf"
   if [[ -L "$gpu_conf" ]]; then
     warn "gpu.conf is a dotfiles symlink, skipping GPU detection"
@@ -46,22 +49,29 @@ setup_voxtype() {
     # detect_gpu_vendor answers amd first, which on a hybrid laptop is the iGPU.
     # It shares the data fabric with the CPU, and whisper bursts there lined up
     # with hard resets, so prefer the NVIDIA dGPU behind PCIe.
-    if [[ $vendor == amd ]] && lspci 2>/dev/null | grep -qi 'nvidia'; then
+    # Without the NVIDIA Vulkan driver the filter below would leave no device at all.
+    if [[ $vendor == amd ]] && lspci 2>/dev/null | grep -qi 'nvidia' \
+      && [[ -e /usr/share/vulkan/icd.d/nvidia_icd.json || -e /etc/vulkan/icd.d/nvidia_icd.json ]]; then
       vendor=nvidia
     fi
     if [[ -n "$vendor" ]]; then
-      mkdir -p "$(dirname "$gpu_conf")"
+      mkdir -p "$(dirname "$gpu_conf")" "$(dirname "$gpu_env")"
       {
-        printf '[Service]\n'
         # voxtype sets this loader filter from VOXTYPE_VULKAN_DEVICE only after its
         # VAD model has opened Vulkan and listed the iGPU as device 0, so whisper
-        # still lands there. Set in the unit, it hides the iGPU from the start.
+        # still lands there. Set for the whole process, it hides the iGPU from the start.
         if [[ $vendor == nvidia ]]; then
-          printf 'Environment="VK_LOADER_DRIVERS_SELECT=nvidia*"\n'
+          printf 'VK_LOADER_DRIVERS_SELECT=nvidia*\n'
         fi
-        printf 'Environment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor"
-      } >"$gpu_conf"
-      success "voxtype GPU drop-in written: $vendor"
+        printf 'VOXTYPE_GPU_DEVICE=0\nVOXTYPE_VULKAN_DEVICE=%s\n' "$vendor"
+      } >"$gpu_env"
+      printf '[Service]\nEnvironmentFile=-%%h/.config/voxtype/gpu.env\n' >"$gpu_conf"
+      success "voxtype GPU env written: $vendor"
+      # A rerun changes the GPU of units already running; restart only those, so a fresh install starts nothing early.
+      if systemctl --user show-environment &>/dev/null; then
+        systemctl --user daemon-reload
+        systemctl --user try-restart voxtype voxcmd-wake || warn "voxtype or voxcmd-wake did not restart, restart them to apply the GPU env"
+      fi
     else
       warn "Could not detect GPU vendor, skipping gpu.conf"
     fi
