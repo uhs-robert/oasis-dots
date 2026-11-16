@@ -15,13 +15,20 @@ broken=$(awk -F '\t' 'NF == 2 && $2 == "foreign" { print $1 }' <<<"$report")
 # library only moved to a newer soname, so a library counts as missing only
 # when no installed library shares its name before ".so".
 installed_libs=$(ldconfig -p | awk '/=>/ { print $1 }')
-# Names a version can sit in: libfoo.so.7 and libfoo-7.so. Strip both forms to
-# "libfoo" and look for an installed library that starts the same way.
+# The version can sit before or after ".so" (libfoo.so.7, libfoo-7.so,
+# libpython3.13.so.1.0). Cut at ".so", then trim trailing digits, dots, dashes
+# and underscores, so every form reduces to the bare name ("libfoo"). A stem
+# that matches too much only keeps a package in the rebuild list.
+lib_stem() {
+  local stem=${1%%.so*}
+  while [[ $stem =~ [0-9._-]$ ]]; do stem=${stem%?}; done
+  printf '%s' "$stem"
+}
 has_replacement() {
-  local base=${1%%.so*} candidate
-  base=${base%%-[0-9]*}
+  local stem candidate
+  stem=$(lib_stem "$1")
   while IFS= read -r candidate; do
-    [[ $candidate == "$base".so* || $candidate == "$base"-[0-9]*.so* ]] && return 0
+    [[ $(lib_stem "$candidate") == "$stem" ]] && return 0
   done <<<"$installed_libs"
   return 1
 }
