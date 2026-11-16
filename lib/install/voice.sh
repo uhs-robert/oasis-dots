@@ -43,6 +43,12 @@ setup_voxtype() {
   elif command -v lspci &>/dev/null; then
     local vendor
     vendor=$(detect_gpu_vendor)
+    # detect_gpu_vendor answers amd first, which on a hybrid laptop is the iGPU.
+    # It shares the data fabric with the CPU, and whisper bursts there lined up
+    # with hard resets, so prefer the NVIDIA dGPU behind PCIe.
+    if [[ $vendor == amd ]] && lspci 2>/dev/null | grep -qi 'nvidia'; then
+      vendor=nvidia
+    fi
     if [[ -n "$vendor" ]]; then
       mkdir -p "$(dirname "$gpu_conf")"
       printf '[Service]\nEnvironment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor" >"$gpu_conf"
