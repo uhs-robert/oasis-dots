@@ -135,6 +135,8 @@ run_in_tmux = true
 
 # Commands to run after anything
 [post_commands]
+# After the upgrade, so it sees the new libraries. Rebuilds AUR packages the upgrade broke (see the script).
+"Rebuild broken AUR packages" = "aur-rebuild-broken"
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
 # "Fedora Nvidia Post Kernel Upgrades" = "~/Development/bash-scripts/scripts/topgrade-kernel-post"
 # "Rebuild akmods" = "sudo akmods --force"

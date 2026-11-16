@@ -303,6 +303,8 @@ just update-repos      # pull the copies in repos/ (linked dev clones are skippe
 
 topgrade runs `just update-repos` as a custom command, so a normal `topgrade` keeps the repos current. HyprVim's own updater is turned off because its clone tracks `main` and is pulled the same way.
 
+After an upgrade, topgrade's post command `aur-rebuild-broken` (`home/topgrade/.local/bin`) rebuilds every AUR package that `checkrebuild` (from `rebuild-detector`) flags, without asking. It skips `-bin` packages and packages whose library is missing rather than replaced, because a rebuild cannot fix those. A failed rebuild fails the topgrade step.
+
 Forks can change the dev directory (default `~/Development`) and the GitHub owner that `--dev` clones over SSH (default `uhs-robert`) with `GITHUB_DIR` and `GITHUB_ORG`, either in the environment (`GITHUB_DIR=~/src ./install.sh --dev`) or in an ignored `install.local` at the repo root holding plain `GITHUB_DIR=...` and `GITHUB_ORG=...` lines. The environment wins over the file.
 
 A repo that already exists under `~/Development/<section>/<name>` is always linked rather than cloned again. `~/.local/share/dotfiles/repos` points at `repos/` for shell and Hyprland configs that need a fixed path.
