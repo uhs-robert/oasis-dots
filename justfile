@@ -97,7 +97,7 @@ sync-root-yazi:
 
 # Shellcheck install.sh, uninstall.sh, lib/check.sh, lib/{common,install,check}/**/*.sh, demo/*.sh, and the Quickshell audio importers
 lint:
-    shellcheck install.sh uninstall.sh lib/check.sh lib/common/*.sh lib/install/*.sh lib/install/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh demo/*.sh
+    shellcheck install.sh uninstall.sh lib/check.sh lib/common/*.sh lib/install/*.sh lib/install/tests/*.sh lib/check/*.sh lib/check/steps/*.sh lib/check/tests/*.sh demo/*.sh home/topgrade/.local/bin/aur-rebuild-broken
     shellcheck -x -P SCRIPTDIR home/quickshell/.config/quickshell/scripts/lib/*.sh home/quickshell/.config/quickshell/scripts/ff7-audio home/quickshell/.config/quickshell/scripts/goldeneye-audio home/quickshell/.config/quickshell/scripts/mgs2-audio home/quickshell/.config/quickshell/scripts/ocarina-audio
 
 # Rebuild every Quickshell .frag.qsb from its .frag (qt6-shadertools); `just check` fails when one is stale

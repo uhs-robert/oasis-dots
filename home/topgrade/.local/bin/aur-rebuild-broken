@@ -15,44 +15,54 @@ broken=$(awk -F '\t' 'NF == 2 && $2 == "foreign" { print $1 }' <<<"$report")
 # library only moved to a newer soname, so a library counts as missing only
 # when no installed library shares its name before ".so".
 installed_libs=$(ldconfig -p | awk '/=>/ { print $1 }')
+# Names a version can sit in: libfoo.so.7 and libfoo-7.so. Strip both forms to
+# "libfoo" and look for an installed library that starts the same way.
+has_replacement() {
+  local base=${1%%.so*} candidate
+  base=${base%%-[0-9]*}
+  while IFS= read -r candidate; do
+    [[ $candidate == "$base".so* || $candidate == "$base"-[0-9]*.so* ]] && return 0
+  done <<<"$installed_libs"
+  return 1
+}
 only_missing_libs() {
-    local package=$1 path lib found=0 fixable=0
-    # The detail block of a binary is "ldd <path>", a blank line, then one
-    # "<lib> => not found" line per missing library.
-    while IFS= read -r line; do
-        if [[ $line == "ldd "* ]]; then
-            path=${line#ldd }
-            [[ $(pacman -Qqo -- "$path" 2>/dev/null) == "$package" ]] && found=1 || found=0
-        elif ((found)) && [[ $line == *"=> not found"* ]]; then
-            lib=$(awk '{ print $1 }' <<<"$line")
-            grep -q -- "^${lib%%.so*}\.so" <<<"$installed_libs" && fixable=1
-        fi
-    done <<<"$report"
-    # No ldd detail means a python, perl, ruby or haskell flag: a rebuild fixes it.
-    ((fixable)) && return 1
-    grep -qxF -- "$package" <<<"$ldd_packages" || return 1
-    return 0
+  local package=$1 path lib found=0 fixable=0
+  # The detail block of a binary is "ldd <path>", a blank line, then one
+  # "<lib> => not found" line per missing library.
+  while IFS= read -r line; do
+    if [[ $line == "ldd "* ]]; then
+      path=${line#ldd }
+      [[ $(pacman -Qqo -- "$path" 2>/dev/null || true) == "$package" ]] && found=1 || found=0
+    elif ((found)) && [[ $line == *"=> not found"* ]]; then
+      lib=$(awk '{ print $1 }' <<<"$line")
+      has_replacement "$lib" && fixable=1
+    fi
+  done <<<"$report"
+  # No ldd detail means a python, perl, ruby or haskell flag: a rebuild fixes it.
+  ((fixable)) && return 1
+  grep -qxF -- "$package" <<<"$ldd_packages" || return 1
+  return 0
 }
 ldd_packages=$(
-    awk '/^ldd / { sub(/^ldd /, ""); print }' <<<"$report" |
-        xargs -r pacman -Qqo 2>/dev/null | sort -u
+  awk '/^ldd / { sub(/^ldd /, ""); print }' <<<"$report" |
+    { xargs -r -d '\n' pacman -Qqo 2>/dev/null || true; } | sort -u
 )
 
 rebuildable=()
 while IFS= read -r package; do
-    [[ -n $package ]] || continue
-    if [[ $package == *-bin ]]; then
-        printf 'skip %s: prebuilt binary, a rebuild cannot fix it\n' "$package"
-    elif only_missing_libs "$package"; then
-        printf 'skip %s: a library is missing, not replaced\n' "$package"
-    else
-        rebuildable+=("$package")
-    fi
+  [[ -n $package ]] || continue
+  if [[ $package == *-bin ]]; then
+    printf 'skip %s: prebuilt binary, a rebuild cannot fix it\n' "$package"
+  elif only_missing_libs "$package"; then
+    printf 'skip %s: a library is missing, not replaced\n' "$package"
+  else
+    rebuildable+=("$package")
+  fi
 done <<<"$broken"
 
 if ((${#rebuildable[@]} == 0)); then
-    printf 'aur-rebuild-broken: nothing to rebuild\n'
-    exit 0
+  printf 'aur-rebuild-broken: nothing to rebuild\n'
+  exit 0
 fi
 
 printf 'aur-rebuild-broken: rebuilding %s\n' "${rebuildable[*]}"
