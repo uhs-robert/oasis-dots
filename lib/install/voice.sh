@@ -51,7 +51,16 @@ setup_voxtype() {
     fi
     if [[ -n "$vendor" ]]; then
       mkdir -p "$(dirname "$gpu_conf")"
-      printf '[Service]\nEnvironment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor" >"$gpu_conf"
+      {
+        printf '[Service]\n'
+        # voxtype sets this loader filter from VOXTYPE_VULKAN_DEVICE only after its
+        # VAD model has opened Vulkan and listed the iGPU as device 0, so whisper
+        # still lands there. Set in the unit, it hides the iGPU from the start.
+        if [[ $vendor == nvidia ]]; then
+          printf 'Environment="VK_LOADER_DRIVERS_SELECT=nvidia*"\n'
+        fi
+        printf 'Environment="VOXTYPE_GPU_DEVICE=0"\nEnvironment="VOXTYPE_VULKAN_DEVICE=%s"\n' "$vendor"
+      } >"$gpu_conf"
       success "voxtype GPU drop-in written: $vendor"
     else
       warn "Could not detect GPU vendor, skipping gpu.conf"
