@@ -62,3 +62,24 @@ function offered(tokens) {
 function forces_full_bar(tokens) {
     return !tokens.bar_lualine && tokens.bar_island_shape !== "full";
 }
+
+// The monitors that draw the frame, as Hyprland monitor strings for ScreenFrame.set's list: "desc:" and the
+// description, which survives a replug that renames the connector, else the connector name. The connector also stands
+// in for a description two screens share (Hyprland's desc: picks only the first match) or one holding "]" (it would
+// end the m[] selector frame.lua puts it in). Each screen is { name, description, framed }.
+function framed_monitors(screens) {
+    const shared = d => screens.filter(s => s.description === d).length > 1;
+    const keys = [];
+    for (const s of screens) {
+        if (!s.framed) continue;
+        const usable = s.description && s.description.indexOf("]") < 0 && !shared(s.description);
+        const key = usable ? "desc:" + s.description : s.name;
+        if (key && keys.indexOf(key) < 0) keys.push(key);
+    }
+    return keys;
+}
+
+// A list of strings as a Lua table literal, for a Hyprland dispatch: JSON's string quoting is valid Lua for text with no control characters.
+function lua_string_list(items) {
+    return "{" + items.map(s => JSON.stringify(String(s))).join(", ") + "}";
+}

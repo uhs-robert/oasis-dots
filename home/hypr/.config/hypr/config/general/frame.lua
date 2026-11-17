@@ -1,5 +1,6 @@
 --- Matches window corners to the Corner style Quickshell draws and, while its screen frame is on, borders, gaps and flush
---- lone windows to the frame; restores the owner's own values when Quickshell sends clear or goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
+--- lone windows to the frame, on the monitors that draw it; restores the owner's own values when Quickshell sends clear
+--- or goes. Self-contained (no requires), so the shadow harness can dofile it on its own.
 
 local FRAME_NAMESPACE = "quickshell-frame"
 local WATCHDOG_MS = 2000
@@ -31,7 +32,15 @@ local gapped_lones = {}
 -- One rule per workspace id and gaps_out value, since a rule's values cannot change; only the one for the gap in force is enabled.
 local gap_rules = {}
 local active_gap_rules = {}
+-- The monitor each opted-out lone window's workspace was on, workspace id -> monitor name: a move to another monitor ends it.
+local gapped_lone_monitors = {}
 local GAPPED_TAG = "frame_gapped"
+-- The monitors that draw the frame, as Hyprland monitor strings ("desc:<description>" or a connector name), or nil for
+-- every monitor: an older Quickshell sends no list. The frame look goes only to these, through an m[] selector on each
+-- rule, so Hyprland itself follows a workspace that moves monitor and a monitor that is plugged back in.
+local framed_monitors = nil
+-- One lone-window flush rule per framed monitor, made on first use like the window rules.
+local monitor_lone_rules = {}
 
 --- The smallest gap between tiled windows and the usable area's edge.
 --- @return number
@@ -92,29 +101,98 @@ hl.workspace_rule({ workspace = "f[1]", gaps_out = 0 })
 local lone_window_rule = hl.workspace_rule({ workspace = "w[tv1]", gaps_out = 0 })
 lone_window_rule:set_enabled(false)
 
+--- The rule selector for windows or workspaces on `monitor`, or `selector` alone when the frame is on every monitor.
+--- @param selector string|nil
+--- @param monitor string|nil
+--- @return string|nil
+local function on_monitor(selector, monitor)
+  if monitor == nil then return selector end
+  local own = "m[" .. monitor .. "]"
+  return selector and (selector .. " " .. own) or own
+end
+
+--- Turns the lone-window flush on for exactly `monitors` (nil: on every monitor through the global rule), or off.
+--- @param on boolean
+--- @param monitors string[]|nil
+local function use_lone_rules(on, monitors)
+  lone_window_rule:set_enabled(on and monitors == nil)
+  local wanted = {}
+  for _, monitor in ipairs((on and monitors) or {}) do
+    wanted[monitor] = true
+    if not monitor_lone_rules[monitor] then
+      monitor_lone_rules[monitor] = hl.workspace_rule({ workspace = on_monitor("w[tv1]", monitor), gaps_out = 0 })
+      -- Of two matching workspace rules the later one wins, so an opt-out gaps rule made before this one would lose to
+      -- it: the next opt-out makes a fresh one.
+      gap_rules = {}
+    end
+    monitor_lone_rules[monitor]:set_enabled(true)
+  end
+  for monitor, rule in pairs(monitor_lone_rules) do
+    if not wanted[monitor] then rule:set_enabled(false) end
+  end
+end
+
+--- Whether `monitor` (a Hyprland monitor object) draws the frame, as `framed_monitors` names it.
+--- @param monitor table|nil
+--- @return boolean
+local function monitor_framed(monitor)
+  if framed_monitors == nil then return true end
+  if monitor == nil then return false end
+  for _, key in ipairs(framed_monitors) do
+    local description = key:match("^desc:(.*)$")
+    if description then
+      -- Hyprland's own desc: match is a prefix match too.
+      if tostring(monitor.description or ""):sub(1, #description) == description then return true end
+    elseif key == monitor.name then
+      return true
+    end
+  end
+  return false
+end
+
+--- The framed monitor list from set's argument: strings usable inside an m[] selector, nil for anything else.
+--- @param monitors any
+--- @return string[]|nil
+local function framed_list(monitors)
+  if type(monitors) ~= "table" then return nil end
+  local list = {}
+  for _, monitor in ipairs(monitors) do
+    if type(monitor) == "string" and monitor ~= "" and not monitor:find("]", 1, true) then
+      table.insert(list, monitor)
+    end
+  end
+  return list
+end
+
 --- Enables exactly the rules in `wanted` (made on first use), disabling every other.
---- @param wanted table[] each { rounding, power, kind }; kind says which windows: "gapped" (all), "lone" (the only tiled
----   window on its workspace) or "maximized"
+--- @param wanted table[] each { kind, monitor?, rounding, power } or { kind = "border", monitor?, border_size?,
+---   border_color? }; kind says which windows: "gapped" and "border" (all), "lone" (the only tiled window on its
+---   workspace) or "maximized"; monitor limits it to windows on that monitor
 local function use_window_rules(wanted)
   local wanted_names = {}
   for _, spec in ipairs(wanted) do
-    local name = "quickshell-frame-" .. spec.kind .. "-" .. spec.rounding .. "-" .. spec.power
+    local values = spec.kind == "border" and { spec.border_size or "", spec.border_color or "" }
+      or { spec.rounding, spec.power }
+    local name = "quickshell-frame-" .. spec.kind .. "-" .. table.concat(values, "-")
+    if spec.monitor then name = name .. "-" .. spec.monitor end
     wanted_names[name] = true
     if not window_rules[name] then
       local match = { class = ".*" }
       if spec.kind == "lone" then
-        match.workspace = "w[tv1]"
+        match.workspace = on_monitor("w[tv1]", spec.monitor)
         match.float = false
         match.tag = "negative:" .. GAPPED_TAG
-      elseif spec.kind == "maximized" then
-        match.fullscreen_state_internal = "1"
+      else
+        match.workspace = on_monitor(nil, spec.monitor)
+        if spec.kind == "maximized" then match.fullscreen_state_internal = "1" end
       end
-      window_rules[name] = hl.window_rule({
-        name = name,
-        match = match,
-        rounding = spec.rounding,
-        rounding_power = spec.power,
-      })
+      local rule = { name = name, match = match }
+      if spec.kind == "border" then
+        rule.border_size, rule.border_color = spec.border_size, spec.border_color
+      else
+        rule.rounding, rule.rounding_power = spec.rounding, spec.power
+      end
+      window_rules[name] = hl.window_rule(rule)
     end
     window_rules[name]:set_enabled(true)
   end
@@ -151,18 +229,27 @@ local function release_gapped_lone(workspace_id)
   local address = gapped_lones[workspace_id]
   if address == nil then return end
   gapped_lones[workspace_id] = nil
+  gapped_lone_monitors[workspace_id] = nil
   if active_gap_rules[workspace_id] then active_gap_rules[workspace_id]:set_enabled(false) end
   active_gap_rules[workspace_id] = nil
   tag_window(address, false)
 end
 
+--- The name of the monitor a window's workspace is on, nil when Hyprland does not say.
+local function workspace_monitor(window)
+  local monitor = window.workspace and window.workspace.monitor
+  return monitor and monitor.name
+end
+
 --- Gives every opted-out lone window its flush look back once it is no longer alone on its workspace (a second tiled
---- window arrived, it closed, moved or floated), and drops a tag whose opt-out this Lua state no longer holds (a
---- config reload rebuilds the state but not the tags).
+--- window arrived, it closed, moved or floated) or the workspace went to another monitor, and drops a tag whose
+--- opt-out this Lua state no longer holds (a config reload rebuilds the state but not the tags).
 local function release_stale_gapped_lones()
   for workspace_id, address in pairs(gapped_lones) do
     local tiled = tiled_windows(workspace_id)
-    if not flush_lone_windows or #tiled ~= 1 or tiled[1].address ~= address then release_gapped_lone(workspace_id) end
+    local alone = #tiled == 1 and tiled[1].address == address
+    local moved = alone and workspace_monitor(tiled[1]) ~= gapped_lone_monitors[workspace_id]
+    if not flush_lone_windows or not alone or moved then release_gapped_lone(workspace_id) end
   end
   for _, window in ipairs(hl.get_windows() or {}) do
     local held = window.workspace and gapped_lones[window.workspace.id] == window.address
@@ -195,7 +282,8 @@ local function restore()
   for workspace_id in pairs(gapped_lones) do
     release_gapped_lone(workspace_id)
   end
-  lone_window_rule:set_enabled(false)
+  use_lone_rules(false)
+  framed_monitors = nil
   if watchdog then watchdog:set_enabled(false) end
   quickshell_pid = nil
   if saved == nil then return end
@@ -252,8 +340,11 @@ end
 --- @param flush? boolean whether a lone tiled window goes flush with the frame; anything but false means it does
 --- @param frame? boolean whether the frame is drawn; anything but false means it is (an older Quickshell sends no such argument)
 --- @param pid? number Quickshell's process id, which the watchdog watches while the frame is off
-local function set(corner, radius, border_size, active, inactive, flush, frame, pid)
+--- @param monitors? string[] the monitors that draw the frame ("desc:<description>" or a connector name); the others
+---   keep the owner's rounding, borders and gaps. Without it (an older Quickshell) every monitor does.
+local function set(corner, radius, border_size, active, inactive, flush, frame, pid, monitors)
   frame_drawn = frame ~= false
+  framed_monitors = frame_drawn and framed_list(monitors) or nil
   quickshell_pid = (not frame_drawn) and tonumber(pid) or nil
   flush_lone_windows = frame_drawn and flush ~= false
   if saved == nil then
@@ -275,26 +366,54 @@ local function set(corner, radius, border_size, active, inactive, flush, frame, 
   if not frame_drawn then
     width, active, inactive = nil, nil, nil
   end
-  hl.config({
-    decoration = { rounding = chamfered and 0 or rounding, rounding_power = 2 },
-    general = {
-      border_size = (width and width > 0) and width or saved.border_size,
-      col = {
-        active_border = (active and active ~= "") and active or saved.active_border,
-        inactive_border = (inactive and inactive ~= "") and inactive or saved.inactive_border,
-      },
-    },
-  })
+  if not (width and width > 0) then width = nil end
+  if active == "" then active = nil end
+  if inactive == "" then inactive = nil end
   -- The flush power follows the flush corner: a large gap can flatten the gapped corner while the flush one stays cut.
   local power = flush_chamfered and 1 or 2
   local rules = {}
-  if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
-  if frame_drawn and flush_rounding ~= rounding then
-    if flush_lone_windows then table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" }) end
-    table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized" })
+  if framed_monitors == nil then
+    hl.config({
+      decoration = { rounding = chamfered and 0 or rounding, rounding_power = 2 },
+      general = {
+        border_size = width or saved.border_size,
+        col = {
+          active_border = active or saved.active_border,
+          inactive_border = inactive or saved.inactive_border,
+        },
+      },
+    })
+    if chamfered then table.insert(rules, { rounding = rounding, power = 1, kind = "gapped" }) end
+    if frame_drawn and flush_rounding ~= rounding then
+      if flush_lone_windows then table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone" }) end
+      table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized" })
+    end
+  else
+    -- The global values stay the owner's for the unframed monitors, and rules give the framed ones the frame's look.
+    -- A rule's border colour pair is active then inactive, so an invisible active one leaves both colours alone.
+    hl.config({
+      decoration = { rounding = saved.rounding, rounding_power = saved.rounding_power },
+      general = {
+        border_size = saved.border_size,
+        col = { active_border = saved.active_border, inactive_border = saved.inactive_border },
+      },
+    })
+    local border_color = active and (inactive and (active .. " " .. inactive) or active) or nil
+    for _, monitor in ipairs(framed_monitors) do
+      table.insert(rules, { rounding = rounding, power = chamfered and 1 or 2, kind = "gapped", monitor = monitor })
+      if width or border_color then
+        table.insert(rules, { kind = "border", border_size = width, border_color = border_color, monitor = monitor })
+      end
+      if flush_rounding ~= rounding then
+        if flush_lone_windows then
+          table.insert(rules, { rounding = flush_rounding, power = power, kind = "lone", monitor = monitor })
+        end
+        table.insert(rules, { rounding = flush_rounding, power = power, kind = "maximized", monitor = monitor })
+      end
+    end
   end
   use_window_rules(rules)
-  lone_window_rule:set_enabled(flush_lone_windows)
+  use_lone_rules(flush_lone_windows, framed_monitors)
   apply_workspaces_animation(frame_drawn)
   release_stale_gapped_lones()
   missed_checks = 0
@@ -319,6 +438,7 @@ local function toggle_lone_flush()
     or window.floating
     or window.fullscreen ~= 0
     or window.workspace == nil
+    or not monitor_framed(window.workspace.monitor)
   then
     return false
   end
@@ -339,6 +459,7 @@ local function toggle_lone_flush()
   gap_rules[rule_key]:set_enabled(true)
   active_gap_rules[workspace_id] = gap_rules[rule_key]
   gapped_lones[workspace_id] = window.address
+  gapped_lone_monitors[workspace_id] = workspace_monitor(window)
   tag_window(window.address, true)
   return true
 end
@@ -366,10 +487,31 @@ for _, event in ipairs(release_events) do
   hl.on(event, function() release_stale_gapped_lones() end)
 end
 
+-- Hyprland re-matches workspace rules on every layout pass but window rules only on a window's own events, so a
+-- workspace moved to another monitor (by hand, or by a monitor going or coming back) keeps the old monitor's rounding
+-- and borders until rules are re-applied, which enabling a rule does. Deferred, as monitor.removed also fires while
+-- Hyprland tears down on logout, where touching windows can crash it (#1486).
+local refresh_pending = false
+local function refresh_monitor_rules()
+  refresh_pending = false
+  release_stale_gapped_lones()
+  if framed_monitors == nil then return end
+  for _, rule in pairs(window_rules) do
+    if rule:is_enabled() then return rule:set_enabled(true) end
+  end
+end
+for _, event in ipairs({ "workspace.move_to_monitor", "monitor.added", "monitor.removed" }) do
+  hl.on(event, function()
+    if refresh_pending or saved == nil then return end
+    refresh_pending = true
+    hl.timer(refresh_monitor_rules, { timeout = 50, type = "oneshot" })
+  end)
+end
+
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
-  set = function(corner, radius, border_size, active, inactive, flush, frame, pid)
-    set(corner, radius, border_size, active, inactive, flush, frame, pid)
+  set = function(corner, radius, border_size, active, inactive, flush, frame, pid, monitors)
+    set(corner, radius, border_size, active, inactive, flush, frame, pid, monitors)
 
     return hl.dsp.no_op()
   end,
