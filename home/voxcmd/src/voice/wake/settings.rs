@@ -3,7 +3,7 @@
 //! A bad environment value refuses to start (exit 78). A bad file value falls back to the default, because a unit that
 //! exits on a hand-edited file would crash-loop. `voice_env_value` already drops a bad file value, so only the
 //! environment is checked here.
-use super::decider::{DEFAULT_COOLDOWN_SECS, Level};
+use super::decider::{DEFAULT_COOLDOWN_SECS, Level, Smoothing};
 use crate::config::voice_env::{voice_env_file, voice_env_value};
 use std::path::{Path, PathBuf};
 
@@ -14,6 +14,8 @@ const DEFAULT_PAUSE_FOR_MIC: bool = true;
 pub struct Settings {
     pub threshold: f32,
     pub frames: u32,
+    /// The level's burst rule. A raw threshold or frames in the environment turns it off: that rule is then exact.
+    pub smoothing: Option<Smoothing>,
     pub pause_for_media: bool,
     pub pause_for_mic: bool,
     pub cooldown_secs: f64,
@@ -37,6 +39,7 @@ impl Settings {
                 .unwrap_or(Level::Strict),
         };
         let (level_threshold, level_frames) = level.threshold_and_frames();
+        let raw_rule = env("VOXCMD_WAKE_THRESHOLD").is_some() || env("VOXCMD_WAKE_FRAMES").is_some();
         let threshold = match env("VOXCMD_WAKE_THRESHOLD") {
             Some(text) => text
                 .parse::<f32>()
@@ -64,6 +67,7 @@ impl Settings {
         Ok(Self {
             threshold,
             frames,
+            smoothing: (!raw_rule).then(|| level.smoothing()),
             pause_for_media: flag(&env, file, "VOXCMD_WAKE_PAUSE_FOR_MEDIA", DEFAULT_PAUSE_FOR_MEDIA)?,
             pause_for_mic: flag(&env, file, "VOXCMD_WAKE_PAUSE_FOR_MIC", DEFAULT_PAUSE_FOR_MIC)?,
             cooldown_secs,
@@ -142,6 +146,8 @@ mod tests {
         );
         let raw = settings(&[("VOXCMD_WAKE_THRESHOLD", "0.9"), ("VOXCMD_WAKE_FRAMES", "5")], file).unwrap();
         assert_eq!((raw.threshold, raw.frames), (0.9, 5));
+        assert_eq!(raw.smoothing, None);
+        assert!(settings(&[], file).unwrap().smoothing.is_some());
     }
 
     #[test]
