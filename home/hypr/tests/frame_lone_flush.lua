@@ -603,8 +603,21 @@ active = on_dell
 _G.ScreenFrame.toggle_lone_flush()
 _G.ScreenFrame.toggle_lone_flush()
 local cached_gap = #rule_log
+-- An opt-out held across it is remade after it too, so the held window keeps its gaps.
+_G.ScreenFrame.toggle_lone_flush()
+local held_gap
+for _, rule in ipairs(rule_log) do
+	if rule.kind == "workspace" and rule.spec.workspace == "11" and rule.enabled then held_gap = rule end
+end
 on_monitor_set({ "desc:" .. dell.description, laptop.name, side.name })
-local side_lone_index = #rule_log
+local remade_gap = rule_log[#rule_log]
+local side_lone_index = #rule_log - 1
+check(
+	"new monitor: a held opt-out is remade after the lone rule",
+	held_gap ~= nil and not held_gap.enabled and remade_gap.spec.workspace == "11" and remade_gap.enabled and tagged(on_dell)
+)
+_G.ScreenFrame.toggle_lone_flush()
+check("new monitor: the remade opt-out ends with the toggle", not remade_gap.enabled and not tagged(on_dell))
 _G.ScreenFrame.toggle_lone_flush()
 local fresh_gap = rule_log[#rule_log]
 check(

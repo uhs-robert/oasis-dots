@@ -406,6 +406,7 @@ for (const [name, screens, want] of [
   ["side bar left out", [{ name: "DP-1", description: "Dell U2720Q ABC", framed: true }, { name: "HDMI-A-1", description: "LG 27UL 123", framed: false }], ["desc:Dell U2720Q ABC"]],
   ["no description", [{ name: "eDP-1", description: "", framed: true }, { name: "DP-4", description: "B", framed: false }], ["eDP-1"]],
   ["shared description", [{ name: "DP-1", description: "Same Panel", framed: true }, { name: "DP-2", description: "Same Panel", framed: true }, { name: "DP-4", description: "", framed: false }], ["DP-1", "DP-2"]],
+  ["description another screen starts with", [{ name: "DP-1", description: "Panel 1", framed: true }, { name: "DP-2", description: "Panel 10", framed: false }], ["DP-1"]],
   ["bracket in description", [{ name: "DP-3", description: "Odd [x]", framed: true }, { name: "DP-4", description: "", framed: false }], ["DP-3"]],
   ["single framed monitor sends no list", [{ name: "eDP-1", description: "Panel", framed: true }], null],
   ["every monitor framed sends no list", [{ name: "DP-1", description: "A", framed: true }, { name: "DP-2", description: "B", framed: true }], null],
