@@ -8,3 +8,16 @@ bridge = true
 
 # Follow the desktop theme; the Hyprland theme generator pushes its name with `desertfox theme`.
 theme = "desktop"
+
+# Knack snippet keys, only on knack.com and its subdomains (builder.knack.com and hosted apps).
+[[site_rules]]
+site = "*://*.knack.com/*"
+
+[site_rules.bind]
+xh = "knack.toggle_hidden"
+xi = "knack.toggle_ids"
+xo = "knack.search_prompt"
+xs = "knack.logger_switch"
+
+[site_rules.keymap.visual]
+xv = "knack.search_selection"
