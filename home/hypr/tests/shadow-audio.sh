@@ -2,8 +2,9 @@
 # Tests the shadow's private audio and backlight: the generated PipeWire conf has no hardware or session-manager path,
 # PipeWire starts only with the shadow's env and runtime dir (never the owner's PipeWire variables), `volume` and
 # `brightness` refuse without a socket or fake device inside the runtime dir and build the calls they should,
+# `audio` starts the fake app stream and WirePlumber's policy profile in one session it replaces, stops and sweeps,
 # `teardown` sweeps the PipeWire session, `--no-audio` starts nothing, and the generated brightnessctl stub serves and
-# changes only the fake device. Recording stubs stand in for pipewire, pw-dump and pw-cli; no shadow, Hyprland or sound
+# changes only the fake device. Recording stubs stand in for pipewire, pw-dump, pw-cli, pw-cat and wireplumber; no shadow, Hyprland or sound
 # card is involved. Runs from a temp dir and fails if the repo's `git status` differs afterwards.
 # shellcheck disable=SC2154 # the sourced script assigns runtime, base, shim_dir, logs and shadow_home
 set -u
@@ -41,6 +42,7 @@ cleanup() {
   local n
   for n in "$na" "$nb" "$nc" "$nd"; do
     set_name "$n"
+    kill_session audio
     kill_session pipewire
     rm -rf "$runtime"
   done
@@ -68,17 +70,32 @@ STUB
   cat >"$shim_dir/pw-dump" <<'STUB'
 #!/bin/sh
 [ -S "$XDG_RUNTIME_DIR/pipewire-0" ] || exit 1
-echo '[{"id":24,"type":"PipeWire:Interface:Node","info":{"props":{"node.name":"shadow_sink"}}}]'
+app=
+[ -e "$XDG_RUNTIME_DIR/pw-cat.env" ] && app=',{"id":40,"type":"PipeWire:Interface:Node","info":{"state":"running","props":{"application.name":"Shadow Fake App"}}}'
+echo '[{"id":24,"type":"PipeWire:Interface:Node","info":{"props":{"node.name":"shadow_sink"}}}'"$app"']'
+STUB
+  cat >"$shim_dir/pw-cat" <<'STUB'
+#!/bin/bash
+# Records the environment and arguments, then idles under a countable argv0 like the real stream would keep running.
+{ env; echo "ARGS $*"; } >"$XDG_RUNTIME_DIR/pw-cat.env"
+exec -a "fakepwcat-test:$XDG_RUNTIME_DIR" sleep 300
+STUB
+  cat >"$shim_dir/wireplumber" <<'STUB'
+#!/bin/bash
+{ env; echo "ARGS $*"; } >"$XDG_RUNTIME_DIR/wireplumber.env"
+exec -a "fakewp-test:$XDG_RUNTIME_DIR" sleep 300
 STUB
   cat >"$shim_dir/pw-cli" <<'STUB'
 #!/bin/sh
 { echo "ARGS $*"; echo "REMOTE=$PIPEWIRE_RUNTIME_DIR"; env | grep -c owner-pw; } >>"$XDG_RUNTIME_DIR/pw-cli.calls"
 exit 0
 STUB
-  chmod +x "$shim_dir/pipewire" "$shim_dir/pw-dump" "$shim_dir/pw-cli"
+  chmod +x "$shim_dir/pipewire" "$shim_dir/pw-dump" "$shim_dir/pw-cli" "$shim_dir/pw-cat" "$shim_dir/wireplumber"
 }
 
 players_of() { pgrep -f "^fakepipewire-test:$runtime "; }
+streams_of() { pgrep -f "^fakepwcat-test:$runtime "; }
+managers_of() { pgrep -f "^fakewp-test:$runtime "; }
 
 # The generated conf reaches no hardware, camera, Bluetooth or session manager.
 make_shadow "$na"
@@ -93,6 +110,8 @@ grep -q 'default.audio.sink' "$conf" || fail "the conf sets no default sink"
 [[ ! -e $runtime/pw-cli.calls ]] || fail "volume called pw-cli without a socket"
 rm -rf "$runtime/backlight"
 (brightness "$na" 40) 2>/dev/null && fail "brightness ran without a fake device"
+(audio "$na" start) 2>/dev/null && fail "audio started without a PipeWire socket"
+[[ ! -e $runtime/pw-cat.env && ! -e $base/audio.sid ]] || fail "audio ran a stream without a socket"
 (volume "$na" 101) 2>/dev/null && fail "volume accepted 101"
 (brightness "$na" 0) 2>/dev/null && fail "brightness accepted 0"
 
@@ -129,14 +148,46 @@ grep -qx 'ARGS s 24 Props { mute: false }' "$pw_calls" || fail "unmute call wron
 [[ $(grep -c "^REMOTE=$runtime$" "$pw_calls") == 3 ]] || fail "pw-cli did not get the shadow's runtime dir every time"
 [[ $(grep -c '^[1-9]' "$pw_calls") == 0 ]] || fail "an owner variable reached pw-cli"
 
+# audio starts the stream and the policy manager from the shadow's env, replaces on a second start, and stops.
+(audio "$na" start --freq abc) 2>/dev/null && fail "audio accepted a non-numeric --freq"
+(audio "$na" start --volume 3) 2>/dev/null && fail "audio accepted an unknown option"
+audio "$na" start --freq 300 || fail "audio start failed"
+[[ -f $base/audio.sid ]] || fail "no audio.sid"
+if [[ ! -f $runtime/pw-cat.env ]]; then
+  fail "the stub pw-cat never ran"
+else
+  grep -qx "PIPEWIRE_RUNTIME_DIR=$runtime" "$runtime/pw-cat.env" || fail "pw-cat PIPEWIRE_RUNTIME_DIR is not the shadow's"
+  grep -q 'owner-pw\|owner-bus' "$runtime/pw-cat.env" && fail "an owner variable reached pw-cat"
+  grep -q '^ARGS -p --raw --rate 48000 --channels 2 --format s16 --media-category Playback --target shadow_sink ' "$runtime/pw-cat.env" || fail "pw-cat args wrong: $(grep ARGS "$runtime/pw-cat.env")"
+  grep -qF 'application.name="Shadow Fake App"' "$runtime/pw-cat.env" || fail "the stream is not named Shadow Fake App: $(grep ARGS "$runtime/pw-cat.env")"
+fi
+if [[ ! -f $runtime/wireplumber.env ]]; then
+  fail "the stub wireplumber never ran"
+else
+  grep -qx 'ARGS -p policy' "$runtime/wireplumber.env" || fail "wireplumber must run only the policy profile: $(grep ARGS "$runtime/wireplumber.env")"
+  grep -qx "PIPEWIRE_RUNTIME_DIR=$runtime" "$runtime/wireplumber.env" || fail "wireplumber PIPEWIRE_RUNTIME_DIR is not the shadow's"
+  grep -q 'owner-pw\|owner-bus' "$runtime/wireplumber.env" && fail "an owner variable reached wireplumber"
+fi
+[[ $(streams_of | wc -l) == 1 && $(managers_of | wc -l) == 1 ]] || fail "expected one stream and one manager, got $(streams_of | wc -l) and $(managers_of | wc -l)"
+first_sid=$(<"$base/audio.sid")
+audio "$na" start || fail "audio restart failed"
+[[ $(<"$base/audio.sid") != "$first_sid" ]] || fail "a second start kept the first session"
+[[ $(streams_of | wc -l) == 1 && $(managers_of | wc -l) == 1 ]] || fail "a second start left $(streams_of | wc -l) streams and $(managers_of | wc -l) managers"
+audio "$na" stop || fail "audio stop failed"
+[[ $(streams_of | wc -l) == 0 && $(managers_of | wc -l) == 0 && ! -e $base/audio.sid ]] || fail "audio stop left the stream or manager running"
+audio "$na" stop || fail "audio stop on a stopped stream failed"
+rm -f "$runtime/pw-cat.env"
+
 # brightness writes the fake device and asks the bar to re-read it.
 write_backlight
 brightness "$na" 40 || fail "brightness 40 failed"
 [[ $(<"$(fake_backlight_dir)/brightness") == 102 ]] || fail "brightness 40 wrote $(<"$(fake_backlight_dir)/brightness"), wanted 102"
 [[ $(<"$calls") == "[$na][brightness][refresh]" ]] || fail "brightness ipc call wrong: $(<"$calls")"
 
-# teardown (what down runs) sweeps the PipeWire session.
+# teardown (what down runs) sweeps the PipeWire session and a running fake app.
+audio "$na" start || fail "audio start before teardown failed"
 teardown >/dev/null 2>&1 || fail "teardown failed"
+[[ $(streams_of | wc -l) == 0 && $(managers_of | wc -l) == 0 ]] || fail "down left the fake app running"
 [[ $(players_of | wc -l) == 0 ]] || fail "down left PipeWire running"
 [[ ! -d $runtime ]] || fail "down left the runtime dir"
 
@@ -194,6 +245,8 @@ setup_audio 0
 [[ -f $base/no-audio ]] || fail "--no-audio left no marker"
 [[ $(expected_errors) == quickshell.service.pipewire ]] || fail "--no-audio does not expect the PipeWire error"
 (volume "$nb" 40) 2>/dev/null && fail "volume ran in a --no-audio shadow"
+(audio "$nb" start) 2>/dev/null && fail "audio ran in a --no-audio shadow"
+[[ ! -e $runtime/pw-cat.env ]] || fail "--no-audio started the fake app"
 
 # The brightnessctl stub serves and changes only the fake device.
 write_shims

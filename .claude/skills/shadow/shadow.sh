@@ -804,6 +804,68 @@ player() {
   wait_for 100 player_listed || die "the fake player did not appear on the shadow's bus within 5 s; see $logs/player.log"
 }
 
+# The fake app's audio: stereo 48 kHz s16 on stdout, a sine swept from <base> to 5x <base> and back every 6 s under a
+# slow tremolo with a faint noise floor, so the meters rise and fall and the piano roll's active bars travel. A steady
+# sine would draw one frozen bar. It only ever reaches the null sink.
+fake_audio_pcm='
+import math, random, struct, sys
+base, rate, chunk = float(sys.argv[1]), 48000, 1920
+phase = t = 0.0
+out = sys.stdout.buffer
+while True:
+    frames = bytearray()
+    for _ in range(chunk):
+        freq = base * (1 + 4 * abs((t % 6.0) / 3.0 - 1.0))
+        phase += 2 * math.pi * freq / rate
+        amp = 14000 * (0.6 + 0.4 * math.sin(2 * math.pi * 1.3 * t))
+        v = int(amp * math.sin(phase) + random.uniform(-500, 500))
+        frames += struct.pack("<hh", v, v)
+        t += 1 / rate
+    out.write(frames)
+    out.flush()
+'
+
+# What the stream shows up as in the shadow's PipeWire graph: an app output stream, linked (running) to the sink.
+audio_listed() {
+  timeout 1 "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" pw-dump 2>/dev/null |
+    jq -e '.[] | select(.info.props["application.name"] == "Shadow Fake App" and .info.state == "running")' >/dev/null
+}
+
+# A fake playing app on the shadow's private PipeWire, so the volume popup has an app row with live meters and cava
+# (method pipewire, on the default sink's monitor) has something to draw. pw-cat alone never links: nothing in the
+# private graph autoconnects streams, since no WirePlumber runs for `up`. So this starts WirePlumber's `policy`
+# profile beside the stream (linking and default-node metadata only; the hardware, Bluetooth and camera components
+# are not in that profile, so it still cannot reach the owner's devices). Both live in one session (`audio.sid`); a
+# second start replaces it and stop on a dead one is a no-op.
+audio() {
+  set_name "${1:-}"
+  local action=${2:-} freq=200
+  [[ $action =~ ^(start|stop)$ ]] || die "usage: shadow.sh audio <name> {start|stop} [--freq HZ]"
+  shift 2
+  if [[ $action == stop ]]; then
+    kill_session audio
+    return 0
+  fi
+  while (($# > 0)); do
+    case $1 in
+    --freq) freq=${2:?--freq needs a number of Hz} ;;
+    *) die "unknown audio option '$1'" ;;
+    esac
+    shift 2
+  done
+  [[ $freq =~ ^[1-9][0-9]{1,3}$ ]] || die "--freq must be 10 to 9999 Hz"
+  require_pw_socket
+  kill_session audio
+  # shellcheck disable=SC2016 # the script is for the inner bash, which expands $1 and $2
+  setsid "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" bash -c '
+    wireplumber -p policy &
+    python3 -c "$1" "$2" | pw-cat -p --raw --rate 48000 --channels 2 --format s16 --media-category Playback \
+      --target shadow_sink -P "{ application.name=\"Shadow Fake App\" node.name=shadow_fake_app }" -
+  ' _ "$fake_audio_pcm" "$freq" >>"$logs/audio.log" 2>&1 </dev/null &
+  echo "$!" >"$base/audio.sid"
+  wait_for 100 audio_listed || die "the fake app stream never ran in the shadow's PipeWire within 5 s; see $logs/audio.log"
+}
+
 client_count_above() { (($(shadow_hyprctl clients -j | jq length) > $1)); }
 
 # A client inside the shadow (default foot), so the bar's reserved zones can be judged against tiled windows. Each
@@ -844,7 +906,7 @@ status_one() {
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
   local component sid
-  for component in qs keyboard hypr host bus player pipewire; do
+  for component in qs keyboard hypr host bus player audio pipewire; do
     sid=$(cat "$base/$component.sid" 2>/dev/null || true)
     if [[ -n $sid ]] && pgrep -s "$sid" >/dev/null; then echo "  $component: running (session $sid)"; else echo "  $component: not running"; fi
   done
@@ -892,7 +954,7 @@ teardown() {
     component=${sid_file##*/}
     kill_session "${component%.sid}"
   done
-  for component in player qs pipewire keyboard hypr host bus; do kill_session "$component"; done
+  for component in player audio qs pipewire keyboard hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
   for pid in $(shadow_pids); do
@@ -928,7 +990,7 @@ down() {
   fi
 }
 
-usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--no-audio] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|player <name> {start|stop} [--title T] [--artist A]|volume <name> {0-100|mute|unmute}|brightness <name> <1-100>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
+usage="usage: shadow.sh {up <name> [--size WxH] [--desktop] [--no-audio] [--from DIR|<branch>...]|spawn <name> [<command>...]|ipc <name> <ipc call args>|action <name> <action id> [params...]|player <name> {start|stop} [--title T] [--artist A]|audio <name> {start|stop} [--freq HZ]|volume <name> {0-100|mute|unmute}|brightness <name> <1-100>|keys <name> <wtype args>|voxtype <name> {idle|recording|transcribing}|hyprctl <name> <args>|wait <name> {popup|osd|clickhints} {<what>|open|closed} [--timeout SECONDS]|shot <name> [<layer namespace>] [--pad N] [--out PATH]|status [<name>]|down <name> [--keep]}"
 cmd=${1:-}
 (($# > 0)) && shift
 # Sourced by the tests, it only defines the functions.
@@ -940,6 +1002,7 @@ action) action "$@" ;;
 keys) keys "$@" ;;
 voxtype) set_voxtype "$@" ;;
 player) player "$@" ;;
+audio) audio "$@" ;;
 volume) volume "$@" ;;
 brightness) brightness "$@" ;;
 spawn) spawn "$@" ;;

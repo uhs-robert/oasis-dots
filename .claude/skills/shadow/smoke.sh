@@ -177,6 +177,7 @@ state_saved=0
 # shellcheck disable=SC2329
 restore() {
   "$shadow" player "$name" stop >/dev/null 2>&1 || true
+  "$shadow" audio "$name" stop >/dev/null 2>&1 || true
   q popup close >/dev/null 2>&1 || true
   q screenshot close >/dev/null 2>&1 || true
   sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null 2>&1 || true
@@ -333,6 +334,13 @@ sleep 0.5
 
 # The media popup needs a player on the shadow's private bus.
 "$shadow" player "$name" start --title "Smoke Test Track" --artist "Smoke Artist" >/dev/null || missing+=("MISS fake player")
+# The volume popup's app row and live meters, and the media popup's cava feed, need a playing stream.
+"$shadow" audio "$name" start >/dev/null || missing+=("MISS fake audio")
+
+# cava is a PipeWire client of the shadow's own daemon once the media popup has asked for it.
+cava_connected() {
+  env PIPEWIRE_RUNTIME_DIR="/tmp/shadow-$UID-$name" pw-dump 2>/dev/null | jq -e '[.[] | select(.type == "PipeWire:Interface:Node" and .info.props["node.name"] == "cava")] | length > 0' >/dev/null
+}
 
 shot_styles=()
 for style in "${styles[@]}"; do
@@ -356,6 +364,8 @@ for style in "${styles[@]}"; do
   wait_layer quickshell-popup && "$shadow" wait "$name" popup media >/dev/null && {
     sleep 0.5
     shoot "$style" media quickshell-popup
+    for _ in $(seq 20); do cava_connected && break; sleep 0.2; done
+    cava_connected || missing+=("MISS $style cava did not capture the fake stream")
   } || missing+=("MISS $style media popup")
   q popup close >/dev/null
   check_blank "$style" media quickshell-popup
@@ -385,6 +395,14 @@ for style in "${styles[@]}"; do
   wait_layer quickshell-popup && "$shadow" wait "$name" popup volume >/dev/null && {
     sleep 0.5
     shoot "$style" volume quickshell-popup
+    # Capsule styles draw each row's live peaks as a wave, so a second shot must differ from the first (is_blank: under 1% of pixels changed).
+    if [[ $style == metroid || $style == modern ]]; then
+      sleep 0.45
+      "$shadow" shot "$name" quickshell-popup --pad 4 --out "$out/${style}_volume_later.png" >/dev/null
+      rc=0
+      is_blank "$out/${style}_volume.png" "$out/${style}_volume_later.png" || rc=$?
+      ((rc == 1)) || missing+=("MISS $style volume popup meters did not move")
+    fi
   } || missing+=("MISS $style volume popup")
   q popup close >/dev/null
   check_blank "$style" volume quickshell-popup
