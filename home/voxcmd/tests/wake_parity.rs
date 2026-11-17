@@ -1,11 +1,11 @@
 //! `voxcmd wake listen --pcm` against the Python listener's scores on the owner's recorded takes
 //!
 //! The takes and the goldens (written by the Python listener, since deleted) are not committed: the owner decides whether the recordings
-//! are. They live in `.logs/voxcmd/voxcmd-wake-run-in/` of the main checkout, or in the directory named by
+//! are. They live in `.logs/voxcmd/wake-recordings/` of the main checkout, or in the directory named by
 //! `VOXCMD_WAKE_PARITY_DIR` (a `recordings/` of `.s16` takes beside a `goldens/` of `.json`). With either absent the
-//! test skips with a message. It asserts every frame score within 1e-4. The goldens' triggers are the 3-in-a-row rule's,
-//! and the smoothing rule adds some and fires earlier, so the test asserts only that every take the goldens trigger on
-//! still triggers, no later (`decider.rs` tests the exact frames on a score-only fixture).
+//! test skips with a message. It asserts every frame score within 1e-4, the exact trigger frames of the goldens with the
+//! burst rule off (a raw threshold and frames in the environment), and the exact frames of the fixture's `new` rule at
+//! each level (`tests/fixtures/wake-scores.json`, the same scores without audio).
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -30,7 +30,7 @@ fn parity_dir() -> Option<PathBuf> {
         }
         Err(_) => repo.to_path_buf(),
     };
-    Some(main.join(".logs/voxcmd/voxcmd-wake-run-in"))
+    Some(main.join(".logs/voxcmd/wake-recordings"))
 }
 
 fn feature_models_present() -> bool {
@@ -46,12 +46,23 @@ struct Listen {
     triggers: Vec<usize>,
 }
 
-fn listen(take: &Path, level: &str, runtime: &Path) -> Listen {
+/// `raw` sets the level's threshold and frames in the environment, which turns the burst rule off.
+fn listen(take: &Path, level: &str, raw: bool, runtime: &Path) -> Listen {
     let mut command = Command::new(env!("CARGO_BIN_EXE_voxcmd"));
     for (key, _) in std::env::vars() {
         if key.starts_with("VOXCMD_") {
             command.env_remove(key);
         }
+    }
+    if raw {
+        let threshold = match level {
+            "strict" => "0.8",
+            "balanced" => "0.7",
+            _ => "0.6",
+        };
+        command
+            .env("VOXCMD_WAKE_THRESHOLD", threshold)
+            .env("VOXCMD_WAKE_FRAMES", "3");
     }
     let output = command
         .args(["wake", "listen", "--pcm"])
@@ -107,6 +118,7 @@ fn the_rust_listener_matches_the_python_scores_and_triggers_on_the_recorded_take
     if takes.is_empty() {
         return eprintln!("skipped: {} holds no .s16 takes", takes_dir.display());
     }
+    let fixture: serde_json::Value = serde_json::from_str(include_str!("fixtures/wake-scores.json")).unwrap();
     let runtime = tempfile::tempdir().unwrap();
     let mut worst = 0f64;
     for take in &takes {
@@ -123,7 +135,7 @@ fn the_rust_listener_matches_the_python_scores_and_triggers_on_the_recorded_take
             .map(|score| score.as_f64().unwrap())
             .collect();
         for level in LEVELS {
-            let got = listen(take, level, runtime.path());
+            let got = listen(take, level, false, runtime.path());
             assert_eq!(got.scores.len(), want.len(), "{name}: frame count");
             for (frame, (have, expected)) in got.scores.iter().zip(&want).enumerate().skip(SETTLED_FRAME) {
                 let diff = (have - expected).abs();
@@ -133,19 +145,35 @@ fn the_rust_listener_matches_the_python_scores_and_triggers_on_the_recorded_take
                     "{name} frame {frame} at {level}: {have} against {expected}"
                 );
             }
-            let want_triggers: Vec<usize> = golden["triggers"][level]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|frame| frame.as_u64().unwrap() as usize)
-                .collect();
-            if let Some(first) = want_triggers.first() {
-                assert!(
-                    got.triggers.first().is_some_and(|frame| frame <= first),
-                    "{name}: triggers at {level}: {:?} against {want_triggers:?}",
-                    got.triggers
-                );
-            }
+            let frames_of = |value: &serde_json::Value| -> Vec<usize> {
+                value
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|frame| frame.as_u64().unwrap() as usize)
+                    .collect()
+            };
+            // Frames before SETTLED_FRAME differ (the seeded window), so a trigger there only has to exist.
+            let same_triggers = |have: &[usize], want: Vec<usize>, what: &str| {
+                if want.iter().any(|frame| *frame < SETTLED_FRAME) {
+                    assert_eq!(
+                        have.len(),
+                        want.len(),
+                        "{name}: {what} count at {level}: {have:?} against {want:?}"
+                    );
+                } else {
+                    assert_eq!(have, want, "{name}: {what} at {level}");
+                }
+            };
+            // The goldens hold the 3-in-a-row rule's triggers, which the raw environment gives.
+            let raw = listen(take, level, true, runtime.path());
+            same_triggers(&raw.triggers, frames_of(&golden["triggers"][level]), "raw triggers");
+            // The level runs the burst rule, whose frames the score-only fixture holds.
+            same_triggers(
+                &got.triggers,
+                frames_of(&fixture["takes"][&name]["new"][level]),
+                "smoothed triggers",
+            );
         }
     }
     eprintln!("parity: {} takes, worst score difference {worst:.2e}", takes.len());
