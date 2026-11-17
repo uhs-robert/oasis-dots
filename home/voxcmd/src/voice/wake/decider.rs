@@ -7,12 +7,15 @@ use std::collections::VecDeque;
 pub const DEFAULT_COOLDOWN_SECS: f64 = 3.0;
 
 /// A named sensitivity of the cortana model. The numbers come from 20 recorded takes. At 3 frames in a row only 10
-/// trigger at strict (0.8), 11 at balanced and 12 at relaxed: takes 03, 05, 12 and 19 score high for 1 or 2 frames, then
-/// drop, and takes 11 and 13 to 17 never get there. The smoothing rule adds 03 (all levels), 05 and 12 (strict) and 10
-/// (relaxed), 13 of 20 at strict, and take 19 stays out of reach because only one frame passes any threshold. The 9 run-in takes ("cortana
-/// exit" in one breath) peak at 0.39 and trigger under neither rule: only retraining fixes them. Whisper confirms every
-/// trigger, so a false one costs a transcription, and strict keeps those down (74 in 3.2 h of everyday audio at 0.8,
-/// counted before the smoothing rule).
+/// trigger at strict (0.8), 11 at balanced and 12 at relaxed: takes 03, 05, 12 and 19 score high for 1 or 2 frames,
+/// then drop, and takes 11 and 13 to 17 never get there. The burst rule adds 03 (all levels), 05 (strict and balanced),
+/// 12 (strict) and 10 (relaxed), 13 of 20 at strict. Take 19 stays out of reach because only one frame passes any
+/// threshold. The 9 run-in takes ("cortana exit" in one breath) peak at 0.39 and trigger under neither rule: only
+/// retraining fixes them.
+///
+/// With the burst rule on, two frames at the threshold usually trigger. Whisper confirms every trigger, so a false one
+/// costs a transcription. The 74 per 3.2 h of everyday audio was counted at 3 frames in a row: the false-trigger rate of
+/// this looser rule is unmeasured.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Strict,
@@ -153,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn two_frames_alone_are_not_enough() {
+    fn two_frames_do_not_trigger_without_smoothing_or_a_high_mean() {
         assert!(feed(&mut decider(), &[0.9, 0.95, 0.1, 0.0]).is_empty());
         assert!(
             feed(
@@ -279,7 +282,7 @@ mod tests {
     }
 
     /// Score-only copy of the owner's recorded takes (`tests/fixtures/wake-scores.json`), with the triggers each rule
-    /// gives per level. `cargo test replay_table -- --nocapture` prints the table.
+    /// gives per level.
     #[test]
     fn the_recorded_takes_trigger_as_the_fixture_says_at_every_level() {
         let fixture: serde_json::Value =
