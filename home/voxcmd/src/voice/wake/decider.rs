@@ -1,12 +1,18 @@
-//! frame scores to triggers: a score held high for enough frames, then a cooldown
+//! frame scores to triggers: a score held high for enough frames, or a dense burst of high frames, then a cooldown
 //!
 //! Times are seconds on any monotonic clock, passed in, so tests drive it with a fake one.
 
+use std::collections::VecDeque;
+
 pub const DEFAULT_COOLDOWN_SECS: f64 = 3.0;
 
-/// A named sensitivity of the cortana model. The numbers come from 20 recorded takes at 3 frames (all trigger from 0.5
-/// to 0.75, 19 at 0.8, 18 at 0.9). Whisper confirms every trigger, so a false one costs a transcription, and strict keeps
-/// those down (74 in 3.2 h of everyday audio at 0.8). Balanced and relaxed sit inside the band where every take triggered.
+/// A named sensitivity of the cortana model. The numbers come from 20 recorded takes. At 3 frames in a row only 10
+/// trigger at strict (0.8), 11 at balanced and 12 at relaxed: takes 03, 05, 12 and 19 score high for 1 or 2 frames, then
+/// drop, and takes 11 and 13 to 17 never get there. The smoothing rule adds 03 (all levels), 05 and 12 (strict) and 10
+/// (relaxed), 13 of 20 at strict, and take 19 stays out of reach because only one frame passes any threshold. The 9 run-in takes ("cortana
+/// exit" in one breath) peak at 0.39 and trigger under neither rule: only retraining fixes them. Whisper confirms every
+/// trigger, so a false one costs a transcription, and strict keeps those down (74 in 3.2 h of everyday audio at 0.8,
+/// counted before the smoothing rule).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Strict,
@@ -26,6 +32,17 @@ impl Level {
         }
     }
 
+    /// The burst rule shared by every level. K=2 of the last W=6 frames (0.48 s) with a mean of 0.3 replays on the
+    /// recorded takes with no loss and no trigger on a run-in take. A lone high frame never passes K, and the mean
+    /// keeps two scattered frames in a long quiet window from counting.
+    pub fn smoothing(self) -> Smoothing {
+        Smoothing {
+            frames: 2,
+            window: 6,
+            mean_floor: 0.3,
+        }
+    }
+
     /// The score a frame needs and the consecutive frames that need it.
     pub fn threshold_and_frames(self) -> (f32, u32) {
         match self {
@@ -36,10 +53,21 @@ impl Level {
     }
 }
 
+/// A second way to trigger: `frames` of the last `window` scores at or above the threshold, and the mean of those
+/// `window` scores at or above `mean_floor`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Smoothing {
+    pub frames: usize,
+    pub window: usize,
+    pub mean_floor: f32,
+}
+
 pub struct Decider {
     threshold: f32,
     frames: u32,
     cooldown_secs: f64,
+    smoothing: Option<Smoothing>,
+    recent: VecDeque<f32>,
     run: u32,
     cooldown_until: f64,
 }
@@ -50,29 +78,52 @@ impl Decider {
             threshold,
             frames,
             cooldown_secs,
+            smoothing: None,
+            recent: VecDeque::new(),
             run: 0,
             cooldown_until: f64::NEG_INFINITY,
         }
     }
 
+    pub fn with_smoothing(mut self, smoothing: Option<Smoothing>) -> Self {
+        self.smoothing = smoothing;
+        self
+    }
+
     /// Forgets a phrase under way (the stream closed). The cooldown stays: a pause must not let a second trigger in.
     pub fn reset(&mut self) {
         self.run = 0;
+        self.recent.clear();
     }
 
-    /// True once, on the frame that completes the hold. That is near the end of the word, which the listener then has
-    /// confirmed before anything starts. Scores during the cooldown are ignored, and do not build a run.
+    /// True once, on the frame that completes the hold or the burst. That is near the end of the word, which the
+    /// listener then has confirmed before anything starts. Scores during the cooldown are ignored, and do not build a
+    /// run or fill the window.
     pub fn update(&mut self, score: f32, now: f64) -> bool {
         if now < self.cooldown_until {
             return false;
         }
         self.run = if score >= self.threshold { self.run + 1 } else { 0 };
-        if self.run < self.frames {
+        if self.run < self.frames && !self.burst(score) {
             return false;
         }
         self.reset();
         self.cooldown_until = now + self.cooldown_secs;
         true
+    }
+
+    fn burst(&mut self, score: f32) -> bool {
+        let Some(smoothing) = self.smoothing else {
+            return false;
+        };
+        if self.recent.len() == smoothing.window {
+            self.recent.pop_front();
+        }
+        self.recent.push_back(score);
+        let high = self.recent.iter().filter(|value| **value >= self.threshold).count();
+        // A window not yet full counts its missing frames as silence, so the mean never rises early.
+        let mean = self.recent.iter().sum::<f32>() / smoothing.window as f32;
+        high >= smoothing.frames && mean >= smoothing.mean_floor
     }
 }
 
@@ -102,8 +153,48 @@ mod tests {
     }
 
     #[test]
-    fn two_frames_are_not_enough() {
+    fn two_frames_alone_are_not_enough() {
         assert!(feed(&mut decider(), &[0.9, 0.95, 0.1, 0.0]).is_empty());
+        assert!(
+            feed(
+                &mut smoothed(),
+                &[0.0, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.9, 0.0, 0.0]
+            )
+            .is_empty()
+        );
+    }
+
+    fn smoothed() -> Decider {
+        let smoothing = Level::Strict.smoothing();
+        decider().with_smoothing(Some(smoothing))
+    }
+
+    #[test]
+    fn two_high_frames_a_dip_and_a_third_trigger_with_smoothing() {
+        let scores = [0.0, 0.95, 0.9, 0.5, 0.9, 0.1];
+        assert!(feed(&mut decider(), &scores).is_empty());
+        assert_eq!(feed(&mut smoothed(), &scores), [2]);
+    }
+
+    #[test]
+    fn a_burst_with_a_low_mean_does_not_trigger() {
+        // Two frames at 0.8 in a window of 6 average 0.27, under the 0.3 floor.
+        assert!(feed(&mut smoothed(), &[0.0, 0.0, 0.0, 0.0, 0.8, 0.8, 0.0, 0.0]).is_empty());
+        assert_eq!(feed(&mut smoothed(), &[0.0, 0.0, 0.0, 0.0, 0.9, 0.95, 0.0, 0.0]), [5]);
+    }
+
+    #[test]
+    fn a_burst_triggers_once_and_the_cooldown_holds() {
+        let scores = [0.9, 0.2, 0.9, 0.2, 0.9, 0.2, 0.9, 0.2];
+        assert_eq!(feed(&mut smoothed(), &scores), [2]);
+    }
+
+    #[test]
+    fn reset_forgets_the_window() {
+        let mut decider = smoothed();
+        feed(&mut decider, &[0.9, 0.1]);
+        decider.reset();
+        assert!(!decider.update(0.9, 101.0), "the earlier high frame is gone");
     }
 
     #[test]
@@ -185,6 +276,63 @@ mod tests {
         cooling.reset();
         assert!(!cooling.update(0.9, 51.0), "the cooldown outlives a reset");
         assert!(cooling.update(0.9, 53.0));
+    }
+
+    /// Score-only copy of the owner's recorded takes (`tests/fixtures/wake-scores.json`), with the triggers each rule
+    /// gives per level. `cargo test replay_table -- --nocapture` prints the table.
+    #[test]
+    fn the_recorded_takes_trigger_as_the_fixture_says_at_every_level() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/wake-scores.json")).unwrap();
+        let takes = fixture["takes"].as_object().unwrap();
+        assert_eq!(takes.len(), 29);
+        for (name, take) in takes {
+            let scores: Vec<f32> = take["scores"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|score| score.as_f64().unwrap() as f32)
+                .collect();
+            for (rule, smoothed) in [("old", false), ("new", true)] {
+                for level in [Level::Strict, Level::Balanced, Level::Relaxed] {
+                    let (threshold, frames) = level.threshold_and_frames();
+                    let mut decider = Decider::new(threshold, frames, DEFAULT_COOLDOWN_SECS)
+                        .with_smoothing(smoothed.then(|| level.smoothing()));
+                    let name_of_level = format!("{level:?}").to_lowercase();
+                    let want: Vec<usize> = take[rule][&name_of_level]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|frame| frame.as_u64().unwrap() as usize)
+                        .collect();
+                    assert_eq!(feed(&mut decider, &scores), want, "{name} {name_of_level} {rule}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn smoothing_gains_the_plain_takes_and_no_run_in_take_triggers() {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../../../tests/fixtures/wake-scores.json")).unwrap();
+        let takes = fixture["takes"].as_object().unwrap();
+        let triggers = |name: &str, level: &str| takes[name]["new"][level].as_array().unwrap().len();
+        for name in ["cortana-03", "cortana-05", "cortana-12"] {
+            assert_eq!(triggers(name, "balanced"), 1, "{name}");
+        }
+        assert_eq!(
+            (triggers("cortana-03", "strict"), triggers("cortana-05", "strict")),
+            (1, 1)
+        );
+        for (name, take) in takes {
+            for level in ["strict", "balanced", "relaxed"] {
+                if name.starts_with("runin-") {
+                    assert_eq!(triggers(name, level), 0, "{name} {level}");
+                }
+                let old = take["old"][level].as_array().unwrap().len();
+                assert!(triggers(name, level) >= old, "{name} {level} lost a trigger");
+            }
+        }
     }
 
     #[test]

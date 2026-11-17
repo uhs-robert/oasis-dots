@@ -1,10 +1,11 @@
 //! `voxcmd wake listen --pcm` against the Python listener's scores on the owner's recorded takes
 //!
 //! The takes and the goldens (written by the Python listener, since deleted) are not committed: the owner decides whether the recordings
-//! are. They live in `.logs/voxcmd/voxcmd-wake-port/` of the main checkout, or in the directory named by
+//! are. They live in `.logs/voxcmd/voxcmd-wake-run-in/` of the main checkout, or in the directory named by
 //! `VOXCMD_WAKE_PARITY_DIR` (a `recordings/` of `.s16` takes beside a `goldens/` of `.json`). With either absent the
-//! test skips with a message. It asserts every frame score within 1e-4 and the triggers at all three levels, take
-//! for take.
+//! test skips with a message. It asserts every frame score within 1e-4. The goldens' triggers are the 3-in-a-row rule's,
+//! and the smoothing rule adds some and fires earlier, so the test asserts only that every take the goldens trigger on
+//! still triggers, no later (`decider.rs` tests the exact frames on a score-only fixture).
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -29,7 +30,7 @@ fn parity_dir() -> Option<PathBuf> {
         }
         Err(_) => repo.to_path_buf(),
     };
-    Some(main.join(".logs/voxcmd/voxcmd-wake-port"))
+    Some(main.join(".logs/voxcmd/voxcmd-wake-run-in"))
 }
 
 fn feature_models_present() -> bool {
@@ -138,7 +139,13 @@ fn the_rust_listener_matches_the_python_scores_and_triggers_on_the_recorded_take
                 .iter()
                 .map(|frame| frame.as_u64().unwrap() as usize)
                 .collect();
-            assert_eq!(got.triggers, want_triggers, "{name}: triggers at {level}");
+            if let Some(first) = want_triggers.first() {
+                assert!(
+                    got.triggers.first().is_some_and(|frame| frame <= first),
+                    "{name}: triggers at {level}: {:?} against {want_triggers:?}",
+                    got.triggers
+                );
+            }
         }
     }
     eprintln!("parity: {} takes, worst score difference {worst:.2e}", takes.len());

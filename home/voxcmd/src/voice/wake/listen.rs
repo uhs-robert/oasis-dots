@@ -527,7 +527,8 @@ pub fn run(fetch_models: bool, check: bool, pcm: Option<&Path>) -> Result<(), Cl
     }
     let scorer = TractScorer::load(&settings.model_dir, &wake_model)
         .map_err(|message| CliError::failed(SUBCOMMAND, format!("cannot load the models: {message}")))?;
-    let decider = Decider::new(settings.threshold, settings.frames, settings.cooldown_secs);
+    let decider =
+        Decider::new(settings.threshold, settings.frames, settings.cooldown_secs).with_smoothing(settings.smoothing);
     match pcm {
         Some(file) => run_pcm(file, Box::new(scorer), decider),
         None => run_live(&settings, Box::new(scorer), decider),
