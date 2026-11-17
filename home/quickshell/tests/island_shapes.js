@@ -404,15 +404,17 @@ expect(/Style\.sync_mode\(/.test(read("features/bar/ScreenFrameSync.qml")), "Scr
 // The framed monitor list: by description, by connector when it has none, shares it, or holds the selector's "]".
 for (const [name, screens, want] of [
   ["side bar left out", [{ name: "DP-1", description: "Dell U2720Q ABC", framed: true }, { name: "HDMI-A-1", description: "LG 27UL 123", framed: false }], ["desc:Dell U2720Q ABC"]],
-  ["no description", [{ name: "eDP-1", description: "", framed: true }], ["eDP-1"]],
-  ["shared description", [{ name: "DP-1", description: "Same Panel", framed: true }, { name: "DP-2", description: "Same Panel", framed: true }], ["DP-1", "DP-2"]],
-  ["bracket in description", [{ name: "DP-3", description: "Odd [x]", framed: true }], ["DP-3"]],
+  ["no description", [{ name: "eDP-1", description: "", framed: true }, { name: "DP-4", description: "B", framed: false }], ["eDP-1"]],
+  ["shared description", [{ name: "DP-1", description: "Same Panel", framed: true }, { name: "DP-2", description: "Same Panel", framed: true }, { name: "DP-4", description: "", framed: false }], ["DP-1", "DP-2"]],
+  ["bracket in description", [{ name: "DP-3", description: "Odd [x]", framed: true }, { name: "DP-4", description: "", framed: false }], ["DP-3"]],
+  ["single framed monitor sends no list", [{ name: "eDP-1", description: "Panel", framed: true }], null],
+  ["every monitor framed sends no list", [{ name: "DP-1", description: "A", framed: true }, { name: "DP-2", description: "B", framed: true }], null],
   ["none framed", [{ name: "DP-1", description: "A", framed: false }], []],
 ]) {
   const got = JSON.stringify(FT.framed_monitors(screens));
   expect(got === JSON.stringify(want), "framed_monitors: " + name + ": got " + got);
 }
-expect(FT.lua_string_list(["desc:Dell \"Q\" 1", "DP-1"]) === '{"desc:Dell \\"Q\\" 1", "DP-1"}' && FT.lua_string_list([]) === "{}", "lua_string_list");
+expect(FT.lua_string_list(["desc:Dell \"Q\" 1", "DP-1"]) === '{"desc:Dell \\"Q\\" 1", "DP-1"}' && FT.lua_string_list([]) === "{}" && FT.lua_string_list(null) === "nil", "lua_string_list");
 expect(/FrameTokens\.framed_monitors\(/.test(read("features/bar/ScreenFrameSync.qml")) && /FrameTokens\.lua_string_list\(/.test(read("features/bar/ScreenFrameSync.qml")), "ScreenFrameSync does not send the framed monitor list");
 // Every token set `active` returns is squared, the forced full bar's too.
 const active_src = style.slice(style.indexOf("readonly property var active:"), style.indexOf("function squared"));

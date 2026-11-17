@@ -554,6 +554,7 @@ check(
 	"mixed: framed monitor gets the rim as its border",
 	border ~= nil and border.border_size == 2 and border.border_color == "rgba(33ccffee) rgba(595959aa)"
 )
+check("mixed: the rim border leaves a selected window's border alone", border ~= nil and border.match.tag == "negative:targets_selected")
 check("mixed: lone flush only on the framed monitor", rule_on("workspace", "w[tv1] " .. dell_m) ~= nil)
 check("mixed: no global lone flush", flush_workspace_rule_enabled() == false)
 check("mixed: lone rounding on the framed monitor", rule_on("window", "w[tv1] " .. dell_m) ~= nil)
@@ -619,7 +620,7 @@ _G.ScreenFrame.toggle_lone_flush()
 ws_dell.monitor = side
 oneshots, reapplied, window_reads = {}, 0, 0
 fire("workspace.move_to_monitor")
-fire("monitor.removed")
+fire("workspace.move_to_monitor")
 check("move: nothing touches windows inside the event", window_reads == 0 and reapplied == 0)
 check("move: one deferred refresh for a burst of events", #oneshots == 1)
 for _, fn in ipairs(oneshots) do
@@ -631,10 +632,8 @@ check("move: window rules re-applied", reapplied == 1)
 active = on_dell
 check("move: key maximizes on the unframed monitor now", _G.ScreenFrame.toggle_lone_flush() == false)
 ws_dell.monitor = dell
-fire("monitor.added")
-check("monitor added: a refresh is queued", #oneshots == 1)
-oneshots[1]()
-oneshots = {}
+-- Hyprland fires monitor.removed on logout too; a monitor's workspace moves already cover hot-plug (#1486).
+check("no monitor.added or monitor.removed handler", handlers["monitor.added"] == nil and handlers["monitor.removed"] == nil)
 
 -- An older Quickshell sends 8 arguments: every monitor framed, as before.
 on_monitor_set(nil)
@@ -657,7 +656,7 @@ on_monitor_set({ "desc:" .. dell.description, laptop.name })
 _G.ScreenFrame.clear()
 check("clear: per-monitor rules off", #enabled_specs("window") == 0 and rule_on("workspace", "w[tv1] m[eDP-1]") == nil)
 check("clear: owner's values back", owner_restored())
-fire("monitor.added")
+fire("workspace.move_to_monitor")
 check("clear: monitor events queue nothing", #oneshots == 0)
 for _, w in ipairs({ on_dell, on_side, on_laptop }) do
 	remove(w)

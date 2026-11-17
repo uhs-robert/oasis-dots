@@ -35,6 +35,8 @@ local active_gap_rules = {}
 -- The monitor each opted-out lone window's workspace was on, workspace id -> monitor name: a move to another monitor ends it.
 local gapped_lone_monitors = {}
 local GAPPED_TAG = "frame_gapped"
+-- lib/selection.lua's tag for a selected window, copied as this file has no requires.
+local SELECTED_TAG = "targets_selected"
 -- The monitors that draw the frame, as Hyprland monitor strings ("desc:<description>" or a connector name), or nil for
 -- every monitor: an older Quickshell sends no list. The frame look goes only to these, through an m[] selector on each
 -- rule, so Hyprland itself follows a workspace that moves monitor and a monitor that is plugged back in.
@@ -185,6 +187,8 @@ local function use_window_rules(wanted)
       else
         match.workspace = on_monitor(nil, spec.monitor)
         if spec.kind == "maximized" then match.fullscreen_state_internal = "1" end
+        -- Made after lib/selection.lua's rule, this one would win; the selection border must show on a selected window.
+        if spec.kind == "border" then match.tag = "negative:" .. SELECTED_TAG end
       end
       local rule = { name = name, match = match }
       if spec.kind == "border" then
@@ -489,8 +493,8 @@ end
 
 -- Hyprland re-matches workspace rules on every layout pass but window rules only on a window's own events, so a
 -- workspace moved to another monitor (by hand, or by a monitor going or coming back) keeps the old monitor's rounding
--- and borders until rules are re-applied, which enabling a rule does. Deferred, as monitor.removed also fires while
--- Hyprland tears down on logout, where touching windows can crash it (#1486).
+-- and borders until rules are re-applied, which enabling a rule does. Deferred out of the event, which Hyprland fires
+-- mid-move, as a handler reading windows inside Hyprland's own bookkeeping can crash it (#1486).
 local refresh_pending = false
 local function refresh_monitor_rules()
   refresh_pending = false
@@ -500,13 +504,13 @@ local function refresh_monitor_rules()
     if rule:is_enabled() then return rule:set_enabled(true) end
   end
 end
-for _, event in ipairs({ "workspace.move_to_monitor", "monitor.added", "monitor.removed" }) do
-  hl.on(event, function()
-    if refresh_pending or saved == nil then return end
-    refresh_pending = true
-    hl.timer(refresh_monitor_rules, { timeout = 50, type = "oneshot" })
-  end)
-end
+-- Not monitor.added or monitor.removed: a monitor going or coming moves its workspaces, which fires this event, and
+-- on shutdown Hyprland moves none, so nothing is scheduled mid-teardown.
+hl.on("workspace.move_to_monitor", function()
+  if refresh_pending or saved == nil then return end
+  refresh_pending = true
+  hl.timer(refresh_monitor_rules, { timeout = 50, type = "oneshot" })
+end)
 
 -- Global functions which are accessible externally via `hyprctl dispatch "ScreenFrame"`
 _G.ScreenFrame = {
