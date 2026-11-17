@@ -337,9 +337,13 @@ sleep 0.5
 # The volume popup's app row and live meters, and the media popup's cava feed, need a playing stream.
 "$shadow" audio "$name" start >/dev/null || missing+=("MISS fake audio")
 
-# cava is a PipeWire client of the shadow's own daemon once the media popup has asked for it.
+# cava captures the sink when an active link runs from the sink to a node named cava in the shadow's own daemon, so this
+# proves a real capture, not just a cava process.
 cava_connected() {
-  env PIPEWIRE_RUNTIME_DIR="/tmp/shadow-$UID-$name" pw-dump 2>/dev/null | jq -e '[.[] | select(.type == "PipeWire:Interface:Node" and .info.props["node.name"] == "cava")] | length > 0' >/dev/null
+  env -u PIPEWIRE_REMOTE PIPEWIRE_RUNTIME_DIR="/tmp/shadow-$UID-$name" pw-dump 2>/dev/null | jq -e '
+    ([.[] | select(.type == "PipeWire:Interface:Node" and .info.props["node.name"] == "shadow_sink") | .id] | first) as $sink
+    | ([.[] | select(.type == "PipeWire:Interface:Node" and .info.props["node.name"] == "cava") | .id] | first) as $cava
+    | [.[] | select(.type == "PipeWire:Interface:Link" and .info.state == "active" and .info["output-node-id"] == $sink and .info["input-node-id"] == $cava)] | length > 0' >/dev/null
 }
 
 shot_styles=()
@@ -364,8 +368,11 @@ for style in "${styles[@]}"; do
   wait_layer quickshell-popup && "$shadow" wait "$name" popup media >/dev/null && {
     sleep 0.5
     shoot "$style" media quickshell-popup
-    for _ in $(seq 20); do cava_connected && break; sleep 0.2; done
-    cava_connected || missing+=("MISS $style cava did not capture the fake stream")
+    for _ in $(seq 20); do
+      cava_connected && break
+      sleep 0.2
+    done
+    cava_connected || missing+=("MISS $style cava has no active link from the sink")
   } || missing+=("MISS $style media popup")
   q popup close >/dev/null
   check_blank "$style" media quickshell-popup

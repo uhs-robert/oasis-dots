@@ -43,6 +43,7 @@ cleanup() {
   for n in "$na" "$nb" "$nc" "$nd"; do
     set_name "$n"
     kill_session audio
+    kill_session wireplumber
     kill_session pipewire
     rm -rf "$runtime"
   done
@@ -78,6 +79,7 @@ STUB
 #!/bin/bash
 # Records the environment and arguments, then idles under a countable argv0 like the real stream would keep running.
 { env; echo "ARGS $*"; } >"$XDG_RUNTIME_DIR/pw-cat.env"
+[ -e "$XDG_RUNTIME_DIR/pw-cat.die" ] && exit 1
 exec -a "fakepwcat-test:$XDG_RUNTIME_DIR" sleep 300
 STUB
   cat >"$shim_dir/wireplumber" <<'STUB'
@@ -173,9 +175,29 @@ first_sid=$(<"$base/audio.sid")
 audio "$na" start || fail "audio restart failed"
 [[ $(<"$base/audio.sid") != "$first_sid" ]] || fail "a second start kept the first session"
 [[ $(streams_of | wc -l) == 1 && $(managers_of | wc -l) == 1 ]] || fail "a second start left $(streams_of | wc -l) streams and $(managers_of | wc -l) managers"
+# stop ends the stream only: WirePlumber owns a `default` metadata object the bar may have bound, so it stays until down.
 audio "$na" stop || fail "audio stop failed"
-[[ $(streams_of | wc -l) == 0 && $(managers_of | wc -l) == 0 && ! -e $base/audio.sid ]] || fail "audio stop left the stream or manager running"
+[[ $(streams_of | wc -l) == 0 && ! -e $base/audio.sid ]] || fail "audio stop left the stream running"
+[[ $(managers_of | wc -l) == 1 ]] || fail "audio stop did not keep the one manager: $(managers_of | wc -l)"
 audio "$na" stop || fail "audio stop on a stopped stream failed"
+# A stream that died on its own: stop is a no-op, and the next start adds a stream but no second manager.
+touch "$runtime/pw-cat.die"
+audio "$na" start || fail "audio start with a dying stream failed"
+no_stream() { [[ -z $(streams_of) ]]; }
+wait_for 50 no_stream
+[[ $(streams_of | wc -l) == 0 ]] || fail "the dying stream stub is still running"
+audio "$na" stop || fail "audio stop after the stream died failed"
+[[ $(managers_of | wc -l) == 1 ]] || fail "a dead stream left $(managers_of | wc -l) managers"
+rm -f "$runtime/pw-cat.die"
+audio "$na" start || fail "audio start after a dead stream failed"
+[[ $(streams_of | wc -l) == 1 && $(managers_of | wc -l) == 1 ]] || fail "start after a dead stream left $(streams_of | wc -l) streams and $(managers_of | wc -l) managers"
+audio "$na" stop
+# A manager that died on its own is started again.
+kill_session wireplumber
+[[ $(managers_of | wc -l) == 0 ]] || fail "kill_session left the manager"
+audio "$na" start || fail "audio start without a manager failed"
+[[ $(managers_of | wc -l) == 1 ]] || fail "start did not restart the manager"
+audio "$na" stop
 rm -f "$runtime/pw-cat.env"
 
 # brightness writes the fake device and asks the bar to re-read it.
