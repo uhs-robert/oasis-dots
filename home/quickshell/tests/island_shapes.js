@@ -401,6 +401,19 @@ for (const [name, args, want] of [
   expect(FT.sync_mode(...args) === want, "sync_mode: " + name + ": got " + FT.sync_mode(...args) + ", want " + want);
 }
 expect(/Style\.sync_mode\(/.test(read("features/bar/ScreenFrameSync.qml")), "ScreenFrameSync does not use Style.sync_mode");
+// The framed monitor list: by description, by connector when it has none, shares it, or holds the selector's "]".
+for (const [name, screens, want] of [
+  ["side bar left out", [{ name: "DP-1", description: "Dell U2720Q ABC", framed: true }, { name: "HDMI-A-1", description: "LG 27UL 123", framed: false }], ["desc:Dell U2720Q ABC"]],
+  ["no description", [{ name: "eDP-1", description: "", framed: true }], ["eDP-1"]],
+  ["shared description", [{ name: "DP-1", description: "Same Panel", framed: true }, { name: "DP-2", description: "Same Panel", framed: true }], ["DP-1", "DP-2"]],
+  ["bracket in description", [{ name: "DP-3", description: "Odd [x]", framed: true }], ["DP-3"]],
+  ["none framed", [{ name: "DP-1", description: "A", framed: false }], []],
+]) {
+  const got = JSON.stringify(FT.framed_monitors(screens));
+  expect(got === JSON.stringify(want), "framed_monitors: " + name + ": got " + got);
+}
+expect(FT.lua_string_list(["desc:Dell \"Q\" 1", "DP-1"]) === '{"desc:Dell \\"Q\\" 1", "DP-1"}' && FT.lua_string_list([]) === "{}", "lua_string_list");
+expect(/FrameTokens\.framed_monitors\(/.test(read("features/bar/ScreenFrameSync.qml")) && /FrameTokens\.lua_string_list\(/.test(read("features/bar/ScreenFrameSync.qml")), "ScreenFrameSync does not send the framed monitor list");
 // Every token set `active` returns is squared, the forced full bar's too.
 const active_src = style.slice(style.indexOf("readonly property var active:"), style.indexOf("function squared"));
 expect(!/return root\.with_options\(/.test(active_src) && (active_src.match(/root\.squared\(/g) || []).length === 2, "active returns a token set that skipped squared");

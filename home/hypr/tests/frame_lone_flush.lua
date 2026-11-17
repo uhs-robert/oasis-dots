@@ -1,20 +1,30 @@
 -- Runs config/general/frame.lua against a stubbed `hl` and checks the lone-window opt-out (SUPER+M on a lone tiled
--- window) and the workspace animation swap: when the opt-out starts, ends and stays ended, and what the animation is.
+-- window), the workspace animation swap and the frame look on only the framed monitors: when the opt-out starts, ends
+-- and stays ended, what the animation is, and which rules each monitor gets through hot-plug and workspace moves.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local frame_path = here .. "/../.config/hypr/config/general/frame.lua"
 
 local windows, active, handlers = {}, nil, {}
+local window_reads = 0
 local rule_log, animation, config_calls = {}, nil, {}
 local gaps_out = 6
 -- The owner's own values for every other key get_config is asked for, and the layers Hyprland reports.
 local owner = {}
 local layers = { { mapped = true, namespace = "quickshell-frame" } }
 local timer_fn, watchdog_on = nil, false
+-- One-shot timers waiting to run, and how often a rule was re-enabled (what makes Hyprland re-apply window rules).
+local oneshots, reapplied = {}, 0
 
 local function new_rule(kind, spec)
 	local rule = { kind = kind, spec = spec, enabled = true }
 	function rule:set_enabled(on)
+		if on and self.enabled then
+			reapplied = reapplied + 1
+		end
 		self.enabled = on
+	end
+	function rule:is_enabled()
+		return self.enabled
 	end
 	table.insert(rule_log, rule)
 	return rule
@@ -56,7 +66,11 @@ _G.hl = {
 	animation = function(spec)
 		animation = spec
 	end,
-	timer = function(fn)
+	timer = function(fn, opts)
+		if opts and opts.type == "oneshot" then
+			table.insert(oneshots, fn)
+			return {}
+		end
 		timer_fn = fn
 		return {
 			set_enabled = function(_, on)
@@ -72,6 +86,7 @@ _G.hl = {
 		return active
 	end,
 	get_windows = function()
+		window_reads = window_reads + 1
 		local copy = {}
 		for _, w in ipairs(windows) do
 			w.tags = tagged(w) and { "frame_gapped" } or {}
@@ -480,6 +495,173 @@ check("watchdog: frame on after off needs the frame's layer, not the old pid", o
 layers = { { mapped = true, namespace = "quickshell-frame" } }
 alive_pids[4242] = nil
 io.open = real_open
+
+-- Mixed monitors: Quickshell names the monitors that draw the frame (a 9th argument), and only those get its look.
+_G.ScreenFrame.clear()
+local dell = { name = "DP-1", description = "Dell Inc. DELL U2720Q 7RJ3Y93" }
+local side = { name = "HDMI-A-1", description = "LG Electronics 27UL 0x1" }
+local laptop = { name = "eDP-1", description = "" }
+local function on_monitor_set(monitors, flush)
+	_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", flush ~= false, true, 4242, monitors)
+end
+local function enabled_specs(kind)
+	local found = {}
+	for _, rule in ipairs(rule_log) do
+		if rule.kind == kind and rule.enabled then
+			table.insert(found, rule.spec)
+		end
+	end
+	return found
+end
+local function rule_on(kind, selector)
+	for _, spec in ipairs(enabled_specs(kind)) do
+		local workspace = kind == "window" and spec.match.workspace or spec.workspace
+		if workspace == selector then
+			return spec
+		end
+	end
+	return nil
+end
+local function all_window_rules_on(selector)
+	local count = 0
+	for _, spec in ipairs(enabled_specs("window")) do
+		if spec.match.workspace ~= nil and spec.match.workspace:find(selector, 1, true) == nil then
+			return false
+		end
+		count = count + 1
+	end
+	return count > 0
+end
+
+on_monitor_set({ "desc:" .. dell.description })
+local dell_m = "m[desc:" .. dell.description .. "]"
+check("mixed: global rounding stays the owner's", last_config().decoration.rounding == 9)
+check("mixed: global rounding power stays the owner's", last_config().decoration.rounding_power == 3)
+check(
+	"mixed: global borders stay the owner's",
+	last_config().general.border_size == 4 and last_config().general.col.active_border == "owner-active"
+)
+check("mixed: every frame window rule is on the framed monitor", all_window_rules_on(dell_m))
+local gapped = rule_on("window", dell_m)
+check("mixed: framed monitor gets the gapped rounding", gapped ~= nil and gapped.rounding == 6 and gapped.rounding_power == 2)
+local border
+for _, spec in ipairs(enabled_specs("window")) do
+	if spec.border_size ~= nil then
+		border = spec
+	end
+end
+check(
+	"mixed: framed monitor gets the rim as its border",
+	border ~= nil and border.border_size == 2 and border.border_color == "rgba(33ccffee) rgba(595959aa)"
+)
+check("mixed: lone flush only on the framed monitor", rule_on("workspace", "w[tv1] " .. dell_m) ~= nil)
+check("mixed: no global lone flush", flush_workspace_rule_enabled() == false)
+check("mixed: lone rounding on the framed monitor", rule_on("window", "w[tv1] " .. dell_m) ~= nil)
+
+-- SUPER+M opts out on the framed monitor and maximizes on the side-bar one.
+local ws_dell = { id = 11, monitor = dell }
+local ws_side = { id = 12, monitor = side }
+local on_dell = window("d", 11)
+on_dell.workspace = ws_dell
+local on_side = window("s", 12)
+on_side.workspace = ws_side
+active = on_side
+check("mixed: key maximizes on the unframed monitor", _G.ScreenFrame.toggle_lone_flush() == false and not tagged(on_side))
+active = on_dell
+check("mixed: key opts out on the framed monitor", _G.ScreenFrame.toggle_lone_flush() == true and tagged(on_dell))
+_G.ScreenFrame.toggle_lone_flush()
+
+-- A monitor with no description is named by its connector.
+on_monitor_set({ "desc:" .. dell.description, laptop.name })
+local ws_laptop = { id = 13, monitor = laptop }
+local on_laptop = window("l", 13)
+on_laptop.workspace = ws_laptop
+active = on_laptop
+check("connector name: rules on m[eDP-1]", rule_on("workspace", "w[tv1] m[eDP-1]") ~= nil)
+check("connector name: key opts out there", _G.ScreenFrame.toggle_lone_flush() == true and tagged(on_laptop))
+_G.ScreenFrame.toggle_lone_flush()
+
+-- Re-sending the same list (configreloaded, a debounce repeat) makes no new rules and keeps the same ones on.
+local rules_before, enabled_before = #rule_log, #enabled_specs("window") + #enabled_specs("workspace")
+on_monitor_set({ "desc:" .. dell.description, laptop.name })
+check(
+	"re-send: no new rules, same ones on",
+	#rule_log == rules_before and #enabled_specs("window") + #enabled_specs("workspace") == enabled_before
+)
+
+-- Undocking: the laptop leaves the list and its rules go off; docking again reuses them.
+on_monitor_set({ "desc:" .. dell.description })
+check("undock: the gone monitor's lone flush is off", rule_on("workspace", "w[tv1] m[eDP-1]") == nil)
+check("undock: no window rule left on it", all_window_rules_on(dell_m))
+rules_before = #rule_log
+on_monitor_set({ "desc:" .. dell.description, laptop.name })
+check("redock: rules come back without new ones", #rule_log == rules_before and rule_on("workspace", "w[tv1] m[eDP-1]") ~= nil)
+
+-- A new monitor's lone flush rule would beat an older opt-out gaps rule, so the next opt-out makes a fresh one.
+active = on_dell
+_G.ScreenFrame.toggle_lone_flush()
+_G.ScreenFrame.toggle_lone_flush()
+local cached_gap = #rule_log
+on_monitor_set({ "desc:" .. dell.description, laptop.name, side.name })
+local side_lone_index = #rule_log
+_G.ScreenFrame.toggle_lone_flush()
+local fresh_gap = rule_log[#rule_log]
+check(
+	"new monitor: the opt-out gaps rule sorts after its lone rule",
+	cached_gap < side_lone_index and fresh_gap.kind == "workspace" and fresh_gap.spec.workspace == "11" and fresh_gap.enabled
+)
+_G.ScreenFrame.toggle_lone_flush()
+on_monitor_set({ "desc:" .. dell.description, laptop.name })
+
+-- A workspace moved to another monitor: the opt-out ends, and the window rules are re-applied once, later.
+active = on_dell
+_G.ScreenFrame.toggle_lone_flush()
+ws_dell.monitor = side
+oneshots, reapplied, window_reads = {}, 0, 0
+fire("workspace.move_to_monitor")
+fire("monitor.removed")
+check("move: nothing touches windows inside the event", window_reads == 0 and reapplied == 0)
+check("move: one deferred refresh for a burst of events", #oneshots == 1)
+for _, fn in ipairs(oneshots) do
+	fn()
+end
+oneshots = {}
+check("move: the opt-out ends", not tagged(on_dell) and not gap_rule_enabled(11))
+check("move: window rules re-applied", reapplied == 1)
+active = on_dell
+check("move: key maximizes on the unframed monitor now", _G.ScreenFrame.toggle_lone_flush() == false)
+ws_dell.monitor = dell
+fire("monitor.added")
+check("monitor added: a refresh is queued", #oneshots == 1)
+oneshots[1]()
+oneshots = {}
+
+-- An older Quickshell sends 8 arguments: every monitor framed, as before.
+on_monitor_set(nil)
+check("old quickshell: global lone flush", flush_workspace_rule_enabled() == true)
+check("old quickshell: no per-monitor lone flush", rule_on("workspace", "w[tv1] " .. dell_m) == nil)
+check("old quickshell: frame rounding global", last_config().decoration.rounding == 6 and last_config().general.border_size == 2)
+active = on_side
+check("old quickshell: key opts out anywhere", _G.ScreenFrame.toggle_lone_flush() == true)
+_G.ScreenFrame.toggle_lone_flush()
+fire("workspace.move_to_monitor")
+oneshots[1]()
+oneshots = {}
+
+-- The list only matters with the frame drawn; the corner alone stays global.
+_G.ScreenFrame.set("round", 12, 2, "rgba(33ccffee)", "rgba(595959aa)", true, false, 4242, { "DP-1" })
+check("frame off with a list: corner rounding global", last_config().decoration.rounding == 6 and #enabled_window_rules() == 0)
+
+-- Clear turns every per-monitor rule off, and a monitor event then queues nothing.
+on_monitor_set({ "desc:" .. dell.description, laptop.name })
+_G.ScreenFrame.clear()
+check("clear: per-monitor rules off", #enabled_specs("window") == 0 and rule_on("workspace", "w[tv1] m[eDP-1]") == nil)
+check("clear: owner's values back", owner_restored())
+fire("monitor.added")
+check("clear: monitor events queue nothing", #oneshots == 0)
+for _, w in ipairs({ on_dell, on_side, on_laptop }) do
+	remove(w)
+end
 
 -- Logout destroys each window inside Hyprland's compositor cleanup; a window.destroy handler that reads the window list
 -- there segfaults Hyprland (#1486). window.close covers a normal close.
