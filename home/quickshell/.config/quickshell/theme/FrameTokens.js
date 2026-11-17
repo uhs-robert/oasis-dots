@@ -66,8 +66,10 @@ function forces_full_bar(tokens) {
 // The monitors that draw the frame, as Hyprland monitor strings for ScreenFrame.set's list: "desc:" and the
 // description, which survives a replug that renames the connector, else the connector name. The connector also stands
 // in for a description two screens share (Hyprland's desc: picks only the first match) or one holding "]" (it would
-// end the m[] selector frame.lua puts it in). Each screen is { name, description, framed }.
+// end the m[] selector frame.lua puts it in). Each screen is { name, description, framed }. null when every screen is
+// framed: frame.lua then sets the global options as before, which other window rules (the selection border) override.
 function framed_monitors(screens) {
+    if (screens.length > 0 && screens.every(s => s.framed)) return null;
     const shared = d => screens.filter(s => s.description === d).length > 1;
     const keys = [];
     for (const s of screens) {
@@ -79,7 +81,8 @@ function framed_monitors(screens) {
     return keys;
 }
 
-// A list of strings as a Lua table literal, for a Hyprland dispatch: JSON's string quoting is valid Lua for text with no control characters.
+// A list of strings as a Lua table literal, for a Hyprland dispatch: JSON's string quoting is valid Lua for text with no control characters. null is nil.
 function lua_string_list(items) {
+    if (items === null) return "nil";
     return "{" + items.map(s => JSON.stringify(String(s))).join(", ") + "}";
 }
