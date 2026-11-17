@@ -46,7 +46,7 @@ HintDrawer {
 
     namespace: "quickshell-submap-hints"
     // Hidden while the which-key HUD SHIFT + / opens is up, which lists every key and would sit over it.
-    wanted: root.hint !== null && root.focused && !SubmapState.whichkey_open
+    wanted: root.hint !== null && root.focused && !SubmapState.whichkey_open && !SubmapState.hints_hidden
     floating_fallback: true
 
     Grid {

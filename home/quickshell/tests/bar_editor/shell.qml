@@ -199,6 +199,14 @@ ShellRoot {
         root.check("? opens the help and swallows the next key", [BarEditor.help_open, BarEditor.press("l")], [true, true]);
         root.keys("?");
         root.check("? closes it again", BarEditor.help_open, false);
+        root.keys("i");
+        root.check("i hides the hint panel", SubmapState.hints_hidden, true);
+        root.keys("i");
+        root.check("i shows it again", SubmapState.hints_hidden, false);
+        root.keys("i");
+        BarEditor.close();
+        root.check("closing the editor shows the hint panel again", SubmapState.hints_hidden, false);
+        BarEditor.open("B");
         root.keys("Esc");
         root.keys("Esc");
         root.check("Esc at monitor select closes the editor", [BarEditor.active, BarEditor.focus_screen], [false, ""]);
@@ -346,7 +354,7 @@ ShellRoot {
     // ones that change anything must be exactly HintData's list.
     readonly property var probe_keys: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?".split("").concat(["Tab", "Enter", "Esc", "Ctrl+r", "Backspace"])
     function snapshot() {
-        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length, BarEditor.notice]);
+        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length, BarEditor.notice, SubmapState.hints_hidden]);
     }
     // A fresh editor in `mode` with something to undo and redo and every key's target in reach.
     function hint_fixture(mode, vertical, saved_edge) {

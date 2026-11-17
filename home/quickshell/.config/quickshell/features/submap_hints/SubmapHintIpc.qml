@@ -13,6 +13,12 @@ IpcHandler {
         return problem === "" ? "ok" : problem;
     }
 
+    // Hides the hint bar, or shows it again, until the submap is left (`i`, bound in every submap with a hint by
+    // Submap.define). Does nothing outside such a submap.
+    function toggle(): void {
+        if (SubmapState.hint !== null) SubmapState.hints_hidden = !SubmapState.hints_hidden;
+    }
+
     // Stores the window selection `{ "generation": g, "serial": n, "windows": ["0x..."] }`, sent by
     // lib/selection.lua on every change. "ok", or why the JSON was refused.
     function selection(json: string): string {

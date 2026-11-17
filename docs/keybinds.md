@@ -10,6 +10,7 @@ You rarely need to open a file to find a bind.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
 - Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list.
 - Inside a submap, `?` hides or shows which-key without leaving it.
+- In a submap with a hint bar, `i` hides or shows the bar until you leave the submap. Submaps you define with a `hint` get this bind too, so a bind of your own on `i` in one collides: yours replaces the toggle, and the bar's footer stops listing it.
 - In Windows, Resize and Move the keys act on the focused window, or on the selection: `SPACE` in Windows selects windows (a thick border in the theme's secondary colour, a number in selection order, "N selected" in the hint bar), and every Windows, Resize and Move key then acts on all of them. Each of the three switches straight to the other two (`w` Windows, `r` Resize, `m` Move), and the selection carries between them, through those keys and `BackSpace`, and clears when you leave them.
 
 All of them read the description written next to each bind, so anything you add shows up in them too.
@@ -484,6 +485,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ESCAPE` | press | Cursor | Cancel/Exit Cursor |  |
 | `BackSpace` | press | Cursor | Back |  |
 | `SHIFT + SLASH` | press | Cursor | Toggle which-key help |  |
+| `I` | press | Cursor |  | `submap.hints_toggle` |
 | `catchall` | release | Cursor |  |  |
 | `B` | press | Delete | Close Browsers | `delete.close_group` |
 | `C` | press | Delete | Clear Clipboard | `delete.clear_clipboard` |
@@ -620,6 +622,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ESCAPE` | press | Move | Exit Move |  |
 | `BackSpace` | press | Move | Back |  |
 | `SHIFT + SLASH` | press | Move | Toggle which-key help |  |
+| `I` | press | Move |  | `submap.hints_toggle` |
 | `catchall` | release | Move |  |  |
 | `SEMICOLON` | press | Quick Click | Floating Click (Exit) | `cursor.pointer_mode` |
 | `APOSTROPHE` | press | Quick Click | Floating Right Click | `cursor.pointer_mode` |
@@ -641,6 +644,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ESCAPE` | press | Quick Click | Cancel/Exit Quick Click |  |
 | `BackSpace` | press | Quick Click | Back |  |
 | `SHIFT + SLASH` | press | Quick Click | Toggle which-key help |  |
+| `I` | press | Quick Click |  | `submap.hints_toggle` |
 | `catchall` | release | Quick Click |  |  |
 | `EQUAL` | press | Resize | Reset Size | `resize.reset` |
 | `W` | press | Resize | +Windows | `submap.enter` |
@@ -680,6 +684,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ESCAPE` | press | Resize | Exit Resize |  |
 | `BackSpace` | press | Resize | Back |  |
 | `SHIFT + SLASH` | press | Resize | Toggle which-key help |  |
+| `I` | press | Resize |  | `submap.hints_toggle` |
 | `catchall` | release | Resize |  |  |
 | `SLASH` | press | System | Edit Keymaps | `system.edit_keymaps` |
 | `SPACE` | press | System | Task Manager | `terminal.task_manager` |
@@ -767,5 +772,6 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `ESCAPE` | press | Windows | Exit Windows |  |
 | `BackSpace` | press | Windows | Back |  |
 | `SHIFT + SLASH` | press | Windows | Toggle which-key help |  |
+| `I` | press | Windows |  | `submap.hints_toggle` |
 | `catchall` | release | Windows |  |  |
 <!-- END generated -->
