@@ -825,6 +825,11 @@ while True:
     out.flush()
 '
 
+session_running() {
+  local sid_file="$base/$1.sid"
+  [[ -f $sid_file ]] && pgrep -s "$(<"$sid_file")" >/dev/null
+}
+
 # What the stream shows up as in the shadow's PipeWire graph: an app output stream, linked (running) to the sink.
 audio_listed() {
   timeout 1 "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" pw-dump 2>/dev/null |
@@ -835,8 +840,10 @@ audio_listed() {
 # (method pipewire, on the default sink's monitor) has something to draw. pw-cat alone never links: nothing in the
 # private graph autoconnects streams, since no WirePlumber runs for `up`. So this starts WirePlumber's `policy`
 # profile beside the stream (linking and default-node metadata only; the hardware, Bluetooth and camera components
-# are not in that profile, so it still cannot reach the owner's devices). Both live in one session (`audio.sid`); a
-# second start replaces it and stop on a dead one is a no-op.
+# are not in that profile, so it still cannot reach the owner's devices). WirePlumber has its own session
+# (`wireplumber.sid`): it starts once and stays until `down`, because it owns a second `default` metadata object the
+# bar may have bound, and stopping it would leave the bar without a default sink. The stream is `audio.sid`; a second
+# start replaces it and stop on a dead one is a no-op.
 audio() {
   set_name "${1:-}"
   local action=${2:-} freq=200
@@ -856,9 +863,13 @@ audio() {
   [[ $freq =~ ^[1-9][0-9]{1,3}$ ]] || die "--freq must be 10 to 9999 Hz"
   require_pw_socket
   kill_session audio
+  if ! session_running wireplumber; then
+    kill_session wireplumber
+    setsid "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" wireplumber -p policy >>"$logs/audio.log" 2>&1 </dev/null &
+    echo "$!" >"$base/wireplumber.sid"
+  fi
   # shellcheck disable=SC2016 # the script is for the inner bash, which expands $1 and $2
   setsid "${shadow_env[@]}" PIPEWIRE_RUNTIME_DIR="$runtime" bash -c '
-    wireplumber -p policy &
     python3 -c "$1" "$2" | pw-cat -p --raw --rate 48000 --channels 2 --format s16 --media-category Playback \
       --target shadow_sink -P "{ application.name=\"Shadow Fake App\" node.name=shadow_fake_app }" -
   ' _ "$fake_audio_pcm" "$freq" >>"$logs/audio.log" 2>&1 </dev/null &
@@ -906,7 +917,7 @@ status_one() {
   echo "$name: up, ${#pids[@]} processes, $(pss_mb "${pids[@]}") MB PSS, size $(cat "$base/size" 2>/dev/null || echo unknown), source $source"
   echo "  runtime $runtime, signature $(cat "$base/signature" 2>/dev/null || echo none)"
   local component sid
-  for component in qs keyboard hypr host bus player audio pipewire; do
+  for component in qs keyboard hypr host bus player audio wireplumber pipewire; do
     sid=$(cat "$base/$component.sid" 2>/dev/null || true)
     if [[ -n $sid ]] && pgrep -s "$sid" >/dev/null; then echo "  $component: running (session $sid)"; else echo "  $component: not running"; fi
   done
@@ -954,7 +965,7 @@ teardown() {
     component=${sid_file##*/}
     kill_session "${component%.sid}"
   done
-  for component in player audio qs pipewire keyboard hypr host bus; do kill_session "$component"; done
+  for component in player audio wireplumber qs pipewire keyboard hypr host bus; do kill_session "$component"; done
   if mountpoint -q "$runtime/gvfs" 2>/dev/null; then fusermount -u "$runtime/gvfs" || fusermount -uz "$runtime/gvfs"; fi
   # Strays outside the recorded sessions (a service the bus activated, a daemonized child) get one sweep.
   for pid in $(shadow_pids); do
