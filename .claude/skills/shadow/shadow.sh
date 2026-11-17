@@ -839,8 +839,8 @@ audio_listed() {
 # A fake playing app on the shadow's private PipeWire, so the volume popup has an app row with live meters and cava
 # (method pipewire, on the default sink's monitor) has something to draw. pw-cat alone never links: nothing in the
 # private graph autoconnects streams, since no WirePlumber runs for `up`. So this starts WirePlumber's `policy`
-# profile beside the stream (linking and default-node metadata only; the hardware, Bluetooth and camera components
-# are not in that profile, so it still cannot reach the owner's devices). WirePlumber has its own session
+# profile beside the stream (linking, default-node metadata and a few services on the private bus; the hardware,
+# Bluetooth and camera components are not in that profile, so it cannot reach the owner's devices). WirePlumber has its own session
 # (`wireplumber.sid`): it starts once and stays until `down`, because it owns a second `default` metadata object the
 # bar may have bound, and stopping it would leave the bar without a default sink. The stream is `audio.sid`; a second
 # start replaces it and stop on a dead one is a no-op.
