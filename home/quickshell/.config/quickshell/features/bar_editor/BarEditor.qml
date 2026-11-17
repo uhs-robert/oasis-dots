@@ -115,6 +115,7 @@ Singleton {
         root.picked = "";
         root.help_open = false;
         root.notice = "";
+        SubmapState.hints_hidden = false;
         root.focus_screen = root.monitors.some(m => m.name === wanted) ? wanted : root.monitors[0].name;
         root.mode = "normal";
         root.selected = root.order[0] || "";
@@ -130,6 +131,7 @@ Singleton {
         root.picked = "";
         root.help_open = false;
         root.notice = "";
+        SubmapState.hints_hidden = false;
         root.undo_stack = [];
         root.redo_stack = [];
         root.pick_base = null;
@@ -342,6 +344,11 @@ Singleton {
         }
         if (spec === "?") {
             root.help_open = true;
+            return true;
+        }
+        // i hides the hint panel, or shows it again; the submap hint bar's flag, so one key covers both.
+        if (spec === "i") {
+            SubmapState.hints_hidden = !SubmapState.hints_hidden;
             return true;
         }
         if (root.mode === "monitor") root.press_monitor(spec);

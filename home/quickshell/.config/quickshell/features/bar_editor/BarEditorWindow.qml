@@ -309,7 +309,7 @@ PanelWindow {
     // The key hints, on the screen edge the bar is not on.
     HintBox {
         id: hint_box
-        visible: root.keyboard_owner && BarEditor.mode !== "monitor" && !root.hints_in_drawer
+        visible: root.keyboard_owner && BarEditor.mode !== "monitor" && !root.hints_in_drawer && !SubmapState.hints_hidden
         on_top: root.hints_on_top
         carrying: root.carrying
         vertical: root.vertical
@@ -318,7 +318,7 @@ PanelWindow {
     // Monitor select: the screens as they sit, the picked one lit.
     Item {
         id: monitor_box
-        visible: root.keyboard_owner && BarEditor.mode === "monitor" && !root.hints_in_drawer
+        visible: root.keyboard_owner && BarEditor.mode === "monitor" && !root.hints_in_drawer && !SubmapState.hints_hidden
         anchors.centerIn: parent
         width: 560
         height: monitor_map.map_height + 130

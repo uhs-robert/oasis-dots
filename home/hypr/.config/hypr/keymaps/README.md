@@ -14,7 +14,7 @@ Register binds through `lib/key/bind.lua` (`Bind.key`, `Bind.submap`), never raw
 
 `Submap.define` (`lib/key/submap.lua`) builds a submap from bind rows.
 
-- `hint` groups action ids into the compact hint bar. `lib/key/submap_hint.lua` derives the keys and labels from the rows and sends the result to Quickshell's `submap_hints` target on every entry. A submap with a hint is left out of which-key's auto-show in `hyprland.lua`. `home/hypr/tests/submap_hints.lua` pins what each hint lists.
+- `hint` groups action ids into the compact hint bar. `lib/key/submap_hint.lua` derives the keys and labels from the rows and sends the result to Quickshell's `submap_hints` target on every entry. `Submap.define` binds `i` (action `submap.hints_toggle`) in every submap with a hint, unless its rows use `i`; it hides the bar for one stay. A submap with a hint is left out of which-key's auto-show in `hyprland.lua`. `home/hypr/tests/submap_hints.lua` pins what each hint lists.
 - `targets` (Windows, Resize, Move) marks a submap whose keys act on the focused window or the selection. `lib/selection.lua` holds that selection and carries it between such submaps. It clears the selection on any other switch (`Submap.enter`, `Submap.reset` and Hyprland's submap event). It draws each selected window's border with `set_prop`, kept in step with config changes and reloads through window tags, and sends the selection to Quickshell, which numbers the windows.
 
 ## Code

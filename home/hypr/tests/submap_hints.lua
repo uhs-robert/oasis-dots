@@ -106,6 +106,18 @@ if SubmapHint.encoded.HintDropped ~= nil or SubmapHint.encoded.HintBadArgs ~= ni
 	print("FAIL a hint item naming only rows the submap dropped should drop the hint")
 end
 
+-- A submap with its own row on `i` keeps it: Submap.define adds no toggle bind and the footer does not offer one.
+Submap.define({ name = "HintOwnI", binds = { { "I", "window.close" } }, hint = { { "Close", "window.close" } } }).setup()
+local own_i = require("lib.json").decode(SubmapHint.encoded.HintOwnI or "{}")
+local offers_toggle = false
+for _, key in ipairs(own_i.footer or {}) do
+	offers_toggle = offers_toggle or key[1] == "i"
+end
+if SubmapHint.encoded.HintOwnI == nil or offers_toggle or #SubmapHint.errors ~= 3 then
+	failures = failures + 1
+	print("FAIL a submap with its own `I` row should not offer the hint toggle")
+end
+
 -- SubmapState.set_hint takes only arrays for groups, keys and footer, so an empty one must encode as `[]`, not `{}`.
 local Json = require("lib.json")
 local no_extras = { escape = false, whichkey = false }

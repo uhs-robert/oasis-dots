@@ -13,7 +13,7 @@ HintDrawer {
     property bool tall: false
     readonly property bool tall_wanted: BarEditor.mode === "monitor"
     // Gates on the content matching the mode too, so closing the editor mid-regrow leaves the drawer folded.
-    wanted: BarEditor.keyboard_owner(root.modelData.name) && root.tall === root.tall_wanted
+    wanted: BarEditor.keyboard_owner(root.modelData.name) && root.tall === root.tall_wanted && !SubmapState.hints_hidden
     namespace: "quickshell-bareditor-hints"
 
     function settle() {

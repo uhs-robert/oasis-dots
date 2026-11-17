@@ -59,6 +59,11 @@ Singleton {
     property var hints: ({})
     readonly property var hint: root.hints[root.submap_name] || null
 
+    // The hint panels are hidden by the `i` key: the submap hint bar and the Bar Editor's hints share this one flag. It lasts
+    // for one stay: entering or leaving a submap, and opening or closing the editor, clear it.
+    property bool hints_hidden: false
+    onSubmap_nameChanged: root.hints_hidden = false
+
     // Stores a hint; returns "" or why the JSON was refused.
     function set_hint(json) {
         let spec;

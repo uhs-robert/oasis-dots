@@ -169,6 +169,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `style` | `toggle_cava_line(): void` |  |
 | `style` | `get_cava_line(): bool` |  |
 | `submap_hints` | `set(json: string): string` |  |
+| `submap_hints` | `toggle(): void` | `submap.hints_toggle` |
 | `submap_hints` | `selection(json: string): string` |  |
 | `submap_hints` | `clear(generation: string): void` |  |
 | `transition` | `play(name: string): void` |  |
@@ -197,7 +198,7 @@ Notes on the targets whose names do not say enough:
 - `calendar`: `refresh` rereads the calendar cache; `open_day <YYYY-MM-DD>` opens the clock popup on that day.
 - `cmdstatus`: `refresh <id>` with `""` refreshes every entry.
 - `hyprvim_whichkey`, `hyprvim_prompt`: external API, the HyprVim which-key HUD and `:` prompt, each with `open` and `close`, called by the hyprvim plugin.
-- `submap_hints`: `clear <generation>` drops every stored hint and the selection (sent on each Hyprland config load, with that load's selection generation); `set <json>` stores a submap's hint bar (`{name, groups: [{name, keys: [[cap, label]]}], footer: [[cap, label]]}`), shown while Hyprland is in that submap; `home/hypr/.config/hypr/lib/key/submap_hint.lua` sends it on every entry. `selection <json>` stores the window selection (`{generation, serial, windows: ["0x..."]}`) that `home/hypr/.config/hypr/lib/selection.lua` sends on each change and on entering Windows, Resize or Move; one older by (generation, serial) is ignored (`features/submap_hints/SelectionOrder.js`).
+- `submap_hints`: `clear <generation>` drops every stored hint and the selection (sent on each Hyprland config load, with that load's selection generation); `set <json>` stores a submap's hint bar (`{name, groups: [{name, keys: [[cap, label]]}], footer: [[cap, label]]}`), shown while Hyprland is in that submap, and `toggle` (the `i` key) hides or shows it until the submap changes; `home/hypr/.config/hypr/lib/key/submap_hint.lua` sends it on every entry. `selection <json>` stores the window selection (`{generation, serial, windows: ["0x..."]}`) that `home/hypr/.config/hypr/lib/selection.lua` sends on each change and on entering Windows, Resize or Move; one older by (generation, serial) is ignored (`features/submap_hints/SelectionOrder.js`).
 
 Popup names are the `LazyPopup` names in `shell.qml`: `start`, `settings`, `power`, `clock`, `volume`, `battery`, `bluetooth`, `system`, `tray`, `network`, `keeptabs`, `weather`, `updates`, `media`, `screenshot`, `notifications`, `picker`.
 

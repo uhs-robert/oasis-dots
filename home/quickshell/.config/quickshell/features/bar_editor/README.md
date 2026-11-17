@@ -4,7 +4,7 @@ Edit the bar modules on the bars themselves: a full-screen mode over every monit
 
 ## Keys
 
-`q` closes the editor from every mode (a module you are carrying is put back).
+`q` closes the editor from every mode (a module you are carrying is put back). `i` hides or shows the hint panel in every mode (the monitor map goes with it); it shows again when the editor closes.
 
 | Mode | Keys |
 | --- | --- |

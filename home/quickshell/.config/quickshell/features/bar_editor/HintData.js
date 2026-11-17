@@ -7,22 +7,23 @@ function groups(mode, carrying, vertical, can_forget, compact) {
     const compact_key = ["c", "compact: " + (compact || "off")];
     const quit = ["q", "quit"];
     const help = ["?", "help"];
+    const hide = ["i", "hide"];
     if (mode === "monitor") {
         return [
             { name: "pick", keys: [["hjkl", "monitor"], ["Enter", "edit bar"]] },
-            { name: "leave", keys: [["Esc", "close"], quit, help] }
+            { name: "leave", keys: [["Esc", "close"], quit, hide, help] }
         ];
     }
     if (mode === "hidden" && carrying) {
         return [
             { name: "place", keys: [["h/l", "place"], ["Enter", "drop"]] },
-            { name: "leave", keys: [["Esc", "cancel"], quit, help] }
+            { name: "leave", keys: [["Esc", "cancel"], quit, hide, help] }
         ];
     }
     if (mode === "hidden") {
         return [
             { name: "pick", keys: [["h/l", "select"], ["Enter", "pick up"]] },
-            { name: "leave", keys: [["Esc/Tab", "back"], quit, help] }
+            { name: "leave", keys: [["Esc/Tab", "back"], quit, hide, help] }
         ];
     }
     if (mode === "visual") {
@@ -31,7 +32,7 @@ function groups(mode, carrying, vertical, can_forget, compact) {
         return [
             { name: "move", keys: edit },
             { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
-            { name: "leave", keys: [["Enter/Esc", "done"], quit, help] }
+            { name: "leave", keys: [["Enter/Esc", "done"], quit, hide, help] }
         ];
     }
     return [
@@ -39,7 +40,7 @@ function groups(mode, carrying, vertical, can_forget, compact) {
         { name: "edit", keys: [[vertical ? "H/L J/K" : "H/L", "move"], ["x", "hide"], compact_key, ["o", "own"]] },
         { name: "modes", keys: [["Tab", "hidden"], ["V", "bar"]] },
         { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
-        { name: "leave", keys: [["Esc", "back"], quit, help] }
+        { name: "leave", keys: [["Esc", "back"], quit, hide, help] }
     ];
 }
 

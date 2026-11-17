@@ -5,26 +5,26 @@ default	Cursor	Pick	f Float · t Tile · g Split · ; Quick
 default	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · space Drop
 default	Cursor	Scroll	ey,. Scroll
 default	Cursor	Keys	A-hjkl Arrows · C-u/d Page
-default	Cursor	(footer)	Esc Cancel/Exit · ? All keys
+default	Cursor	(footer)	Esc Cancel/Exit · ? All keys · i Hide
 default	Move	Move	hjkl Move · S/C speed
 default	Move	Window	f Float
 default	Move	Mode	w Windows · r Resize
-default	Move	(footer)	Esc Exit · ? All keys
+default	Move	(footer)	Esc Exit · ? All keys · i Hide
 default	Move	(targets)	on
 default	Quick Click	Pick	f Float · t Tile · g Split
 default	Quick Click	Drag	V Find · C-v Tile · A-v Split
-default	Quick Click	(footer)	Esc Cancel/Exit · ? All keys
+default	Quick Click	(footer)	Esc Cancel/Exit · ? All keys · i Hide
 default	Resize	Resize	hjkl Resize · S/C speed
 default	Resize	Window	= Reset
 default	Resize	Mode	w Windows · m Move
-default	Resize	(footer)	Esc Exit · ? All keys
+default	Resize	(footer)	Esc Exit · ? All keys · i Hide
 default	Resize	(targets)	on
 default	Windows	Focus	hjkl Focus · 1..0 Monitor · [] Floats
 default	Windows	Move	HJKL Move · C-hjkl WS · S-1..0 WS
 default	Windows	Select	space Select · s Swap · Enter Confirm
 default	Windows	Window	x Close · f Float · p Pseudo · - Split
 default	Windows	Mode	r Resize · m Move · c Cursor
-default	Windows	(footer)	Esc Exit · ? All keys
+default	Windows	(footer)	Esc Exit · ? All keys · i Hide
 default	Windows	(targets)	on
 no-leader	Cursor	Move	hjkl Move · S/C speed
 no-leader	Cursor	Click	space Left · r Right · m Middle · C-space/r/m +Exit
@@ -32,24 +32,24 @@ no-leader	Cursor	Pick	f Float · t Tile · g Split · ; Quick
 no-leader	Cursor	Drag	v Grab · V Find · C-v Tile · A-v Split · space Drop
 no-leader	Cursor	Scroll	ey,. Scroll
 no-leader	Cursor	Keys	A-hjkl Arrows · C-u/d Page
-no-leader	Cursor	(footer)	Esc Cancel/Exit · ? All keys
+no-leader	Cursor	(footer)	Esc Cancel/Exit · ? All keys · i Hide
 no-leader	Move	Move	hjkl Move · S/C speed
 no-leader	Move	Window	f Float
 no-leader	Move	Mode	w Windows · r Resize
-no-leader	Move	(footer)	Esc Exit · ? All keys
+no-leader	Move	(footer)	Esc Exit · ? All keys · i Hide
 no-leader	Move	(targets)	on
 no-leader	Quick Click	Pick	f Float · t Tile · g Split
 no-leader	Quick Click	Drag	V Find · C-v Tile · A-v Split
-no-leader	Quick Click	(footer)	Esc Cancel/Exit · ? All keys
+no-leader	Quick Click	(footer)	Esc Cancel/Exit · ? All keys · i Hide
 no-leader	Resize	Resize	hjkl Resize · S/C speed
 no-leader	Resize	Window	= Reset
 no-leader	Resize	Mode	w Windows · m Move
-no-leader	Resize	(footer)	Esc Exit · ? All keys
+no-leader	Resize	(footer)	Esc Exit · ? All keys · i Hide
 no-leader	Resize	(targets)	on
 no-leader	Windows	Focus	hjkl Focus · 1..3 Monitor · [] Floats
 no-leader	Windows	Move	HJKL Move · C-hjkl WS · S-1..0 WS
 no-leader	Windows	Select	space Select · s Swap · Enter Confirm
 no-leader	Windows	Window	x Close · f Float · p Pseudo · - Split
 no-leader	Windows	Mode	r Resize · m Move · c Cursor
-no-leader	Windows	(footer)	Esc Exit · ? All keys
+no-leader	Windows	(footer)	Esc Exit · ? All keys · i Hide
 no-leader	Windows	(targets)	on

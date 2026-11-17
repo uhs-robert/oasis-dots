@@ -2,6 +2,7 @@
 --- Tracks current/previous submap state and fires on_enter/on_exit hooks.
 --- Use Submap.define() to declare a submap; call .setup() on the result to register binds.
 local Act = require("lib.act") ---@class ActionLib
+Act.load_defs({ "submap_hints" })
 local Bind = require("lib.key.bind") ---@class BindLib
 local SubmapHint = require("lib.key.submap_hint") ---@class SubmapHint
 
@@ -369,6 +370,7 @@ local function bind_catchall(catchall, exit_fn, spec)
 end
 
 local whichkey_toggle_key = "SHIFT + SLASH"
+local hints_toggle_key = "I"
 
 --- Whether any bind row already uses the key, compared the way Hyprland does (case and whitespace ignored).
 --- @param rows table[]
@@ -428,6 +430,7 @@ function Submap.define(spec)
           escape = normalize_escape(spec) ~= false,
           escape_label = spec.escape_label,
           whichkey = not binds_use_key(raw_binds, whichkey_toggle_key),
+          toggle = not binds_use_key(raw_binds, hints_toggle_key),
           targets = spec.targets == true,
         })
       end
@@ -441,6 +444,12 @@ function Submap.define(spec)
       end
 
       if not binds_use_key(raw_binds, whichkey_toggle_key) then bind_whichkey_toggle(catchall) end
+
+      -- A submap's own row on the key wins; it then lists no toggle in its footer.
+      if spec.hint and not binds_use_key(raw_binds, hints_toggle_key) then
+        -- No description, so which-key does not list the toggle as a row in every submap.
+        Bind.key(hints_toggle_key, (Act.row_action("submap.hints_toggle")))
+      end
 
       bind_catchall(catchall, M.exit, spec)
     end)
