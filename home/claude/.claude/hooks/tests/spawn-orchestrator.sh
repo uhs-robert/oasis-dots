@@ -8,7 +8,7 @@ pass=0 fail=0
 work=$(mktemp -d)
 socket=spawn-orch-test-$$
 export TMUX_TMPDIR=$work
-unset TMUX TMUX_PANE
+unset TMUX TMUX_PANE CLAUDE_CONTEXT_BUDGET
 t() { tmux -L "$socket" "$@"; }
 cleanup() {
   t kill-server 2>/dev/null
