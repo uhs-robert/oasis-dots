@@ -32,6 +32,7 @@ local gapped_lones = {}
 -- One rule per workspace id and gaps_out value, since a rule's values cannot change; only the one for the gap in force is enabled.
 local gap_rules = {}
 local active_gap_rules = {}
+local active_gap_values = {} -- the gaps_out each active opt-out rule was made with, to remake it
 -- The monitor each opted-out lone window's workspace was on, workspace id -> monitor name: a move to another monitor ends it.
 local gapped_lone_monitors = {}
 local GAPPED_TAG = "frame_gapped"
@@ -124,8 +125,13 @@ local function use_lone_rules(on, monitors)
     if not monitor_lone_rules[monitor] then
       monitor_lone_rules[monitor] = hl.workspace_rule({ workspace = on_monitor("w[tv1]", monitor), gaps_out = 0 })
       -- Of two matching workspace rules the later one wins, so an opt-out gaps rule made before this one would lose to
-      -- it: the next opt-out makes a fresh one.
+      -- it: the next opt-out makes a fresh one, and each active one is remade after it.
       gap_rules = {}
+      for workspace_id, rule in pairs(active_gap_rules) do
+        rule:set_enabled(false)
+        active_gap_rules[workspace_id] =
+          hl.workspace_rule({ workspace = tostring(workspace_id), gaps_out = active_gap_values[workspace_id] })
+      end
     end
     monitor_lone_rules[monitor]:set_enabled(true)
   end
@@ -236,6 +242,7 @@ local function release_gapped_lone(workspace_id)
   gapped_lone_monitors[workspace_id] = nil
   if active_gap_rules[workspace_id] then active_gap_rules[workspace_id]:set_enabled(false) end
   active_gap_rules[workspace_id] = nil
+  active_gap_values[workspace_id] = nil
   tag_window(address, false)
 end
 
@@ -462,6 +469,7 @@ local function toggle_lone_flush()
   end
   gap_rules[rule_key]:set_enabled(true)
   active_gap_rules[workspace_id] = gap_rules[rule_key]
+  active_gap_values[workspace_id] = gaps
   gapped_lones[workspace_id] = window.address
   gapped_lone_monitors[workspace_id] = workspace_monitor(window)
   tag_window(window.address, true)
