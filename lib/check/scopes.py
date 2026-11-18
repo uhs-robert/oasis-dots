@@ -165,6 +165,7 @@ PATH_SCOPES = [
     ("home/voxcmd/tests/fixtures/ask/*", VOX_RUST),
     ("home/voxcmd/tests/fixtures/click/*", VOX_RUST),
     ("home/voxcmd/tests/fixtures/autostop-parity-goldens.json", VOX_RUST),
+    ("home/voxcmd/tests/fixtures/wake-scores.json", VOX_RUST),
     ("home/voxcmd/tests/fixtures/wake/*", VOX_RUST + " " + VOX_REST),
     ("home/voxcmd/tests/fixtures/integrations/*", VOX_RUST + " " + VOX_CLICK),
     # The suites' own config for these is the sandbox's copy of the package, so a real integration reaches all of them.
