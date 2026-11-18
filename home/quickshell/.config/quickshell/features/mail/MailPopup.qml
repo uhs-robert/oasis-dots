@@ -5,13 +5,14 @@ import qs.theme
 import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
+import "MailParse.js" as Parse
 
 Popup {
     id: root
 
     popup_name: "mail"
     preferred_width: 320
-    footer_hint: "j/k move · gg/G first/last · r refresh · q close"
+    footer_hint: "j/k move · gg/G first/last · i inbox · u next unread · r refresh · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: true
     cursor_state: root.selected
@@ -29,6 +30,9 @@ Popup {
     onRowsChanged: if (selected >= rows.length) selected = Math.max(0, rows.length - 1)
 
     readonly property bool is_open: Popups.open_name === "mail"
+    // The folder the headers are for: the one under the cursor.
+    readonly property string preview_id: root.is_open && root.rows.length > 0 ? root.rows[Math.min(root.selected, root.rows.length - 1)].id : ""
+    onPreview_idChanged: MailPreviewState.show(root.preview_id)
     onIs_openChanged: if (is_open) {
         root.selected = 0;
         MailState.refresh();
@@ -58,6 +62,16 @@ Popup {
             } else if (event.key === Qt.Key_K) {
                 root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
                 root.play_if_moved(before);
+                event.accepted = true;
+            } else if (event.key === Qt.Key_I) {
+                ThemeAudio.play("confirm");
+                Popups.close();
+                MailActions.open_inbox();
+                event.accepted = true;
+            } else if (event.key === Qt.Key_U) {
+                ThemeAudio.play("confirm");
+                Popups.close();
+                MailActions.next_unread();
                 event.accepted = true;
             } else if (event.key === Qt.Key_R) {
                 ThemeAudio.play("confirm");
@@ -134,6 +148,101 @@ Popup {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: root.selected = folder_row.index
+                    }
+                }
+            }
+
+            // Headers only while the setting is on and nobody can see the screen; `allowed` turns false the moment a recording or share starts.
+            ColumnLayout {
+                id: preview
+                visible: MailPreviewState.allowed && root.rows.length > 0
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 2
+
+                Text {
+                    visible: MailPreviewState.status === "failed"
+                    text: "Headers unavailable. Turn on header sharing in DesertBird."
+                    wrapMode: Text.WordWrap
+                    Layout.fillWidth: true
+                    textFormat: Text.PlainText
+                    color: root.st.text_dim
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-3)
+                }
+
+                Repeater {
+                    model: MailPreviewState.allowed ? MailPreviewState.rows : []
+
+                    ColumnLayout {
+                        id: message_row
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Text {
+                            Layout.fillWidth: true
+                            textFormat: Text.PlainText
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            wrapMode: Text.NoWrap
+                            text: message_row.modelData.subject || "(no subject)"
+                            color: root.st.text_fg
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-2)
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            textFormat: Text.PlainText
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
+                            wrapMode: Text.NoWrap
+                            text: message_row.modelData.from + "  " + Parse.short_date(message_row.modelData.date, new Date())
+                            color: root.st.text_dim
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-3)
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 6
+                spacing: 8
+
+                Repeater {
+                    model: [{ label: "Inbox", key: "i" }, { label: "Next unread", key: "u" }]
+
+                    Rectangle {
+                        id: action_button
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: Style.px(26)
+                        radius: 3
+                        color: action_area.containsMouse ? Qt.alpha(Theme.yellow, 0.25) : Qt.alpha(root.st.text_dim, 0.12)
+
+                        Text {
+                            anchors.centerIn: parent
+                            textFormat: Text.PlainText
+                            text: action_button.modelData.label + " (" + action_button.modelData.key + ")"
+                            color: root.st.text_fg
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-2)
+                        }
+
+                        MouseArea {
+                            id: action_area
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                ThemeAudio.play("confirm");
+                                Popups.close();
+                                if (action_button.modelData.key === "i") MailActions.open_inbox();
+                                else MailActions.next_unread();
+                            }
+                        }
                     }
                 }
             }

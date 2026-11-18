@@ -51,7 +51,7 @@ Settings > Sessions (System group) manages the layouts the launcher picker lists
 
 ## Mail settings
 
-Settings > Mail sets how often the `mail` module asks Thunderbird for unread counts (every 1, 2, 5 or 10 minutes, default 1) and whether trash and junk folders count (both skipped by default). It saves to `mail.json` in the Quickshell state folder. The module itself is described in [mail](../mail/README.md).
+Settings > Mail sets how often the `mail` module asks Thunderbird for unread counts (every 1, 2, 5 or 10 minutes, default 1) whether trash and junk folders count (both skipped by default) and whether the popup shows sender and subject of the newest unread mail (off by default, hidden while recording, sharing the screen or locked). It saves to `mail.json` in the Quickshell state folder. The module itself is described in [mail](../mail/README.md).
 
 ## Media settings
 
@@ -80,7 +80,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `quickshell/clock.json`                   | Time format and first day of week                |
 | `quickshell/media.json`                   | Media module choices, cava line                  |
-| `quickshell/mail.json`                    | Mail module poll interval, skipped folders       |
+| `quickshell/mail.json`                    | Mail module poll interval, skipped folders, headers |
 | `quickshell/osd.json`                     | The OSD's screen edge                            |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
 | `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |
