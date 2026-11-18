@@ -244,9 +244,17 @@ Item {
             }
         }
 
+        // The clock fonts leave different room under their digits, so the gap is measured from the ink, not the line.
+        TextMetrics {
+            id: time_ink
+            font: time_label.font
+            text: root.time_text
+        }
+
         Text {
+            readonly property real room_below_ink: time_label.height - time_label.baselineOffset - time_ink.tightBoundingRect.bottom
             Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: -Style.px(6)
+            Layout.topMargin: Math.round(time_label.font.pixelSize * 0.1 - room_below_ink - column.spacing)
             text: Qt.formatDateTime(clock.date, "dddd, MMMM d")
             color: Style.text_strong
             font.family: Style.font_family
