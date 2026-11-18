@@ -27,6 +27,7 @@ import qs.features.network
 import qs.features.media
 import qs.features.keeptabs
 import qs.features.updates
+import qs.features.mail
 import qs.features.voice
 import qs.features.popups
 import qs.features.audio
@@ -229,6 +230,10 @@ ShellRoot {
     LazyPopup {
         name: "updates"
         UpdatesPopup {}
+    }
+    LazyPopup {
+        name: "mail"
+        MailPopup {}
     }
     LazyPopup {
         name: "media"

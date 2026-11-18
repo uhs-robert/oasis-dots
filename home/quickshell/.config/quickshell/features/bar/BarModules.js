@@ -16,6 +16,7 @@ var modules = [
     { name: "keeptabs", file: "Keeptabs.qml", popup: true, section: "x", args: [] },
     { name: "cmdstatus", file: "CommandStatus.qml", popup: false, section: "x", args: [] },
     { name: "updates", file: "Updates.qml", popup: true, section: "x", args: [] },
+    { name: "mail", file: "Mail.qml", popup: true, section: "x", args: [] },
     { name: "voxtype", file: "Voxtype.qml", popup: false, section: "y", args: [] },
     { name: "recording", file: "Recording.qml", popup: false, section: "y", args: [], supports_compact: true },
     { name: "notifications", file: "Notifications.qml", popup: true, section: "z", args: [] },

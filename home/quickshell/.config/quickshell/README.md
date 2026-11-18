@@ -45,6 +45,7 @@ One folder per feature (`features/<name>/`); a linked folder has its own README,
 - `network/` holds the network popup with its Wi-Fi rows, header, details and password panes and `Network.js`.
 - `keeptabs/` holds `KeeptabsState`, `ClaudeUsageState`, `UsageProjection.js` (where each weekly limit is heading at the week's pace so far), the keeptabs popup and its per-style Agents and Usage layouts in `views/`.
 - `updates/` holds `UpdatesState` (pending package counts), the updates popup and its NES inventory.
+- [`mail/`](features/mail/README.md): Unread counts from Thunderbird
 - [`overview/`](features/overview/README.md): Workspace overview and its voice contract
 - [`bar/`](features/bar/README.md): Bar layout and modules, command status
 - [`bar_editor/`](features/bar_editor/README.md): The full-screen editor for the bar's modules, opened over IPC
@@ -251,6 +252,7 @@ Everything below is optional. A missing tool only disables the feature next to i
 | `brightnessctl` | Screen and keyboard brightness sliders and keys |
 | `cava` | Audio bars in the bar, lock screen and media popup |
 | `checkupdates` (pacman-contrib), `paru` | The `updates` module's official and AUR counts |
+| `desertfox` (optional, with DesertBird in Thunderbird) | The `mail` module's unread counts |
 | `grim`, `slurp`, `wf-recorder`, `wl-copy` | Screenshot and recording tools, copying the result |
 | `cliphist`, `wl-copy` | The clipboard picker |
 | `wtype`, `wl-copy` | The emoji picker |
