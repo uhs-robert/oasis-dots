@@ -71,19 +71,28 @@ function segments(path) {
     return String(path).toLowerCase().split("/").map(function (s) { return s.trim(); }).filter(function (s) { return s !== ""; });
 }
 
+// Gmail over IMAP shows every message again under these, with the same read flags as the inbox.
+var GMAIL_PARENTS = ["[gmail]", "[google mail]"];
+var GMAIL_VIEWS = ["all mail", "important", "starred"];
+
+function is_gmail_view(parts) {
+    return parts.length === 2 && GMAIL_PARENTS.indexOf(parts[0]) >= 0 && GMAIL_VIEWS.indexOf(parts[1]) >= 0;
+}
+
 function kind_of(path) {
     var parts = segments(path);
+    if (is_gmail_view(parts)) return "view";
     if (parts.some(function (s) { return TRASH_NAMES.indexOf(s) >= 0; })) return "trash";
     if (parts.some(function (s) { return JUNK_NAMES.indexOf(s) >= 0; })) return "junk";
     return "";
 }
 
-// The folders that count: those with unread mail, minus the kinds the settings skip (`skip` is { trash, junk }).
+// The folders that count: those with unread mail, minus the Gmail views (always) and the kinds the settings skip (`skip` is { trash, junk }).
 function counted(folders, skip) {
     return folders.filter(function (f) {
         if (f.unread <= 0) return false;
         var kind = kind_of(f.path);
-        return !(kind !== "" && skip[kind]);
+        return kind !== "view" && !(kind !== "" && skip[kind]);
     });
 }
 
