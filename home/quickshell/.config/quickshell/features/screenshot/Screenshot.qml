@@ -18,8 +18,11 @@ Singleton {
         Quickshell.execDetached(["hyprctl", "dispatch", "WindowRules.capture_opaque(" + on + ")"]);
     }
 
-    // Undoes a selection that a crash left forcing windows opaque.
-    Component.onCompleted: root.set_capture_opaque(false)
+    Component.onCompleted: {
+        // Undoes a selection that a crash left forcing windows opaque.
+        root.set_capture_opaque(false);
+        Popups.openers["screenshot"] = root.open_menu;
+    }
 
     // "select" while dragging, "toolbar" once a region is chosen, "capture" while grim runs, "scroll" while scroll-capture runs with no overlay.
     property string phase: ""
@@ -135,8 +138,10 @@ Singleton {
         Hyprland.dispatch("ScreenshotMenu.enter()");
     }
 
-    // Runs the menu row bound to key; false when no row has it.
+    // Runs the menu row bound to key; false when no row has it or the menu is closed.
     function choose_key(key) {
+        // The first key closes the menu at once; a second key before its deferred action runs would replace it.
+        if (!root.menu_open) return false;
         const row = root.menu_rows.find(r => r.key === key || r.alt_key === key);
         if (!row) return false;
         ThemeAudio.play("confirm");
@@ -147,8 +152,12 @@ Singleton {
 
     // The menu and its submap close together, whichever side closes first. Leaving through Lua keeps Submap.current
     // right, which a raw `submap reset` dispatch would not.
+    // `popup open screenshot` comes here through Popups.openers. Any other route in (a bar click) opens it with no
+    // submap, where no row key works, so it reopens the hands-off way. The window under it gets the keyboard back only
+    // on its next focus.
     onMenu_openChanged: {
         if (!root.menu_open) Hyprland.dispatch("ScreenshotMenu.leave()");
+        else if (!Popups.hands_off) Qt.callLater(root.open_menu);
     }
 
     Connections {

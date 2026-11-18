@@ -40,7 +40,8 @@ IpcHandler {
         return Screenshot.start_share(windows, reply) ? "ok" : "busy";
     }
 
-    // For the Screenshot submap: runs the menu row bound to key ("r", "R", ...). "unknown" when no row has it.
+    // For the Screenshot submap: runs the menu row bound to key ("r", "R", ...). "unknown" when no row has it or the
+    // menu is closed.
     function choose(key: string): string {
         return Screenshot.choose_key(key) ? "ok" : "unknown";
     }
