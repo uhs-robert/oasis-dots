@@ -187,7 +187,8 @@ Singleton {
 
     // on_screen keeps the selector on that screen instead of the focused monitor.
     function start_select(frozen, preset, mode, on_screen) {
-        if (root.phase === "capture" || root.scrolling) return;
+        // A grab after a countdown runs with no phase; its exit handler would cancel a selector opened meanwhile.
+        if (root.phase === "capture" || root.scrolling || grab_delay.running || grab.running) return;
         if (preset !== "share") root.send_share("");
         root.cancel_countdown();
         root.mode = mode || "region";
