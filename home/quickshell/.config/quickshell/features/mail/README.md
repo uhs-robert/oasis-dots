@@ -12,6 +12,8 @@ It shows counts only: no sender, subject or message text ever reaches the bar.
 
 The module runs `desertfox --app thunderbird mail folders --json` once a minute and when its popup opens. A bridge that answers but refuses (a share setting is off) shows a warning badge, and its tooltip and the popup give the bridge's message. No `desertfox`, an older one without the mail commands, Thunderbird closed and the bridge off all leave the module hidden.
 
+Gmail's `[Gmail]/All Mail`, `Important` and `Starred` (also under `[Google Mail]`) are always left out, since they repeat the inbox's messages. Gmail label folders still count a labelled unread message once for each label and once for the inbox, so a Gmail account with labels can show a total above its real unread count.
+
 Trash and junk folders are left out of the count by default. Settings > Mail changes that and the interval (see [settings](../settings/README.md#mail-settings)).
 
 ## Popup
