@@ -61,6 +61,8 @@ Singleton {
         timeout_ms: 20000
         property string asked: ""
         onFinished: (code, out) => {
+            // The popup or the gate closed mid-fetch: nothing is wanted, so nothing is fetched again.
+            if (root.wanted_id === "") return;
             const answered = poll.asked;
             if (answered !== root.wanted_id) {
                 poll.asked = root.wanted_id;

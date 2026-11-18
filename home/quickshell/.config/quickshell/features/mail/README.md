@@ -20,7 +20,7 @@ Trash and junk folders are left out of the count by default. Settings > Mail cha
 
 One row per folder with unread mail: its path, its account and its count, at most twelve. `j`/`k` move, `r` checks again, `/` searches, `q` closes.
 
-Two buttons change only what Thunderbird shows: `i` (Inbox) opens the Inbox and `u` (Next unread) steps to the next unread message, going on to another folder when this one has none left. Each raises the Thunderbird or Betterbird window first and then runs the command through the bridge. Nothing marks, moves, deletes or replies to mail.
+Two buttons change only what Thunderbird shows: `i` (Inbox) opens the Inbox and `u` (Next unread) steps to the next unread message, going on to another folder when this one has none left. It selects a message, so Thunderbird's own setting for marking a message read when it is selected can mark it read, as `]U` does in DesertBird. Each raises the Thunderbird or Betterbird window first and then runs the command through the bridge. Nothing marks, moves, deletes or replies to mail.
 
 With Show headers on (it also needs `bridge_share_headers` in DesertBird), the popup lists the newest five unread messages of the folder under the cursor: subject, sender and date, as plain text cut short. They are fetched when the popup opens or the cursor moves to another folder, never on a timer. They are not fetched, and any already shown are dropped, while a recording or screen share runs or the screen is locked.
 

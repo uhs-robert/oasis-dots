@@ -58,7 +58,8 @@ const cases = [
     return M.counted(parsed.folders, { trash: true, junk: true }).map(f => f.id);
   }, ["b"]],
   ["a folder id is kept whole, past the display cut", () => M.parse_folders(reply([folder("imap://a1/" + "x".repeat(200), "/A", 1)])).folders[0].id, "imap://a1/" + "x".repeat(200)],
-  ["a folder id that reads as an option is dropped", () => M.parse_folders(reply([folder("--json", "/A", 1), folder("a b", "/B", 1)])).folders.map(f => f.id), ["", ""]],
+  ["a folder id that reads as an option is dropped", () => M.parse_folders(reply([folder("--json", "/A", 1), folder(" lead", "/B", 1), folder("trail ", "/C", 1), folder("tab\there", "/D", 1), folder("nl\nx", "/E", 1)])).folders.map(f => f.id), ["", "", "", "", ""]],
+  ["folder ids with inner spaces are kept", () => M.parse_folders(reply([folder("imap://u@host/[Gmail]/Sent Mail", "/[Gmail]/Sent Mail", 1), folder("1 - To Do", "/1 - To Do", 1), folder("a", "/A", 1)])).folders.map(f => f.id), ["imap://u@host/[Gmail]/Sent Mail", "1 - To Do", "a"]],
 
   ["messages keep from, subject and date", () => plain(M.parse_messages(listing([{ id: 7, from: "Ann <ann@example.org>", subject: "Lunch", date: "2026-11-17T12:00:00Z", folder: "f1", read: false, flagged: true }]))), { ok: true, messages: [{ from: "Ann <ann@example.org>", subject: "Lunch", date: "2026-11-17T12:00:00Z" }] }],
   ["a long subject and sender are cut", () => { const m = M.parse_messages(listing([{ from: "f".repeat(200), subject: "s".repeat(200), date: "" }])).messages[0]; return [m.from.length, m.subject.length]; }, [40, 60]],
