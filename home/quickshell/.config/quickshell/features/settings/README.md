@@ -11,7 +11,7 @@ The section list, the pane and the help card scroll when they outgrow the popup 
 | Group      | Sections                                                     |
 | ---------- | ------------------------------------------------------------ |
 | Appearance | Style, Wallpaper, Theme options, Theme audio                 |
-| Bar        | Bar modules, Date & time, Weather, Media                     |
+| Bar        | Bar modules, Date & time, Weather, Media, Mail               |
 | System     | Displays, Default apps, Power, Sessions, Lock & login |
 | Input      | Typing, Keyboard, Voice, Mouse & touchpad                    |
 
@@ -49,6 +49,10 @@ Keyboard also lists the remaps keyd applies below Hyprland, such as Caps Lock an
 
 Settings > Sessions (System group) manages the layouts the launcher picker lists. Save current layout opens the overview in save mode: every window, regular and special, starts marked, `Space`/`v` and `V` unmark and mark, `Tab` switches between regular and special workspaces, and `Enter` asks for a name (prefilled with `Session N`). Nothing can be moved, closed or focused there, and `Esc` or `q` closes without saving. The windows are captured by the Hyprland side (`capture.lua`), written to `sessions.json` in the Hyprland state folder through `hypr/scripts/state-write`, and Settings opens on the new session. A saved session opens to its windows: rename it (`r`), replace its windows with the current ones (`u`, the same save mode, targeting that session), delete it (`x`), or open `sessions.json` in your Default apps editor inside your terminal (`e`, which closes Settings so the editor gets focus). `r`, `u` and `x` also work on a session's row in the list, and `x` on a window row removes that window; deleting or removing asks `y`/`n` first, like forgetting a network or Bluetooth device. A window row opens its placement (monitor and workspace, or a special workspace), command, launch delay and whether its size and position are kept. A command marked guessed was read from `/proc` and may need fixing, for example a single-instance terminal reports its server process. Lua sessions from `custom/sessions.lua` are listed read-only with a Lua marker, unless a saved session of the same name shadows them. The file is watched, so a hand edit in Neovim shows up at once; a file that does not parse blocks saving from Settings until fixed. `qs ipc call overview save_session ""` starts save mode directly, and a session name there replaces that session's windows.
 
+## Mail settings
+
+Settings > Mail sets how often the `mail` module asks Thunderbird for unread counts (every 1, 2, 5 or 10 minutes, default 1) and whether trash and junk folders count (both skipped by default). It saves to `mail.json` in the Quickshell state folder. The module itself is described in [mail](../mail/README.md).
+
 ## Media settings
 
 Settings > Media sets the media module: what shows on its right (the cava visualizer or the track position), the fallback on battery, what the wheel does, the cava line, the container (inset, border, raised or none), whether the album art and the play/pause button show, which parts of the track text show and how, and for island bar styles whether media shows as the cava under the clock island (the default), as the module alone, or both. Strip and frame styles always show the module. The cava line used to be on the Style page; its old value in `style.json` is carried over once, and `media.json` wins from then on. It saves to `media.json` in the Quickshell state folder.
@@ -76,6 +80,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/timezones.json`               | Extra clock zones, a JSON array of IANA names    |
 | `quickshell/clock.json`                   | Time format and first day of week                |
 | `quickshell/media.json`                   | Media module choices, cava line                  |
+| `quickshell/mail.json`                    | Mail module poll interval, skipped folders       |
 | `quickshell/osd.json`                     | The OSD's screen edge                            |
 | `quickshell/typing.json`                  | Start mode for pickers and search popups         |
 | `voxcmd/voice.env`                        | Voice choices (listener sensitivity, music ducking, type-mode pause), read by voxcmd, voxcmd-wake and voxtype-duck |

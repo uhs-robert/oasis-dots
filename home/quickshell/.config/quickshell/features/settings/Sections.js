@@ -10,6 +10,7 @@ var list = [
     { id: "datetime", group: "Bar", label: "Date & time", glyph: "󰥔", keywords: "clock calendar week first day monday sunday locale time format 12 24 hour connect sync google meetings events account ical feed calendar-sync rbw keyring", source: "sections/DateTimeSection.qml" },
     { id: "weather", group: "Bar", label: "Weather", glyph: "󰖙", keywords: "forecast location latitude longitude coordinates city temperature celsius fahrenheit units days alerts ip", source: "sections/WeatherSection.qml" },
     { id: "media", group: "Bar", label: "Media", glyph: "󰎆", keywords: "cava music player visualizer line marquee scroll title artist album island battery position seek volume mpris", source: "sections/MediaSection.qml" },
+    { id: "mail", group: "Bar", label: "Mail", glyph: "󰇮", keywords: "thunderbird unread count inbox folders trash junk spam poll interval desertfox desertbird bridge", source: "sections/MailSection.qml" },
     { id: "displays", group: "System", label: "Displays", glyph: "󰍹", keywords: "monitors resolution refresh scale rotate orientation arrange position enable disable screen", source: "sections/DisplaysSection.qml" },
     { id: "apps", group: "System", label: "Default apps", glyph: "󰀻", keywords: "terminal browser editor file manager mime xdg associations mail pdf", source: "sections/DefaultAppsSection.qml" },
     { id: "power", group: "System", label: "Power", glyph: "󰐥", keywords: "idle dim lock suspend sleep lid button battery ac profile hypridle", source: "sections/PowerSection.qml" },
