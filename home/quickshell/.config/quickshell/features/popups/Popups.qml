@@ -194,10 +194,14 @@ Singleton {
         root.hands_off = !!hands_off;
     }
 
+    // A feature that opens its popup its own way registers here by popup name (Screenshot: hands-off, with a submap).
+    property var openers: ({})
+
     // Opens for a keybind or IPC call, where the pointer is not on the popup: asks for the keyboard up front, since a
     // popup replacing a keyboard-holding one (Settings) is otherwise never focused and its Ctrl+H/L Shortcuts stay dead.
     // Hover and click opens go through open() and keep the plain OnDemand focus.
     function open_with_keyboard(name) {
+        if (root.openers[name]) return root.openers[name]();
         root.open(name, undefined);
         grab_keyboard = true;
     }
