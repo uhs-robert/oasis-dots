@@ -24,7 +24,8 @@ local menu = Submap.define({
   binds = {
     row("R",         "r", "Region"),
     row("I",         "i", "Region"),
-    row("Z",         "z", "Frozen region"),
+    -- A third key for Region, for hands used to Z.
+    row("Z",         "r", "Region"),
     row("S",         "s", "Screen"),
     row("W",         "w", "Window"),
     row("F",         "f", "Focused window"),

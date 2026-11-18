@@ -688,7 +688,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `catchall` | release | Resize |  |  |
 | `R` | press | Screenshot | Region | `screenshot.menu_key` |
 | `I` | press | Screenshot | Region | `screenshot.menu_key` |
-| `Z` | press | Screenshot | Frozen region | `screenshot.menu_key` |
+| `Z` | press | Screenshot | Region | `screenshot.menu_key` |
 | `S` | press | Screenshot | Screen | `screenshot.menu_key` |
 | `W` | press | Screenshot | Window | `screenshot.menu_key` |
 | `F` | press | Screenshot | Focused window | `screenshot.menu_key` |

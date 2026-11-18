@@ -93,8 +93,25 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "quickshell-region"
     WlrLayershell.layer: WlrLayer.Overlay
-    // Exclusive would make Hyprland send every screen's pointer input to this one surface.
-    WlrLayershell.keyboardFocus: root.keyboard_owner ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // A frozen selector takes no pointer and no keyboard until its still frame is in. The window under the cursor
+    // keeps its hover state and open menus until then, so the still shows them. Taking them later costs nothing,
+    // because the still covers the window by then.
+    readonly property bool still_in: root.pixel_mode ? root.frame_ready || root.grab_failed : frozen_view.hasContent
+    readonly property bool takes_input: !Screenshot.frozen || root.still_in
+    mask: root.takes_input ? null : no_input
+
+    Region {
+        id: no_input
+    }
+
+    // Hyprland does not focus a mapped layer that turns OnDemand, so a late one claims the keyboard Exclusive until its
+    // window is active, as Popup.qml does. Exclusive for longer would make Hyprland send every screen's pointer input to
+    // this one surface.
+    property bool claiming_keyboard: false
+    onTakes_inputChanged: if (root.takes_input) root.claiming_keyboard = true
+    readonly property bool keyboard_active: keys_item.Window.active
+    onKeyboard_activeChanged: if (root.keyboard_active) root.claiming_keyboard = false
+    WlrLayershell.keyboardFocus: !root.keyboard_owner || !root.takes_input ? WlrKeyboardFocus.None : root.claiming_keyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.OnDemand
 
     // Hyprland skips every bind while this holds focus, so SUPER+hjkl cannot move focus off a share pick.
     ShortcutInhibitor {

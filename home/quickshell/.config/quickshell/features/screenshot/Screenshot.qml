@@ -105,19 +105,20 @@ Singleton {
     }
 
     // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags. The Hyprland Screenshot
-    // submap (keymaps/submaps/screenshot) binds the same keys; change both together.
+    // submap (keymaps/submaps/screenshot) binds the same keys; change both together. Every still capture is frozen: the
+    // selector then takes the still before it takes the pointer, so hover states and tooltips stay in the shot.
+    // Recording and scroll capture need the live screen.
     readonly property var menu_rows: [
-        { section: "Capture", key: "r", alt_key: "i", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
-        { section: "Capture", key: "z", label: "Frozen region", glyph: "\u{f0717}", select: "", frozen: true },
-        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: false, mode: "screen" },
-        { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: false, mode: "window" },
+        { section: "Capture", key: "r", alt_key: "i", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: true },
+        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: true, mode: "screen" },
+        { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: true, mode: "window" },
         { section: "Capture", key: "f", label: "Focused window", glyph: "\u{f08c6}", flag: "focused" },
         { section: "Record", key: "R", label: "Record region", glyph: "\u{f0a6d}", select: "record", frozen: false },
         { section: "Record", key: "W", label: "Record window", glyph: "\u{f0614}", select: "record", frozen: false, mode: "window" },
         { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", select: "record", frozen: false, mode: "screen" },
         { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
         { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
-        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false },
+        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: true },
         { section: "Tools", key: "x", label: "Scroll text (OCR)", glyph: "\u{f113a}", select: "scroll_text", frozen: false },
         { section: "Tools", key: "X", label: "Scroll capture (image)", glyph: "\u{f0a6d}", select: "scroll_image", frozen: false }
     ]
@@ -577,7 +578,8 @@ Singleton {
         if (geometry === "") return root.cancel();
         if (action === "share") return root.share_selection();
         const scroll = action === "scroll_text" || action === "scroll_image";
-        if (root.delay_s > 0 && !root.frozen) {
+        // A delay always captures the live screen once the countdown ends, frozen selector or not.
+        if (root.delay_s > 0) {
             const scale = String(root.screen_of(root.sel_screen).devicePixelRatio);
             root.cancel();
             root.start_countdown(() => action === "record" ? Quickshell.execDetached([root.script, "--record-geometry", geometry]) : scroll ? root.start_scroll(action, scale, geometry) : root.run_grab(action, scale, geometry));

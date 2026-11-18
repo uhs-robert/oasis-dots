@@ -74,7 +74,7 @@ Item {
         } else if (root.pixel_mode && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
             ThemeAudio.play("confirm");
             Screenshot.pick_pixel();
-        } else if ((toolbar || root.target_mode) && !Screenshot.frozen && event.key === Qt.Key_D) {
+        } else if ((toolbar || root.target_mode) && event.key === Qt.Key_D) {
             Screenshot.cycle_delay();
         } else if (!toolbar && root.target_mode && dir) {
             Screenshot.step_target(dir[0], dir[1]);
