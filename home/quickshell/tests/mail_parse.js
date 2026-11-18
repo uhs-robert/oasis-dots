@@ -12,7 +12,7 @@ const M = T.api;
 
 const NONCE = "0123456789abcdef0123456789abcdef";
 const wrap = (text, nonce = NONCE) => "<<<UNTRUSTED mail folders nonce=" + nonce + ">>>\n" + text + "<<<END " + nonce + ">>>\n";
-const folder = (id, path_, unread, extra) => Object.assign({ id, name: path_.split("/").pop(), path: path_, account: "me@example.com", unread, total: unread + 10 }, extra);
+const folder = (id, path_, unread, extra) => Object.assign({ id, name: path_.split("/").pop(), path: path_, kind: M.kind_of(path_), account: "me@example.com", unread, total: unread + 10 }, extra);
 const reply = (folders, extra) => wrap(JSON.stringify(Object.assign({ folders }, extra), null, 2) + "\n");
 const plain = value => JSON.parse(JSON.stringify(value));
 
@@ -52,6 +52,10 @@ const cases = [
   ["a folder named All Mail under another parent is not a view", () => M.kind_of("/Work/All Mail"), ""],
   ["gmail views never count, whatever the skip settings", () => M.counted([folder("a", "/INBOX", 1), folder("b", "/[Gmail]/All Mail", 1), folder("c", "/[Gmail]/Important", 1), folder("d", "/Important", 2)], { trash: false, junk: false }).map(f => f.id), ["a", "d"]],
   ["gmail trash is still trash", () => M.kind_of("/[Gmail]/Trash"), "trash"],
+  ["a long path keeps its trash kind through the cut", () => {
+    const parsed = M.parse_folders(reply([folder("a", "/" + "x".repeat(78) + "/Trash", 4), folder("b", "/Inbox", 1)]));
+    return M.counted(parsed.folders, { trash: true, junk: true }).map(f => f.id);
+  }, ["b"]],
   ["inbox is neither", () => M.kind_of("/INBOX"), ""],
   ["counted skips zero and the skipped kinds", () => M.counted([folder("a", "/Inbox", 2), folder("b", "/Trash", 5), folder("c", "/Junk", 4), folder("d", "/Empty", 0)], { trash: true, junk: true }).map(f => f.id), ["a"]],
   ["counted keeps a kind that is not skipped", () => M.counted([folder("b", "/Trash", 5), folder("c", "/Junk", 4)], { trash: false, junk: true }).map(f => f.id), ["b"]],

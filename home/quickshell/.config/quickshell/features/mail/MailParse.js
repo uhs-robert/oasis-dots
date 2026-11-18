@@ -43,6 +43,8 @@ function parse_folders(out) {
             id: clean_text(row.id),
             name: clean_text(row.name),
             path: clean_text(row.path),
+            // From the full path: `path` is cut for display and may have lost the segment that names the kind.
+            kind: kind_of(row.path),
             account: clean_text(row.account),
             unread: row.unread,
             total: Number.isInteger(row.total) && row.total >= 0 ? row.total : 0
@@ -91,8 +93,7 @@ function kind_of(path) {
 function counted(folders, skip) {
     return folders.filter(function (f) {
         if (f.unread <= 0) return false;
-        var kind = kind_of(f.path);
-        return kind !== "view" && !(kind !== "" && skip[kind]);
+        return f.kind !== "view" && !(f.kind !== "" && skip[f.kind]);
     });
 }
 
