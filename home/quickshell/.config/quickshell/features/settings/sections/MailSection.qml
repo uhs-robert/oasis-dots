@@ -18,6 +18,7 @@ RowsSection {
             set: v => MailSettings.set("interval_s", v)
         }),
         Object.assign({ label: "Skip trash", desc: "Leave unread mail in trash folders out of the count." }, root.on_off("skip_trash")),
-        Object.assign({ label: "Skip junk", desc: "Leave unread mail in junk and spam folders out of the count." }, root.on_off("skip_junk"))
+        Object.assign({ label: "Skip junk", desc: "Leave unread mail in junk and spam folders out of the count." }, root.on_off("skip_junk")),
+        Object.assign({ label: "Show headers", desc: "Show the sender, subject and date of the newest unread mail in the popup. Needs header sharing on in DesertBird. Hidden while recording, sharing the screen or locked." }, root.on_off("mail_preview"))
     ]
 }

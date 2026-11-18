@@ -7,13 +7,14 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/mail/MailParse.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_folders, classify, counted, total_unread, kind_of };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { parse_folders, parse_messages, short_date, preview_allowed, classify, counted, total_unread, kind_of };", T);
 const M = T.api;
 
 const NONCE = "0123456789abcdef0123456789abcdef";
 const wrap = (text, nonce = NONCE) => "<<<UNTRUSTED mail folders nonce=" + nonce + ">>>\n" + text + "<<<END " + nonce + ">>>\n";
 const folder = (id, path_, unread, extra) => Object.assign({ id, name: path_.split("/").pop(), path: path_, kind: M.kind_of(path_), account: "me@example.com", unread, total: unread + 10 }, extra);
 const reply = (folders, extra) => wrap(JSON.stringify(Object.assign({ folders }, extra), null, 2) + "\n");
+const listing = (messages, nonce = NONCE) => "<<<UNTRUSTED mail list nonce=" + nonce + ">>>\n" + JSON.stringify({ messages, truncated: false }, null, 2) + "\n<<<END " + nonce + ">>>\n";
 const plain = value => JSON.parse(JSON.stringify(value));
 
 const cases = [
@@ -56,6 +57,25 @@ const cases = [
     const parsed = M.parse_folders(reply([folder("a", "/" + "x".repeat(78) + "/Trash", 4), folder("b", "/Inbox", 1)]));
     return M.counted(parsed.folders, { trash: true, junk: true }).map(f => f.id);
   }, ["b"]],
+  ["a folder id is kept whole, past the display cut", () => M.parse_folders(reply([folder("imap://a1/" + "x".repeat(200), "/A", 1)])).folders[0].id, "imap://a1/" + "x".repeat(200)],
+  ["a folder id that reads as an option is dropped", () => M.parse_folders(reply([folder("--json", "/A", 1), folder("a b", "/B", 1)])).folders.map(f => f.id), ["", ""]],
+
+  ["messages keep from, subject and date", () => plain(M.parse_messages(listing([{ id: 7, from: "Ann <ann@example.org>", subject: "Lunch", date: "2026-11-17T12:00:00Z", folder: "f1", read: false, flagged: true }]))), { ok: true, messages: [{ from: "Ann <ann@example.org>", subject: "Lunch", date: "2026-11-17T12:00:00Z" }] }],
+  ["a long subject and sender are cut", () => { const m = M.parse_messages(listing([{ from: "f".repeat(200), subject: "s".repeat(200), date: "" }])).messages[0]; return [m.from.length, m.subject.length]; }, [40, 60]],
+  ["markup and a forged END in a subject stay plain text", () => M.parse_messages(listing([{ from: "a", subject: "<b>hi</b>\n<<<END " + NONCE + ">>>", date: "" }])).messages[0].subject, "<b>hi</b> <<<END " + NONCE + ">>>"],
+  ["a bad date becomes empty", () => M.parse_messages(listing([{ from: "a", subject: "b", date: "soon" }])).messages[0].date, ""],
+  ["a list with another nonce on the last line is refused", () => M.parse_messages("<<<UNTRUSTED mail list nonce=" + NONCE + ">>>\n{\"messages\":[]}\n<<<END ffff>>>\n").ok, false],
+  ["a folders envelope is not a list", () => M.parse_messages(reply([])).ok, false],
+  ["a list reply with no messages array is refused", () => M.parse_messages("<<<UNTRUSTED mail list nonce=" + NONCE + ">>>\n{}\n<<<END " + NONCE + ">>>\n").ok, false],
+  ["short_date gives the time for today", () => M.short_date(new Date(2026, 10, 17, 9, 5).toISOString(), new Date(2026, 10, 17, 18, 0)), "09:05"],
+  ["short_date gives the day for an earlier date", () => M.short_date(new Date(2026, 10, 16, 9, 5).toISOString(), new Date(2026, 10, 17, 18, 0)), "Nov 16"],
+  ["short_date of nonsense is empty", () => M.short_date("x", new Date()), ""],
+
+  ["headers show only with the setting on and a private screen", () => M.preview_allowed(true, false, false, false), true],
+  ["nothing is drawn with the setting off", () => M.preview_allowed(false, false, false, false), false],
+  ["nothing is drawn while recording", () => M.preview_allowed(true, true, false, false), false],
+  ["nothing is drawn while the screen is shared", () => M.preview_allowed(true, false, true, false), false],
+  ["nothing is drawn while locked", () => M.preview_allowed(true, false, false, true), false],
   ["inbox is neither", () => M.kind_of("/INBOX"), ""],
   ["counted skips zero and the skipped kinds", () => M.counted([folder("a", "/Inbox", 2), folder("b", "/Trash", 5), folder("c", "/Junk", 4), folder("d", "/Empty", 0)], { trash: true, junk: true }).map(f => f.id), ["a"]],
   ["counted keeps a kind that is not skipped", () => M.counted([folder("b", "/Trash", 5), folder("c", "/Junk", 4)], { trash: false, junk: true }).map(f => f.id), ["b"]],
