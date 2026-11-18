@@ -6,8 +6,9 @@
 var MAX_TEXT = 80;
 var MAX_PREVIEW_FROM = 40;
 var MAX_PREVIEW_SUBJECT = 60;
-// A folder id goes on a command line, so it must not read as an option or hold a line break.
-var SAFE_ID = /^[^\s\-][^\s]{0,1023}$/;
+// A folder id goes on a command line as one argument. Inner spaces are real ("[Gmail]/Sent Mail"); it must not start with a
+// dash (an option), start or end with whitespace, or hold a control character.
+var SAFE_ID = /^[^\s\-](?:[^\u0000-\u001f\u007f-\u009f\u2028\u2029]{0,1022}[^\s\u0000-\u001f\u007f-\u009f])?$/;
 
 // A folder segment that marks a trash or a junk folder, whatever the account's server calls it.
 var TRASH_NAMES = ["trash", "bin", "deleted items", "deleted messages"];
