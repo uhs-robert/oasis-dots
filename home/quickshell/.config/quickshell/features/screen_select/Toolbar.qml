@@ -84,7 +84,6 @@ Rectangle {
 
         MenuRow {
             id: delay_tool
-            visible: !Screenshot.frozen
             Layout.preferredWidth: delay_text.implicitWidth + 16 + delay_tool.inset + delay_tool.key_space
             Layout.preferredHeight: Style.px(28)
             base_radius: 6
