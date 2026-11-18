@@ -8,7 +8,7 @@ You rarely need to open a file to find a bind.
 
 - `SUPER + /` searches every bind in the mode you are in and runs the one you pick. Submaps are listed first, each with a `+` in front of its name, so it doubles as a map of the submaps you can enter from here.
 - `SUPER + SHIFT + /` opens which-key from anywhere, showing every bind in the current submap at a glance, or the global binds when you are in none.
-- Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list.
+- Entering a submap also shows its binds in which-key, except Windows, Resize, Move and Cursor: they show a compact hint bar of their main keys instead, and `?` there opens the full which-key list. Screenshot shows the bar's screenshot menu instead.
 - Inside a submap, `?` hides or shows which-key without leaving it.
 - In a submap with a hint bar, `i` hides or shows the bar until you leave the submap. Submaps you define with a `hint` get this bind too, so a bind of your own on `i` in one collides: yours replaces the toggle, and the bar's footer stops listing it.
 - In Windows, Resize and Move the keys act on the focused window, or on the selection: `SPACE` in Windows selects windows (a thick border in the theme's secondary colour, a number in selection order, "N selected" in the hint bar), and every Windows, Resize and Move key then acts on all of them. Each of the three switches straight to the other two (`w` Windows, `r` Resize, `m` Move), and the selection carries between them, through those keys and `BackSpace`, and clears when you leave them.
@@ -33,7 +33,7 @@ keymaps/
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
     leader/  apps/  go/  system/  delete/  windows/
-    groups/  cursor/  resize/  move/  bar/
+    groups/  cursor/  resize/  move/  bar/  screenshot/
     bar/rows.lua       the popup keys, shared by Bar and Leader
 ```
 
@@ -686,6 +686,24 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + SLASH` | press | Resize | Toggle which-key help |  |
 | `I` | press | Resize |  | `submap.hints_toggle` |
 | `catchall` | release | Resize |  |  |
+| `R` | press | Screenshot | Region | `screenshot.menu_key` |
+| `I` | press | Screenshot | Region | `screenshot.menu_key` |
+| `Z` | press | Screenshot | Frozen region | `screenshot.menu_key` |
+| `S` | press | Screenshot | Screen | `screenshot.menu_key` |
+| `W` | press | Screenshot | Window | `screenshot.menu_key` |
+| `F` | press | Screenshot | Focused window | `screenshot.menu_key` |
+| `SHIFT + R` | press | Screenshot | Record region | `screenshot.menu_key` |
+| `SHIFT + W` | press | Screenshot | Record window | `screenshot.menu_key` |
+| `SHIFT + S` | press | Screenshot | Record screen | `screenshot.menu_key` |
+| `SHIFT + F` | press | Screenshot | Record focused | `screenshot.menu_key` |
+| `P` | press | Screenshot | Pick pixel color | `screenshot.menu_key` |
+| `T` | press | Screenshot | Text from region | `screenshot.menu_key` |
+| `X` | press | Screenshot | Scroll text (OCR) | `screenshot.menu_key` |
+| `SHIFT + X` | press | Screenshot | Scroll capture (image) | `screenshot.menu_key` |
+| `ESCAPE` | press | Screenshot | Exit Screenshot |  |
+| `BackSpace` | press | Screenshot | Back |  |
+| `SHIFT + SLASH` | press | Screenshot | Toggle which-key help |  |
+| `catchall` | release | Screenshot |  |  |
 | `SLASH` | press | System | Edit Keymaps | `system.edit_keymaps` |
 | `SPACE` | press | System | Task Manager | `terminal.task_manager` |
 | `A` | press | System | AI Manager | `terminal.tool` |

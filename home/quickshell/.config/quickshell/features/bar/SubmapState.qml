@@ -53,7 +53,7 @@ Singleton {
     readonly property bool indicator_shown: root.active && root.indicator_clear
     // Submaps whose HUD HyprVim does not open on entry: `which_key.auto_show.disabled` in hypr/hyprland.lua, which this list must follow. They need no hold.
     // The submaps with a hint bar are also in that list, and come from `hints`.
-    readonly property var no_auto_hud: ["NORMAL", "INSERT", "VISUAL", "V-LINE"]
+    readonly property var no_auto_hud: ["NORMAL", "INSERT", "VISUAL", "V-LINE", "Screenshot"]
     // The hint bar of each submap that has one, by name, as `submap_hints set` last sent it ({ name, groups, footer }). Kept
     // across visits, so after the first the bar shows from the submap event without waiting for Hyprland's IPC call.
     property var hints: ({})

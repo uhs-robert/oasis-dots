@@ -142,6 +142,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `screenshot` | `select(frozen: bool, preset: string): string` | `screenshot.select` |
 | `screenshot` | `pick(mode: string, preset: string): string` |  |
 | `screenshot` | `share(windows: string, reply: string): string` |  |
+| `screenshot` | `choose(key: string): string` | `screenshot.menu_key` |
 | `screenshot` | `stop_recording(): void` | `screenshot.stop_recording` |
 | `screenshot` | `recording_started(pid: string): string` |  |
 | `screenshot` | `recording_stopped(): void` |  |

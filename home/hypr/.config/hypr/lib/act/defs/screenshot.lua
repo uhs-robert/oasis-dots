@@ -19,6 +19,13 @@ Act.define("screenshot.select", {
   run = Ipc("screenshot", "select", "{frozen}", "{preset}"),
 })
 
+Act.define("screenshot.menu_key", {
+  label = "Screenshot Menu Key",
+  intent = "Run the screenshot menu row bound to a key, as the Screenshot submap does.",
+  params = { { name = "key", type = "string" } },
+  run = Ipc("screenshot", "choose", "{key}"),
+})
+
 Act.define("screenshot.stop_recording", {
   label = "Stop Recording",
   intent = "Stop the screen recording that is running.",

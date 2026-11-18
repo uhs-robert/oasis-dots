@@ -30,9 +30,16 @@ local function init()
         frontend = "quickshell",
         quickshell_ipc = Scripts.qs_ipc,
         delay_ms = Config.input.which_key_delay_ms,
-        -- Read after Config.setup has loaded the keymaps, so every submap with a hint bar is in the list.
+        -- Read after Config.setup has loaded the keymaps, so every submap with a hint bar is in the list. The bar's
+        -- screenshot menu is the Screenshot submap's own hint.
         auto_show = {
-          disabled = require("lib.key.submap_hint").without_whichkey({ "NORMAL", "INSERT", "VISUAL", "V-LINE" }),
+          disabled = require("lib.key.submap_hint").without_whichkey({
+            "NORMAL",
+            "INSERT",
+            "VISUAL",
+            "V-LINE",
+            "Screenshot",
+          }),
         },
       },
       prompt = { frontend = "quickshell" },

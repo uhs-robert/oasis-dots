@@ -26,6 +26,7 @@ local CASES = {
 	{ "screenshot.menu", {}, "screenshot open" },
 	{ "screenshot.select", { "true", "ocr" }, "screenshot select true ocr" },
 	{ "screenshot.select", { "false", "toolbar" }, "screenshot select false toolbar" },
+	{ "screenshot.menu_key", { "R" }, "screenshot choose R" },
 	{ "screenshot.stop_recording", {}, "screenshot stop_recording" },
 	{ "zoom.step", { "-2" }, "zoom step -2" },
 	{ "zoom.size", { "3" }, "zoom size 3" },

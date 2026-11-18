@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import qs.features.popups
 import qs.features.audio
+import qs.features.bar
 import "../../core/WindowVisibility.js" as WindowVisibility
 
 // The screenshot menu, the region selector's shared state, and the recording indicator.
@@ -100,14 +101,61 @@ Singleton {
         return (s >= 3600 ? Math.floor(s / 3600) + ":" : "") + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60);
     }
 
-    // Drops from the center island, like the clock.
+    // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags. The Hyprland Screenshot
+    // submap (keymaps/submaps/screenshot) binds the same keys; change both together.
+    readonly property var menu_rows: [
+        { section: "Capture", key: "r", alt_key: "i", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
+        { section: "Capture", key: "z", label: "Frozen region", glyph: "\u{f0717}", select: "", frozen: true },
+        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: false, mode: "screen" },
+        { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: false, mode: "window" },
+        { section: "Capture", key: "f", label: "Focused window", glyph: "\u{f08c6}", flag: "focused" },
+        { section: "Record", key: "R", label: "Record region", glyph: "\u{f0a6d}", select: "record", frozen: false },
+        { section: "Record", key: "W", label: "Record window", glyph: "\u{f0614}", select: "record", frozen: false, mode: "window" },
+        { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", select: "record", frozen: false, mode: "screen" },
+        { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
+        { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
+        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false },
+        { section: "Tools", key: "x", label: "Scroll text (OCR)", glyph: "\u{f113a}", select: "scroll_text", frozen: false },
+        { section: "Tools", key: "X", label: "Scroll capture (image)", glyph: "\u{f0a6d}", select: "scroll_image", frozen: false }
+    ]
+
+    readonly property string menu_submap: "Screenshot"
+    readonly property bool menu_open: Popups.open_name === "screenshot"
+
+    // Drops from the center island, like the clock. The menu opens hands-off, so the window under it keeps focus and
+    // any open menu or tooltip in it stays up for the capture. The Screenshot submap carries the row keys instead.
     function open_menu() {
         const found = Popups.find_default("clock");
         if (found) {
-            Popups.open("screenshot", found.item, Popups.anchor_color(found), found.screen_name);
+            Popups.open("screenshot", found.item, Popups.anchor_color(found), found.screen_name, "", true);
         } else {
             const mon = Hyprland.focusedMonitor;
-            Popups.open("screenshot", null, undefined, mon ? mon.name : "");
+            Popups.open("screenshot", null, undefined, mon ? mon.name : "", "", true);
+        }
+        Hyprland.dispatch("ScreenshotMenu.enter()");
+    }
+
+    // Runs the menu row bound to key; false when no row has it.
+    function choose_key(key) {
+        const row = root.menu_rows.find(r => r.key === key || r.alt_key === key);
+        if (!row) return false;
+        ThemeAudio.play("confirm");
+        if (row.select !== undefined) root.select(row.frozen, row.select, row.mode);
+        else root.run_flag(row.flag);
+        return true;
+    }
+
+    // The menu and its submap close together, whichever side closes first. Leaving through Lua keeps Submap.current
+    // right, which a raw `submap reset` dispatch would not.
+    onMenu_openChanged: {
+        if (!root.menu_open) Hyprland.dispatch("ScreenshotMenu.leave()");
+    }
+
+    Connections {
+        target: SubmapState
+
+        function onSubmap_nameChanged() {
+            if (SubmapState.submap_name !== root.menu_submap && root.menu_open) Popups.close();
         }
     }
 
