@@ -5,7 +5,6 @@ import qs.ui.menu
 import qs.theme
 import qs.features.popups
 import qs.features.popups.frames
-import qs.features.audio
 
 Popup {
     id: root
@@ -13,59 +12,15 @@ Popup {
     popup_name: "screenshot"
     title: "Screenshot"
     preferred_width: 250
-    footer_hint: "j/k move · Enter run · q close"
-    key_help: "j/k move · gg/G first/last · Enter run · r/i region · z frozen region · s screen · w window · f focused · R record region · W record window · S record screen · F record focused · p pixel · t text · x scroll text · X scroll capture · q close"
+    // Hands-off (Screenshot.open_menu): no keyboard focus, no mouse. The Screenshot submap presses the keys.
+    footer_hint: "Esc close"
+    key_help: ""
     body_height: content.implicitHeight + 24
-    jumps_enabled: true
-    cursor_state: root.selected
-    wheel_steps: true
-    onWheel_stepped: (dir, horizontal) => {
-        if (!horizontal) root.selected = root.clamp_index(root.selected, dir, 0, root.rows.length);
-    }
 
-    // `select` rows use the themed selector; `flag` rows hand screenshot.sh one of its flags.
-    readonly property var base_rows: [
-        { section: "Capture", key: "r", alt_key: "i", label: "Region", glyph: "\u{f0a6d}", select: "", frozen: false },
-        { section: "Capture", key: "z", label: "Frozen region", glyph: "\u{f0717}", select: "", frozen: true },
-        { section: "Capture", key: "s", label: "Screen", glyph: "\u{f0e51}", select: "", frozen: false, mode: "screen" },
-        { section: "Capture", key: "w", label: "Window", glyph: "\u{f0614}", select: "", frozen: false, mode: "window" },
-        { section: "Capture", key: "f", label: "Focused window", glyph: "\u{f08c6}", flag: "focused" },
-        { section: "Record", key: "R", label: "Record region", glyph: "\u{f0a6d}", select: "record", frozen: false },
-        { section: "Record", key: "W", label: "Record window", glyph: "\u{f0614}", select: "record", frozen: false, mode: "window" },
-        { section: "Record", key: "S", label: "Record screen", glyph: "\u{f0e51}", select: "record", frozen: false, mode: "screen" },
-        { section: "Record", key: "F", label: "Record focused", glyph: "\u{f08c6}", flag: "record-focused" },
-        { section: "Tools", key: "p", label: "Pick pixel color", glyph: "\u{f020a}", select: "", frozen: true, mode: "pixel" },
-        { section: "Tools", key: "t", label: "Text from region", glyph: "\u{f113a}", select: "ocr", frozen: false },
-        { section: "Tools", key: "x", label: "Scroll text (OCR)", glyph: "\u{f113a}", select: "scroll_text", frozen: false },
-        { section: "Tools", key: "X", label: "Scroll capture (image)", glyph: "\u{f0a6d}", select: "scroll_image", frozen: false }
-    ]
-    readonly property var rows: root.base_rows
-
-    property int selected: 0
-
-    readonly property bool is_open: Popups.open_name === "screenshot"
-    onIs_openChanged: if (is_open) selected = 0
-    search_enabled: true
-    search_rows: root.rows.map(r => r.label)
-    search_cursor: root.selected
-    onSearch_select: index => root.selected = index
-    onJump_first: root.selected = 0
-    onJump_last: root.selected = root.rows.length - 1
+    readonly property var rows: Screenshot.menu_rows
 
     function glyph_color(row) {
         return row.section === "Record" ? Style.pal.warning : row.section === "Tools" ? Style.pal.secondary : Style.pal.primary;
-    }
-
-    function choose(index) {
-        const row = root.rows[index];
-        if (!row) return;
-        ThemeAudio.play("confirm");
-        root.selected = index;
-        if (row.select !== undefined) {
-            Screenshot.select(row.frozen, row.select, row.mode);
-        } else {
-            Screenshot.run_flag(row.flag);
-        }
     }
 
     Item {
@@ -75,26 +30,6 @@ Popup {
         anchors.top: parent.top
         anchors.margins: 12
         implicitHeight: rows_col.implicitHeight
-        focus: true
-
-        Keys.onPressed: event => {
-            const before = root.cursor_key();
-            const typed = event.modifiers & (Qt.ControlModifier | Qt.AltModifier) ? -1 : root.rows.findIndex(r => r.key === event.text || r.alt_key === event.text);
-            if (event.key === Qt.Key_J) {
-                root.selected = root.wrap_index(root.selected, 1, 0, root.rows.length);
-                root.play_if_moved(before);
-            } else if (event.key === Qt.Key_K) {
-                root.selected = root.wrap_index(root.selected, -1, 0, root.rows.length);
-                root.play_if_moved(before);
-            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                root.choose(root.selected);
-            } else if (typed >= 0) {
-                root.choose(typed);
-            } else {
-                return;
-            }
-            event.accepted = true;
-        }
 
         ColumnLayout {
             id: rows_col
@@ -125,7 +60,6 @@ Popup {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Style.px(28)
                         base_radius: 6
-                        selected: row_wrap.index === root.selected
                         key: row_wrap.modelData.key
 
                         RowLayout {
@@ -151,11 +85,6 @@ Popup {
                                 font.family: root.st.font_family
                                 font.pixelSize: root.st.font_size
                             }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.choose(row_wrap.index)
                         }
                     }
                 }
