@@ -296,6 +296,10 @@ function Apply.detect_signature(skip_env)
   return (sig and sig ~= "") and sig or nil
 end
 
+-- hyprctl times out reading a reply but blocks forever in connect() once a hung server's listen
+-- backlog fills, and one stuck call stalls the whole rotation loop.
+local HYPRCTL = "timeout 5 hyprctl "
+
 --- @param out string|nil hyprctl output
 --- @return boolean answered the compositor replied (a dead instance prints "Couldn't connect" to stdout)
 local function answered(out)
@@ -312,12 +316,12 @@ end
 --- @return string|nil command output
 local function hyprctl(cmd, util)
   local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-  local out = util.run_cmd(base .. "hyprctl " .. cmd .. " 2>/dev/null")
+  local out = util.run_cmd(base .. HYPRCTL .. cmd .. " 2>/dev/null")
   if answered(out) then return out end
 
   local sig = Apply.detect_signature(true)
   if sig and sig ~= util.signature then
-    local retry = util.run_cmd(string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprctl %s 2>/dev/null", sig, cmd))
+    local retry = util.run_cmd(string.format("HYPRLAND_INSTANCE_SIGNATURE=%s %s%s 2>/dev/null", sig, HYPRCTL, cmd))
     if answered(retry) then
       util.log("Following Hyprland instance " .. sig, { verbose = true })
       util.signature = sig
@@ -359,7 +363,9 @@ local function monitors(cfg, util)
   return mons
 end
 
---- Set `img` on monitor `mon` through hyprpaper.
+local TIMED_OUT = 124 -- exit status of timeout(1)
+
+--- Set `img` on monitor `mon` through hyprpaper. A call that times out sets `util.hyprpaper_hung`.
 --- @param util table shared utility object with `signature` and `log`
 --- @param cfg table wallpaper config
 --- @param mon string monitor name
@@ -373,12 +379,12 @@ local function set_wallpaper(util, cfg, mon, img)
   end
   f:close()
   local base = util.signature and ("HYPRLAND_INSTANCE_SIGNATURE=" .. util.signature .. " ") or ""
-  local rc = os.execute(string.format("%shyprctl hyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, mon, img))
-  if rc ~= 0 and rc ~= true then
-    util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(rc), img, mon), cfg)
-    return false
-  end
-  return true
+  local ok, _, code =
+    os.execute(string.format("%s%shyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, HYPRCTL, mon, img))
+  if ok then return true end
+  if code == TIMED_OUT then util.hyprpaper_hung = true end
+  util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(code), img, mon), cfg)
+  return false
 end
 
 --- Apply wallpapers to all active monitors (or `cfg.target_monitor` if set).

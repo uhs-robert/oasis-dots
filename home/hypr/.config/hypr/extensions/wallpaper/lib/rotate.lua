@@ -323,9 +323,32 @@ end
 
 -- -------- hyprpaper --------
 
-local function hyprpaper_running()
-  local r = os.execute("pgrep -x hyprpaper >/dev/null 2>&1")
-  return r == true or r == 0
+--- PIDs of the hyprpaper processes serving Hyprland instance `signature`. A shadow session's
+--- hyprpaper serves another instance; one started without a signature counts as this instance's.
+--- @param signature string|nil
+--- @return string[]
+local function own_hyprpaper_pids(signature)
+  local pids = {}
+  local out = run_cmd("pgrep -x hyprpaper") or ""
+  for pid in out:gmatch("%d+") do
+    local f = io.open("/proc/" .. pid .. "/environ", "r")
+    local environ = f and f:read("*a") or ""
+    if f then f:close() end
+    local own = environ:match("HYPRLAND_INSTANCE_SIGNATURE=([^%z]*)")
+    if own == nil or own == signature then table.insert(pids, pid) end
+  end
+  return pids
+end
+
+--- @param signature string|nil
+--- @return boolean
+local function hyprpaper_running(signature) return #own_hyprpaper_pids(signature) > 0 end
+
+--- @param signature string|nil
+local function kill_hyprpaper(signature)
+  for _, pid in ipairs(own_hyprpaper_pids(signature)) do
+    os.execute("kill -9 " .. pid .. " >/dev/null 2>&1")
+  end
 end
 
 --- Start hyprpaper in the background if it is not already running, with `custom/hyprpaper.conf` when present.
@@ -333,7 +356,7 @@ end
 --- @param util table shared utility object
 --- @return boolean started a new hyprpaper, which shows nothing yet
 local function ensure_hyprpaper(cfg, util)
-  if not hyprpaper_running() then
+  if not hyprpaper_running(util.signature) then
     util.log("Starting hyprpaper...", cfg)
     local cmd = util.signature and string.format("HYPRLAND_INSTANCE_SIGNATURE=%s hyprpaper", util.signature)
       or "hyprpaper"
@@ -470,12 +493,14 @@ function Rotate.start(opts)
     })
   end
 
+  local cycle
+
   --- Apply wallpapers and record the result.
   --- @param mode "full"|"settle"|"partial" full re-randomizes every monitor (distinct set);
   --- settle only fills monitors not yet in `APPLIED_WALLPAPERS`, avoiding live wallpapers;
   --- partial re-picks only the monitors in `only` (or the `--monitor` target), avoiding live wallpapers.
   --- @param only table<string, boolean>|nil monitors a partial cycle re-picks
-  local function cycle(mode, only)
+  local function cycle_once(mode, only)
     -- start-hyprland relaunches a crashed Hyprland under this process; hyprpaper dies with the old instance.
     -- A new hyprpaper shows nothing, so what the old one showed no longer counts as covered.
     local signature_before = util.signature
@@ -513,6 +538,20 @@ function Rotate.start(opts)
       end
     end
     publish_status(applied)
+    return ok
+  end
+
+  --- Run one cycle. A hyprpaper that stopped answering never recovers on its own, so a timed-out
+  --- call kills it and a second cycle starts a fresh one and repaints every monitor.
+  function cycle(mode, only)
+    local ok = cycle_once(mode, only)
+    if not util.hyprpaper_hung or opts.start_hyprpaper == false then return ok end
+    util.hyprpaper_hung = false
+    io.stderr:write("[wallpaper] hyprpaper stopped answering; restarting it\n")
+    kill_hyprpaper(util.signature)
+    util.sleep(1)
+    ok = cycle_once("full")
+    util.hyprpaper_hung = false
     return ok
   end
 
@@ -637,7 +676,8 @@ function Rotate.start(opts)
   local function session_restarted()
     local signature_before = util.signature
     Apply.follow_live_instance(util)
-    return util.signature ~= signature_before or (opts.start_hyprpaper ~= false and not hyprpaper_running())
+    return util.signature ~= signature_before
+      or (opts.start_hyprpaper ~= false and not hyprpaper_running(util.signature))
   end
 
   while true do
