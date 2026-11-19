@@ -542,16 +542,24 @@ function Rotate.start(opts)
   end
 
   --- Run one cycle. A hyprpaper that stopped answering never recovers on its own, so a timed-out
-  --- call kills it and a second cycle starts a fresh one and repaints every monitor.
+  --- call kills it and a second cycle starts a fresh one and repaints every monitor, even on a
+  --- `--monitor` run, since the restart blanks them all.
   function cycle(mode, only)
     local ok = cycle_once(mode, only)
-    if not util.hyprpaper_hung or opts.start_hyprpaper == false then return ok end
-    util.hyprpaper_hung = false
-    io.stderr:write("[wallpaper] hyprpaper stopped answering; restarting it\n")
-    kill_hyprpaper(util.signature)
-    util.sleep(1)
+    local hung = util.hung_signature
+    if not hung or opts.start_hyprpaper == false then return ok end
+    util.hung_signature = nil
+    -- Hyprland can switch instances between the timeout and here; the new instance's hyprpaper is healthy.
+    if hung == (util.signature or "") then
+      io.stderr:write("[wallpaper] hyprpaper stopped answering; restarting it\n")
+      kill_hyprpaper(util.signature)
+      util.sleep(1)
+    end
+    local target_monitor = cfg.target_monitor
+    cfg.target_monitor = nil
     ok = cycle_once("full")
-    util.hyprpaper_hung = false
+    cfg.target_monitor = target_monitor
+    util.hung_signature = nil
     return ok
   end
 
