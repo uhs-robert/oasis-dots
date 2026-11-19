@@ -365,7 +365,8 @@ end
 
 local TIMED_OUT = 124 -- exit status of timeout(1)
 
---- Set `img` on monitor `mon` through hyprpaper. A call that times out sets `util.hyprpaper_hung`.
+--- Set `img` on monitor `mon` through hyprpaper. A call that times out records the instance it
+--- asked in `util.hung_signature` ("" for no signature).
 --- @param util table shared utility object with `signature` and `log`
 --- @param cfg table wallpaper config
 --- @param mon string monitor name
@@ -382,7 +383,7 @@ local function set_wallpaper(util, cfg, mon, img)
   local ok, _, code =
     os.execute(string.format("%s%shyprpaper wallpaper '%s, %s' >/dev/null 2>&1", base, HYPRCTL, mon, img))
   if ok then return true end
-  if code == TIMED_OUT then util.hyprpaper_hung = true end
+  if code == TIMED_OUT then util.hung_signature = util.signature or "" end
   util.log(string.format("hyprpaper wallpaper failed (rc=%s) for %s on %s", tostring(code), img, mon), cfg)
   return false
 end
