@@ -1,0 +1,10 @@
+{
+  "id": "bug_report",
+  "description": "Generic bug report to a project's tracker address. Replace the example.com addresses before use.",
+  "to": ["bugs@example.com"],
+  "cc": [],
+  "from": "me@example.com",
+  "subject_pattern": "[bug] {title}",
+  "required_sections": ["Steps", "Expected", "Actual"],
+  "body_skeleton": "Steps\n1. {step}\n\nExpected\n{expected}\n\nActual\n{actual}\n"
+}
