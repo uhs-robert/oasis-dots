@@ -1,10 +1,21 @@
 default_engine = "google"
-home_page = "https://web.tabliss.io/"
+home_page = "desertfox"
 which_key_border = "chamfer"
 # DesertFox reserves new_tab_page for phase 3 and does not apply it yet; set the new-tab override separately until then.
-new_tab_page = "https://web.tabliss.io/"
+new_tab_page = "desertfox"
 
 bridge = true
 
 # Follow the desktop theme; the Hyprland theme generator pushes its name with `desertfox theme`.
 theme = "desktop"
+newtab_bookmarks = false
+newtab_recent_tabs = false
+newtab_top_sites = false
+newtab_command_hint = false
+newtab_weather = true
+newtab_weather_units = "imperial"
+newtab_closed_tabs = false
+font_family_mono = "Maple Mono NF"
+font_family = "Maple Mono NF"
+item_navigator = false
+default_site_rows_off = []
