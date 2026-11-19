@@ -11,8 +11,8 @@ Singleton {
 
     readonly property string state_dir: Paths.state_dir
 
-    readonly property var choices: Object.assign({ start_mode: ["insert", "normal"], remember_query: [false, true] }, StartMode.choices())
-    readonly property var defaults: Object.assign({ start_mode: "insert", remember_query: false }, StartMode.defaults())
+    readonly property var choices: Object.assign({ start_mode: ["insert", "normal"], remember_query: [false, true], show_hint_bars: [true, false] }, StartMode.choices())
+    readonly property var defaults: Object.assign({ start_mode: "insert", remember_query: false, show_hint_bars: true }, StartMode.defaults())
     readonly property var bottom_pickers: StartMode.bottom_pickers
 
     readonly property var values: store.values
