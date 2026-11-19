@@ -68,6 +68,14 @@ RowsSection {
         set: v => TypingSettings.set("remember_query", v),
         pick: false
     }, {
+        label: "Show hint bars",
+        desc: "Show the key hint bar on entering a submap that has one, like Windows, and in Edit Bar. When off, i shows it for that visit. Which-key is separate.",
+        values: () => TypingSettings.choices.show_hint_bars,
+        text: v => v ? "On" : "Off",
+        value: () => TypingSettings.values.show_hint_bars,
+        set: v => TypingSettings.set("show_hint_bars", v),
+        pick: false
+    }, {
         label: "Which-key delay",
         desc: "How long a leader key waits before its overlay shows. Reloads Hyprland to apply.",
         values: () => Choices.with_current(root.which_key_delays, HyprInputSettings.value("which_key_delay_ms")),

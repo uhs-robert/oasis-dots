@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import qs.theme
 import qs.features.settings
+import qs.features.launcher
 import "../../styles/neovim/widgets/Modes.js" as Modes
 
 Singleton {
@@ -60,9 +61,10 @@ Singleton {
     readonly property var hint: root.hints[root.submap_name] || null
 
     // The hint panels are hidden by the `i` key: the submap hint bar and the Bar Editor's hints share this one flag. It lasts
-    // for one stay: entering or leaving a submap, and opening or closing the editor, clear it.
-    property bool hints_hidden: false
-    onSubmap_nameChanged: root.hints_hidden = false
+    // for one stay: entering or leaving a submap, and opening or closing the editor, reset it to the Show hint bars setting.
+    readonly property bool hints_start_hidden: !TypingSettings.values.show_hint_bars
+    property bool hints_hidden: hints_start_hidden
+    onSubmap_nameChanged: root.hints_hidden = root.hints_start_hidden
 
     // Stores a hint; returns "" or why the JSON was refused.
     function set_hint(json) {

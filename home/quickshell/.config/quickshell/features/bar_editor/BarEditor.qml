@@ -115,7 +115,7 @@ Singleton {
         root.picked = "";
         root.help_open = false;
         root.notice = "";
-        SubmapState.hints_hidden = false;
+        SubmapState.hints_hidden = SubmapState.hints_start_hidden;
         root.focus_screen = root.monitors.some(m => m.name === wanted) ? wanted : root.monitors[0].name;
         root.mode = "normal";
         root.selected = root.order[0] || "";
@@ -131,7 +131,7 @@ Singleton {
         root.picked = "";
         root.help_open = false;
         root.notice = "";
-        SubmapState.hints_hidden = false;
+        SubmapState.hints_hidden = SubmapState.hints_start_hidden;
         root.undo_stack = [];
         root.redo_stack = [];
         root.pick_base = null;
