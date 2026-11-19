@@ -39,7 +39,8 @@ Singleton {
         "DELETE-MARK": Theme.syntax_operator,
     })
 
-    readonly property color submap_color: color_map[submap_name] || Theme.theme_secondary
+    // HyprVim's own modes (NORMAL, INSERT, VISUAL, R-CHAR) take their lualine colours in every style.
+    readonly property color submap_color: root.active ? Modes.color(root.submap_name, Theme, root.color_map[root.submap_name] || Theme.theme_secondary) : Theme.theme_secondary
     // The colour the bar shows for the current submap: the lualine mode colour (chip, z, buffers), else the submap tab's.
     readonly property color bar_color: Style.bar_lualine ? Modes.color(root.submap_name, Theme, root.submap_color) : root.submap_color
 
