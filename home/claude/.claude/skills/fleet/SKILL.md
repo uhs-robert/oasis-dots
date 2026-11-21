@@ -114,7 +114,7 @@ When the loop exits, read its output, then:
 2. Look at each named session with `tmux capture-pane -p -t <fleet-session>:<name>`.
 3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the unfinished piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
 4. A `HUNG` run: look at the process (`ps -o pid,etime,args -p <pid>`). If it is really hung, `SendMessage` the named session to kill that pid and rerun the test. The planner kills nothing itself.
-5. A `CI_RED` main: find the session that merged last (`git log -1 --format=%an%n%s origin/<default>` and the merged piece's owner in `plans ls`), and tell it by `SendMessage` that main is red, with the run URL. Tell the owner as well.
+5. A `CI_RED` main: find the session that merged the failed run's head. Take the run id from the URL, then `gh run view <run id> --json headSha -q .headSha`, `git fetch origin` and `git log -1 --format=%an%n%s <head sha>`. Find the merged piece's owner in `plans ls`, and tell it by `SendMessage` that main is red, with the run URL. Tell the owner as well.
 6. Start the loop again with the same command.
 
 One stall wakes the planner once. The check keeps the stall in its state file, so the restarted loop stays quiet on it until the pane or the progress moves again. The state, kept per fleet, also carries the stall timing across runs. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.

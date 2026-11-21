@@ -169,13 +169,17 @@ doc review "waiting"
   echo "206 1 36000 node --test test/firefox-policies.test.js"
   echo "207 1 36000 /usr/lib/firefox/firefox -profile /tmp/ff"
   echo "208 1 36000 /usr/bin/betterbird --profile /home/me/.betterbird"
+  echo "209 1 36000 node $wt/server.js --test"
+  echo "210 1 36000 node --require ./setup.js --test test/z.test.js"
 } >"$FAKE_PS"
-for pid in 200 201 202 203 204 205 206 207 208; do cwd_of "$pid" "$wt"; done
+for pid in 200 201 202 203 204 205 206 207 208 209 210; do cwd_of "$pid" "$wt"; done
 run
 check "wrapper shells, timeout and a claude with a runner phrase are not flagged" '[[ $out != *" 200 "* && $out != *" 201 "* && $out != *" 202 "* && $out != *" 204 "* ]]'
-check "npm test with a node child is one line, on the parent" '[[ $out == *"HUNG win 203 "* && $out != *" 205 "* && $(grep -c "^HUNG" <<<"$out") -eq 1 || $(grep -c "HUNG" <<<"$out") -eq 2 ]]'
+check "npm test with a node child is one line, on the parent" '[[ $out == *"HUNG win 203 "* && $out != *"HUNG win 205 "* && $(grep -c "^HUNG" <<<"$out") -eq 3 ]]'
 check "a runner with firefox in its arguments is flagged" '[[ $out == *"HUNG win 206 "* ]]'
 check "the owner's Firefox and Betterbird in a worktree never report" '[[ $out != *" 207 "* && $out != *" 208 "* ]]'
+check "node server.js --test passes --test to the script and is not flagged" '[[ $out != *" 209 "* ]]'
+check "node --require x --test is flagged" '[[ $out == *"HUNG win 210 "* ]]'
 
 echo "== HUNG skips a match with any matched ancestor"
 fresh
@@ -198,6 +202,24 @@ echo "300 1 60 node --test $wt/t.js" >"$FAKE_PS"
 cwd_of 300 "$wt"
 run FLEET_STUCK_SECONDS=3600
 check "green CI, a young runner and a quiet session print ok" '[[ $out == ok ]]'
+
+echo "== HUNG keys on the process start time"
+fresh
+doc review "waiting"
+echo "500 1 36000 node --test $wt/t.js" >"$FAKE_PS"
+cwd_of 500 "$wt"
+stat_of() { echo "$1 (node) S 1 1 1 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 $2 0" >"$FLEET_PROC_DIR/$1/stat"; }
+stat_of 500 1111
+run
+check "a runner is reported" '[[ $out == *"HUNG win 500 "* ]]'
+run
+check "the same pid and start time is quiet" '[[ $out != *HUNG* ]]'
+stat_of 500 2222
+run
+check "a reused pid with a new start time is reported again" '[[ $out == *"HUNG win 500 "* ]]'
+printf '@hung\t500\twin\n' >"$main/.logs/proj/fleet-watch-fl.state"
+run
+check "an old state row without a start time stays quiet" '[[ $out != *HUNG* ]]'
 
 echo "== CI_RED"
 fresh
