@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Replays watch.sh against a temp repo with fake tmux, plans, ps and gh on PATH: the stuck rule for each piece status,
-# the HUNG rule (cwd, command line, runner list, once per pid) and the CI_RED rule (once per sha, quiet without gh).
+# the HUNG rule (cwd, command line, runner by program, one line per tree, once per pid) and the CI_RED rule (once per sha, quiet without gh).
 # shellcheck disable=SC2016,SC2034 # The check strings are single-quoted on purpose (eval'd later); out is read only inside them.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -106,19 +106,19 @@ echo "== HUNG"
 fresh
 doc review "waiting"
 {
-  echo "100 36000 node --test test/a.test.js"
-  echo "101 36000 node --test test/b.test.js"
-  echo "102 36000 node --test $wt/test/c.test.js"
-  echo "103 60 node --test test/d.test.js"
-  echo "104 36000 /usr/lib/firefox/firefox"
-  echo "105 36000 /usr/bin/betterbird"
-  echo "106 36000 /usr/bin/betterbird -profile /tmp/bb-profile"
-  echo "107 36000 bash -c sleep 99999"
-  echo "108 36000 npm run e2e"
-  echo "109 36000 node --test test/e.test.js"
-  echo "110 8000 just test"
-  echo "111 36000 /usr/bin/betterbird --profile /home/me/.betterbird"
-  echo "112 7200 labwc"
+  echo "100 1 36000 node --test test/a.test.js"
+  echo "101 1 36000 node --test test/b.test.js"
+  echo "102 1 36000 node --test $wt/test/c.test.js"
+  echo "103 1 60 node --test test/d.test.js"
+  echo "104 1 36000 /usr/lib/firefox/firefox"
+  echo "105 1 36000 /usr/bin/betterbird"
+  echo "106 1 36000 /usr/bin/betterbird -profile /tmp/bb-profile"
+  echo "107 1 36000 bash -c sleep 99999"
+  echo "108 1 36000 npm run e2e"
+  echo "109 1 36000 node --test test/e.test.js"
+  echo "110 1 8000 just test"
+  echo "111 1 36000 /usr/bin/betterbird --profile /home/me/.betterbird"
+  echo "112 1 7200 labwc"
 } >"$FAKE_PS"
 cwd_of 100 "$wt"
 cwd_of 101 "$suite"
@@ -150,11 +150,41 @@ check "the state file keeps reported pids" 'grep -q "^@hung.100.win" "$main/.log
 sed -i '/^100 /d' "$FAKE_PS"
 run
 check "a pid that ended is forgotten" '! grep -q "^@hung.100" "$main/.logs/proj/fleet-watch-fl.state"'
-echo "100 36000 node --test test/a.test.js" >>"$FAKE_PS"
+echo "100 1 36000 node --test test/a.test.js" >>"$FAKE_PS"
 run
 check "a reused pid is reported again" '[[ $out == *"HUNG win 100 "* ]]'
 run FLEET_HUNG_SECONDS=40000
 check "FLEET_HUNG_SECONDS raises the limit" '[[ $out != *HUNG* ]]'
+
+echo "== HUNG matches the program, one line per tree"
+fresh
+doc review "waiting"
+{
+  echo "200 1 36000 /bin/bash -c source snap; eval 'node --test $wt/t.js'"
+  echo "201 200 36000 timeout 900 node --test $wt/t.js"
+  echo "202 1 36000 claude --prompt run just test in $wt/ and node --test"
+  echo "203 1 36000 npm test"
+  echo "204 1 36000 sh -c node --test"
+  echo "205 203 36000 node --test test/x.test.js"
+  echo "206 1 36000 node --test test/firefox-policies.test.js"
+  echo "207 1 36000 /usr/lib/firefox/firefox -profile /tmp/ff"
+  echo "208 1 36000 /usr/bin/betterbird --profile /home/me/.betterbird"
+} >"$FAKE_PS"
+for pid in 200 201 202 203 204 205 206 207 208; do cwd_of "$pid" "$wt"; done
+run
+check "wrapper shells, timeout and a claude with a runner phrase are not flagged" '[[ $out != *" 200 "* && $out != *" 201 "* && $out != *" 202 "* && $out != *" 204 "* ]]'
+check "npm test with a node child is one line, on the parent" '[[ $out == *"HUNG win 203 "* && $out != *" 205 "* && $(grep -c "^HUNG" <<<"$out") -eq 1 || $(grep -c "HUNG" <<<"$out") -eq 2 ]]'
+check "a runner with firefox in its arguments is flagged" '[[ $out == *"HUNG win 206 "* ]]'
+check "the owner's Firefox and Betterbird in a worktree never report" '[[ $out != *" 207 "* && $out != *" 208 "* ]]'
+
+echo "== a healthy pass is exactly ok"
+fresh
+doc review ""
+echo '[{"conclusion":"success","url":"u","headSha":"abc"}]' >"$FAKE_GH_RUN"
+echo "300 1 60 node --test $wt/t.js" >"$FAKE_PS"
+cwd_of 300 "$wt"
+run FLEET_STUCK_SECONDS=3600
+check "green CI, a young runner and a quiet session print ok" '[[ $out == ok ]]'
 
 echo "== CI_RED"
 fresh
@@ -167,6 +197,11 @@ check "the same head sha is quiet" '[[ $out != *CI_RED* ]]'
 echo '[{"conclusion":"failure","url":"https://github.com/me/repo/actions/runs/10","headSha":"def"}]' >"$FAKE_GH_RUN"
 run
 check "a new head sha reports again" '[[ $out == *"CI_RED me/repo https://github.com/me/repo/actions/runs/10"* ]]'
+for conclusion in timed_out startup_failure; do
+  echo "[{\"conclusion\":\"$conclusion\",\"url\":\"u\",\"headSha\":\"t-$conclusion\"}]" >"$FAKE_GH_RUN"
+  run
+  check "$conclusion is CI_RED" '[[ $out == "CI_RED me/repo u" ]]'
+done
 echo '[{"conclusion":"success","url":"u","headSha":"ghi"}]' >"$FAKE_GH_RUN"
 run
 check "a green run is quiet" '[[ $out != *CI_RED* ]]'
