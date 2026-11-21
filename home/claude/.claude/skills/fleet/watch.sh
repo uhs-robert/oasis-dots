@@ -6,23 +6,36 @@
 #   ok             every session is moving or already handled; the planner's loop keeps sleeping
 #   all finished   every fleet session is finished
 #   one line per problem, each wakes the planner once per stall:
-#     STUCK <name>    idle with an empty prompt box, no activity for the stuck time, a `building` piece with
-#                     `waiting_on` empty
+#     STUCK <name>    idle with an empty prompt box, no activity for the stuck time, an unfinished piece (`building`,
+#                     `review` or `approved`) with `waiting_on` empty
 #     PROMPT <name>   waits on a permission prompt; never answered by this script
 #     EXITED <name>   left claude with no unfinished pieces
 #     LOST <name>     left claude while it still owns unfinished pieces; never counts as finished
 #     STOPPED <fleet> the fleet's tmux session is gone
+#     HUNG <name> <pid> <elapsed>
+#                     a test or e2e runner started from a worktree of the session runs past the hung time
+#     CI_RED <repo> <run url>
+#                     the latest completed CI run on the repo's default branch failed; reported once per head sha
 # A stall that was reported prints `ok` on later checks until the pane or the progress moves again, so a loop that
 # restarts after the planner handled it does not wake on it twice. The state between checks is
 # <main checkout>/.logs/<project>/fleet-watch-<fleet>.state, with a lock of the same stem. The log is fleet-watch.md
 # beside it: a line per session per check, and each problem.
-# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_NUDGE_TEXT, FLEET_ALL_PROJECTS (set to 1 to find a
-# session's docs in every plan project, for a fleet whose pieces span projects; <project> still names the log).
+# Settings (environment): FLEET_STUCK_SECONDS (1800), FLEET_HUNG_SECONDS (7200), FLEET_NUDGE_TEXT, FLEET_ALL_PROJECTS (set to 1 to find a
+# session's docs in every plan project, for a fleet whose pieces span projects; <project> still names the log),
+# FLEET_PROC_DIR (/proc; where a process's cwd link is read, so a test can fake it).
 #
 # Stuck means: the pane shows an empty prompt box, nothing moved in the pane, no commit on the session's branches and
-# no change to its plan docs, .logs folders or branch worktree for the stuck time, and the session owns a piece in
-# `building` status that is not waiting on anything (`waiting_on` empty). The stuck time spans several checks, so the
+# no change to its plan docs, .logs folders or branch worktree for the stuck time, and the session owns an unfinished
+# piece (`building`, `review` or `approved` status) that is not waiting on anything (`waiting_on` empty). The stuck time spans several checks, so the
 # state file carries when the pane last changed.
+#
+# Hung means: a process of a test or e2e runner (node --test, npm test, npm run e2e, just test, labwc, or betterbird
+# or thunderbird on a /tmp profile) whose cwd is inside a worktree of the session, or whose command line names one,
+# runs longer than the hung time. The owner's own Betterbird and Firefox never match. The state file keeps the pids
+# already reported, so a hung run wakes the planner once.
+#
+# CI red means: `gh run list` on the default branch shows its latest completed run failed. The state file keeps the
+# head sha reported. The check is skipped when gh is missing or offline.
 #
 # Never types into a pane by default. The planner nudges through SendMessage. `--nudge` is the fallback for a session
 # that holds SendMessage for approval: it types the nudge text into the named window, only when that window is idle
@@ -57,7 +70,9 @@ fleet=$1 project=$2
   exit 2
 }
 stuck_seconds=${FLEET_STUCK_SECONDS:-1800}
-nudge_text=${FLEET_NUDGE_TEXT:-"Fleet watchdog: you look idle while a piece of yours is in building status. Continue it, or set waiting_on and say why you are held."}
+hung_seconds=${FLEET_HUNG_SECONDS:-7200}
+proc_dir=${FLEET_PROC_DIR:-/proc}
+nudge_text=${FLEET_NUDGE_TEXT:-"Fleet watchdog: you look idle while a piece of yours is unfinished (building, review or approved). Continue it, or set waiting_on and say why you are held."}
 
 git_common_dir=$(git rev-parse --path-format=absolute --git-common-dir) || {
   echo "watch.sh: not in a git repository" >&2
@@ -92,21 +107,35 @@ log() { printf -- '- %s %s\n' "$(date +%FT%T)" "$*" >>"$log_file"; }
 # Per window, from the state file: the pane hash, when it last changed, whether the session ever owned a piece, and
 # the hash and time at which a stall event was last handled (acted_*).
 declare -A hash changed_at ever_owned acted_hash acted_at
+# Reported hung pids (pid -> session) and the last reported red head sha per repo. They ride in the state file as
+# `@hung` and `@ci` rows, apart from the per-window rows.
+declare -A hung_reported ci_reported
 load_state() {
   local name h c e ah aa
   [[ -f $state_file ]] || return 0
   while IFS=$'\t' read -r name h c e ah aa; do
     [[ -n $name ]] || continue
+    if [[ $name == @hung ]]; then
+      hung_reported[$h]=$c
+      continue
+    elif [[ $name == @ci ]]; then
+      ci_reported[$h]=$c
+      continue
+    fi
     # An empty field is stored as "-": read with a tab separator folds empty fields and shifts the rest.
     [[ $ah != - ]] || ah=
     hash[$name]=$h changed_at[$name]=$c ever_owned[$name]=$e acted_hash[$name]=$ah acted_at[$name]=$aa
   done <"$state_file"
 }
 save_state() {
-  local name
-  for name in "${!changed_at[@]}"; do
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:--}" "${acted_at[$name]:-0}"
-  done >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
+  local name pid repo
+  {
+    for name in "${!changed_at[@]}"; do
+      printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:--}" "${acted_at[$name]:-0}"
+    done
+    for pid in "${!hung_reported[@]}"; do printf '@hung\t%s\t%s\n' "$pid" "${hung_reported[$pid]}"; done
+    for repo in "${!ci_reported[@]}"; do printf '@ci\t%s\t%s\n' "$repo" "${ci_reported[$repo]}"; done
+  } >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
 
 # The newest sign of work by the owner of these docs: a commit on its branch, or a change to a plan doc or .logs file.
@@ -145,6 +174,78 @@ prompt_box_empty() {
 
 hash_of() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
 
+# The worktrees of the branches of a session's docs, one per line.
+session_worktrees() { # <json of the session's docs>
+  local branch
+  while IFS= read -r branch; do
+    [[ -z $branch || $branch == none ]] || worktree_of "$branch"
+  done < <(jq -r '.[].branch' <<<"$1") | sort -u
+}
+
+# A test or e2e runner. The owner's own Betterbird has no /tmp profile and Firefox is not a runner, so neither matches.
+runner_re='(^|[/ ])node( [^ ]+)* --test( |$)|(^|[/ ])npm (run )?(test|e2e)( |$)|(^|[/ ])just test( |$)|(^|[/ ])labwc( |$)|(betterbird|thunderbird).* --?profile[ =]/tmp/'
+is_runner() { # <command line>
+  [[ $1 != *firefox* && $1 =~ $runner_re ]]
+}
+
+format_elapsed() { printf '%dh%02dm' $(($1 / 3600)) $(($1 % 3600 / 60)); }
+
+# Runners past the hung time that belong to the session by cwd or by a worktree path on the command line, not yet
+# reported. $ps_out is the pass's one process listing: pid, elapsed seconds, command line.
+check_hung() { # <name> <json of the session's docs>
+  local worktrees pid elapsed args cwd wt
+  worktrees=$(session_worktrees "$2")
+  [[ -n $worktrees ]] || return 0
+  while read -r pid elapsed args; do
+    [[ $elapsed =~ ^[0-9]+$ ]] || continue
+    ((elapsed > hung_seconds)) || continue
+    [[ -z ${hung_reported[$pid]:-} ]] || continue
+    is_runner "$args" || continue
+    cwd=$(readlink "$proc_dir/$pid/cwd" 2>/dev/null)
+    while IFS= read -r wt; do
+      if [[ $cwd == "$wt" || $cwd == "$wt"/* || $args == *"$wt"/* || $args == *"$wt "* || $args == *"$wt" ]]; then
+        log "$1 HUNG pid $pid runs $(format_elapsed "$elapsed"): $args"
+        problems+=("HUNG $1 $pid $(format_elapsed "$elapsed")")
+        hung_reported[$pid]=$1
+        break
+      fi
+    done <<<"$worktrees"
+  done <<<"$ps_out"
+}
+
+# Pids that no longer run are forgotten, so a reused pid is reported again.
+forget_dead_hung() {
+  local pid
+  # An empty listing is a failed ps, not a machine with no processes.
+  [[ -n $ps_out ]] || return 0
+  for pid in "${!hung_reported[@]}"; do
+    awk -v p="$pid" '$1 == p {found = 1} END {exit !found}' <<<"$ps_out" || unset "hung_reported[$pid]"
+  done
+}
+
+# The latest completed run on the default branch failed, and its head sha was not reported yet. Skipped quietly when
+# gh is missing, offline or answers nothing usable.
+check_ci() {
+  local repo_info repo branch run conclusion url sha
+  command -v gh >/dev/null || return 0
+  repo_info=$(cd "$main_checkout" && timeout 30 gh repo view --json nameWithOwner,defaultBranchRef 2>/dev/null) || return 0
+  repo=$(jq -r '.nameWithOwner // empty' <<<"$repo_info" 2>/dev/null)
+  branch=$(jq -r '.defaultBranchRef.name // empty' <<<"$repo_info" 2>/dev/null)
+  [[ -n $repo && -n $branch ]] || return 0
+  run=$(cd "$main_checkout" && timeout 30 gh run list --branch "$branch" --status completed --limit 1 --json conclusion,url,headSha 2>/dev/null) || return 0
+  IFS=$'\t' read -r conclusion url sha < <(jq -r '.[0] // empty | [.conclusion, .url, .headSha] | join("\t")' <<<"$run" 2>/dev/null)
+  [[ -n ${sha:-} ]] || return 0
+  if [[ $conclusion != failure ]]; then
+    # A green run forgets the red one, so a later red run on a re-run sha reports again.
+    [[ $conclusion != success ]] || unset "ci_reported[$repo]"
+    return 0
+  fi
+  [[ ${ci_reported[$repo]:-} != "$sha" ]] || return 0
+  log "CI_RED $repo $url (head $sha)"
+  problems+=("CI_RED $repo $url")
+  ci_reported[$repo]=$sha
+}
+
 # The fallback for SendMessage: the guarded typing of the nudge text into one window of the fleet session.
 nudge() { # <window name>
   local row pane dead pane_pid text
@@ -182,8 +283,9 @@ nudge() { # <window name>
 }
 
 pass() {
-  local now windows pane name dead pane_pid text new_hash docs ids active building state quiet progress
+  local now windows pane name dead pane_pid text new_hash docs ids active unfinished state quiet progress
   now=$(date +%s)
+  ps_out=$(ps -eo pid=,etimes=,args= 2>/dev/null)
   windows=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null) || return 2
   load_state
   all_finished=1
@@ -200,7 +302,7 @@ pass() {
       continue
     fi
     ids=$(jq -r '[.[].id] | join(",")' <<<"$docs")
-    building=$(jq '[.[] | select(.status == "building" and .waiting_on == "")] | length' <<<"$docs")
+    unfinished=$(jq '[.[] | select((.status == "building" or .status == "review" or .status == "approved") and .waiting_on == "")] | length' <<<"$docs")
     active=$(jq '[.[] | select(.status == "approved" or .status == "building" or (.status == "review" and .waiting_on == ""))] | length' <<<"$docs")
     [[ -z $ids ]] || ever_owned[$name]=1
     progress=$(latest_progress "$docs")
@@ -230,7 +332,7 @@ pass() {
 
     quiet=$((now - changed_at[$name]))
     ((progress > now - quiet)) && quiet=$((now - progress))
-    if [[ $state == idle ]] && ((building > 0 && quiet >= stuck_seconds)); then
+    if [[ $state == idle ]] && ((unfinished > 0 && quiet >= stuck_seconds)); then
       state=stuck
     fi
     log "$name $state pieces=${ids:--} active=$active quiet=$((quiet / 60))m"
@@ -260,12 +362,14 @@ pass() {
       ;;
     stuck)
       if [[ -z ${acted_hash[$name]:-} ]]; then
-        log "$name STUCK idle ${quiet}s with a building piece: $ids"
-        problems+=("STUCK $name: idle $((quiet / 60))m with a building piece: $ids")
+        log "$name STUCK idle ${quiet}s with an unfinished piece: $ids"
+        problems+=("STUCK $name: idle $((quiet / 60))m with an unfinished piece: $ids")
         acted_hash[$name]=$new_hash acted_at[$name]=$now
       fi
       ;;
     esac
+
+    check_hung "$name" "$docs"
 
     # Finished: left claude with nothing unfinished, or went idle after owning pieces that are all merged, closed or
     # held for the owner. A session that left claude with unfinished pieces is lost, not finished.
@@ -299,6 +403,8 @@ pass() {
       acted_hash[$name]='' acted_at[$name]=0
     fi
   done
+  forget_dead_hung
+  check_ci
   save_state
   return 0
 }

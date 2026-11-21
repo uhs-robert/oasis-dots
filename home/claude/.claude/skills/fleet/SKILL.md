@@ -99,19 +99,23 @@ It sleeps first, so its first check does not compare against a manual run. It ch
 
 A check prints `ok`, `all finished`, or one line per problem:
 
-- `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns a piece in `building` status with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
+- `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns an unfinished piece (`building`, `review` or `approved` status) with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
 - `PROMPT <name>`: the session waits on a permission prompt.
 - `LOST <name>`: claude exited while the session still owns unfinished pieces, or before its first claim. Such a session never counts as finished.
 - `EXITED <name>`: claude exited with nothing unfinished.
 - `GONE <name>`: the session's tmux window is gone while it still owns unfinished pieces, or never claimed. It never counts as finished.
 - `STOPPED <fleet>`: the fleet's tmux session is gone.
+- `HUNG <name> <pid> <elapsed>`: a test or e2e runner (`node --test`, `npm test`, `npm run e2e`, `just test`, `labwc`, or Betterbird or Thunderbird on a `/tmp` profile) runs longer than 2 hours. Its cwd or command line is inside a worktree of that session. Set the time with `FLEET_HUNG_SECONDS`. The owner's own Betterbird and Firefox never match. Each pid is reported once.
+- `CI_RED <repo> <run url>`: the latest completed GitHub Actions run on the repo's default branch failed. Each head sha is reported once. The check is skipped when `gh` is missing or offline.
 
 When the loop exits, read its output, then:
 
 1. `all finished` or `STOPPED`: tell the owner and stop. Do not start the loop again.
 2. Look at each named session with `tmux capture-pane -p -t <fleet-session>:<name>`.
-3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the building piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
-4. Start the loop again with the same command.
+3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the unfinished piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
+4. A `HUNG` run: look at the process (`ps -o pid,etime,args -p <pid>`). If it is really hung, `SendMessage` the named session to kill that pid and rerun the test. The planner kills nothing itself.
+5. A `CI_RED` main: find the session that merged last (`git log -1 --format=%an%n%s origin/<default>` and the merged piece's owner in `plans ls`), and tell it by `SendMessage` that main is red, with the run URL. Tell the owner as well.
+6. Start the loop again with the same command.
 
 One stall wakes the planner once. The check keeps the stall in its state file, so the restarted loop stays quiet on it until the pane or the progress moves again. The state, kept per fleet, also carries the stall timing across runs. The log is `<main checkout>/.logs/<project>/fleet-watch.md`.
 
