@@ -107,16 +107,17 @@ log() { printf -- '- %s %s\n' "$(date +%FT%T)" "$*" >>"$log_file"; }
 # Per window, from the state file: the pane hash, when it last changed, whether the session ever owned a piece, and
 # the hash and time at which a stall event was last handled (acted_*).
 declare -A hash changed_at ever_owned acted_hash acted_at
-# Reported hung pids (pid -> session) and the last reported red head sha per repo. They ride in the state file as
+# Reported hung pids (pid -> session, pid -> process start time) and the last reported red head sha per repo. They ride in the state file as
 # `@hung` and `@ci` rows, apart from the per-window rows.
-declare -A hung_reported ci_reported
+declare -A hung_reported hung_start ci_reported
 load_state() {
   local name h c e ah aa
   [[ -f $state_file ]] || return 0
   while IFS=$'\t' read -r name h c e ah aa; do
     [[ -n $name ]] || continue
     if [[ $name == @hung ]]; then
-      hung_reported[$h]=$c
+      # Rows from before the start time was kept have it empty: they match any start.
+      hung_reported[$h]=$c hung_start[$h]=$e
       continue
     elif [[ $name == @ci ]]; then
       ci_reported[$h]=$c
@@ -133,7 +134,7 @@ save_state() {
     for name in "${!changed_at[@]}"; do
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:--}" "${acted_at[$name]:-0}"
     done
-    for pid in "${!hung_reported[@]}"; do printf '@hung\t%s\t%s\n' "$pid" "${hung_reported[$pid]}"; done
+    for pid in "${!hung_reported[@]}"; do printf '@hung\t%s\t%s\t%s\n' "$pid" "${hung_reported[$pid]}" "${hung_start[$pid]:-}"; done
     for repo in "${!ci_reported[@]}"; do printf '@ci\t%s\t%s\n' "$repo" "${ci_reported[$repo]}"; done
   } >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
@@ -182,6 +183,21 @@ session_worktrees() { # <json of the session's docs>
   done < <(jq -r '.[].branch' <<<"$1") | sort -u
 }
 
+# node runs the test runner when --test is among its own options, before the script entry point: `node server.js --test`
+# passes --test to the script. Options that take a value hide the next word from the entry point check.
+node_runs_tests() { # <node's arguments>
+  while (($#)); do
+    case $1 in
+    --test) return 0 ;;
+    -r | --require | --import | --loader | --experimental-loader | -e | --eval | -p | --print | -C | --conditions) shift ;;
+    -*) ;;
+    *) return 1 ;;
+    esac
+    shift
+  done
+  return 1
+}
+
 # A test or e2e runner, judged by the program itself (the basename of the first word). A wrapper shell, timeout,
 # unshare or a claude whose prompt mentions "just test" has another program, so it never matches. The owner's own
 # Betterbird has no /tmp profile and Firefox is not a runner, so neither matches.
@@ -189,7 +205,7 @@ is_runner() { # <command line>
   local -a w
   read -ra w <<<"$1"
   case ${w[0]##*/} in
-  node) [[ " ${w[*]:1} " == *" --test "* ]] ;;
+  node) node_runs_tests "${w[@]:1}" ;;
   npm | pnpm | yarn | bun) [[ ${w[1]:-} == @(test|e2e) || (${w[1]:-} == run && ${w[2]:-} == @(test|e2e)) ]] ;;
   just) [[ ${w[1]:-} == @(test|e2e) ]] ;;
   labwc) true ;;
@@ -198,13 +214,23 @@ is_runner() { # <command line>
   esac
 }
 
+# The start time of a process in clock ticks since boot, field 22 of its stat file, so a pid that a new process reuses
+# differs from the one reported. Empty when the file is unreadable. The name field may hold spaces, so cut at its ")".
+proc_start() { # <pid>
+  local stat
+  local -a f
+  stat=$(cat "$proc_dir/$1/stat" 2>/dev/null) || return 0
+  read -ra f <<<"${stat##*) }"
+  echo "${f[19]:-}"
+}
+
 format_elapsed() { printf '%dh%02dm' $(($1 / 3600)) $(($1 % 3600 / 60)); }
 
 # Runners past the hung time that belong to the session by cwd or by a worktree path on the command line, not yet
 # reported. $ps_out is the pass's one process listing: pid, parent pid, elapsed seconds, command line. A match whose
 # ancestor also matched is skipped, so one hung process tree (just -> bash -> npm -> node) is one line.
 check_hung() { # <name> <json of the session's docs>
-  local worktrees pid ppid elapsed args cwd wt up hops
+  local worktrees pid ppid elapsed args cwd wt up hops start
   local -A match_elapsed=() match_args=() parent_of=()
   worktrees=$(session_worktrees "$2")
   [[ -n $worktrees ]] || return 0
@@ -228,10 +254,14 @@ check_hung() { # <name> <json of the session's docs>
       [[ -z ${match_elapsed[$up]:-} ]] || continue 2
       up=${parent_of[$up]:-}
     done
-    [[ -z ${hung_reported[$pid]:-} ]] || continue
+    start=$(proc_start "$pid")
+    if [[ -n ${hung_reported[$pid]:-} && (-z $start || -z ${hung_start[$pid]:-} || $start == "${hung_start[$pid]}") ]]; then
+      hung_start[$pid]=$start
+      continue
+    fi
     log "$1 HUNG pid $pid runs $(format_elapsed "${match_elapsed[$pid]}"): ${match_args[$pid]}"
     problems+=("HUNG $1 $pid $(format_elapsed "${match_elapsed[$pid]}")")
-    hung_reported[$pid]=$1
+    hung_reported[$pid]=$1 hung_start[$pid]=$start
   done
 }
 
@@ -241,7 +271,7 @@ forget_dead_hung() {
   # An empty listing is a failed ps, not a machine with no processes.
   [[ -n $ps_out ]] || return 0
   for pid in "${!hung_reported[@]}"; do
-    awk -v p="$pid" '$1 == p {found = 1} END {exit !found}' <<<"$ps_out" || unset "hung_reported[$pid]"
+    awk -v p="$pid" '$1 == p {found = 1} END {exit !found}' <<<"$ps_out" || unset "hung_reported[$pid]" "hung_start[$pid]"
   done
 }
 
