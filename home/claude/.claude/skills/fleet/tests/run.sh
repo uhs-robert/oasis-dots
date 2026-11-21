@@ -71,7 +71,12 @@ mkdir -p "$FLEET_PROC_DIR"
 doc() { # <status> <waiting_on> [branch]
   printf '[{"id":"p1","branch":"%s","path":"%s/p1.md","project":"proj","status":"%s","waiting_on":"%s"}]\n' "${3:-mine}" "$suite" "$1" "$2" >"$FAKE_DOCS"
 }
-fresh() { rm -rf "$main/.logs" "$FLEET_PROC_DIR"; mkdir -p "$FLEET_PROC_DIR"; : >"$FAKE_PS"; echo '[]' >"$FAKE_GH_RUN"; }
+fresh() {
+  rm -rf "$main/.logs" "$FLEET_PROC_DIR"
+  mkdir -p "$FLEET_PROC_DIR"
+  : >"$FAKE_PS"
+  echo '[]' >"$FAKE_GH_RUN"
+}
 # run [env...]: stdout in $out
 run() { out=$(env PATH="$stubs:$tools" "$@" bash "$script" fl proj 2>&1); }
 # cwd_of <pid> <dir>: the fake /proc link
