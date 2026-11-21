@@ -182,35 +182,51 @@ session_worktrees() { # <json of the session's docs>
   done < <(jq -r '.[].branch' <<<"$1") | sort -u
 }
 
-# A test or e2e runner. The owner's own Betterbird has no /tmp profile and Firefox is not a runner, so neither matches.
-runner_re='(^|[/ ])node( [^ ]+)* --test( |$)|(^|[/ ])npm (run )?(test|e2e)( |$)|(^|[/ ])just test( |$)|(^|[/ ])labwc( |$)|(betterbird|thunderbird).* --?profile[ =]/tmp/'
+# A test or e2e runner, judged by the program itself (the basename of the first word). A wrapper shell, timeout,
+# unshare or a claude whose prompt mentions "just test" has another program, so it never matches. The owner's own
+# Betterbird has no /tmp profile and Firefox is not a runner, so neither matches.
 is_runner() { # <command line>
-  [[ $1 != *firefox* && $1 =~ $runner_re ]]
+  local -a w
+  read -ra w <<<"$1"
+  case ${w[0]##*/} in
+  node) [[ " ${w[*]:1} " == *" --test "* ]] ;;
+  npm | pnpm | yarn | bun) [[ ${w[1]:-} == @(test|e2e) || (${w[1]:-} == run && ${w[2]:-} == @(test|e2e)) ]] ;;
+  just) [[ ${w[1]:-} == @(test|e2e) ]] ;;
+  labwc) true ;;
+  betterbird | thunderbird) [[ " ${w[*]:1} " =~ \ --?profile[\ =]/tmp/ ]] ;;
+  *) false ;;
+  esac
 }
 
 format_elapsed() { printf '%dh%02dm' $(($1 / 3600)) $(($1 % 3600 / 60)); }
 
 # Runners past the hung time that belong to the session by cwd or by a worktree path on the command line, not yet
-# reported. $ps_out is the pass's one process listing: pid, elapsed seconds, command line.
+# reported. $ps_out is the pass's one process listing: pid, parent pid, elapsed seconds, command line. A match whose
+# parent also matched is skipped, so one hung process tree (just -> npm -> node) is one line.
 check_hung() { # <name> <json of the session's docs>
-  local worktrees pid elapsed args cwd wt
+  local worktrees pid ppid elapsed args cwd wt
+  local -A match_elapsed=() match_ppid=() match_args=()
   worktrees=$(session_worktrees "$2")
   [[ -n $worktrees ]] || return 0
-  while read -r pid elapsed args; do
+  while read -r pid ppid elapsed args; do
     [[ $elapsed =~ ^[0-9]+$ ]] || continue
     ((elapsed > hung_seconds)) || continue
-    [[ -z ${hung_reported[$pid]:-} ]] || continue
     is_runner "$args" || continue
     cwd=$(readlink "$proc_dir/$pid/cwd" 2>/dev/null)
     while IFS= read -r wt; do
       if [[ $cwd == "$wt" || $cwd == "$wt"/* || $args == *"$wt"/* || $args == *"$wt "* || $args == *"$wt" ]]; then
-        log "$1 HUNG pid $pid runs $(format_elapsed "$elapsed"): $args"
-        problems+=("HUNG $1 $pid $(format_elapsed "$elapsed")")
-        hung_reported[$pid]=$1
+        match_elapsed[$pid]=$elapsed match_ppid[$pid]=$ppid match_args[$pid]=$args
         break
       fi
     done <<<"$worktrees"
   done <<<"$ps_out"
+  for pid in "${!match_elapsed[@]}"; do
+    [[ -z ${match_elapsed[${match_ppid[$pid]}]:-} ]] || continue
+    [[ -z ${hung_reported[$pid]:-} ]] || continue
+    log "$1 HUNG pid $pid runs $(format_elapsed "${match_elapsed[$pid]}"): ${match_args[$pid]}"
+    problems+=("HUNG $1 $pid $(format_elapsed "${match_elapsed[$pid]}")")
+    hung_reported[$pid]=$1
+  done
 }
 
 # Pids that no longer run are forgotten, so a reused pid is reported again.
@@ -235,7 +251,7 @@ check_ci() {
   run=$(cd "$main_checkout" && timeout 30 gh run list --branch "$branch" --status completed --limit 1 --json conclusion,url,headSha 2>/dev/null) || return 0
   IFS=$'\t' read -r conclusion url sha < <(jq -r '.[0] // empty | [.conclusion, .url, .headSha] | join("\t")' <<<"$run" 2>/dev/null)
   [[ -n ${sha:-} ]] || return 0
-  if [[ $conclusion != failure ]]; then
+  if [[ $conclusion != @(failure|timed_out|startup_failure) ]]; then
     # A green run forgets the red one, so a later red run on a re-run sha reports again.
     [[ $conclusion != success ]] || unset "ci_reported[$repo]"
     return 0
@@ -285,7 +301,7 @@ nudge() { # <window name>
 pass() {
   local now windows pane name dead pane_pid text new_hash docs ids active unfinished state quiet progress
   now=$(date +%s)
-  ps_out=$(ps -eo pid=,etimes=,args= 2>/dev/null)
+  ps_out=$(ps -eo pid=,ppid=,etimes=,args= 2>/dev/null)
   windows=$(tmux list-windows -t "=$fleet" -F '#{pane_id}|#{window_name}|#{pane_dead}|#{pane_pid}' 2>/dev/null) || return 2
   load_state
   all_finished=1
