@@ -177,6 +177,19 @@ check "npm test with a node child is one line, on the parent" '[[ $out == *"HUNG
 check "a runner with firefox in its arguments is flagged" '[[ $out == *"HUNG win 206 "* ]]'
 check "the owner's Firefox and Betterbird in a worktree never report" '[[ $out != *" 207 "* && $out != *" 208 "* ]]'
 
+echo "== HUNG skips a match with any matched ancestor"
+fresh
+doc review "waiting"
+{
+  echo "400 1 36000 just test"
+  echo "401 400 36000 bash -c npm test"
+  echo "402 401 36000 npm test"
+  echo "403 402 36000 node --test test/y.test.js"
+} >"$FAKE_PS"
+for pid in 400 401 402 403; do cwd_of "$pid" "$wt"; done
+run
+check "just -> bash -> npm -> node is one line, on the top" '[[ $out == "HUNG win 400 10h00m" ]]'
+
 echo "== a healthy pass is exactly ok"
 fresh
 doc review ""

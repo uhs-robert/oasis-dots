@@ -202,26 +202,32 @@ format_elapsed() { printf '%dh%02dm' $(($1 / 3600)) $(($1 % 3600 / 60)); }
 
 # Runners past the hung time that belong to the session by cwd or by a worktree path on the command line, not yet
 # reported. $ps_out is the pass's one process listing: pid, parent pid, elapsed seconds, command line. A match whose
-# parent also matched is skipped, so one hung process tree (just -> npm -> node) is one line.
+# ancestor also matched is skipped, so one hung process tree (just -> bash -> npm -> node) is one line.
 check_hung() { # <name> <json of the session's docs>
-  local worktrees pid ppid elapsed args cwd wt
-  local -A match_elapsed=() match_ppid=() match_args=()
+  local worktrees pid ppid elapsed args cwd wt up hops
+  local -A match_elapsed=() match_args=() parent_of=()
   worktrees=$(session_worktrees "$2")
   [[ -n $worktrees ]] || return 0
   while read -r pid ppid elapsed args; do
     [[ $elapsed =~ ^[0-9]+$ ]] || continue
+    parent_of[$pid]=$ppid
     ((elapsed > hung_seconds)) || continue
     is_runner "$args" || continue
     cwd=$(readlink "$proc_dir/$pid/cwd" 2>/dev/null)
     while IFS= read -r wt; do
       if [[ $cwd == "$wt" || $cwd == "$wt"/* || $args == *"$wt"/* || $args == *"$wt "* || $args == *"$wt" ]]; then
-        match_elapsed[$pid]=$elapsed match_ppid[$pid]=$ppid match_args[$pid]=$args
+        match_elapsed[$pid]=$elapsed match_args[$pid]=$args
         break
       fi
     done <<<"$worktrees"
   done <<<"$ps_out"
   for pid in "${!match_elapsed[@]}"; do
-    [[ -z ${match_elapsed[${match_ppid[$pid]}]:-} ]] || continue
+    # The hop limit guards against a cycle in a malformed listing.
+    up=${parent_of[$pid]:-} hops=0
+    while [[ $up =~ ^[0-9]+$ ]] && ((up > 1 && hops++ < 64)); do
+      [[ -z ${match_elapsed[$up]:-} ]] || continue 2
+      up=${parent_of[$up]:-}
+    done
     [[ -z ${hung_reported[$pid]:-} ]] || continue
     log "$1 HUNG pid $pid runs $(format_elapsed "${match_elapsed[$pid]}"): ${match_args[$pid]}"
     problems+=("HUNG $1 $pid $(format_elapsed "${match_elapsed[$pid]}")")
