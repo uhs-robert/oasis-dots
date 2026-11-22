@@ -19,8 +19,8 @@ least accessible:
   searchable, impossible to separate from what they describe. Always try here first.
 - **Comments** — flexible but fragile. They can drift from the code they describe
   when code moves. Use when code alone can't carry the information.
-- **Folder README** — how the files in a folder relate and where to start. It
-  holds facts no single file can hold.
+- **Folder README** — a code map: how the files in a folder relate and where to
+  start. It holds facts no single file can hold.
 - **Commit messages** — capture the *why of the change*, not the *why of the code*.
   Accessible only to those reading history; never assume a code reader will find them.
 
@@ -130,14 +130,20 @@ Write each README sentence by the `plain-writing` skill.
   relate (a rule spanning files, which file to start from, what the folder must
   not depend on) that no single file's header can hold; (b) the folder is a
   place readers start, not one they reach from a caller. Keep it short: a
-  one-line map entry per file, plus those facts. If a README already covers the
-  folder, put the fact there. If none does, write a short one in this folder if
-  readers start there, else in the nearest parent they start from.
+  one-line map entry per file (at most 200 characters), plus those facts. If a
+  README already covers the folder, put the fact there. If none does, write a
+  short one in this folder if readers start there, else in the nearest parent
+  they start from.
 - **Pattern folders get a line, not a README.** When every file has the same
   shape (one file per theme, per action group), the parent's map gets one line,
   even if readers start there, unless the folder also holds facts about how its
   files relate. File count is not the signal: many same-shape files need no
   README, and three files with different roles can.
+- **A README is a code map, not a spec.** Write what each file owns and when to
+  open it. Leave out behavior detail, size figures and history. Put behavior in
+  the repo's design docs, or in the file's header when the repo has none. Put a
+  trap in a comment at the code. When a README entry has grown into a spec, cut
+  it and move the detail to its home.
 - **One home per fact.** Move it, never copy it. A trap or the reason for a
   choice stays a comment at the code.
 - **The repo's own conventions win.** If its AGENTS.md, CLAUDE.md or
