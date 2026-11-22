@@ -124,26 +124,27 @@ the relationship between comment and code explicit and harder to accidentally br
 Write each README sentence by the `plain-writing` skill.
 
 - **Keep maps true.** When the diff adds, renames or removes a file and the
-  nearest README's code map covers that folder, update the map.
+  nearest README's code map covers that folder, update the map. Keep each map
+  entry to one line of at most 200 characters.
 - **Test for a new README.** When either signal holds and no README covers the
   folder, write one: (a) the diff creates a fact about how files in the folder
   relate (a rule spanning files, which file to start from, what the folder must
   not depend on) that no single file's header can hold; (b) the folder is a
   place readers start, not one they reach from a caller. Keep it short: a
-  one-line map entry per file (at most 200 characters), plus those facts. If a
-  README already covers the folder, put the fact there. If none does, write a
-  short one in this folder if readers start there, else in the nearest parent
-  they start from.
+  one-line map entry per file, plus those facts. If a README already covers the
+  folder, put the fact there. If none does, write a short one in this folder if
+  readers start there, else in the nearest parent they start from.
 - **Pattern folders get a line, not a README.** When every file has the same
   shape (one file per theme, per action group), the parent's map gets one line,
   even if readers start there, unless the folder also holds facts about how its
   files relate. File count is not the signal: many same-shape files need no
   README, and three files with different roles can.
-- **A README is a code map, not a spec.** Write what each file owns and when to
-  open it. Leave out behavior detail, size figures and history. Put behavior in
-  the repo's design docs, or in the file's header when the repo has none. Put a
-  trap in a comment at the code. When a README entry has grown into a spec, cut
-  it and move the detail to its home.
+- **A map entry is a pointer, not a spec.** This rule covers the folder map
+  only. Other README sections, such as usage for a CLI, keep their content.
+  Write what each file owns and when to open it. Leave out behavior detail, size
+  figures and history. Put behavior in the repo's design docs, or in the file's
+  header when the repo has none. Put a trap in a comment at the code. When a map
+  entry has grown into a spec, cut it and move the detail to its home.
 - **One home per fact.** Move it, never copy it. A trap or the reason for a
   choice stays a comment at the code.
 - **The repo's own conventions win.** If its AGENTS.md, CLAUDE.md or
