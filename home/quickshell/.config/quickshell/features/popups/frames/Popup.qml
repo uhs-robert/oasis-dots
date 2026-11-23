@@ -548,8 +548,8 @@ PanelWindow {
         root.focus_active_view();
     }
     // focus_open's grab is refused at once when the window already has the keyboard, so it reports nothing to do.
-    // Only that grab: on a walk or keybind open, Window.active can be stale. Another popup window mapped Exclusive moments
-    // ago takes the keyboard after this check, and a refused window never asks again.
+    // Only that grab: on a walk or keybind open, Window.active can be true for just a moment. Another popup window that
+    // maps Exclusive at the same time takes the keyboard right after this check, and a refused window never asks again.
     Connections {
         target: Popups
         function onRefuse_needless_grab() {
