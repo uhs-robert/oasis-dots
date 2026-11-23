@@ -25,15 +25,16 @@ Item {
     readonly property bool animating: Popups.open_name === "keeptabs" && root.visible && PowerSource.on_ac
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_fg, text_dim: root.st.text_dim })
 
-    // keeptabs-hook writes only these four states. Any other one keeps its own name in grey with a flat line, so a
-    // new state shows up as itself instead of as a guess.
+    // The word is always the session's own state, so the screen never makes you translate a game term back.
+    // Idle, and any state keeptabs-hook adds later, shows in grey with a flat line instead of a guessed beat.
     function condition(state) {
         const s = state || "idle";
-        if (s === "waiting") return { word: "CAUTION", color: Style.pal.warning, beat: "waiting", ms: 1500 };
-        if (s === "running") return { word: "FINE", color: Style.pal.ok, beat: "running", ms: 1000 };
-        if (s === "done") return { word: "DONE", color: Style.pal.info, beat: "done", ms: 2400 };
-        if (s === "idle") return { word: "IDLE", color: root.st.text_dim, beat: "idle", ms: 0 };
-        return { word: s.toUpperCase(), color: root.st.text_dim, beat: "idle", ms: 0 };
+        const look = ({
+            waiting: { color: Style.pal.warning, beat: "waiting", ms: 1500 },
+            running: { color: Style.pal.ok, beat: "running", ms: 1000 },
+            done: { color: Style.pal.info, beat: "done", ms: 2400 }
+        })[s] || { color: root.st.text_dim, beat: "idle", ms: 0 };
+        return Object.assign({ word: s.toUpperCase() }, look);
     }
 
     function ensure_visible(i) {
