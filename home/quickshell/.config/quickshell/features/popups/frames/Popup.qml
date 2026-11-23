@@ -228,7 +228,7 @@ PanelWindow {
     }
 
     // Set by popups whose layout is fluid: from a side island they take the island body's width, but never less than
-    // min_width. A capsule island grows its plate out to that floor while the popup hangs from it (island_grow).
+    // min_width, which the island grows out to (island_grow).
     property bool fit_island: false
     property real min_width: 0
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
@@ -346,7 +346,10 @@ PanelWindow {
 
     // Never narrower than the island's bottom edge (its body, between the slants); a fit_island popup adds the shell's side room on top so the content keeps the island's width, or min_width past a narrow island.
     implicitWidth: root.drawer ? root.drawer_full.surface.width : root.base_width + root.beside_line_room
-    readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center" ? Math.max(root.island_width, Style.px(root.min_width)) + root.device_side * 2 : Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, island_floor_width, root.st.popup_min_width)
+    readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? Math.max(root.island_width, Style.px(root.min_width)) + root.device_side * 2 : Math.max(root.own_width, island_floor_width)
+    readonly property bool fits: root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center"
+    // The width the popup asks for by itself, before any island floor.
+    readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width)
     implicitHeight: root.drawer ? root.drawer_full.surface.height : root.base_height
     readonly property real base_height: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.drop_room
     default property alias content: content_scope.data
@@ -370,11 +373,15 @@ PanelWindow {
     readonly property var island: held_anchor ? held_anchor.parent : null
     // Capsule islands measure by the capsule they draw, not the body between their caps.
     readonly property bool island_capsule: !root.beside && !!island && island.capsule === true
-    readonly property real island_width: root.island && root.island_capsule ? root.island.capsule_width + root.island_grow : held_anchor ? held_anchor.width : 0
-    // How far the capsule's plate grows toward the bar's middle to meet min_width, within the bar's free room
-    // (Island.grow_room). Past that room the popup overhangs as any wider popup does. A drawer and the center island
-    // (never fit) keep the island as it is.
-    readonly property real island_grow: root.fit_island && root.island_capsule && !root.drawer && root.side !== "center" ? Math.max(0, Math.min(Style.px(root.min_width) - root.island.capsule_width, root.island.grow_room)) : 0
+    readonly property real island_width: root.drawn_island_width + root.island_grow
+    readonly property real drawn_island_width: root.island && root.island_capsule ? root.island.capsule_width : held_anchor ? held_anchor.width : 0
+    // How far the island's drawing grows toward the bar's middle to meet the popup's width (less the device shell's
+    // sides, which hang past the island on every popup), within the bar's free room (Island.grow_room). Past that room
+    // the popup overhangs as before. Built from drawn_island_width and own_width, never island_width, which this feeds.
+    // A drawer is already cut to the popup's width from a band with no island outline, and a tooltip takes the island's
+    // width, so neither grows it.
+    readonly property real island_grow_wanted: (root.fit_island && root.side !== "center" ? Style.px(root.min_width) : root.own_width - root.device_side * 2) - root.drawn_island_width
+    readonly property real island_grow: !root.passive && !root.beside && !root.drawer && !!root.island && root.island.can_grow === true ? Math.max(0, Math.min(root.island_grow_wanted, root.island.grow_room)) : 0
     onIsland_growChanged: Popups.report_island_grow(root.popup_name, root.island_grow)
     // The clock's meeting chip widens its island, but not the clock popup sized from it. Only the width floor below uses this;
     // the accent line, the island notch and the corner radii still follow the island as drawn.

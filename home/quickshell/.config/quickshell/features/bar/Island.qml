@@ -44,13 +44,19 @@ Item {
     readonly property real capsule_width: root.body_span
     // The free bar length past the island's inner end, up to the next island (Bar sets it). 0 keeps the plate as drawn.
     property real grow_room: 0
-    // The open popup's growth for this capsule (Popup.island_grow). `grow` follows it like `join` follows `joined`:
-    // out as the popup opens, back in once it has folded away. The modules and their hit areas never move, only the plate.
-    readonly property real grow_target: root.capsule && Popups.open_name !== "" && Popups.open_anchor === body ? (Popups.island_grows[Popups.open_name] || 0) : 0
+    // Whether a popup can widen this island: a shape that draws something, along a top or bottom bar. Lualine's
+    // sections are their own drawing, so it keeps its size.
+    readonly property bool can_grow: !root.vertical && !root.lualine && root.shape !== "none"
+    // The open popup's growth for this island (Popup.island_grow). `grow` follows it like `join` follows `joined`:
+    // out as the popup opens, back in once it has folded away.
+    readonly property real grow_target: root.can_grow && Popups.open_name !== "" && Popups.open_anchor === body ? (Popups.island_grows[Popups.open_name] || 0) : 0
     property real grow: 0
-    // The grown plate grows toward the bar's middle: a left island to the right, a right island to the left, the center both ways.
-    readonly property real plate_x: root.capsule_inset - (root.cap_left ? (root.cap_right ? root.grow / 2 : root.grow) : 0)
-    readonly property real plate_span: root.body_span + root.grow
+    // Growth goes toward the bar's middle: before the modules on a right island, after them on a left one, half each
+    // way on the center one. Only the drawing grows (deco_length, moved back by grow_before in deco_frame); the
+    // modules, their hit areas and the island's own size stay put, so the bar never reflows under the pointer.
+    readonly property real grow_before: root.cap_left ? (root.cap_right ? root.grow / 2 : root.grow) : 0
+    readonly property real grow_after: root.grow - root.grow_before
+    readonly property real deco_length: root.length + root.grow
     readonly property real capsule_radius: (root.thickness - root.capsule_inset) / 2
     // The submap tab hangs from this island.
     property bool tab_joined: false
@@ -79,7 +85,7 @@ Item {
     readonly property bool window: root.shape === "window"
     readonly property int window_edge: root.border_width
     readonly property real window_x: 4
-    readonly property real window_width: root.length - root.window_x * 2
+    readonly property real window_width: root.deco_length - root.window_x * 2
     readonly property real window_top: 1
     readonly property real window_bottom: root.thickness - 1
     // One of IslandOutlines' shapes: a single polygon and its rim, sized and traced there.
@@ -89,14 +95,14 @@ Item {
     readonly property bool stroke_only: !root.filled
     // Style's min_border already raised border_width to at least this; max() keeps a bare island visible if it was not.
     readonly property real stroke_width: Math.max(root.border_width, root.shape === "underline" ? 2 : 1)
-    readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.length, root.thickness, root.cap_width, root.cap_left, root.cap_right) : []
+    readonly property var outline_rim: root.outlined ? Outlines.rim_path(root.shape, root.deco_length, root.thickness, root.cap_width, root.cap_left, root.cap_right) : []
     // The rim path moved in by the border: where the fill's effects stop.
     readonly property var outline_inner: root.outlined ? Outlines.inset(root.outline_rim, root.border_width) : []
     readonly property int cap_width: root.outlined || root.stroke_only ? Outlines.cap_width(root.shape, root.thickness) : root.window ? 0 : root.octagon ? Math.round(root.thickness * 0.3) : root.lualine ? BarLayout.lualine_arrow(root.thickness) : root.visor ? Math.round(root.thickness * 0.8) : root.thickness / 2
     readonly property real pad: root.capsule ? Style.bar_capsule_pad : root.lualine ? (root.center ? 10 : 0) : root.window ? root.window_x + (root.center ? 16 : 6) : root.octagon ? 10 : 8
 
     readonly property real oct_x0: root.lug
-    readonly property real oct_x1: root.length - root.lug
+    readonly property real oct_x1: root.deco_length - root.lug
     readonly property real oct_c: root.cap_width
     readonly property real oct_i: root.border_width / 2
 
@@ -109,7 +115,7 @@ Item {
         if (root.slanted) {
             const s = y0 * root.cap_width / root.thickness;
             const x = root.cap_left ? s : 0;
-            return { x: x, w: root.length - x - (root.cap_right ? s : 0) };
+            return { x: x, w: root.deco_length - x - (root.cap_right ? s : 0) };
         }
         const a = root.fill_edges(y0), b = root.fill_edges(y1);
         const x = Math.max(a[0], b[0]);
@@ -118,13 +124,13 @@ Item {
 
     // The left and right x of the fill at height y, inside any border that the effects would otherwise cover; [0, 0] outside it.
     function fill_edges(y) {
-        const h = root.thickness, w = root.length, e = root.border_width;
+        const h = root.thickness, w = root.deco_length, e = root.border_width;
         if (root.window) {
             if (y < root.window_top + e || y > root.window_bottom - e) return [0, 0];
             return [root.window_x + e, root.window_x + root.window_width - e];
         }
         if (root.capsule) {
-            const x0 = root.plate_x + e, x1 = root.plate_x + root.plate_span - e, y0 = root.capsule_inset + e, y1 = h - e;
+            const x0 = root.capsule_inset + e, x1 = root.capsule_inset + root.body_span + root.grow - e, y0 = root.capsule_inset + e, y1 = h - e;
             if (y < y0 || y > y1) return [0, 0];
             const top_r = Math.max(0, root.capsule_radius - e), bottom_r = Math.max(0, root.capsule_radius * (1 - root.join) - e);
             const corner = (r, dy) => r - Math.sqrt(Math.max(0, r * r - dy * dy));
@@ -204,12 +210,14 @@ Item {
         for (const c of layout.children) if (c.visible && root.is_fitted(c)) return true;
         return false;
     }
-    // Places a layer drawn in the top-bar frame onto the edge. Shared by every layer; each is at 0, 0 and `length` by `thickness`.
+    // Places a layer drawn in the top-bar frame onto the edge. Shared by every layer; each is at 0, 0 and `deco_length`
+    // by `thickness`, moved back along the bar by grow_before.
     Matrix4x4 {
         id: deco_frame
         matrix: {
             const m = Band.band_affine(root.edge, root.thickness);
-            return Qt.matrix4x4(m[0], m[2], 0, m[4], m[1], m[3], 0, m[5], 0, 0, 1, 0, 0, 0, 0, 1);
+            const s = -root.grow_before;
+            return Qt.matrix4x4(m[0], m[2], 0, m[4] + m[0] * s, m[1], m[3], 0, m[5] + m[1] * s, 0, 0, 1, 0, 0, 0, 0, 1);
         }
     }
 
@@ -255,16 +263,16 @@ Item {
     }
 
     Item {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         visible: root.capsule
         transform: deco_frame
 
         Rectangle {
             id: capsule_shape
-            x: root.plate_x
+            x: root.capsule_inset
             y: root.capsule_inset
-            width: root.plate_span
+            width: root.body_span + root.grow
             height: root.thickness - root.capsule_inset
             topLeftRadius: root.capsule_radius
             topRightRadius: root.capsule_radius
@@ -303,7 +311,7 @@ Item {
 
     // The popup style's shade and dither, behind the modules and clipped to the slants.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.shaded && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: deco_frame
@@ -314,17 +322,17 @@ Item {
                 strokeWidth: -1
                 // The left island mirrors the shade so its light edge faces the screen centre like the right one.
                 fillGradient: LinearGradient {
-                    x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.length : 0
+                    x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.deco_length : 0
                     y1: 0
-                    x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.length
+                    x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.deco_length
                     y2: root.thickness
                     GradientStop { position: 0; color: root.faded(root.shade_color) }
                     GradientStop { position: 1; color: root.faded(root.bg_color) }
                 }
                 startX: 0
                 startY: 0
-                PathLine { x: root.length; y: 0 }
-                PathLine { x: root.length - (root.cap_right ? root.cap_width : 0); y: root.thickness }
+                PathLine { x: root.deco_length; y: 0 }
+                PathLine { x: root.deco_length - (root.cap_right ? root.cap_width : 0); y: root.thickness }
                 PathLine { x: root.cap_left ? root.cap_width : 0; y: root.thickness }
                 PathLine { x: 0; y: 0 }
             }
@@ -332,7 +340,7 @@ Item {
     }
 
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.visor
         transform: deco_frame
@@ -349,7 +357,7 @@ Item {
 
     // The octagon: chamfered corners on the open ends, the screen-edge ends square; fill, rim and the case lugs.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.octagon
         transform: deco_frame
@@ -371,7 +379,7 @@ Item {
 
     // The rim sits above the island's content so a module that fills the height cannot cover it.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         z: 2
         active: root.octagon
@@ -403,7 +411,7 @@ Item {
     // Case lugs on the center island, short tabs in the rim colour centred on the ends, and the bezel's hour mark at
     // each open end inside the rim (none on an end that meets the screen edge).
     Item {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         // Above a borrowing style's dither and scanlines, which would hatch the marks.
         z: 1
@@ -415,7 +423,7 @@ Item {
 
             Rectangle {
                 required property int modelData
-                x: modelData === 0 ? 0 : root.length - root.lug
+                x: modelData === 0 ? 0 : root.deco_length - root.lug
                 y: root.thickness / 2 - 7
                 width: root.lug + 1
                 height: 14
@@ -430,7 +438,7 @@ Item {
             Rectangle {
                 required property int modelData
                 visible: modelData === 0 ? root.cap_left : root.cap_right
-                x: modelData === 0 ? root.lug + 5 : root.length - root.lug - 7
+                x: modelData === 0 ? root.lug + 5 : root.deco_length - root.lug - 7
                 y: (root.thickness - height) / 2
                 width: 2
                 height: 12
@@ -442,7 +450,7 @@ Item {
     // An outlined shape's fill, one polygon so a translucent fill never stacks. The pixel shape skips the curve
     // renderer's antialiasing so its steps stay crisp.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.outlined
         transform: deco_frame
@@ -455,15 +463,15 @@ Item {
                 // A style's frame shade, laid out as on the slant.
                 fillGradient: root.shade_color.a > 0 ? outline_shade : null
                 PathPolyline {
-                    path: Outlines.fill_path(root.outline_rim, root.length, root.cap_left, root.cap_right).map(p => Qt.point(p[0], p[1]))
+                    path: Outlines.fill_path(root.outline_rim, root.deco_length, root.cap_left, root.cap_right).map(p => Qt.point(p[0], p[1]))
                 }
             }
 
             LinearGradient {
                 id: outline_shade
-                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.length : 0
+                x1: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? root.deco_length : 0
                 y1: 0
-                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.length
+                x2: root.shade_vertical ? 0 : root.cap_right && !root.cap_left ? 0 : root.deco_length
                 y2: root.thickness
                 GradientStop { position: 0; color: root.faded(root.shade_color) }
                 GradientStop { position: 1; color: root.faded(root.bg_color) }
@@ -474,7 +482,7 @@ Item {
     // The window's fill; its corner pixels stay clear.
     Item {
         visible: root.window
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         transform: deco_frame
 
@@ -508,7 +516,7 @@ Item {
     }
 
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.dither_color.a > 0 && root.filled
         transform: deco_frame
@@ -518,6 +526,27 @@ Item {
             slant_right: root.cap_right ? root.cap_width : 0
             row_span: root.slanted ? null : root.fill_span
             color: root.faded(root.dither_color)
+        }
+    }
+
+    // The body's own fill (the plain slant's) over the grown length on each side of the modules, which the body
+    // itself never covers since it does not grow.
+    Item {
+        width: root.deco_length
+        height: root.thickness
+        visible: root.grow > 0 && body.color.a > 0
+        transform: deco_frame
+
+        Repeater {
+            model: [0, 1]
+
+            Rectangle {
+                required property int modelData
+                x: modelData === 0 ? body.along : body.along + root.grow_before + root.body_span
+                width: modelData === 0 ? root.grow_before : root.grow_after
+                height: root.thickness
+                color: body.color
+            }
         }
     }
 
@@ -589,7 +618,7 @@ Item {
 
     // Caps overlap the body by 1px so fractional scaling (1.6 on the laptop) leaves no seam.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.cap_left && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: deco_frame
@@ -612,7 +641,7 @@ Item {
     }
 
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.cap_right && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: deco_frame
@@ -624,7 +653,7 @@ Item {
                 fillColor: root.faded(root.cap_right_fill.a > 0 ? root.cap_right_fill : root.shaded ? "transparent" : root.bg_color)
                 PathPolyline {
                     path: {
-                        const c = root.cap_width, h = root.thickness, o = root.cap_overlap, x = root.length - c - o;
+                        const c = root.cap_width, h = root.thickness, o = root.cap_overlap, x = root.deco_length - c - o;
                         if (!root.lualine || root.center) return [[0, 0], [c + o, 0], [o, h], [0, h], [0, 0]].map(p => Qt.point(x + p[0], p[1]));
                         return [[0, 0], [o, 0], [c + o, h / 2], [o, h], [0, h], [0, 0]].map(p => Qt.point(x + p[0], p[1]));
                     }
@@ -640,7 +669,7 @@ Item {
         readonly property real first_y: root.window ? root.window_top + root.window_edge : 0
         readonly property real extent: root.window ? root.window_bottom - root.window_top - root.window_edge * 2 : root.thickness
         visible: root.scanline_color.a > 0 && root.filled
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         transform: [deco_frame]
 
@@ -663,7 +692,7 @@ Item {
 
     // Traces the slants and bottom edge; the sides on the screen edge stay open.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.border_width > 0 && !root.visor && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: deco_frame
@@ -679,7 +708,7 @@ Item {
 
                 PathPolyline {
                     path: {
-                        const w = root.length, h = root.thickness, c = root.cap_width, i = root.border_width / 2;
+                        const w = root.deco_length, h = root.thickness, c = root.cap_width, i = root.border_width / 2;
                         const pts = [];
                         pts.push(root.cap_left ? Qt.point(i, 0) : Qt.point(0, h - i));
                         if (root.cap_left) pts.push(Qt.point(c + i, h - i));
@@ -693,7 +722,7 @@ Item {
     }
 
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         active: root.inset_width > 0 && root.inset_color.a > 0 && !root.capsule && !root.octagon && !root.window && !root.outlined && root.filled
         transform: deco_frame
@@ -709,7 +738,7 @@ Item {
 
                 PathPolyline {
                     path: {
-                        const w = root.length, h = root.thickness, off = root.inset_gap + root.inset_width / 2;
+                        const w = root.deco_length, h = root.thickness, off = root.inset_gap + root.inset_width / 2;
                         const slope = root.cap_width / h;
                         const shift = off * Math.sqrt(1 + slope * slope);
                         const pts = [];
@@ -726,7 +755,7 @@ Item {
 
     // An outlined shape's rim, above the content like the octagon's, on every side but the screen's.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         z: 2
         active: root.outlined && root.border_width > 0
@@ -749,13 +778,13 @@ Item {
 
     // Stroke `i` of the underline (one) or brackets (four) as points; empty past the last.
     function stroke_points(i) {
-        const all = root.shape === "underline" ? [Outlines.underline_path(root.length, root.thickness, root.stroke_width)] : Outlines.bracket_paths(root.length, root.thickness, Outlines.bracket_arm(root.thickness), root.stroke_width);
+        const all = root.shape === "underline" ? [Outlines.underline_path(root.deco_length, root.thickness, root.stroke_width)] : Outlines.bracket_paths(root.deco_length, root.thickness, Outlines.bracket_arm(root.thickness), root.stroke_width);
         return i < all.length ? all[i].map(p => Qt.point(p[0], p[1])) : [];
     }
 
     // The fill-less shapes' strokes, above the content. `none` has no layer.
     Loader {
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         z: 2
         active: root.stroke_only && root.shape !== "none"
@@ -806,7 +835,7 @@ Item {
     Item {
         visible: root.window
         z: 2
-        width: root.length
+        width: root.deco_length
         height: root.thickness
         transform: deco_frame
 
