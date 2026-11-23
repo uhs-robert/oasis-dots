@@ -478,6 +478,7 @@ Singleton {
     readonly property bool tick_ruler: root.active.tick_ruler
     readonly property bool range_line: root.active.range_line
     readonly property bool key_round: root.active.key_round
+    readonly property string snes_edition: root.active.snes_edition
     readonly property string key_cap: root.active.key_cap
     readonly property bool pill_chips: root.active.pill_chips
     readonly property var title_index: root.active.title_index
@@ -695,6 +696,8 @@ Singleton {
         out.push({ key: "toast_enter", label: "Toast arrival", type: "choice", default: b.toast_enter || "", choices: root.toast_enters, labels: root.borrow_labels("toast_enter", root.toast_enters) });
         out.push({ key: "dir_anim", label: "Directory animation", type: "choice", default: b.dir_anim || "fade", choices: root.dir_anims, labels: root.borrow_labels("dir_anim", root.dir_anims) });
         const saved = root.theme_values[style_name] || {};
+        // Hiding is only presentation: with glyphs off the saved edition stays in theme_values.
+        if (b.controller === "snes" && (all_rows || saved.controller_glyphs !== false)) out.push({ key: "snes_edition", label: "SNES edition", type: "choice", default: "Super Famicom", choices: ["Super Famicom", "SNES US"] });
         if (FrameTokens.offered(b)) out.push({ key: "screen_frame", label: "Screen frame", type: "bool", default: false });
         const corner_choices = FrameTokens.row_choices(b.screen_frame_only, root.frame_corners);
         out.push({ key: "corner_style", label: "Corner style", type: "choice", default: FrameTokens.natural_corner(b, root.frame_corners), choices: corner_choices, labels: root.borrow_labels("corner_style", corner_choices) });

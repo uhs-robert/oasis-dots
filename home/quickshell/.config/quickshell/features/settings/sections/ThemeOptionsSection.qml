@@ -49,6 +49,7 @@ RowsSection {
             caret_blink: "Blink the text cursor in search and input fields.",
             fade_fills: "Selection and title fills fade out to the right.",
             controller_glyphs: "Draw keys whose face shows them (Enter, Tab, hjkl, arrows, [ ], o, x, a, b, y) as the console's buttons. Off keeps plain key caps.",
+            snes_edition: "Super Famicom or SNES US colours for the buttons.",
             watch_colors: "Theme tints the watch from your palette. Classic is the fixed lock-skin green.",
             picker_skin: "Screenshot picker cursor, loupe and targets, from any style, in your palette.",
             overview_skin: "Overview extras: Night Vision's counter, tint and lock-on, or MGS1 Scope's reticle.",

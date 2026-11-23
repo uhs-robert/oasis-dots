@@ -13,13 +13,21 @@ Item {
     readonly property bool dpad: root.button.startsWith("dpad")
     readonly property bool pill: root.button === "start" || root.button === "select"
 
-    // Super Famicom hardware colors pulled halfway into the theme's own hues.
-    readonly property var face_colors: ({
+    // Hardware colors pulled halfway into the theme's own hues; the US pad is two purples.
+    readonly property bool us: Style.snes_edition === "SNES US"
+    readonly property var face_colors: root.us ? ({
+        a: Qt.tint(Theme.magenta, Qt.alpha("#4b3a78", 0.6)),
+        b: Qt.tint(Theme.magenta, Qt.alpha("#4b3a78", 0.6)),
+        x: Qt.tint(Theme.fg_dim, Qt.alpha("#b3a8e0", 0.6)),
+        y: Qt.tint(Theme.fg_dim, Qt.alpha("#b3a8e0", 0.6))
+    }) : ({
         a: Qt.tint(Theme.red, Qt.alpha("#d8292f", 0.5)),
         b: Qt.tint(Theme.yellow, Qt.alpha("#f1c232", 0.5)),
         x: Qt.tint(Theme.blue, Qt.alpha("#3e5cc0", 0.55)),
         y: Qt.tint(Theme.green, Qt.alpha("#27a04a", 0.5))
     })
+    // The dark purple A/B melt into a dark bar, so the US pad gives them the lavender of X/Y as a rim.
+    readonly property color rim_lavender: Qt.tint(Theme.fg_dim, Qt.alpha("#b3a8e0", 0.6))
     readonly property color face_color: root.face ? root.face_colors[root.button] : "transparent"
     readonly property color plastic: Qt.tint(Theme.fg_dim, Qt.alpha("#a4a4b4", 0.45))
     readonly property color dark_plastic: Qt.tint(Theme.bg_surface, Qt.alpha("#3a3a44", 0.5))
@@ -34,13 +42,13 @@ Item {
         antialiasing: true
         color: root.face_color
         border.width: 1
-        border.color: Qt.darker(root.face_color, 1.7)
+        border.color: root.us && (root.button === "a" || root.button === "b") ? root.rim_lavender : Qt.darker(root.face_color, 1.7)
 
         Text {
             anchors.centerIn: parent
             anchors.verticalCenterOffset: 0.5
             text: root.button.toUpperCase()
-            color: root.button === "b" || root.button === "y" ? Theme.bg_crust : Theme.fg_strong
+            color: (root.us ? root.button === "x" || root.button === "y" : root.button === "b" || root.button === "y") ? Theme.bg_crust : Theme.fg_strong
             font.family: "Silkscreen"
             font.pixelSize: 8
         }
