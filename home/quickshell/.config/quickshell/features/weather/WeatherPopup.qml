@@ -30,6 +30,7 @@ Popup {
     size_class: "large"
     preferred_width: 440
     fit_island: true
+    min_width: 360
     title_value: WeatherState.has_data ? root.day_span + "D" : ""
     body_height: content.implicitHeight + 24
     key_help: "Tab tabs · 1-" + root.tabs.length + " select · [ ] view · " + (root.on_alerts_tab ? "h/l alert · j/k scroll" : "h/l move") + " · H/L jump · gg/0 now · G/$ end · r refresh" + (root.has_alerts ? " · a alerts" : "")

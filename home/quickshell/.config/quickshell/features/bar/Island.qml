@@ -42,6 +42,15 @@ Item {
     property color sheen_color: "transparent"
     readonly property bool capsule: root.shape === "capsule"
     readonly property real capsule_width: root.body_span
+    // The free bar length past the island's inner end, up to the next island (Bar sets it). 0 keeps the plate as drawn.
+    property real grow_room: 0
+    // The open popup's growth for this capsule (Popup.island_grow). `grow` follows it like `join` follows `joined`:
+    // out as the popup opens, back in once it has folded away. The modules and their hit areas never move, only the plate.
+    readonly property real grow_target: root.capsule && Popups.open_name !== "" && Popups.open_anchor === body ? (Popups.island_grows[Popups.open_name] || 0) : 0
+    property real grow: 0
+    // The grown plate grows toward the bar's middle: a left island to the right, a right island to the left, the center both ways.
+    readonly property real plate_x: root.capsule_inset - (root.cap_left ? (root.cap_right ? root.grow / 2 : root.grow) : 0)
+    readonly property real plate_span: root.body_span + root.grow
     readonly property real capsule_radius: (root.thickness - root.capsule_inset) / 2
     // The submap tab hangs from this island.
     property bool tab_joined: false
@@ -115,7 +124,7 @@ Item {
             return [root.window_x + e, root.window_x + root.window_width - e];
         }
         if (root.capsule) {
-            const x0 = root.capsule_inset + e, x1 = root.capsule_inset + root.body_span - e, y0 = root.capsule_inset + e, y1 = h - e;
+            const x0 = root.plate_x + e, x1 = root.plate_x + root.plate_span - e, y0 = root.capsule_inset + e, y1 = h - e;
             if (y < y0 || y > y1) return [0, 0];
             const top_r = Math.max(0, root.capsule_radius - e), bottom_r = Math.max(0, root.capsule_radius * (1 - root.join) - e);
             const corner = (r, dy) => r - Math.sqrt(Math.max(0, r * r - dy * dy));
@@ -228,6 +237,23 @@ Item {
         NumberAnimation { target: root; property: "join"; to: 0; duration: 90; easing.type: Easing.InCubic }
     }
 
+    // `to` is set here, not bound: a binding on it can update after this handler has already started the animation.
+    onGrow_targetChanged: {
+        grow_anim.stop();
+        shrink_anim.stop();
+        grow_anim.to = root.grow_target;
+        shrink_to.to = root.grow_target;
+        (root.grow_target > root.grow ? grow_anim : shrink_anim).restart();
+    }
+
+    NumberAnimation { id: grow_anim; target: root; property: "grow"; duration: 180; easing.type: Easing.OutCubic }
+
+    SequentialAnimation {
+        id: shrink_anim
+        PauseAnimation { duration: 120 }
+        NumberAnimation { id: shrink_to; target: root; property: "grow"; duration: 90; easing.type: Easing.InCubic }
+    }
+
     Item {
         width: root.length
         height: root.thickness
@@ -236,9 +262,9 @@ Item {
 
         Rectangle {
             id: capsule_shape
-            x: root.capsule_inset
+            x: root.plate_x
             y: root.capsule_inset
-            width: root.body_span
+            width: root.plate_span
             height: root.thickness - root.capsule_inset
             topLeftRadius: root.capsule_radius
             topRightRadius: root.capsule_radius
