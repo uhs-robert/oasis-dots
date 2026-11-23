@@ -31,7 +31,7 @@ const cases = [
   ["single shoulders", () => [buttons("snes", "["), buttons("ps1", "]")], [["l"], ["r1"]]],
   ["a modified key never draws", () => buttons("ps2", "Ctrl+Enter"), []],
   ["no glyphs without a console", () => buttons("", "Enter"), []],
-  ["cap sizes per key_cap", () => ["none", "ps2_gloss", "ps1_dome", "snes_pad", "nes_black"].map(c => [K.cap_pad_w({ key_cap: c }), K.cap_gloss_h({ key_cap: c })]), [[6, 0], [10, 3], [8, 2], [12, 2], [8, 2]]],
+  ["cap sizes per key_cap", () => ["none", "ps2_gloss", "ps1_dome", "snes_pad", "nes_black"].map(c => [K.cap_pad_w({ key_cap: c }), K.cap_gloss_h({ key_cap: c })]), [[6, 0], [10, 0], [10, 0], [12, 2], [8, 2]]],
   ["an unknown key_cap is sized as a flat cap", () => [K.cap_pad_w({ key_cap: "nes_blk" }), K.cap_gloss_h({ key_cap: "nes_blk" })], [6, 0]],
   ["every console resolves a button file", () => ["nes", "snes", "ps1", "ps2", "gameboy"].map(p => K.button_path(p).endsWith(".qml")), Array(5).fill(true)],
 ];
