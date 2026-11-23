@@ -28,6 +28,9 @@ Singleton {
         root.providers = next;
     }
 
+    // The floor an island picker and the start menu share, so App Search keeps the menu's width when it replaces it.
+    readonly property real island_min_width: 320
+
     // With an anchor it drops from that island like a popup; without one it docks at the bottom of the focused monitor.
     // A browse provider (PickerProvider.layout) ignores the anchor and always drops from the focused monitor's center.
     // `arg` reaches the provider's refresh(), e.g. "delete" for the clipboard picker.

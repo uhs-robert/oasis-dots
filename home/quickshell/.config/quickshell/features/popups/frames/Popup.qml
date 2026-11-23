@@ -65,7 +65,11 @@ PanelWindow {
     property bool shell_allowed: true
     // Popups inside the style's handheld shell (DeviceShell), and the room it keeps around the content.
     readonly property bool device: root.st.device_shell && root.shell_allowed && !root.passive
-    readonly property int device_side: root.device ? 20 : 0
+    readonly property int device_side: root.device ? root.shell_side : 0
+    readonly property int shell_side: 20
+    // Counts the shell's sides in the fit width without drawing the shell, so a shell-less popup (the island picker)
+    // keeps the width of a shelled one it replaces (the start menu).
+    property bool fit_shell_room: false
     readonly property int device_top: root.device ? 30 : 0
     readonly property int device_bottom: root.device ? 80 : 0
     // Set while a native menu from this popup is open; focus returns to the popup when it closes.
@@ -352,7 +356,7 @@ PanelWindow {
     readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width)
     // A fit popup's floor, the device shell's sides included. Beside an island that grows, the shell lines up with
     // the grown island instead of hanging past both its ends.
-    readonly property real fit_width: Style.px(root.min_width) + root.device_side * 2
+    readonly property real fit_width: Style.px(root.min_width) + (root.device || root.fit_shell_room && root.st.device_shell ? root.shell_side * 2 : 0)
     implicitHeight: root.drawer ? root.drawer_full.surface.height : root.base_height
     readonly property real base_height: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.drop_room
     default property alias content: content_scope.data
