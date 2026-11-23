@@ -22,8 +22,11 @@ Rectangle {
     // Pixel fonts have no internal leading, so the cap grows with its ring or the ring covers the glyph.
     readonly property int ring_width: KeyHints.cap_ring_width(root.st)
 
-    implicitWidth: root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + 6 + root.ring_width * 2)
-    implicitHeight: root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2
+    // A plain PS2 cap: the glossy black of the pad buttons (styles/ps2/widgets/Ps2Button.qml) with its key tokens as the top colour.
+    readonly property bool ps2_cap: root.st.controller === "ps2" && !root.pad && !root.plain && !root.orb
+
+    implicitWidth: root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + (root.ps2_cap ? 10 : 6) + root.ring_width * 2)
+    implicitHeight: root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2 + (root.ps2_cap ? 3 : 0)
     width: implicitWidth
     height: implicitHeight
     radius: root.st.key_round ? height / 2 : Style.radius(3)
@@ -31,6 +34,36 @@ Rectangle {
     color: root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
     border.width: root.orb || root.pad || root.plain ? 0 : root.ring_width
     border.color: root.tinted ? root.st.tab_active_fg : root.st.key_border
+    gradient: root.ps2_cap ? ps2_gradient : null
+
+    Gradient {
+        id: ps2_gradient
+        GradientStop { position: 0; color: root.st.key_bg }
+        GradientStop { position: 1; color: Theme.bg_shadow }
+    }
+
+    Rectangle {
+        visible: root.ps2_cap
+        anchors.fill: parent
+        anchors.margins: 1
+        radius: Math.max(0, root.radius - 1)
+        color: "transparent"
+        border.width: 1
+        border.color: Qt.alpha(Theme.fg_strong, 0.14)
+    }
+
+    Rectangle {
+        visible: root.ps2_cap
+        x: parent.width * 0.16
+        y: 1.5
+        width: parent.width * 0.68
+        height: parent.height * 0.42
+        radius: height / 2
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.alpha(Theme.fg_strong, 0.26) }
+            GradientStop { position: 1; color: Qt.alpha(Theme.fg_strong, 0) }
+        }
+    }
 
     Sheen {
         color_top: !root.plain && !root.pad && root.st.key_bg.a > 0 ? root.st.sheen : "transparent"
@@ -79,6 +112,7 @@ Rectangle {
         anchors.centerIn: parent
         text: root.key
         color: root.tinted ? root.st.tab_active_fg : root.st.key_fg
+        font.weight: root.ps2_cap ? Font.DemiBold : Font.Normal
         font.family: KeyHints.cap_font_family(root.st)
         font.pixelSize: root.font_px > 0 ? root.font_px : KeyHints.cap_font_px(root.st)
         font.bold: root.orb || root.st.mono_font === root.st.font_family

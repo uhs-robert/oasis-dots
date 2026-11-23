@@ -29,8 +29,11 @@ function overrides(t, ctx) {
         tab_active_bg: Qt.alpha(t.theme_primary, 0.14),
         tab_active_fg: t.fg_strong,
         tab_fg: t.theme_primary_light,
-        key_fg: t.theme_primary,
-        key_border: Qt.alpha(t.theme_primary, 0.4),
+        // Glossy black cap like the pad buttons (Ps2Button); KeyBadge adds its fade, ring and sheen.
+        key_bg: Qt.tint(t.bg_surface, Qt.alpha(t.fg_strong, 0.06)),
+        key_fg: t.fg_core,
+        key_border: t.bg_shadow,
+        key_round: true,
         section_fg: t.theme_primary,
         section_rule: false,
         footer_fg: t.theme_primary_strong,
