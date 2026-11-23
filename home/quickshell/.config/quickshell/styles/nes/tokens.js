@@ -35,6 +35,7 @@ function overrides(t, ctx) {
         key_bg: "transparent",
         key_fg: t.theme_secondary,
         key_border: "transparent",
+        key_cap: "nes_black",
         section_fg: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
         section_rule: false,
         footer_fg: Qt.tint(t.fg_dim, Qt.alpha(t.fg_core, 0.35)),
