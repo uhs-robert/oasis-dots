@@ -2,7 +2,7 @@ import QtQuick
 import qs.theme
 import qs.ui.effects
 
-// An NES pad button as a pixel sprite: round red A/B, grey rubber START/SELECT pills, or the D-pad with its axis lit.
+// An NES pad button as a pixel sprite: round red A/B, grey rubber START/SELECT pills, or the D-pad with its pressed arms lit.
 Row {
     id: root
 
@@ -16,8 +16,11 @@ Row {
     readonly property bool pill: root.button === "start" || root.button === "select"
     readonly property color red: Qt.tint("#c8102e", Qt.alpha(Theme.red, 0.45))
     readonly property color grey: Qt.tint("#9a9a9a", Qt.alpha(Theme.fg_dim, 0.4))
-    readonly property string v: root.button === "dpad_v" ? "2" : "1"
-    readonly property string h: root.button === "dpad_h" ? "2" : "1"
+    // One arm lights per single key (dpad_up and so on); dpad_v and dpad_h light both arms of an axis.
+    readonly property string arm_up: root.button === "dpad_up" || root.button === "dpad_v" ? "2" : "1"
+    readonly property string arm_down: root.button === "dpad_down" || root.button === "dpad_v" ? "2" : "1"
+    readonly property string arm_left: root.button === "dpad_left" || root.button === "dpad_h" ? "2" : "1"
+    readonly property string arm_right: root.button === "dpad_right" || root.button === "dpad_h" ? "2" : "1"
 
     spacing: 3
 
@@ -26,7 +29,7 @@ Row {
         pixel: root.pixel
         rows: root.round ? ["..000..", ".01110.", "0121110", "0111110", "0111110", ".01110.", "..000.."]
             : root.pill ? [".00000000.", "0112222110", "0111111110", ".00000000."]
-            : ["..VVV..", "..VVV..", "HH111HH", "HH111HH", "HH111HH", "..VVV..", "..VVV.."].map(r => r.replace(/V/g, root.v).replace(/H/g, root.h))
+            : ["..UUU..", "..UUU..", "LL111RR", "LL111RR", "LL111RR", "..DDD..", "..DDD.."].map(r => r.replace(/U/g, root.arm_up).replace(/D/g, root.arm_down).replace(/L/g, root.arm_left).replace(/R/g, root.arm_right))
         colors: root.shaded ? (root.round ? [root.shades[0], root.shades[2], root.shades[3], "transparent"]
                 : root.pill ? [root.shades[0], root.shades[1], root.shades[2], "transparent"]
                 : ["transparent", root.shades[0], root.shades[3], "transparent"])

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Shapes
 import qs.theme
 
-// One DualShock-era PS1 pad button: grey domes with coloured symbols, grey shoulder and START/SELECT pills, a D-pad with the used arms lit.
+// One DualShock-era PS1 pad button: grey domes with coloured symbols, grey shoulder pills printed with [ and ], START/SELECT pills, a D-pad with the used arms lit.
 Item {
     id: root
 
@@ -12,7 +12,7 @@ Item {
     readonly property bool face: ["cross", "circle", "triangle", "square"].indexOf(root.button) >= 0
     readonly property bool pad: root.button.startsWith("dpad")
     readonly property bool pill: root.button === "select" || root.button === "start"
-    readonly property string label: ({ l1: "L1", r1: "R1", l2: "L2", r2: "R2", select: "SELECT", start: "START" })[root.button] || ""
+    readonly property string label: ({ l1: "[", r1: "]", l2: "L2", r2: "R2", select: "SELECT", start: "START" })[root.button] || ""
     readonly property real stroke: Math.max(1.4, root.size * 0.13)
     readonly property color dome_top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2))
     readonly property color dome_bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5))

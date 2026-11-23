@@ -8,7 +8,7 @@ Row {
 
     property string controller: ""
     property string key: ""
-    // The hint's action, which decides Esc's button (KeyHints.button_for).
+    // The hint's action; no mapping reads it today.
     property string desc: ""
     // Style.controller_glyphs, which buttons draw and which carry their key (KeyHints.controller_parts).
     property string glyphs: "all"
