@@ -1,6 +1,7 @@
 .pragma library
 
 function overrides(t, ctx) {
+    const bar_fg_dim = Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.3));
     return {
         controller: "ps1",
         toast_enter: "wobble",
@@ -52,13 +53,15 @@ function overrides(t, ctx) {
         bar_font_family: "Terminess Nerd Font",
         bar_font_size: t.font_size + 4,
         bar_fg: t.theme_primary_light,
-        bar_fg_dim: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.3)),
+        bar_fg_dim: bar_fg_dim,
         bar_side_bg: t.bg_core,
         bar_center_bg: t.bg_mantle,
         bar_border_color: t.fg_dim,
         bar_workspace_idle: Qt.alpha(t.fg_dim, 0.35),
         bar_hover_bg: Qt.alpha(t.theme_primary, 0.35),
         bar_glow_color: t.bg_shadow,
+        bar_updates_body: bar_fg_dim,
+        bar_updates_accent: t.yellow,
         bar_text_raised: true,
         bar_icon_set: "ps1",
         bar_meeting_marker: "memory_card"

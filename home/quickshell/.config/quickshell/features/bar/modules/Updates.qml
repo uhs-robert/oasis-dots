@@ -39,6 +39,8 @@ BarModule {
             icon_variant: "official"
             glyph: "󰮯"
             count: String(root.official_count)
+            icon_body: Style.bar_updates_body
+            icon_accent: Style.bar_updates_accent
         }
 
         BadgedGlyph {
@@ -50,6 +52,8 @@ BarModule {
             icon_variant: "aur"
             glyph: "󰏗"
             count: String(root.aur_count)
+            icon_body: Style.bar_updates_body
+            icon_accent: Style.bar_updates_accent
         }
 
         // A failed check with no counts would otherwise leave an empty, clickable gap.
