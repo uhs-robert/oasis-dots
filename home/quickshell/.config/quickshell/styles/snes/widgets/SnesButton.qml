@@ -1,7 +1,7 @@
 import QtQuick
 import qs.theme
 
-// One Super Famicom controller button: a/b/x/y face buttons, l/r/lr shoulders, the start/select pill, or the D-pad lit on dpad_v/dpad_h.
+// One Super Famicom controller button: a/b/x/y face buttons, l/r/lr shoulders printed with [ and ], the start/select pill, or the D-pad lit on one arm (dpad_up and so on) or an axis (dpad_v/dpad_h).
 Item {
     id: root
 
@@ -10,7 +10,7 @@ Item {
 
     readonly property bool face: ["a", "b", "x", "y"].indexOf(root.button) >= 0
     readonly property bool shoulder: root.button === "l" || root.button === "r" || root.button === "lr"
-    readonly property bool dpad: root.button === "dpad_v" || root.button === "dpad_h"
+    readonly property bool dpad: root.button.startsWith("dpad")
     readonly property bool pill: root.button === "start" || root.button === "select"
 
     // Super Famicom hardware colors pulled halfway into the theme's own hues.
@@ -73,7 +73,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     anchors.horizontalCenterOffset: shoulder_cap.is_left ? 1 : -1
-                    text: shoulder_cap.modelData.toUpperCase()
+                    text: shoulder_cap.is_left ? "[" : "]"
                     color: Theme.bg_crust
                     font.family: "Silkscreen"
                     font.pixelSize: 8
@@ -132,15 +132,16 @@ Item {
         }
 
         Repeater {
-            model: root.button === "dpad_v" ? [[1, 0], [1, 2]] : [[0, 1], [2, 1]]
+            model: [["dpad_up", "dpad_v", 1, 0], ["dpad_down", "dpad_v", 1, 2], ["dpad_left", "dpad_h", 0, 1], ["dpad_right", "dpad_h", 2, 1]]
 
             Rectangle {
                 required property var modelData
+                visible: root.button === modelData[0] || root.button === modelData[1]
                 readonly property real step: (root.size - dpad_box.arm) / 2
-                x: modelData[0] === 1 ? dpad_box.inset + 1 : modelData[0] === 0 ? 1 : root.size - step
-                y: modelData[1] === 1 ? dpad_box.inset + 1 : modelData[1] === 0 ? 1 : root.size - step
-                width: modelData[0] === 1 ? dpad_box.arm - 2 : step - 1
-                height: modelData[1] === 1 ? dpad_box.arm - 2 : step - 1
+                x: modelData[2] === 1 ? dpad_box.inset + 1 : modelData[2] === 0 ? 1 : root.size - step
+                y: modelData[3] === 1 ? dpad_box.inset + 1 : modelData[3] === 0 ? 1 : root.size - step
+                width: modelData[2] === 1 ? dpad_box.arm - 2 : step - 1
+                height: modelData[3] === 1 ? dpad_box.arm - 2 : step - 1
                 color: Theme.theme_secondary
             }
         }

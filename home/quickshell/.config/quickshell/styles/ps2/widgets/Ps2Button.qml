@@ -11,9 +11,9 @@ Item {
 
     readonly property bool face: ["cross", "circle", "triangle", "square"].indexOf(root.button) >= 0
     readonly property bool shoulder: ["l1", "r1", "l2", "r2"].indexOf(root.button) >= 0
-    readonly property bool dpad: root.button === "dpad_v" || root.button === "dpad_h"
+    readonly property bool dpad: root.button.startsWith("dpad")
     readonly property bool pill: root.button === "select" || root.button === "start"
-    readonly property string label: root.shoulder ? root.button.toUpperCase() : root.pill ? root.button.toUpperCase() : root.button === "r3" ? "R3" : ""
+    readonly property string label: root.button === "l1" ? "[" : root.button === "r1" ? "]" : root.shoulder ? root.button.toUpperCase() : root.pill ? root.button.toUpperCase() : root.button === "r3" ? "R3" : ""
     // Hardware symbol colours, pulled toward the palette.
     readonly property color symbol_color: {
         const hw = { cross: "#7BA7E8", circle: "#F0736B", triangle: "#5FD0A0", square: "#E891C8" }[root.button] || "#FFFFFF";
@@ -108,7 +108,7 @@ Item {
         }
     }
 
-    // The D-pad: a black cross whose lit arms show the keys' axis.
+    // The D-pad: a black cross whose lit arms show the pressed keys: one arm per single key, an axis for a pair.
     Shape {
         visible: root.dpad
         anchors.fill: parent
@@ -139,8 +139,12 @@ Item {
             PathSvg {
                 path: {
                     const s = root.size, c = s / 2, w = s * 0.1, n = s * 0.07, f = s * 0.24;
-                    if (root.button === "dpad_v") return "M" + (c - w) + " " + f + "L" + c + " " + n + "L" + (c + w) + " " + f + "Z" + "M" + (c - w) + " " + (s - f) + "L" + c + " " + (s - n) + "L" + (c + w) + " " + (s - f) + "Z";
-                    return "M" + f + " " + (c - w) + "L" + n + " " + c + "L" + f + " " + (c + w) + "Z" + "M" + (s - f) + " " + (c - w) + "L" + (s - n) + " " + c + "L" + (s - f) + " " + (c + w) + "Z";
+                    const up = root.button === "dpad_up" || root.button === "dpad_v", down = root.button === "dpad_down" || root.button === "dpad_v";
+                    const left = root.button === "dpad_left" || root.button === "dpad_h", right = root.button === "dpad_right" || root.button === "dpad_h";
+                    return (up ? "M" + (c - w) + " " + f + "L" + c + " " + n + "L" + (c + w) + " " + f + "Z" : "")
+                        + (down ? "M" + (c - w) + " " + (s - f) + "L" + c + " " + (s - n) + "L" + (c + w) + " " + (s - f) + "Z" : "")
+                        + (left ? "M" + f + " " + (c - w) + "L" + n + " " + c + "L" + f + " " + (c + w) + "Z" : "")
+                        + (right ? "M" + (s - f) + " " + (c - w) + "L" + (s - n) + " " + c + "L" + (s - f) + " " + (c + w) + "Z" : "");
                 }
             }
         }

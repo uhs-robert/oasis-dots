@@ -34,23 +34,21 @@ function cap_font_px(st) {
 }
 
 // Per console (Style.controller): button component (takes button, size, shades) and key -> button map, whole or by "/" halves.
+// A button maps only when its face shows the key: Enter is START, Tab is SELECT, the d-pad is hjkl and the arrows, shoulders carry [ or ]
+// and face buttons carry their own letter (o and x on a PlayStation pad). Esc, q and Backspace stay plain key caps.
 // "?" never maps, so footers always show the help key that explains the buttons.
+const dpad_keys = { "j/k": "dpad_v", "h/l": "dpad_h", "Up/Down": "dpad_v", Up: "dpad_up", Down: "dpad_down", Left: "dpad_left", Right: "dpad_right", j: "dpad_down", k: "dpad_up", h: "dpad_left", l: "dpad_right" };
 const controllers = {
-    nes: { button: "nes/NesButton.qml", keys: { Enter: "a", Backspace: "b", q: "start", Esc: "start", Tab: "select", "j/k": "dpad_v", "h/l": "dpad_h", "Up/Down": "dpad_v", j: "dpad_v", k: "dpad_v", h: "dpad_h", l: "dpad_h" } },
-    snes: { button: "snes/SnesButton.qml", keys: { Enter: "a", Backspace: "b", q: "start", Esc: "start", Tab: "select", "/": "y", "[ ]": "lr", "[": "l", "]": "r", t: "x", "j/k": "dpad_v", "h/l": "dpad_h", "Up/Down": "dpad_v", j: "dpad_v", k: "dpad_v", h: "dpad_h", l: "dpad_h" } },
-    ps1: { button: "ps1/Ps1Button.qml", keys: { Enter: "circle", Backspace: "cross", q: "start", Esc: "start", Tab: "select", "/": "triangle", "[": "l1", "]": "r1", t: "square", gg: "l2", G: "r2", "j/k": "dpad_v", "h/l": "dpad_h", "Up/Down": "dpad_v", j: "dpad_down", k: "dpad_up", h: "dpad_left", l: "dpad_right" } },
-    ps2: { button: "ps2/Ps2Button.qml", keys: { Enter: "cross", Backspace: "circle", q: "start", Esc: "start", Tab: "select", "/": "triangle", "[": "l1", "]": "r1", t: "square", gg: "l2", G: "r2", "j/k": "dpad_v", "h/l": "dpad_h", "Up/Down": "dpad_v", j: "dpad_v", k: "dpad_v", h: "dpad_h", l: "dpad_h" } }
+    nes: { button: "nes/NesButton.qml", keys: Object.assign({ Enter: "start", Tab: "select", a: "a", b: "b" }, dpad_keys) },
+    snes: { button: "snes/SnesButton.qml", keys: Object.assign({ Enter: "start", Tab: "select", a: "a", b: "b", x: "x", y: "y", "[ ]": "lr", "[": "l", "]": "r" }, dpad_keys) },
+    ps1: { button: "ps1/Ps1Button.qml", keys: Object.assign({ Enter: "start", Tab: "select", o: "circle", x: "cross", "[": "l1", "]": "r1" }, dpad_keys) },
+    ps2: { button: "ps2/Ps2Button.qml", keys: Object.assign({ Enter: "start", Tab: "select", o: "circle", x: "cross", "[": "l1", "]": "r1" }, dpad_keys) }
 };
 // Game Boy pads use the NES buttons, drawn in its four shades (styles/gameboy/widgets/GameboyButton.qml).
 controllers.gameboy = { button: "gameboy/GameboyButton.qml", keys: controllers.nes.keys };
 
-// Esc takes START only where it closes the popup; as cancel/back (n/Esc, Tab/Esc list) it shows the back button.
-function button_for(map, key, desc) {
-    return map[key === "Esc" && desc && !/\bclose\b/.test(desc) ? "Backspace" : key];
-}
-
-// Directions and shoulders read as what they do on a keyboard; face and menu buttons only mean something once you know their key.
-const self_evident = ["dpad_v", "dpad_h", "dpad_up", "dpad_down", "dpad_left", "dpad_right", "l", "r", "lr", "l1", "r1"];
+// Every mapped button matches its key, so each one reads without a label; the set stays so "dpad" can narrow it again.
+const self_evident = ["a", "b", "x", "y", "circle", "cross", "start", "select", "dpad_v", "dpad_h", "dpad_up", "dpad_down", "dpad_left", "dpad_right", "l", "r", "lr", "l1", "r1"];
 
 // A key (glyphs allowed) as [{ button, label? } | { text }] parts, "/" text between halves; [] when nothing maps.
 // glyphs is Style.controller_glyphs: "dpad" keeps other buttons as key text, "labeled" gives them their key as label.
@@ -60,7 +58,7 @@ function controller_parts(controller, key, desc, glyphs) {
     let k = key;
     for (const g in glyph_names) k = k.split(g).join(glyph_names[g]);
     const part_for = p => {
-        const b = button_for(map, p, desc);
+        const b = map[p];
         const evident = self_evident.indexOf(b) >= 0;
         if (b === undefined || (glyphs === "dpad" && !evident)) return { text: p };
         return glyphs === "labeled" && !evident ? { button: b, label: p } : { button: b };
