@@ -93,7 +93,7 @@ Item {
     // The start button draws the HyprVim mode chip on a lualine bar.
     // Any horizontal non-lualine bar with left modules draws the submap as a chip on its left island.
     // With no left modules the left island is hidden, so the bar has no chip and the dropdown tab shows instead.
-    readonly property bool has_frame_chip: !root.vertical && !root.lualine && root.left_entries.length > 0
+    readonly property bool has_left_chip: !root.vertical && !root.lualine && root.left_entries.length > 0
     readonly property bool has_mode_chip: root.lualine && [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "start"))
 
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
@@ -333,7 +333,7 @@ Item {
 
         // The submap shows as the left island's last item instead of a dropdown tab (lualine styles keep their own mode chip). The left island holds few items, and the centered island does not move when it grows.
         Rectangle {
-            visible: root.has_frame_chip && SubmapState.indicator_shown && root.focused
+            visible: root.has_left_chip && SubmapState.indicator_shown && root.focused
             Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: chip_text.implicitWidth + 16
             implicitHeight: chip_text.implicitHeight + 6
@@ -376,7 +376,7 @@ Item {
         tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
-        tab_joined: (SubmapState.indicator_shown && !root.has_frame_chip && !root.has_mode_chip) || VoxSessionState.active
+        tab_joined: (SubmapState.indicator_shown && !root.has_left_chip && !root.has_mode_chip) || VoxSessionState.active
         visible: root.has_center
 
         onClicked: if (root.center_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
