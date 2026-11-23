@@ -42,7 +42,7 @@ Rectangle {
 
     // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight.
     readonly property bool retro: root.drawn && !root.glossy
-    // text_dy: the glyph offset in px; the PS1 face is the only one whose text already sits centered.
+    // text_dy is the glyph offset in px. The PS1 font sits centered already, so it needs no offset.
     readonly property var look: {
         switch (root.st.key_cap) {
         case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 999, fg: Theme.fg_strong, text_dy: 0 };
