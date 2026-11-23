@@ -25,8 +25,9 @@ Singleton {
     // Whether the open popup holds the keyboard: Popup.qml gives a hands-off popup none. A passive popup is never the open one.
     readonly property bool takes_keyboard: open_name !== "" && open_screen_name !== "" && !hands_off
     // Asks the open popup for the keyboard; it holds it Exclusive until the window is active, then lets go.
-    // The popup clears it straight away when its window already has the keyboard.
     property bool grab_keyboard: false
+    // focus_open asks the open popup to drop its grab at once when its window already has the keyboard.
+    signal refuse_needless_grab()
     // Popup name to reopen on Backspace, e.g. "start" for popups opened from the Start menu.
     property string back_name: ""
     // The popup the pointer is over right now (Popup.qml reports it), so a module's hover helper can tell the pointer moving onto its popup from leaving.
@@ -254,6 +255,7 @@ Singleton {
         if (settled_name === "" || settled_name !== open_name || hands_off) return false;
         if (open_screen_name !== focused) return false;
         grab_keyboard = true;
+        root.refuse_needless_grab();
         return grab_keyboard;
     }
 
