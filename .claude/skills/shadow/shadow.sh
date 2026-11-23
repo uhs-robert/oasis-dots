@@ -985,7 +985,7 @@ teardown() {
   left=$(shadow_pids)
   if [[ -n $left ]]; then
     for pid in $left; do echo "  $pid $(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null)" >&2; done
-    die "processes still carry $runtime in their environment (above)"
+    die "processes still carry $runtime in their environment or run its labwc (above)"
   fi
   rm -rf "$runtime"
   rm -f "$base/signature" "$base/wl-socket"

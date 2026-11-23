@@ -247,6 +247,11 @@ restore() {
   fi
   if ((started_shadow)); then
     "$shadow" down "$name" >&2 || true
+    # The self-test copies the labwc launch line, so only the real up and down can show drift between them.
+    if pgrep -fx "labwc -C ${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/labwc" >/dev/null; then
+      echo "smoke: labwc of '$name' still runs after down" >&2
+      exit 1
+    fi
     return
   fi
   # A style set can be dropped while the previous one is still applying, so retry until it reads back.
