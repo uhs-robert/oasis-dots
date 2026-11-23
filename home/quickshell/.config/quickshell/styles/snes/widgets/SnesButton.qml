@@ -48,7 +48,9 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            anchors.verticalCenterOffset: 0.5
+            // Silkscreen's line box sits the caps low and its advance leaves room on the right, so the ink is nudged up and left to center in the circle.
+            anchors.verticalCenterOffset: -1
+            anchors.horizontalCenterOffset: -0.5
             text: root.button.toUpperCase()
             color: (root.us ? root.button === "x" || root.button === "y" : root.button === "b" || root.button === "y") ? Theme.bg_crust : Theme.fg_strong
             font.family: "Silkscreen"
