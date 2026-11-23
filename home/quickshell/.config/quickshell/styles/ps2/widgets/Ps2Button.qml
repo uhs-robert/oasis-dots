@@ -33,7 +33,8 @@ Item {
         anchors.fill: parent
         radius: root.shoulder ? root.size * 0.3 : height / 2
         border.width: 1
-        border.color: Theme.bg_shadow
+        // A faint light rim: the near-black badge otherwise melts into the dark panel and the button reads smaller than it is.
+        border.color: Qt.alpha(Theme.fg_strong, 0.3)
         gradient: Gradient {
             GradientStop { position: 0; color: root.body_top }
             GradientStop { position: 1; color: root.body_bottom }
@@ -97,7 +98,7 @@ Item {
             joinStyle: ShapePath.RoundJoin
             PathSvg {
                 path: {
-                    const s = root.size * 0.44, o = (root.size - s) / 2, e = o + s, c = root.size / 2;
+                    const s = root.size * 0.52, o = (root.size - s) / 2, e = o + s, c = root.size / 2;
                     if (root.button === "cross") return "M" + o + " " + o + "L" + e + " " + e + "M" + e + " " + o + "L" + o + " " + e;
                     if (root.button === "triangle") return "M" + c + " " + (o - s * 0.06) + "L" + (e + s * 0.04) + " " + (e - s * 0.08) + "L" + (o - s * 0.04) + " " + (e - s * 0.08) + "Z";
                     if (root.button === "square") return "M" + (o + s * 0.06) + " " + (o + s * 0.06) + "L" + (e - s * 0.06) + " " + (o + s * 0.06) + "L" + (e - s * 0.06) + " " + (e - s * 0.06) + "L" + (o + s * 0.06) + " " + (e - s * 0.06) + "Z";

@@ -37,11 +37,14 @@ Rectangle {
     // key_cap ps2_gloss: the glossy black of the pad buttons (styles/ps2/widgets/Ps2Button.qml) with its key tokens as the top colour.
     readonly property bool glossy: root.drawn && root.st.key_cap === "ps2_gloss"
 
+    // One character on a PlayStation cap is a true circle, longer text a pill.
+    readonly property bool ps_circle: root.drawn && KeyHints.cap_is_ps(root.st) && root.key.length === 1
+
     // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight.
     readonly property bool retro: root.drawn && !root.glossy
     readonly property var look: {
         switch (root.st.key_cap) {
-        case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 4, fg: Theme.fg_strong };
+        case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 999, fg: Theme.fg_strong };
         case "snes_pad": {
             const plastic = Qt.tint(Theme.fg_dim, Qt.alpha("#a4a4b4", 0.45));
             return { top: Qt.lighter(plastic, 1.15), bottom: plastic, edge: Qt.darker(plastic, 1.8), hi: Qt.alpha(Theme.fg_strong, 0.3), round: 999, fg: Theme.bg_crust };
@@ -51,7 +54,7 @@ Rectangle {
         return { top: "transparent", bottom: "transparent", edge: "transparent", hi: "transparent", round: 0, fg: "transparent" };
     }
 
-    implicitWidth: root.bare ? key_text.implicitWidth + (root.boxed ? 8 : 0) : root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + KeyHints.cap_pad_w(root.st) + root.ring_width * 2)
+    implicitWidth: root.bare ? key_text.implicitWidth + (root.boxed ? 8 : 0) : root.pad ? pad_loader.implicitWidth : root.ps_circle ? implicitHeight : Math.max(implicitHeight, key_text.implicitWidth + KeyHints.cap_pad_w(root.st) + root.ring_width * 2)
     implicitHeight: root.bare ? (root.boxed && root.box_height > 0 ? root.box_height : key_text.implicitHeight) : root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2 + KeyHints.cap_gloss_h(root.st)
     width: implicitWidth
     height: implicitHeight

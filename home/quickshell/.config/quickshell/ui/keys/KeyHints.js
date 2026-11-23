@@ -33,12 +33,17 @@ function cap_is_drawn(st) {
     return drawn_caps.indexOf(st.key_cap) >= 0;
 }
 
+// The PlayStation caps are round and as tall as the controller glyph beside them (size: text height + 2), so they add no gloss height.
+function cap_is_ps(st) {
+    return st.key_cap === "ps2_gloss" || st.key_cap === "ps1_dome";
+}
+
 function cap_pad_w(st) {
-    return !cap_is_drawn(st) ? 6 : st.key_cap === "ps2_gloss" ? 10 : st.key_cap === "snes_pad" ? 12 : 8;
+    return !cap_is_drawn(st) ? 6 : cap_is_ps(st) ? 10 : st.key_cap === "snes_pad" ? 12 : 8;
 }
 
 function cap_gloss_h(st) {
-    return !cap_is_drawn(st) ? 0 : st.key_cap === "ps2_gloss" ? 3 : 2;
+    return !cap_is_drawn(st) ? 0 : cap_is_ps(st) ? 0 : 2;
 }
 
 function cap_font_family(st) {

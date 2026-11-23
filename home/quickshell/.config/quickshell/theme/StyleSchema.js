@@ -212,7 +212,7 @@ var tokens = [
     tok("range_line", "bool", false, "Daily temperature ranges as 1px lines with ring end caps."),
     tok("key_round", "bool", false, ""),
     tok("snes_edition", "string", "Super Famicom", "The SNES edition option: Super Famicom (red A, yellow B, blue X, green Y) or SNES US (dark purple A/B, lavender X/Y), read by SnesButton."),
-    tok("key_cap", "string", "none", "How KeyBadge draws a plain key cap: none (flat, from the key_* tokens), ps2_gloss, ps1_dome, snes_pad or nes_black. Every look but none is a little larger than a flat cap (KeyHints.cap_pad_w, cap_gloss_h)."),
+    tok("key_cap", "string", "none", "How KeyBadge draws a plain key cap: none (flat, from the key_* tokens), ps2_gloss, ps1_dome, snes_pad or nes_black. Every look but none is a little larger than a flat cap (KeyHints.cap_pad_w, cap_gloss_h); ps1_dome and ps2_gloss are round (a circle for one character, a pill for more) and glyph height."),
     tok("pill_chips", "bool", false, "Chips, action chips, header buttons and the alert banner as outlined pills."),
     tok("title_index", "var", () => [], "Popup names numbered 01, 02, ... in front of their titles."),
     tok("title_weight", "int", 0, "0 keeps titles bold when they share the body font."),
