@@ -48,7 +48,7 @@ Item {
 
         Text {
             anchors.centerIn: parent
-            // Silkscreen's line box sits the caps low and its advance leaves room on the right, so the ink is nudged up and left to center in the circle.
+            // Silkscreen's line box sits the caps 1.5px low. An even-width glyph cannot center in an odd-width circle, so -0.5 lands it on whole pixels instead of half pixels.
             anchors.verticalCenterOffset: -1
             anchors.horizontalCenterOffset: -0.5
             text: root.button.toUpperCase()
