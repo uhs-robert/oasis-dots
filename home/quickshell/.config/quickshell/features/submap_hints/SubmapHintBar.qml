@@ -76,14 +76,14 @@ HintDrawer {
                         id: footer_key
                         required property var modelData
                         spacing: 3
-                        Text {
-                            text: KeyHints.with_glyphs(footer_key.modelData[0])
-                            color: Style.title_fg
-                            font.family: Style.font_family
-                            font.pixelSize: Style.fs(-3)
-                            font.bold: true
+                        KeyBadge {
+                            anchors.verticalCenter: parent.verticalCenter
+                            key: KeyHints.with_glyphs(footer_key.modelData[0])
+                            font_px: Style.fs(-3)
+                            plain: !KeyHints.cap_is_drawn(Style.for_item(footer_key)) && Style.key_bg.a === 0
                         }
                         Text {
+                            anchors.verticalCenter: parent.verticalCenter
                             text: footer_key.modelData[1]
                             color: Style.title_fg
                             opacity: 0.7

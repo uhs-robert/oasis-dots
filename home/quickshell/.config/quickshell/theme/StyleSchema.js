@@ -134,7 +134,6 @@ var tokens = [
     tok("tab_bg", "color", "transparent", ""),
     tok("chip_bg", "color", "transparent", ""),
     tok("meter_height", "real", 0, "0 keeps the default height."),
-    tok("footer_key_bg", "color", "transparent", "Footer keys drawn as filled caps in footer_key_fg on this color."),
     tok("footer_separator", "string", " \u00b7 ", ""),
     tok("footer_rule_solid", "bool", false, ""),
     tok("osd_layout", "string", "", 'Alternate layouts (OSD ones are Style.osd_layouts, weather ones Style.weather_layouts): "" keeps the default; osd "ring", "hud", "rpg", "alert", "glow", "horizon" or "tile", weather "ring", "scope", "watch", "memcard", "battle", "mode7", "wttr", "weatherstar", "towers", "scan", "hev", "pokedex", "status", "oasis", "hero" or "lsp", cards "rule", "pixel", "dq", "dialogue", "dialog", "oasis", "tile" or "notify".'),

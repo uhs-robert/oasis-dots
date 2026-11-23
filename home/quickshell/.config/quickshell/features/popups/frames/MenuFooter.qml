@@ -133,53 +133,21 @@ Item {
                 }
                 required property var modelData
                 required property int index
-                readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, group.modelData.key).length > 0
                 rightPadding: root.wrap_centered ? root.hint_gap : 0
                 bottomPadding: root.line_gap
                 spacing: root.st.footer_size > 0 && !root.arrows ? Math.round(root.text_px * 0.75) : 4
 
-                Loader {
-                    active: group.pad
-                    visible: active
+                // Flat styles with no key fill keep the bare key text they always had.
+                KeyBadge {
+                    id: key_badge
                     anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: ControllerBadge {
-                        controller: root.st.controller
-                        key: group.modelData.key
-                        size: Math.round(desc_text.implicitHeight)
-                        text_color: root.st.footer_key_fg
-                        font_family: root.st.font_family
-                        font_size: root.text_px
-                    }
+                    key: KeyHints.with_glyphs(group.modelData.key)
+                    font_px: root.text_px
+                    plain: !KeyHints.cap_is_drawn(root.st) && root.st.key_bg.a === 0
                 }
 
                 Text {
-                    id: key_text
-                    readonly property bool capped: root.st.footer_key_bg.a > 0
-                    visible: !group.pad
-                    height: desc_text.implicitHeight
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: key_text.capped ? 4 : 0
-                    rightPadding: key_text.capped ? 4 : 0
-                    text: KeyHints.with_glyphs(parent.modelData.key)
-                    color: root.st.footer_key_fg
-                    font.family: key_text.capped ? root.st.mono_font : root.st.font_family
-                    font.pixelSize: root.text_px
-
-                    Rectangle {
-                        visible: key_text.capped
-                        z: -1
-                        anchors.fill: parent
-                        anchors.topMargin: 1
-                        anchors.bottomMargin: 1
-                        radius: Style.radius(3)
-                        color: root.st.footer_key_bg
-                        border.width: root.st.rounded ? 1 : 0
-                        border.color: root.st.key_border
-                    }
-                }
-
-                Text {
-                    visible: root.arrows && !group.pad
+                    visible: root.arrows && !key_badge.pad
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.st.footer_arrow
                     color: root.st.text_muted
@@ -236,7 +204,7 @@ Item {
             id: slash_text
             x: root.modal ? mode_chip.implicitWidth + 6 : 0
             text: "/"
-            color: root.st.footer_key_bg.a > 0 ? root.st.footer_key_bg : root.st.footer_key_fg
+            color: root.st.key_bg.a > 0 ? root.st.key_bg : root.st.footer_key_fg
             font.family: root.st.font_family
             font.pixelSize: root.text_px
         }
