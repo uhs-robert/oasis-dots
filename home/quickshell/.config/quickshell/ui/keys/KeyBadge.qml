@@ -22,12 +22,12 @@ Rectangle {
     // Pixel fonts have no internal leading, so the cap grows with its ring or the ring covers the glyph.
     readonly property int ring_width: KeyHints.cap_ring_width(root.st)
 
-    readonly property bool drawn: root.st.key_cap !== "none" && !root.pad && !root.plain && !root.orb
+    readonly property bool drawn: KeyHints.cap_is_drawn(root.st) && !root.pad && !root.plain && !root.orb
 
     // key_cap ps2_gloss: the glossy black of the pad buttons (styles/ps2/widgets/Ps2Button.qml) with its key tokens as the top colour.
     readonly property bool glossy: root.drawn && root.st.key_cap === "ps2_gloss"
 
-    // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight, an optional bottom lip.
+    // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight.
     readonly property bool retro: root.drawn && !root.glossy
     readonly property var look: {
         switch (root.st.key_cap) {
