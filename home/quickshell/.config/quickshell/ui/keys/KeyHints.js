@@ -25,6 +25,15 @@ function cap_ring_width(st) {
     return st.pixel_border.a > 0 ? 2 : 1;
 }
 
+// Room a glossy cap (key_gloss) takes beyond a flat one, read by KeyBadge and by TabRows to reserve it.
+function cap_pad_w(st) {
+    return st.key_gloss ? 10 : 6;
+}
+
+function cap_gloss_h(st) {
+    return st.key_gloss ? 3 : 0;
+}
+
 function cap_font_family(st) {
     return st.pixel_border.a > 0 ? st.font_family : st.mono_font;
 }

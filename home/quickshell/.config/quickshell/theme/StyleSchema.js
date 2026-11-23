@@ -210,6 +210,7 @@ var tokens = [
     tok("tick_ruler", "bool", false, ""),
     tok("range_line", "bool", false, "Daily temperature ranges as 1px lines with ring end caps."),
     tok("key_round", "bool", false, ""),
+    tok("key_gloss", "bool", false, "Plain key caps drawn glossy (KeyBadge): a fade to bg_shadow from key_bg, an inner ring and a top sheen, a little larger than a flat cap (KeyHints.cap_pad_w, cap_gloss_h)."),
     tok("pill_chips", "bool", false, "Chips, action chips, header buttons and the alert banner as outlined pills."),
     tok("title_index", "var", () => [], "Popup names numbered 01, 02, ... in front of their titles."),
     tok("title_weight", "int", 0, "0 keeps titles bold when they share the body font."),

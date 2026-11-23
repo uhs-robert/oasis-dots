@@ -46,7 +46,7 @@ ColumnLayout {
 
     readonly property int cap_ring: KeyHints.cap_ring_width(root.st)
     // Mirrors MenuTab and KeyBadge sizing so rows can be split before the tabs exist.
-    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + root.cap_ring * 2, key_metrics.advanceWidth("9") + 6 + root.cap_ring * 2) + 6 : 0
+    readonly property real key_space: root.st.tab_keys && !root.chips ? Math.max(key_metrics.height + root.cap_ring * 2 + KeyHints.cap_gloss_h(root.st), key_metrics.advanceWidth("9") + KeyHints.cap_pad_w(root.st) + root.cap_ring * 2) + 6 : 0
 
     readonly property real bracket_space: root.st.tab_brackets.a > 0 && !root.chips ? label_metrics.advanceWidth("[]") + 4 : 0
 
