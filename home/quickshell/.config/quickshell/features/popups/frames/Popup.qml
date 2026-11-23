@@ -346,10 +346,13 @@ PanelWindow {
 
     // Never narrower than the island's bottom edge (its body, between the slants); a fit_island popup adds the shell's side room on top so the content keeps the island's width, or min_width past a narrow island.
     implicitWidth: root.drawer ? root.drawer_full.surface.width : root.base_width + root.beside_line_room
-    readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? Math.max(root.island_width, Style.px(root.min_width)) + root.device_side * 2 : Math.max(root.own_width, island_floor_width)
+    readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? (root.island_grows ? Math.max(root.island_width, root.fit_width) : Math.max(root.island_width + root.device_side * 2, root.fit_width)) : Math.max(root.own_width, island_floor_width)
     readonly property bool fits: root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center"
     // The width the popup asks for by itself, before any island floor.
     readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width)
+    // A fit popup's floor, the device shell's sides included. Beside an island that grows, the shell lines up with
+    // the grown island instead of hanging past both its ends.
+    readonly property real fit_width: Style.px(root.min_width) + root.device_side * 2
     implicitHeight: root.drawer ? root.drawer_full.surface.height : root.base_height
     readonly property real base_height: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.drop_room
     default property alias content: content_scope.data
@@ -375,13 +378,13 @@ PanelWindow {
     readonly property bool island_capsule: !root.beside && !!island && island.capsule === true
     readonly property real island_width: root.drawn_island_width + root.island_grow
     readonly property real drawn_island_width: root.island && root.island_capsule ? root.island.capsule_width : held_anchor ? held_anchor.width : 0
-    // How far the island's drawing grows toward the bar's middle to meet the popup's width (less the device shell's
-    // sides, which hang past the island on every popup), within the bar's free room (Island.grow_room). Past that room
-    // the popup overhangs as before. Built from drawn_island_width and own_width, never island_width, which this feeds.
-    // A drawer is already cut to the popup's width from a band with no island outline, and a tooltip takes the island's
-    // width, so neither grows it.
-    readonly property real island_grow_wanted: (root.fit_island && root.side !== "center" ? Style.px(root.min_width) : root.own_width - root.device_side * 2) - root.drawn_island_width
-    readonly property real island_grow: !root.passive && !root.beside && !root.drawer && !!root.island && root.island.can_grow === true ? Math.max(0, Math.min(root.island_grow_wanted, root.island.grow_room)) : 0
+    // How far the island's drawing grows toward the bar's middle to meet the popup's full width, within the bar's free
+    // room (Island.grow_room). Past that room the popup overhangs as before. Built from drawn_island_width, never
+    // island_width, which this feeds. A drawer is already cut to the popup's width from a band with no island outline,
+    // and a tooltip takes the island's width, so neither grows it.
+    readonly property bool island_grows: !root.passive && !root.beside && !root.drawer && !!root.island && root.island.can_grow === true
+    readonly property real island_grow_wanted: (root.fit_island && root.side !== "center" ? root.fit_width : root.own_width) - root.drawn_island_width
+    readonly property real island_grow: root.island_grows ? Math.max(0, Math.min(root.island_grow_wanted, root.island.grow_room)) : 0
     onIsland_growChanged: Popups.report_island_grow(root.popup_name, root.island_grow)
     // The clock's meeting chip widens its island, but not the clock popup sized from it. Only the width floor below uses this;
     // the accent line, the island notch and the corner radii still follow the island as drawn.

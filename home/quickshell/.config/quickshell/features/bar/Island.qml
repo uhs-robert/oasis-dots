@@ -44,17 +44,16 @@ Item {
     readonly property real capsule_width: root.body_span
     // The free bar length past the island's inner end, up to the next island (Bar sets it). 0 keeps the plate as drawn.
     property real grow_room: 0
-    // Whether a popup can widen this island: a shape that draws something, along a top or bottom bar. Lualine's
-    // sections are their own drawing, so it keeps its size.
-    readonly property bool can_grow: !root.vertical && !root.lualine && root.shape !== "none"
+    // Whether a popup can widen this island: a side island whose shape draws something, along a top or bottom bar.
+    // Lualine's sections are their own drawing, and the center island stays centred, so both keep their size.
+    readonly property bool can_grow: !root.vertical && !root.lualine && !root.center && root.shape !== "none"
     // The open popup's growth for this island (Popup.island_grow). `grow` follows it like `join` follows `joined`:
     // out as the popup opens, back in once it has folded away.
     readonly property real grow_target: root.can_grow && Popups.open_name !== "" && Popups.open_anchor === body ? (Popups.island_grows[Popups.open_name] || 0) : 0
     property real grow: 0
-    // Growth goes toward the bar's middle: before the modules on a right island, after them on a left one, half each
-    // way on the center one. Only the drawing grows (deco_length, moved back by grow_before in deco_frame); the
+    // Growth goes toward the bar's middle: before the modules on a right island, after them on a left one. Only the drawing grows (deco_length, moved back by grow_before in deco_frame); the
     // modules, their hit areas and the island's own size stay put, so the bar never reflows under the pointer.
-    readonly property real grow_before: root.cap_left ? (root.cap_right ? root.grow / 2 : root.grow) : 0
+    readonly property real grow_before: root.cap_left ? root.grow : 0
     readonly property real grow_after: root.grow - root.grow_before
     readonly property real deco_length: root.length + root.grow
     readonly property real capsule_radius: (root.thickness - root.capsule_inset) / 2

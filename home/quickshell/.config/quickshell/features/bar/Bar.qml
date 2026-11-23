@@ -375,8 +375,6 @@ Item {
         tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
-        // It grows both ways, so by twice the narrower gap to its neighbours.
-        grow_room: root.vertical ? 0 : Math.max(0, 2 * Math.min(center_island.x - (left_island.visible ? left_island.x + left_island.width : 0), (right_island.visible ? right_island.x : root.width) - center_island.x - center_island.width) - 2 * root.grow_gap)
         tab_joined: (SubmapState.indicator_shown && !root.has_frame_chip && !root.has_mode_chip) || VoxSessionState.active
         visible: root.has_center
 
