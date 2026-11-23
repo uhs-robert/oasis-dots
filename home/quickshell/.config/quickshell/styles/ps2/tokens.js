@@ -34,6 +34,7 @@ function overrides(t, ctx) {
         key_fg: t.fg_core,
         key_border: t.bg_shadow,
         key_round: true,
+        key_gloss: true,
         section_fg: t.theme_primary,
         section_rule: false,
         footer_fg: t.theme_primary_strong,
