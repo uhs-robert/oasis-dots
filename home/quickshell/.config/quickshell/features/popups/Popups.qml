@@ -169,6 +169,9 @@ Singleton {
             const found = root.find_in_screen(screen_name, candidate);
             if (found) {
                 root.open(candidate, found.item, root.anchor_color(found), screen_name, found.back_to);
+                // A walk key means the keyboard is already on the popup, so the next one must hold it too, not wait for
+                // Hyprland to hand focus over when the old layer unmaps.
+                grab_keyboard = true;
                 return;
             }
         }
