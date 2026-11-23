@@ -58,13 +58,22 @@ carries_runtime() { grep -qzE "^[A-Z_]+=$runtime(/.*)?\$" "$1" 2>/dev/null; }
 # The pattern of bar log lines that are expected in this shadow, which depends on whether it has a PipeWire.
 expected_errors() { if [[ -f $base/no-audio ]]; then echo "$expected_errors_no_audio"; else echo "$expected_errors_audio"; fi; }
 
+# labwc has file capabilities, so it is non-dumpable and its environ is unreadable; its command line, which holds this
+# shadow's full config path, is the only mark. Whole-string equality keeps "sn1" apart from "sn10" and from the owner's compositor.
+# The comm test is a builtin read that spares forking a subshell for every process in /proc.
+is_host_labwc() {
+  local comm
+  { read -r comm <"/proc/$1/comm"; } 2>/dev/null || return 1
+  [[ $comm == labwc && $(tr '\0' ' ' <"/proc/$1/cmdline" 2>/dev/null) == "labwc -C $base/labwc " ]]
+}
+
 shadow_pids() {
   local env_file pid
   for env_file in /proc/[0-9]*/environ; do
     pid=${env_file#/proc/}
     pid=${pid%/environ}
     [[ $pid == "$$" || $pid == "$BASHPID" ]] && continue
-    carries_runtime "$env_file" && echo "$pid"
+    if carries_runtime "$env_file" || is_host_labwc "$pid"; then echo "$pid"; fi
   done
   return 0
 }
@@ -940,12 +949,12 @@ status() {
   ((found)) || echo "shadow: none"
 }
 
-# Only sessions whose leader still carries this shadow's runtime dir, so a recycled session id is never hit.
+# Only sessions whose leader still carries this shadow's runtime dir (or is its labwc), so a recycled session id is never hit.
 kill_session() {
   local sid_file="$base/$1.sid" sid
   [[ -f $sid_file ]] || return 0
   sid=$(<"$sid_file")
-  if carries_runtime "/proc/$sid/environ"; then
+  if carries_runtime "/proc/$sid/environ" || is_host_labwc "$sid"; then
     pkill -TERM -s "$sid" || true
     for _ in $(seq 40); do
       pgrep -s "$sid" >/dev/null || break
