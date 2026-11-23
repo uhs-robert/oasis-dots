@@ -42,14 +42,15 @@ Rectangle {
 
     // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight.
     readonly property bool retro: root.drawn && !root.glossy
+    // text_dy: the glyph offset in px; the PS1 face is the only one whose text already sits centered.
     readonly property var look: {
         switch (root.st.key_cap) {
-        case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 999, fg: Theme.fg_strong };
+        case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 999, fg: Theme.fg_strong, text_dy: 0 };
         case "snes_pad": {
             const plastic = Qt.tint(Theme.fg_dim, Qt.alpha("#a4a4b4", 0.45));
-            return { top: Qt.lighter(plastic, 1.15), bottom: plastic, edge: Qt.darker(plastic, 1.8), hi: Qt.alpha(Theme.fg_strong, 0.3), round: 999, fg: Theme.bg_crust };
+            return { top: Qt.lighter(plastic, 1.15), bottom: plastic, edge: Qt.darker(plastic, 1.8), hi: Qt.alpha(Theme.fg_strong, 0.3), round: 999, fg: Theme.bg_crust, text_dy: -1 };
         }
-        case "nes_black": return { top: "#161616", bottom: "#161616", edge: "#6a6a6a", hi: "transparent", round: 0, fg: Qt.tint("#c8102e", Qt.alpha(Theme.red, 0.45)) };
+        case "nes_black": return { top: "#161616", bottom: "#161616", edge: "#6a6a6a", hi: "transparent", round: 0, fg: Qt.tint("#c8102e", Qt.alpha(Theme.red, 0.45)), text_dy: -1 };
         }
         return { top: "transparent", bottom: "transparent", edge: "transparent", hi: "transparent", round: 0, fg: "transparent" };
     }
@@ -166,7 +167,7 @@ Rectangle {
         id: key_text
         visible: !root.pad
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: root.retro ? -1 : 0
+        anchors.verticalCenterOffset: root.retro ? root.look.text_dy : 0
         text: root.key
         color: root.bare ? root.bare_color : root.retro ? root.look.fg : root.tinted ? root.st.tab_active_fg : root.st.key_fg
         font.weight: root.glossy ? Font.DemiBold : Font.Normal
