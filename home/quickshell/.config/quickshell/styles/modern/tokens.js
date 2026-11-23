@@ -66,6 +66,7 @@ function overrides(t, ctx) {
         section_rule: false,
         footer_fg: t3,
         footer_key_fg: t2,
+        footer_key_bg: l2,
         footer_rule_solid: true,
         footer_rule_color: edge,
         meter_on: t.theme_primary,

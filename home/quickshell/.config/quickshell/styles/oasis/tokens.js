@@ -71,6 +71,7 @@ function overrides(t, ctx) {
         caps_tracking: 0,
         footer_fg: t.fg_dim,
         footer_key_fg: sand,
+        footer_key_bg: Qt.alpha(sand, 0.1),
         footer_rule: true,
         footer_rule_solid: true,
         footer_rule_color: hair,

@@ -137,13 +137,15 @@ Item {
                 bottomPadding: root.line_gap
                 spacing: root.st.footer_size > 0 && !root.arrows ? Math.round(root.text_px * 0.75) : 4
 
-                // Flat styles with no key fill keep the bare key text they always had.
+                // Styles with no drawn cap keep the bare key text, or the footer_key_bg box, they always had.
                 KeyBadge {
                     id: key_badge
                     anchors.verticalCenter: parent.verticalCenter
                     key: KeyHints.with_glyphs(group.modelData.key)
                     font_px: root.text_px
                     footer: true
+                    footer_box: true
+                    box_height: desc_text.implicitHeight
                 }
 
                 Text {
@@ -204,7 +206,7 @@ Item {
             id: slash_text
             x: root.modal ? mode_chip.implicitWidth + 6 : 0
             text: "/"
-            color: root.st.key_bg.a > 0 ? root.st.key_bg : root.st.footer_key_fg
+            color: root.st.footer_key_bg.a > 0 ? root.st.footer_key_bg : root.st.footer_key_fg
             font.family: root.st.font_family
             font.pixelSize: root.text_px
         }
