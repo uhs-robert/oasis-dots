@@ -46,8 +46,8 @@ Popup {
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
-    // Views a layout draws itself, as views/<prefix><View>.qml for Agents or Usage; any other view falls back
-    // to the shared one. The blank lines keep each layout's line its own hunk, so style PRs that each flip one line
+    // Views a layout draws itself, as views/<prefix><View>.qml for Agents or Usage, or as the file `files` names
+    // for that view when it comes from another game than the prefix; any other view falls back to the shared one. The blank lines keep each layout's line its own hunk, so style PRs that each flip one line
     // merge without conflicts.
     readonly property var layout_views: ({
         battle: { prefix: "Party", views: ["Agents", "Usage"] },
@@ -58,7 +58,7 @@ Popup {
 
         lsp: { prefix: "Trouble", views: ["Agents", "Usage"] },
 
-        memcard: { prefix: "MemCard", views: ["Agents", "Usage"] },
+        memcard: { prefix: "MemCard", views: ["Usage"], files: { Agents: "ConditionAgents" } },
 
         mode7: { prefix: "Ff6", views: ["Agents", "Usage"] },
 
@@ -85,7 +85,7 @@ Popup {
 
     function view_url(view, shared) {
         const own = root.layout_views[Style.keeptabs_layout];
-        const file = own && own.views.includes(view) ? own.prefix + view : shared;
+        const file = !own ? shared : own.files && own.files[view] ? own.files[view] : own.views.includes(view) ? own.prefix + view : shared;
         return Qt.resolvedUrl("views/" + file + ".qml");
     }
 
