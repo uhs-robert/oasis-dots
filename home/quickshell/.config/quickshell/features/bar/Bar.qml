@@ -91,8 +91,9 @@ Item {
     readonly property var right_drawn: root.lualine ? ["x", "y", "z"].reduce((out, k) => out.concat(root.lualine_entries.filter(e => root.lualine_section(e.base) === k)), []) : root.right_entries
 
     // The start button draws the HyprVim mode chip on a lualine bar.
-    // With no left modules the left island is hidden, so a frame has no chip and the dropdown tab shows instead.
-    readonly property bool has_frame_chip: Style.screen_frame_on && !root.vertical && !root.lualine && root.left_entries.length > 0
+    // Any horizontal non-lualine bar with left modules draws the submap as a chip on its left island.
+    // With no left modules the left island is hidden, so the bar has no chip and the dropdown tab shows instead.
+    readonly property bool has_frame_chip: !root.vertical && !root.lualine && root.left_entries.length > 0
     readonly property bool has_mode_chip: root.lualine && [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "start"))
 
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
@@ -330,7 +331,7 @@ Item {
             }
         }
 
-        // With a frame the submap shows as the left island's last item instead of a dropdown tab (lualine styles keep their own mode chip). The left island holds few items, and the centered island does not move when it grows.
+        // The submap shows as the left island's last item instead of a dropdown tab (lualine styles keep their own mode chip). The left island holds few items, and the centered island does not move when it grows.
         Rectangle {
             visible: root.has_frame_chip && SubmapState.indicator_shown && root.focused
             Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
