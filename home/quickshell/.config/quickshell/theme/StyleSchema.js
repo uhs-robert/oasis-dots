@@ -154,6 +154,7 @@ var tokens = [
     tok("bar_side_bg", "color", t => t.bg_crust, "", {via: "bar"}),
     tok("bar_center_bg", "color", t => t.bg_crust, "", {via: "bar"}),
     tok("bar_fg", "color", t => t.fg_core, "", {via: "bar"}),
+    tok("bar_fg_dim", "color", "transparent", "The window segment's path text; transparent falls back to text_dim.", {via: "bar"}),
     tok("bar_clock_bg", "color", "transparent", "The clock's time sits on a chip of this color when it is not transparent.", {via: "bar"}),
     tok("bar_clock_fg", "color", t => t.fg_core, "", {via: "bar"}),
     tok("bar_clock_font", "string", "", "", {expr: "root.bar.bar_clock_font || root.bar_font_family"}),

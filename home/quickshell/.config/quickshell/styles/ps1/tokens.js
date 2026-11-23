@@ -51,6 +51,8 @@ function overrides(t, ctx) {
         text_shadow: t.bg_shadow,
         bar_font_family: "Terminess Nerd Font",
         bar_font_size: t.font_size + 4,
+        bar_fg: t.theme_primary_light,
+        bar_fg_dim: Qt.tint(t.fg_dim, Qt.alpha(t.theme_primary_light, 0.3)),
         bar_side_bg: t.bg_core,
         bar_center_bg: t.bg_mantle,
         bar_border_color: t.fg_dim,

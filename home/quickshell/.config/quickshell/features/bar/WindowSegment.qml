@@ -183,7 +183,7 @@ Item {
             width: Math.max(0, Math.min(implicitWidth, root.max_width - root.lead))
             elide: Text.ElideLeft
             text: root.cwd
-            color: Style.text_dim
+            color: Style.bar_fg_dim.a > 0 ? Style.bar_fg_dim : Style.text_dim
         }
     }
 }
