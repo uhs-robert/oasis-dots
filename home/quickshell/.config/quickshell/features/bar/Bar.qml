@@ -32,7 +32,7 @@ Item {
     readonly property bool lualine: Style.bar_lualine
     // The cava tail the center island has grown below its modules (0 on a top or bottom bar).
     readonly property real center_tail: center_cava.tail_span
-    // The air a grown side capsule leaves before the next island (Island.grow_room).
+    // The air a grown island leaves before the next one (Island.grow_room).
     readonly property real grow_gap: root.bar_height / 2
     // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
     readonly property real center_span: root.vertical ? center_island.body_item.height : center_island.body_item.width
@@ -375,6 +375,8 @@ Item {
         tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
+        // It grows both ways, so by twice the narrower gap to its neighbours.
+        grow_room: root.vertical ? 0 : Math.max(0, 2 * Math.min(center_island.x - (left_island.visible ? left_island.x + left_island.width : 0), (right_island.visible ? right_island.x : root.width) - center_island.x - center_island.width) - 2 * root.grow_gap)
         tab_joined: (SubmapState.indicator_shown && !root.has_frame_chip && !root.has_mode_chip) || VoxSessionState.active
         visible: root.has_center
 
