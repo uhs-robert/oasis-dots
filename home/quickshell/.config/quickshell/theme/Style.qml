@@ -478,7 +478,7 @@ Singleton {
     readonly property bool tick_ruler: root.active.tick_ruler
     readonly property bool range_line: root.active.range_line
     readonly property bool key_round: root.active.key_round
-    readonly property bool key_gloss: root.active.key_gloss
+    readonly property string key_cap: root.active.key_cap
     readonly property bool pill_chips: root.active.pill_chips
     readonly property var title_index: root.active.title_index
     readonly property int title_weight: root.active.title_weight

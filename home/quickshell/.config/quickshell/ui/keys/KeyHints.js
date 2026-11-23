@@ -25,13 +25,13 @@ function cap_ring_width(st) {
     return st.pixel_border.a > 0 ? 2 : 1;
 }
 
-// Room a glossy cap (key_gloss) takes beyond a flat one, read by KeyBadge and by TabRows to reserve it.
+// Room a drawn cap (key_cap) takes beyond a flat one, read by KeyBadge and by TabRows to reserve it.
 function cap_pad_w(st) {
-    return st.key_gloss ? 10 : 6;
+    return st.key_cap === "none" ? 6 : st.key_cap === "ps2_gloss" ? 10 : 8;
 }
 
 function cap_gloss_h(st) {
-    return st.key_gloss ? 3 : 0;
+    return st.key_cap === "none" ? 0 : st.key_cap === "ps2_gloss" ? 3 : 2;
 }
 
 function cap_font_family(st) {
