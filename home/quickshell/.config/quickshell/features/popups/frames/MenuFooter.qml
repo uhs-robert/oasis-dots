@@ -143,7 +143,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     key: KeyHints.with_glyphs(group.modelData.key)
                     font_px: root.text_px
-                    plain: !KeyHints.cap_is_drawn(root.st) && root.st.key_bg.a === 0
+                    footer: true
                 }
 
                 Text {
