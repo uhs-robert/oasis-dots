@@ -38,7 +38,7 @@ Rectangle {
     readonly property bool glossy: root.drawn && root.st.key_cap === "ps2_gloss"
 
     // One character on a PlayStation cap is a true circle, longer text a pill.
-    readonly property bool ps_circle: root.drawn && KeyHints.cap_is_ps(root.st) && root.key.length === 1
+    readonly property bool ps_circle: root.drawn && KeyHints.cap_is_ps(root.st) && Array.from(root.key).length === 1
 
     // The other drawn caps, each painted from one row of this table: a face gradient, a rim, a top highlight.
     readonly property bool retro: root.drawn && !root.glossy
