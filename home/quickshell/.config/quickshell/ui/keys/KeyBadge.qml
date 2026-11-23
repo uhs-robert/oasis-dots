@@ -9,7 +9,6 @@ Rectangle {
     readonly property var st: Style.for_item(root)
 
     property string key: ""
-    property string desc: ""
     // Set on a filled active tab so an outline badge takes the tab's text color; keycap badges keep theirs.
     property bool on_fill: false
     // Keeps the keyboard key beside its controller buttons, as the ? help does.
@@ -17,9 +16,7 @@ Rectangle {
     // A bare key with no cap, e.g. a tab's jump digit.
     property bool plain: false
     property int font_px: 0
-    // with_key already shows the key, so a label beside each button would repeat it.
-    readonly property string glyphs: root.with_key && root.st.controller_glyphs === "labeled" ? "all" : root.st.controller_glyphs
-    readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, root.key, root.desc, root.glyphs).length > 0
+    readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, root.key).length > 0
     readonly property bool tinted: root.on_fill && root.st.key_bg.a === 0 && !root.orb
 
     // Pixel fonts have no internal leading, so the cap grows with its ring or the ring covers the glyph.
@@ -59,8 +56,6 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 controller: root.st.controller
                 key: root.key
-                desc: root.desc
-                glyphs: root.glyphs
                 size: key_text.implicitHeight + 2
                 // key_fg is ink for an orb; bare letters beside buttons take the orb's own color.
                 text_color: root.st.materia.key !== undefined ? root.st.materia.key : key_text.color

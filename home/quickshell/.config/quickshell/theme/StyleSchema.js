@@ -230,7 +230,7 @@ var tokens = [
     tok("hand_cursor", "bool", false, "A pointing hand (HandCursor) on the selected row, active tab, picked chip and selected day."),
     tok("meter_solid", "bool", false, "Meters as one continuous gauge (AtbBar) instead of segments."),
     tok("controller", "string", "", "Key badges, footers and help draw this console's buttons (KeyHints.controllers); Controller glyphs Off blanks it, so read it for glyphs only."),
-    tok("controller_glyphs", "string", "dpad", 'Which keys draw as controller buttons: "all", "labeled" (the key beside each button the d-pad and shoulders cannot explain), "dpad" (only those) or "off".'),
+    tok("controller_glyphs", "bool", true, "Keys whose face shows them (Enter, Tab, hjkl, arrows, [ ], o, x, a, b, y) draw as the console's buttons; off keeps every key a plain cap."),
     tok("meter_art", "var", () => ({}), 'Meter art by popup name (or "osd"): a "<style>/<File>.qml" widget under styles/<style>/widgets/ that replaces the segments.'),
     tok("dir_anim", "string", "fade", 'How the Directory module shows a new app or path (Style.dir_anims): "fade" fades in, "slide" fades in from the left, "type" types it out behind a block cursor, "stepped" fades in four hard steps, "flicker" flickers on, "scramble" settles from random characters, "wipe" sweeps a scan bar across it and "none" swaps it at once. On battery it always swaps at once.', {expr: 'root.active.dir_anim || "fade"'}),
     tok("toast_enter", "string", "", 'Toast arrival (Style.toast_enters): "" fades in; "type" slides and types, "mode7" zooms from a tilted plane, "wobble" settles, "bloom" glows, each once.'),

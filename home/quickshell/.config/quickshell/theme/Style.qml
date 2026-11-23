@@ -73,7 +73,7 @@ Singleton {
     // Saved shapes renamed since, applied once to a theme_options.json older than version 2: "octagon" drew
     // the lugs and ticks that are "watch" now, so a bar saved with it keeps them.
     readonly property var renamed_island_shapes: ({ octagon: "watch" })
-    readonly property int options_version: 4
+    readonly property int options_version: 5
     // Shape sizes every kit resets before laying its own on, so leaving the capsule drops its inset.
     readonly property var plain_island_shape: ({ bar_capsule: 0, bar_capsule_pad: 0, bar_strip_inset: 0, bar_strip_side: 0 })
     // The corner profiles a style offers (Corners.js), the Corner style row's choices.
@@ -498,7 +498,7 @@ Singleton {
     readonly property bool hand_cursor: root.active.hand_cursor
     readonly property bool meter_solid: root.active.meter_solid
     readonly property string controller: root.active.controller
-    readonly property string controller_glyphs: root.active.controller_glyphs
+    readonly property bool controller_glyphs: root.active.controller_glyphs
     readonly property var meter_art: root.active.meter_art
     readonly property string dir_anim: root.active.dir_anim || "fade"
     readonly property string toast_enter: root.active.toast_enter
@@ -682,7 +682,7 @@ Singleton {
         if (b.meter_bloom === true) flag("meter_bloom", "Meter bloom");
         if (b.caret_blink === true) flag("caret_blink", "Caret blink");
         if (b.fade_fills === true) flag("fade_fills", "Fade fills");
-        if (b.controller) out.push({ key: "controller_glyphs", label: "Controller glyphs", type: "choice", default: b.controller_glyphs, choices: ["all", "labeled", "dpad", "off"], labels: { all: "All", labeled: "Labeled", dpad: "D-pad", off: "Off" } });
+        if (b.controller) flag("controller_glyphs", "Controller glyphs");
         if (b.watch_classic) out.push({ key: "watch_colors", label: "Watch colours", type: "choice", default: "Theme", choices: ["Theme", "Classic"] });
         out.push({ key: "picker_skin", label: "Picker skin", type: "choice", default: b.picker_skin || "", choices: root.picker_skins, labels: root.borrow_labels("picker_skin", root.picker_skins) });
         out.push({ key: "overview_skin", label: "Overview skin", type: "choice", default: b.overview_skin || "", choices: root.overview_skins, labels: root.borrow_labels("overview_skin", root.overview_skins) });
@@ -777,7 +777,7 @@ Singleton {
             else o[k] = opts[k];
         }
         if (o.watch_colors === "Classic" && o.watch_classic) Object.assign(o, o.watch_classic);
-        if (o.controller_glyphs === "off") o.controller = "";
+        if (o.controller_glyphs === false) o.controller = "";
         // Saved only when it differs from the style's own, so the style's own shape never passes here.
         if (opts.bar_island_shape !== undefined) Object.assign(o, root.island_shape_tokens(opts.bar_island_shape, o));
         return o;
@@ -828,6 +828,7 @@ Singleton {
         const renames_shapes = stored < 2;
         const reads_plain_frame = stored < 3;
         const reads_old_frame = stored < 4;
+        const reads_glyph_modes = stored < 5;
         let migrated = false;
         if (reads_old_frame) {
             // Saved before the per-style flush key became one setting, so a file stamped 4 never overrides it.
@@ -847,6 +848,7 @@ Singleton {
                 Object.assign(saved, Migrations.frame_to_bool(saved, root.frame_corners));
                 if (typeof saved.screen_frame === "string") delete saved.screen_frame;
             }
+            if (reads_glyph_modes) Object.assign(saved, Migrations.glyphs_to_bool(saved));
             const mine = {};
             for (const def of root.settings_for(style_name, true)) {
                 let v = saved[def.key];

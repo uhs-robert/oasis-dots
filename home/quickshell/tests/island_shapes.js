@@ -265,8 +265,16 @@ for (const [name, got, want] of [
 ]) {
   expect(got === want, "migration: " + name + ": got " + got + ", want " + want);
 }
+for (const [name, saved, want] of [
+  ["a saved mode other than off reads as on", "labeled", true],
+  ["a saved off stays off", "off", false],
+  ["a saved boolean passes through", true, undefined],
+]) {
+  const got = M.glyphs_to_bool({ controller_glyphs: saved }).controller_glyphs;
+  expect(got === want, "migration: glyphs " + name + ": got " + got + ", want " + want);
+}
 const load = style.slice(style.indexOf("function load_options"));
-expect(/options_version: 4/.test(style), "options_version is not 4");
+expect(/options_version: 5/.test(style), "options_version is not 5");
 expect(load.indexOf("screen_frame_from_plain") > 0 && load.indexOf("screen_frame_from_plain") < load.indexOf("valid_option"), "the frame migration does not run before valid_option");
 expect(load.indexOf("frame_to_bool") > load.indexOf("screen_frame_from_plain") && load.indexOf("frame_to_bool") < load.indexOf("valid_option"), "the frame split does not run after plain and before valid_option");
 

@@ -10,7 +10,7 @@ const T = vm.createContext({});
 vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { controller_parts, button_path };", T);
 const K = T.api;
 
-const buttons = (pad, key, glyphs) => K.controller_parts(pad, key, "", glyphs || "dpad").map(p => p.button || "text:" + p.text);
+const buttons = (pad, key) => K.controller_parts(pad, key).map(p => p.button || "text:" + p.text);
 
 const cases = [
   ["Enter is START", () => buttons("ps2", "Enter"), ["start"]],
@@ -31,7 +31,6 @@ const cases = [
   ["single shoulders", () => [buttons("snes", "["), buttons("ps1", "]")], [["l"], ["r1"]]],
   ["a modified key never draws", () => buttons("ps2", "Ctrl+Enter"), []],
   ["no glyphs without a console", () => buttons("", "Enter"), []],
-  ["the d-pad is drawn in the default dpad mode", () => buttons("ps2", "Enter", "dpad"), ["start"]],
   ["every console resolves a button file", () => ["nes", "snes", "ps1", "ps2", "gameboy"].map(p => K.button_path(p).endsWith(".qml")), Array(5).fill(true)],
 ];
 

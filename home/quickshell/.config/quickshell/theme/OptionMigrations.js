@@ -29,3 +29,11 @@ function flush_from_styles(data) {
     }
     return true;
 }
+
+// Version 5 made Controller glyphs an On/Off row: it held "all", "labeled", "dpad" or "off". Any mode but "off" is On,
+// which is the default, so only "off" is carried over (as false). A boolean passes unchanged.
+function glyphs_to_bool(saved) {
+    const v = saved.controller_glyphs;
+    if (typeof v !== "string") return {};
+    return { controller_glyphs: v !== "off" };
+}
