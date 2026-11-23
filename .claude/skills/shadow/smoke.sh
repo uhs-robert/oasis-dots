@@ -94,6 +94,66 @@ PY
     echo "FAIL: unreadable image not a check error"
     status=1
   fi
+  # Lifecycle: down must stop a shadow's labwc (non-dumpable, so found by command line) and only that shadow's.
+  # "lcz1" and "lcz10" share a prefix, which a loose match would confuse.
+  shadow_root="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow"
+  start_labwc_only() {
+    local n=$1 runtime="/tmp/shadow-$UID-$1"
+    mkdir -p "$shadow_root/$n/labwc" "$runtime"
+    chmod 700 "$runtime"
+    echo '<labwc_config/>' >"$shadow_root/$n/labwc/rc.xml"
+    setsid env -i HOME="$shadow_root/$n" PATH="$PATH" XDG_RUNTIME_DIR="$runtime" WLR_BACKENDS=headless \
+      WLR_RENDERER=pixman WLR_HEADLESS_OUTPUTS=1 WLR_LIBINPUT_NO_DEVICES=1 LABWC_UPDATE_ACTIVATION_ENV=0 \
+      labwc -C "$shadow_root/$n/labwc" >/dev/null 2>&1 </dev/null &
+    echo "$!" >"$shadow_root/$n/host.sid"
+    for _ in $(seq 100); do
+      pgrep -fx "labwc -C $shadow_root/$n/labwc" >/dev/null && return 0
+      sleep 0.1
+    done
+    return 1
+  }
+  # shellcheck disable=SC2329 # called through check
+  labwc_alive() { pgrep -fx "labwc -C $shadow_root/$1/labwc" >/dev/null; }
+  # shellcheck disable=SC2329
+  labwc_gone() { ! labwc_alive "$1"; }
+  check() {
+    if "$@"; then echo "ok: $desc"; else
+      echo "FAIL: $desc"
+      status=1
+    fi
+  }
+  if command -v labwc >/dev/null; then
+    # shellcheck disable=SC2015 # the failure branch is the point
+    start_labwc_only lcz1 && start_labwc_only lcz10 || {
+      echo "FAIL: could not start the lifecycle labwc"
+      status=1
+    }
+    desc="status reads a shadow up while only its labwc lives"
+    check test "$("$shadow" status lcz1 | head -1 | cut -d, -f1)" == "lcz1: up"
+    "$shadow" down lcz1 >/dev/null 2>&1 || {
+      echo "FAIL: down lcz1 failed"
+      status=1
+    }
+    desc="down stops the shadow's labwc"
+    check labwc_gone lcz1
+    desc="down leaves a shadow whose name extends this one running"
+    check labwc_alive lcz10
+    desc="status prints down after down"
+    check test "$("$shadow" status lcz1)" == "lcz1: down"
+    for pid in $(pgrep -fx "labwc -C $shadow_root/lcz10/labwc" || true); do kill -TERM "$pid" 2>/dev/null || true; done
+    sleep 0.5
+    desc="down succeeds when labwc already exited"
+    # shellcheck disable=SC2329
+    down_quiet() { "$shadow" down "$1" >/dev/null 2>&1; }
+    check down_quiet lcz10
+    # Leftovers from a failed run, found by the same exact command line.
+    for n in lcz1 lcz10; do
+      for pid in $(pgrep -fx "labwc -C $shadow_root/$n/labwc" || true); do kill -KILL "$pid" 2>/dev/null || true; done
+      rm -rf "${shadow_root:?}/$n" "/tmp/shadow-$UID-$n"
+    done
+  else
+    echo "skip: labwc is not installed, lifecycle checks not run"
+  fi
   exit "$status"
 fi
 out=${out:-${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/smoke/$(date +%Y%m%d-%H%M%S)}
