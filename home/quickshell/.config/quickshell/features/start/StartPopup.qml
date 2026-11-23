@@ -16,7 +16,9 @@ Popup {
     id: root
 
     popup_name: "start"
-    preferred_width: root.st.console_views === "snes" ? 210 : 180
+    preferred_width: Pickers.island_min_width
+    fit_island: true
+    min_width: Pickers.island_min_width
     footer_hint: root.confirm ? "y/Enter confirm · n/Esc back" : "j/k move · gg/G first/last · Enter run · 1-" + root.actions.length + " pick · q close"
     body_height: content.implicitHeight + 24
     jumps_enabled: !root.confirm

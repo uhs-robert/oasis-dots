@@ -20,9 +20,11 @@ Popup {
     shell_allowed: false
     dock_bottom: root.held_anchor === null && !root.browse
     fit_island: !root.dock_bottom && !root.browse
+    min_width: Pickers.island_min_width
+    fit_shell_room: true
     anim_scale: 0.3
     // Settings' size: most of the screen's width up to a cap, and a fixed share of its height.
-    preferred_width: root.browse ? (root.screen ? Math.min(root.screen.width * 0.9, Style.px(1600)) : Style.px(1200)) / Style.scale : 320
+    preferred_width: root.browse ? (root.screen ? Math.min(root.screen.width * 0.9, Style.px(1600)) : Style.px(1200)) / Style.scale : Pickers.island_min_width
     title: root.provider ? root.provider.title.toUpperCase() : "PICKER"
     footer_hint: "Enter " + root.verb + root.nesting_hint + " · Esc normal · q close"
     // NORMAL mode spells out the provider's actions and the browse preview keys; with neither the frame shows its own "? help · q close".
