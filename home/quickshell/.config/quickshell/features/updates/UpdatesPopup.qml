@@ -4,7 +4,6 @@ import Quickshell
 import qs.ui.menu
 import qs.theme
 import qs.styles.snes.popups as Snes
-import qs.styles.ps1.widgets as Ps1
 import qs.styles.ps2.widgets as Ps2
 import qs.features.clock
 import qs.features.popups
@@ -202,7 +201,7 @@ Popup {
                 Loader {
                     id: list_view
                     anchors.fill: parent
-                    readonly property Component view: ({ nes: nes_inventory, snes: snes_inventory, ps1: ps1_blocks })[root.st.console_views] || null
+                    readonly property Component view: ({ nes: nes_inventory, snes: snes_inventory, ps1: ps1_item_box })[root.st.console_views] || null
                     active: !!view && root.current_list.length > 0
                     visible: active
                     sourceComponent: view
@@ -229,11 +228,14 @@ Popup {
                 }
 
                 Component {
-                    id: ps1_blocks
-                    Ps1.UpdateBlocks {
-                        packages: root.current_list
+                    id: ps1_item_box
+                    Ps1ItemBox {
+                        official: UpdatesState.official
+                        aur: UpdatesState.aur
+                        aur_active: root.current_sub === 1
                         selected: root.selected
-                        onPicked: index => {
+                        onPicked: (aur, index) => {
+                            root.current_sub = aur ? 1 : 0;
                             root.selected = index;
                             ThemeAudio.play("cursor");
                         }
