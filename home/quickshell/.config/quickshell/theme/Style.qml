@@ -408,7 +408,6 @@ Singleton {
     readonly property color tab_bg: root.active.tab_bg
     readonly property color chip_bg: root.active.chip_bg
     readonly property real meter_height: root.active.meter_height
-    readonly property color footer_key_bg: root.active.footer_key_bg
     readonly property string footer_separator: root.active.footer_separator
     readonly property bool footer_rule_solid: root.active.footer_rule_solid
     readonly property string osd_layout: root.active.osd_layout

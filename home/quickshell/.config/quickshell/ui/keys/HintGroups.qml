@@ -61,14 +61,14 @@ Flow {
                         id: item
                         required property var modelData
                         spacing: 4
-                        Text {
-                            text: KeyHints.with_glyphs(item.modelData[0])
-                            color: Style.accent_color
-                            font.family: Style.font_family
-                            font.pixelSize: Style.fs(-1)
-                            font.bold: true
+                        KeyBadge {
+                            anchors.verticalCenter: parent.verticalCenter
+                            key: KeyHints.with_glyphs(item.modelData[0])
+                            font_px: Style.fs(-1)
+                            plain: !KeyHints.cap_is_drawn(Style.for_item(item)) && Style.key_bg.a === 0
                         }
                         Text {
+                            anchors.verticalCenter: parent.verticalCenter
                             text: item.modelData[1]
                             color: Style.text_fg
                             font.family: Style.font_family
