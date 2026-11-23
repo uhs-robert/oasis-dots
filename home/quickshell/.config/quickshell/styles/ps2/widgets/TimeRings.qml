@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import qs.core
 import qs.theme
 
 // The PS2 clock's wire rings: the outer ring has a segment per minute, the inner one a segment per hour, each lit up
@@ -16,12 +17,19 @@ Item {
     readonly property real r_minute: root.c - 4
     readonly property real r_hour: root.r_minute * 0.72
     readonly property real gap: 0.06
+    // Nothing animates on battery or while hidden.
+    readonly property bool animates: PowerSource.on_ac && root.visible
 
     implicitWidth: 96
     implicitHeight: root.width
 
     function fire() {
-        flash_anim.restart();
+        if (root.animates) flash_anim.restart();
+    }
+
+    onAnimatesChanged: if (!root.animates) {
+        flash_anim.stop();
+        root.flash = 0;
     }
 
     NumberAnimation {
@@ -55,6 +63,8 @@ Item {
             strokeWidth: ring.lw
             strokeColor: Qt.alpha(Theme.theme_primary, 0.16)
             fillColor: "transparent"
+            strokeStyle: ShapePath.DashLine
+            capStyle: ShapePath.FlatCap
             dashPattern: ring.dashes
             PathAngleArc { centerX: root.c; centerY: root.c; radiusX: ring.radius; radiusY: ring.radius; startAngle: -90; sweepAngle: 360 }
         }
@@ -63,6 +73,8 @@ Item {
             strokeWidth: ring.lw
             strokeColor: Qt.alpha(Theme.theme_primary_light, 0.62)
             fillColor: "transparent"
+            strokeStyle: ShapePath.DashLine
+            capStyle: ShapePath.FlatCap
             dashPattern: ring.dashes
             PathAngleArc { centerX: root.c; centerY: root.c; radiusX: ring.radius; radiusY: ring.radius; startAngle: -90; sweepAngle: ring.step * (ring.lit + 1) }
         }

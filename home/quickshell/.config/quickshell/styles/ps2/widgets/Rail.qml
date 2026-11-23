@@ -1,4 +1,5 @@
 import QtQuick
+import qs.core
 import qs.theme
 
 // The PS2 instrument rail: a chrome strip with a neon wire beside it, down one edge of a slab. An optional lit
@@ -10,13 +11,17 @@ Item {
     property real lit_y: 0
     property real lit_h: 0
     property real pulse: -1
+    // Nothing animates on battery or while hidden: the lit segment then jumps and fire() does nothing.
+    readonly property bool animates: PowerSource.on_ac && root.visible
     readonly property real pulse_len: Math.max(24, root.height * 0.18)
 
     implicitWidth: 10
 
     function fire() {
-        pulse_anim.restart();
+        if (root.animates) pulse_anim.restart();
     }
+
+    onAnimatesChanged: if (!root.animates) pulse_anim.stop()
 
     NumberAnimation {
         id: pulse_anim
@@ -59,10 +64,12 @@ Item {
         color: Qt.alpha(Theme.theme_primary_light, 0.9)
 
         Behavior on y {
+            enabled: root.animates
             NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
         }
 
         Behavior on height {
+            enabled: root.animates
             NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
         }
     }

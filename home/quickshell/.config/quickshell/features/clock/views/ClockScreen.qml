@@ -25,8 +25,15 @@ Item {
 
     readonly property real group_gap: Style.px(14)
     readonly property int minute: root.now.getMinutes()
-    // The ring flashes on the minute the clock moves to, not when the screen opens or the zone is switched.
-    onMinuteChanged: if (root.running) rings.fire()
+    // The ring flashes on a real tick: the minute advances by one at the top of a second. Opening the screen (the clock
+    // refreshes) and a zone switch land on arbitrary seconds or jump the minute, so they never flash.
+    property int last_minute: -1
+    onRunningChanged: root.last_minute = root.running ? root.minute : -1
+    onMinuteChanged: {
+        const prev = root.last_minute;
+        root.last_minute = root.minute;
+        if (root.running && prev >= 0 && root.minute === (prev + 1) % 60 && root.now.getSeconds() <= 1) rings.fire();
+    }
 
     TimeRings {
         id: rings
