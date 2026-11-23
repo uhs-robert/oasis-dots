@@ -207,13 +207,6 @@ Item {
                 }
             }
 
-            Ps2.Haze {
-                anchors.fill: parent
-                horizon: sky.cy / sky.height
-                towers: 9
-                strength: 0.35
-            }
-
             Repeater {
                 model: 16
 

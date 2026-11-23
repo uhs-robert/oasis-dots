@@ -61,25 +61,27 @@ function blocks(ctx, t, d, w, h, c) {
     }
 }
 
-// PS2: translucent towers rise at random from the bottom, then the dark fades.
-function towers(ctx, t, d, w, h, c) {
+// PS2: a chrome rail draws down the left edge and a bright pulse runs ahead of it, then the dark fades.
+function rail(ctx, t, d, w, h, c) {
+    const draw = ease_out(seg(t, 0, 0.5 * d));
     const fade = 1 - ease_out(seg(t, 0.5 * d, d));
     ctx.globalAlpha = fade;
     ctx.fillStyle = c.cover;
     ctx.fillRect(0, 0, w, h);
-    const step = Math.max(8, Math.round(h * 0.45));
-    const tw = Math.max(3, Math.round(step * 0.55));
-    for (let i = 0, x = Math.round((step - tw) / 2); x < w; i++, x += step) {
-        const delay = hash(i, 1) * 0.35 * d;
-        const th = Math.round(h * (0.35 + 0.65 * hash(i, 2)) * ease_out(seg(t, delay, delay + 0.3 * d)));
-        if (th <= 0) continue;
-        ctx.globalAlpha = fade * 0.55;
-        ctx.fillStyle = c.primary;
-        ctx.fillRect(x, h - th, tw, th);
-        ctx.globalAlpha = fade;
-        ctx.fillStyle = c.strong;
-        ctx.fillRect(x, h - th, tw, Math.min(2, th));
-    }
+    const len = (h - 4) * draw;
+    ctx.fillStyle = c.strong;
+    box(ctx, 0, 2, 4, len);
+    ctx.globalAlpha = fade * 0.5;
+    ctx.fillStyle = c.primary;
+    box(ctx, 0, 0, w * draw, 2);
+    if (draw >= 1) return;
+    const head = 2 + len;
+    const grad = ctx.createLinearGradient(0, head - h * 0.18, 0, head);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(1, "rgba(255,255,255,0.9)");
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = grad;
+    box(ctx, 4, Math.max(2, head - h * 0.18), 2, Math.min(h * 0.18, len));
 }
 
 // Metroid: a scanline sweeps the dark visor, it opens from the centre and the reticle blinks.
@@ -250,7 +252,7 @@ function sunrise(ctx, t, d, w, h, c) {
     ctx.fill();
 }
 
-const painters = { blocks: blocks, towers: towers, visor: visor, grid: grid, trace: trace, cursor: cursor, sunrise: sunrise };
+const painters = { blocks: blocks, rail: rail, visor: visor, grid: grid, trace: trace, cursor: cursor, sunrise: sunrise };
 
 // The cover half plays a kind's reveal in reverse; iris has its own two halves.
 function paint(ctx, kind, t, cover, reveal, w, h, c) {

@@ -45,7 +45,7 @@ Item {
     readonly property bool save_blocks: Style.weather_header === "memcard"
     // CRT: WeatherStar 4000 "Extended Forecast" panels.
     readonly property bool ws_panels: Style.weather_header === "weatherstar"
-    // PS2: days as translucent towers on a dark floor.
+    // PS2: days as translucent towers.
     readonly property bool tower_columns: Style.weather_header === "towers"
     readonly property int tower_labels_h: Math.round(Style.font_size * 3.4)
     // Metroid: scan brackets lock onto the selected day.
@@ -190,17 +190,6 @@ Item {
         height: day_row.height * 0.58
         sourceComponent: Mode7Floor {}
         onLoaded: if (root.floor_shown) floor_loader.item.run()
-    }
-
-    Loader {
-        active: root.tower_columns && root.window_days.length > 0
-        x: day_row.x - 2
-        y: day_row.y + day_row.height - root.tower_labels_h - 40
-        width: day_row.width + 4
-        height: root.tower_labels_h + 40
-        sourceComponent: TowerFloor {
-            haze_h: 40
-        }
     }
 
     ColumnLayout {
