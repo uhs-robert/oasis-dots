@@ -348,7 +348,9 @@ PanelWindow {
         onActivated: Popups.walk(1)
     }
 
-    // Never narrower than the island's bottom edge (its body, between the slants); a fit_island popup adds the shell's side room on top so the content keeps the island's width, or min_width past a narrow island.
+    // Never narrower than the island's bottom edge (its body, between the slants). A fit_island popup is at least
+    // fit_width; beside an island that grows its device shell lines up with the island, elsewhere it adds the shell's
+    // side room on top so the content keeps the island's width.
     implicitWidth: root.drawer ? root.drawer_full.surface.width : root.base_width + root.beside_line_room
     readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? (root.island_grows ? Math.max(root.island_width, root.fit_width) : Math.max(root.island_width + root.fit_side * 2, root.fit_width)) : Math.max(root.own_width, island_floor_width)
     readonly property bool fits: root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center"
@@ -390,7 +392,12 @@ PanelWindow {
     readonly property bool island_grows: !root.passive && !root.beside && !root.drawer && !!root.island && root.island.can_grow === true
     readonly property real island_grow_wanted: (root.fit_island && root.side !== "center" ? root.fit_width : root.own_width) - root.drawn_island_width
     readonly property real island_grow: root.island_grows ? Math.max(0, Math.min(root.island_grow_wanted, root.island.grow_room)) : 0
-    onIsland_growChanged: Popups.report_island_grow(root.popup_name, root.island_grow)
+    function report_grow() {
+        Popups.report_island_grow(root.popup_name, root.island, root.island_grow);
+    }
+    onIsland_growChanged: root.report_grow()
+    // A LazyPopup can be destroyed with its last growth still reported; a later open that needs none would keep it.
+    Component.onDestruction: Popups.report_island_grow(root.popup_name, null, 0)
     // The clock's meeting chip widens its island, but not the clock popup sized from it. Only the width floor below uses this;
     // the accent line, the island notch and the corner radii still follow the island as drawn.
     readonly property real island_floor_width: root.beside ? 0 : Math.max(0, root.island_width - (root.popup_name === "clock" && root.island && root.island.popup_trim !== undefined ? root.island.popup_trim : 0))
@@ -412,7 +419,10 @@ PanelWindow {
         root.island_top = root.island.mapToItem(null, 0, 0).y;
         root.island_length = Drawer.beside_extent(root.island.height, root.island.tail_span || 0);
     }
-    onIslandChanged: root.read_island()
+    onIslandChanged: {
+        root.read_island();
+        root.report_grow();
+    }
     onVisibleChanged: if (root.visible) root.read_island()
     Connections {
         target: root.island

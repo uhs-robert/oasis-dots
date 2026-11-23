@@ -50,7 +50,7 @@ Item {
     readonly property bool can_grow: !root.vertical && !root.lualine && !root.center && root.shape !== "none"
     // The open popup's growth for this island (Popup.island_grow). `grow` follows it like `join` follows `joined`:
     // out as the popup opens, back in once it has folded away.
-    readonly property real grow_target: root.can_grow && Popups.open_name !== "" && Popups.open_anchor === body ? (Popups.island_grows[Popups.open_name] || 0) : 0
+    readonly property real grow_target: root.can_grow && Popups.open_name !== "" && Popups.open_anchor === body && Popups.island_grows[Popups.open_name] && Popups.island_grows[Popups.open_name].island === root ? Popups.island_grows[Popups.open_name].grow : 0
     property real grow: 0
     // Growth goes toward the bar's middle: before the modules on a right island, after them on a left one. Only the drawing grows (deco_length, moved back by grow_before in deco_frame); the
     // modules, their hit areas and the island's own size stay put, so the bar never reflows under the pointer.
@@ -152,7 +152,7 @@ Item {
     }
 
     // The screen edge the bar sits on. The decoration is drawn for "top" (open side down, x along the bar) in a
-    // `length` by `thickness` item turned onto the edge by `deco_frame`; the modules never turn. On a left or right
+    // `deco_length` by `thickness` item turned onto the edge by `deco_frame`; the modules never turn. On a left or right
     // bar the island is a column: `length` runs down the screen and `thickness` across it.
     property string edge: "top"
     readonly property bool vertical: BarLayout.is_vertical(root.edge)
