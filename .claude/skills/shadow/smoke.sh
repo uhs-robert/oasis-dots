@@ -63,6 +63,11 @@ sys.exit(0 if changed < 0.01 * a.size[0] * a.size[1] else 1)
 PY
 }
 
+# Loose on purpose: any labwc started for this shadow counts, even if the launch line drifted from the one `is_host_labwc` matches.
+# The slash after the name keeps "sn1" apart from "sn10".
+# shellcheck disable=SC2329 # used by restore and the self-test
+any_labwc_of() { pgrep -f "^labwc .*/dotfiles/shadow/$1/labwc( |\$)" >/dev/null; }
+
 if ((self_test)); then
   tmp=$(mktemp -d)
   trap 'rm -rf "$tmp"' EXIT
@@ -115,6 +120,9 @@ PY
   # shellcheck disable=SC2329 # called through check
   labwc_alive() { pgrep -fx "labwc -C $shadow_root/$1/labwc" >/dev/null; }
   # shellcheck disable=SC2329
+  # shellcheck disable=SC2329
+  labwc_gone_loose() { ! any_labwc_of "$1"; }
+  # shellcheck disable=SC2329
   labwc_gone() { ! labwc_alive "$1"; }
   check() {
     if "$@"; then echo "ok: $desc"; else
@@ -138,6 +146,10 @@ PY
     check labwc_gone lcz1
     desc="down leaves a shadow whose name extends this one running"
     check labwc_alive lcz10
+    desc="the loose match sees the shadow's own labwc"
+    check any_labwc_of lcz10
+    desc="the loose match does not take lcz10's labwc for lcz1's"
+    check labwc_gone_loose lcz1
     desc="status prints down after down"
     check test "$("$shadow" status lcz1)" == "lcz1: down"
     for pid in $(pgrep -fx "labwc -C $shadow_root/lcz10/labwc" || true); do kill -TERM "$pid" 2>/dev/null || true; done
@@ -248,7 +260,7 @@ restore() {
   if ((started_shadow)); then
     "$shadow" down "$name" >&2 || true
     # The self-test copies the labwc launch line, so only the real up and down can show drift between them.
-    if pgrep -fx "labwc -C ${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/labwc" >/dev/null; then
+    if any_labwc_of "$name"; then
       echo "smoke: labwc of '$name' still runs after down" >&2
       exit 1
     fi
