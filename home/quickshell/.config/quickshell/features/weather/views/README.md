@@ -21,4 +21,4 @@
 | `weatherstar` | crt | WeatherStar 4000 screens: yellow titles over bevelled blue panels |
 | `wttr` | terminal | wttr.in text tables with ASCII sky art |
 
-A view that another feature's code also draws lives in `styles/<style>/widgets/` (`DqWindow`, `BattleGauge`, `DexStatBar`, `ScanLock`, `TickGauge`, `WsPanel`, `TowerFloor`), and a view used by more than one token lives in `shared/`.
+A view that another feature's code also draws lives in `styles/<style>/widgets/` (`DqWindow`, `BattleGauge`, `DexStatBar`, `ScanLock`, `TickGauge`, `WsPanel`), and a view used by more than one token lives in `shared/`.

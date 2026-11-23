@@ -6,7 +6,7 @@ import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
 
 // The Agents tab as the PS2 Browser's memory card screen: the selected session's save-info block over a field of
-// save cubes on the tower haze, four across. Same contract as AgentsView.qml.
+// save cubes beside a pulsing rail, four across. Same contract as AgentsView.qml.
 Item {
     id: root
 
@@ -40,6 +40,20 @@ Item {
         if (i >= cols) return i - cols;
         const last_row_start = Math.floor((n - 1) / cols) * cols;
         return last_row_start + i < n ? last_row_start + i : last_row_start - cols + i;
+    }
+
+    // Session id to its last seen state. The rail pulses when a session already on screen changes state; a session
+    // appearing or the first load is not a change.
+    property var seen_states: ({})
+    onSessionsChanged: {
+        const next = {};
+        let changed = false;
+        for (const s of root.sessions) {
+            next[s.id] = s.state || "idle";
+            if (root.seen_states[s.id] !== undefined && root.seen_states[s.id] !== next[s.id]) changed = true;
+        }
+        root.seen_states = next;
+        if (changed && root.is_open) rail.fire();
     }
 
     function ensure_visible(i) {
@@ -149,11 +163,11 @@ Item {
         anchors.right: parent.right
         clip: true
 
-        Haze {
-            anchors.fill: parent
-            horizon: 0.8
-            towers: 9
-            strength: 0.7
+        Rail {
+            id: rail
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
         }
 
         GridView {

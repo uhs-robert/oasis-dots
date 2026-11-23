@@ -5,7 +5,7 @@ import qs.features.weather
 import qs.features.weather.views.shared
 import qs.styles.ps2.widgets
 
-// Hourly as a PS2 tower field: one glass tower per hour on the haze floor, as tall as the sub's value.
+// Hourly as a PS2 tower field: one glass tower per hour, as tall as the sub's value.
 // The cursor hour's tower is lit and its value floats above it. sub: 0 temp, 1 precip, 2 wind, 3 UV, 4 humidity.
 Item {
     id: root
@@ -220,13 +220,6 @@ Item {
                     border.width: 1
                     border.color: Style.selection_border
                 }
-            }
-
-            underlay: TowerFloor {
-                y: root.base_y - 28
-                width: parent.width
-                height: parent.height - y
-                haze_h: 28
             }
 
             // Towers and their values are painted once; only the lit tower and its floating value are live items.

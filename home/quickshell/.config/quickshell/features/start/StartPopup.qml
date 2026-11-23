@@ -76,7 +76,12 @@ Popup {
             anchors.fill: parent
             anchors.margins: -12
             z: -2
-            sourceComponent: Ps2.Haze {}
+            visible: !root.confirm
+            sourceComponent: Ps2.Rail {
+                // Rows start 12px in (the content margin) and are Style.px(28) tall with 4px between.
+                lit_y: 12 + root.selected * (Style.px(28) + 4)
+                lit_h: Style.px(28)
+            }
         }
 
         Keys.onPressed: event => {

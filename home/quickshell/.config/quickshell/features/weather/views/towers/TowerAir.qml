@@ -6,7 +6,7 @@ import qs.features.weather
 import qs.styles.ps2.widgets
 
 // Air as PS2 glass panels over a tower field: the current AQI and pollutants in thin panels, then one tower per hour
-// standing on the haze floor, coloured by AQI category. The cursor hour's tower is lit with its value above it.
+// standing, coloured by AQI category. The cursor hour's tower is lit with its value above it.
 Item {
     id: root
 
@@ -232,13 +232,6 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.bottomMargin: 4
-
-            TowerFloor {
-                y: root.base_y - 28
-                width: parent.width
-                height: parent.height - y
-                haze_h: 28
-            }
 
             Canvas {
                 id: canvas
