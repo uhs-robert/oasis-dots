@@ -447,7 +447,6 @@ Singleton {
     readonly property color bar_hover_bg: root.bar.bar_hover_bg
     readonly property color bar_glow_color: root.bar.bar_glow_color
     readonly property color bar_updates_body: root.bar.bar_updates_body
-    readonly property color bar_updates_accent: root.bar.bar_updates_accent
     readonly property string done_anim: root.active.done_anim || "hearts"
     readonly property string wait_anim: root.active.wait_anim || "bubble"
     readonly property color bar_scanline_color: root.bar.bar_scanline_color
