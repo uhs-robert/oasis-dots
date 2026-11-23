@@ -34,6 +34,11 @@ Popup {
     readonly property var glyphs: ["󰣇", "󰒓"].concat(Power.actions.map(a => Power.glyphs[a]))
     readonly property var glyph_colors: [Style.pal.green, Style.pal.secondary].concat(Power.actions.map(a => Power.color(a, root.st)))
 
+    // The action rows' geometry, shared with the PS2 rail that lights the selected row.
+    readonly property real content_margin: 12
+    readonly property real row_height: Style.px(28)
+    readonly property real row_gap: 4
+
     property int selected: 0
     property bool confirm: false
 
@@ -67,20 +72,19 @@ Popup {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 12
+        anchors.margins: root.content_margin
         implicitHeight: root.confirm ? confirm_row.implicitHeight : (menu_view.active ? menu_view.implicitHeight : actions_col.implicitHeight)
         focus: true
 
         Loader {
             active: root.st.console_views === "ps2"
             anchors.fill: parent
-            anchors.margins: -12
+            anchors.margins: -root.content_margin
             z: -2
             visible: !root.confirm
             sourceComponent: Ps2.Rail {
-                // Rows start 12px in (the content margin) and are Style.px(28) tall with 4px between.
-                lit_y: 12 + root.selected * (Style.px(28) + 4)
-                lit_h: Style.px(28)
+                lit_y: root.content_margin + root.selected * (root.row_height + root.row_gap)
+                lit_h: root.row_height
             }
         }
 
@@ -112,7 +116,7 @@ Popup {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            spacing: 4
+            spacing: root.row_gap
             visible: !root.confirm && !menu_view.active
 
             Repeater {
@@ -124,7 +128,7 @@ Popup {
                     required property string modelData
 
                     Layout.fillWidth: true
-                    height: Style.px(28)
+                    height: root.row_height
                     base_radius: 6
                     selected: index === root.selected
                     key: root.keys[row.index]
