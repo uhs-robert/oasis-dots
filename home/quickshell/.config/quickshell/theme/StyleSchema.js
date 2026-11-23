@@ -173,6 +173,8 @@ var tokens = [
     tok("bar_inset_color", "color", "transparent", "", {via: "bar"}),
     tok("bar_hover_bg", "color", t => t.bg_surface, "", {via: "bar"}),
     tok("bar_glow_color", "color", "transparent", "", {via: "bar"}),
+    tok("bar_updates_body", "color", "transparent", "The update icons' body colour; transparent keeps the module tint.", {via: "bar"}),
+    tok("bar_updates_accent", "color", "transparent", "The update icons' lit part colour; transparent keeps the lighter step of the tint.", {via: "bar"}),
     tok("bar_text_raised", "bool", false, "Raised bar text (read by bar_text_style).", {export: false}),
     tok("done_anim", "string", "hearts", "The keeptabs done celebration (Style.done_anims): hearts, pixel (stepped), lcd (stepped, then blinks), hev_pickup, levelup (inverted flash, pixel sparkles), fanfare, item (an energy tank rises off the glyph), lock (brackets close on the glyph), ring (a ring draws round the glyph, ticks flash) or shooting_star (a sparkle arcs off the glyph).", {expr: 'root.active.done_anim || "hearts"'}),
     tok("wait_anim", "string", "bubble", "The keeptabs waiting cue (Style.wait_anims): bubble, cursor, pressanykey, advance, hand, alert, rumble, transmission, scan, comms, ping, hev_alert, exclaim, atb or mirage.", {expr: 'root.active.wait_anim || "bubble"'}),
