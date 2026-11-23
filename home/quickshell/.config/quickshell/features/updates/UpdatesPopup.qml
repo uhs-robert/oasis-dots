@@ -18,7 +18,7 @@ Popup {
     fit_island: true
     min_width: 400
     body_height: content.implicitHeight + 24
-    key_help: "Tab/[ ] views · j/k move · gg/G ends · r refresh · u upgrade · q close"
+    key_help: "Tab/[ ] views · " + (root.grid_columns > 0 ? "hjkl" : "j/k") + " move · gg/G ends · r refresh · u upgrade · q close"
 
     readonly property int content_height: Style.px(320)
     readonly property bool nes: root.st.console_views === "nes"
@@ -59,6 +59,25 @@ Popup {
     onJump_first: root.go_first()
     onJump_last: root.go_last()
 
+    // A console grid view exposes its column count; with more than one column, j/k move by rows and h/l along a row.
+    readonly property int grid_columns: list_view.item && list_view.item.columns > 1 ? list_view.item.columns : 0
+
+    // Grid moves stop at the edges instead of wrapping, so a step never lands in a different column.
+    // j from the row above a short last row lands on its last item, as in a file manager grid.
+    function move_in_grid(dx, dy) {
+        const count = root.current_list.length;
+        const cols = root.grid_columns;
+        const i = root.selected;
+        let next = i;
+        if (dy > 0) next = i + cols < count ? i + cols : (Math.floor(i / cols) < Math.floor((count - 1) / cols) ? count - 1 : i);
+        else if (dy < 0) next = i - cols >= 0 ? i - cols : i;
+        else if (dx > 0) next = i % cols < cols - 1 && i + 1 < count ? i + 1 : i;
+        else if (dx < 0) next = i % cols > 0 ? i - 1 : i;
+        if (next === i) return;
+        root.selected = next;
+        root.reveal(next);
+    }
+
     function move_selected(delta) {
         if (root.current_list.length === 0) return;
         root.selected = root.wrap_index(root.selected, delta, 0, root.current_list.length);
@@ -82,7 +101,15 @@ Popup {
 
     function handle_key(event) {
         const before = root.cursor_key();
-        if (event.key === Qt.Key_J) {
+        if (root.grid_columns > 0 && !(event.modifiers & Qt.ControlModifier) && [Qt.Key_H, Qt.Key_J, Qt.Key_K, Qt.Key_L].includes(event.key)) {
+            if (root.current_list.length > 0) {
+                const dx = event.key === Qt.Key_L ? 1 : event.key === Qt.Key_H ? -1 : 0;
+                const dy = event.key === Qt.Key_J ? 1 : event.key === Qt.Key_K ? -1 : 0;
+                root.move_in_grid(dx, dy);
+                root.play_if_moved(before);
+            }
+            event.accepted = true;
+        } else if (event.key === Qt.Key_J) {
             root.move_selected(1);
             root.play_if_moved(before);
             event.accepted = true;
