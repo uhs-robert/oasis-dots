@@ -131,7 +131,6 @@ Item {
                 required property var modelData
                 with_key: true
                 key: KeyHints.with_glyphs(modelData.key)
-                desc: modelData.desc
             }
         }
     }
@@ -156,7 +155,6 @@ Item {
                     id: badge
                     with_key: true
                     key: KeyHints.with_glyphs(help_row.modelData.key)
-                    desc: help_row.modelData.desc
                 }
             }
 

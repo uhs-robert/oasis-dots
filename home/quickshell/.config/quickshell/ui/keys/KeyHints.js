@@ -47,22 +47,13 @@ const controllers = {
 // Game Boy pads use the NES buttons, drawn in its four shades (styles/gameboy/widgets/GameboyButton.qml).
 controllers.gameboy = { button: "gameboy/GameboyButton.qml", keys: controllers.nes.keys };
 
-// Every mapped button matches its key, so each one reads without a label; the set stays so "dpad" can narrow it again.
-const self_evident = ["a", "b", "x", "y", "circle", "cross", "start", "select", "dpad_v", "dpad_h", "dpad_up", "dpad_down", "dpad_left", "dpad_right", "l", "r", "lr", "l1", "r1"];
-
-// A key (glyphs allowed) as [{ button, label? } | { text }] parts, "/" text between halves; [] when nothing maps.
-// glyphs is Style.controller_glyphs: "dpad" keeps other buttons as key text, "labeled" gives them their key as label.
-function controller_parts(controller, key, desc, glyphs) {
+// A key as [{ button } | { text }] parts, "/" text between halves; [] when nothing maps.
+function controller_parts(controller, key) {
     const map = controllers[controller] ? controllers[controller].keys : null;
     if (!map || !key || key.indexOf("+") >= 0) return [];
     let k = key;
     for (const g in glyph_names) k = k.split(g).join(glyph_names[g]);
-    const part_for = p => {
-        const b = map[p];
-        const evident = self_evident.indexOf(b) >= 0;
-        if (b === undefined || (glyphs === "dpad" && !evident)) return { text: p };
-        return glyphs === "labeled" && !evident ? { button: b, label: p } : { button: b };
-    };
+    const part_for = p => map[p] === undefined ? { text: p } : { button: map[p] };
     const whole = part_for(k);
     if (whole.button) return [whole];
     const pieces = k === "/" ? ["/"] : k === "[ ]" ? ["[", "]"] : k.split("/");
@@ -72,10 +63,7 @@ function controller_parts(controller, key, desc, glyphs) {
         const next = part_for(p);
         if (next.button) hit = true;
         const last = parts[parts.length - 1];
-        if (next.button && last && last.button === next.button) {
-            if (last.label) last.label += "/" + p;
-            continue;
-        }
+        if (next.button && last && last.button === next.button) continue;
         if (parts.length > 0 && k !== "[ ]") parts.push({ text: "/" });
         parts.push(next);
     }

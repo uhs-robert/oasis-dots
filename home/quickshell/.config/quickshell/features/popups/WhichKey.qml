@@ -215,7 +215,6 @@ PanelWindow {
             KeyBadge {
                 required property var modelData
                 key: modelData.key
-                desc: modelData.desc || ""
                 font_px: Style.whichkey_size
             }
         }
@@ -416,7 +415,6 @@ PanelWindow {
                                 visible: !root.watch
                                 anchors.verticalCenter: parent.verticalCenter
                                 key: row.modelData.key
-                                desc: row.modelData.desc || ""
                                 font_px: Style.whichkey_size
                             }
 
