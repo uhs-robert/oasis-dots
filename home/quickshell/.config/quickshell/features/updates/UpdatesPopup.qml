@@ -17,6 +17,7 @@ Popup {
     popup_name: "updates"
     preferred_width: 520
     fit_island: true
+    min_width: 400
     body_height: content.implicitHeight + 24
     key_help: "Tab/[ ] views · j/k move · gg/G ends · r refresh · u upgrade · q close"
 

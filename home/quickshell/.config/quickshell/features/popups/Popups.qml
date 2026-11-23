@@ -46,6 +46,15 @@ Singleton {
     function swap_done(name) {
         if (root.swap_from && root.swap_from.name === name) root.swap_from = null;
     }
+    // How far each popup grows the capsule it hangs from, by popup name (Popup.island_grow). Keyed by name, not one
+    // value for the open popup, so a swap never shows the outgoing popup's growth on the incoming one's island.
+    property var island_grows: ({})
+    function report_island_grow(name, grow) {
+        if ((root.island_grows[name] || 0) === grow) return;
+        const next = Object.assign({}, root.island_grows);
+        next[name] = grow;
+        root.island_grows = next;
+    }
     // A hidden window sends no leave, so each open starts from "not over it".
     onOpen_nameChanged: {
         root.hover_name = "";

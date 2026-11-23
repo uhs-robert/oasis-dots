@@ -32,6 +32,8 @@ Item {
     readonly property bool lualine: Style.bar_lualine
     // The cava tail the center island has grown below its modules (0 on a top or bottom bar).
     readonly property real center_tail: center_cava.tail_span
+    // The air a grown side capsule leaves before the next island (Island.grow_room).
+    readonly property real grow_gap: root.bar_height / 2
     // The center island's extent along the bar: its width on a top or bottom bar, its height on a side one.
     readonly property real center_span: root.vertical ? center_island.body_item.height : center_island.body_item.width
     // The floating strip (Style.strip_floats): the plate sits strip_inset in from the screen edge and strip_side in from
@@ -304,6 +306,7 @@ Item {
         edge: root.position
         cap_right: true
         visible: root.left_entries.length > 0
+        grow_room: root.vertical ? 0 : Math.max(0, (root.has_center ? center_island.x : right_island.visible ? right_island.x : root.width) - left_island.x - left_island.width - root.grow_gap)
 
         onClicked: if (root.left_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
 
@@ -480,6 +483,7 @@ Item {
         cap_left_fill: root.lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
         cap_left: true
         visible: root.right_side.length > 0
+        grow_room: root.vertical ? 0 : Math.max(0, right_island.x - (root.has_center ? center_island.x + center_island.width : left_island.visible ? left_island.x + left_island.width : 0) - root.grow_gap)
 
         onClicked: if (!root.lualine && root.right_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
 
