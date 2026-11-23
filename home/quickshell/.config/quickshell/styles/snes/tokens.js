@@ -44,7 +44,7 @@ function overrides(t, ctx) {
         tab_fg: t.theme_primary_light,
         key_fg: t.theme_secondary,
         key_border: "transparent",
-        key_cap: "snes_lavender",
+        key_cap: "snes_pad",
         section_fg: t.theme_primary_light,
         section_rule: false,
         footer_fg: t.theme_primary_light,

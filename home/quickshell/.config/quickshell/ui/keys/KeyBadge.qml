@@ -32,9 +32,9 @@ Rectangle {
     readonly property var look: {
         switch (root.st.key_cap) {
         case "ps1_dome": return { top: Qt.tint(Theme.fg_dim, Qt.alpha(Theme.fg_core, 0.2)), bottom: Qt.tint(Theme.bg_surface, Qt.alpha(Theme.fg_muted, 0.5)), edge: Theme.bg_shadow, hi: Qt.alpha(Theme.fg_strong, 0.18), round: 4, fg: Theme.fg_strong };
-        case "snes_lavender": {
-            const lav = Qt.tint("#9a90cc", Qt.alpha(Theme.magenta, 0.35));
-            return { top: Qt.darker(lav, 1.35), bottom: lav, edge: Qt.darker(lav, 2.2), hi: Qt.alpha(Theme.fg_strong, 0.25), round: 4, fg: Theme.fg_strong };
+        case "snes_pad": {
+            const plastic = Qt.tint(Theme.fg_dim, Qt.alpha("#a4a4b4", 0.45));
+            return { top: Qt.lighter(plastic, 1.15), bottom: plastic, edge: Qt.darker(plastic, 1.8), hi: Qt.alpha(Theme.fg_strong, 0.3), round: 999, fg: Theme.bg_crust };
         }
         case "nes_black": return { top: "#161616", bottom: "#161616", edge: "#6a6a6a", hi: "transparent", round: 0, fg: Qt.tint("#c8102e", Qt.alpha(Theme.red, 0.45)) };
         }
