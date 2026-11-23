@@ -50,7 +50,8 @@ Item {
             text: root.button.toUpperCase()
             color: (root.us ? root.button === "x" || root.button === "y" : root.button === "b" || root.button === "y") ? Theme.bg_crust : Theme.fg_strong
             font.family: "Silkscreen"
-            font.pixelSize: 8
+            // KeyBadge sizes the button as the key text's height plus 2 and a pixel font's height is its pixel size, so this is the footer key text size.
+            font.pixelSize: root.size - 2
         }
     }
 
