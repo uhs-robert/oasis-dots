@@ -65,7 +65,9 @@ Flow {
                             anchors.verticalCenter: parent.verticalCenter
                             key: KeyHints.with_glyphs(item.modelData[0])
                             font_px: Style.fs(-1)
-                            plain: !KeyHints.cap_is_drawn(Style.for_item(item)) && Style.key_bg.a === 0
+                            footer: true
+                            bare_color: Style.accent_color
+                            bare_bold: true
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter

@@ -80,7 +80,9 @@ HintDrawer {
                             anchors.verticalCenter: parent.verticalCenter
                             key: KeyHints.with_glyphs(footer_key.modelData[0])
                             font_px: Style.fs(-3)
-                            plain: !KeyHints.cap_is_drawn(Style.for_item(footer_key)) && Style.key_bg.a === 0
+                            footer: true
+                            bare_color: Style.title_fg
+                            bare_bold: true
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter

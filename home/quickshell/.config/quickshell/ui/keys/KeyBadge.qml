@@ -16,7 +16,12 @@ Rectangle {
     // A bare key with no cap, e.g. a tab's jump digit.
     property bool plain: false
     property int font_px: 0
+    // A footer or hint-bar key: in a style with no drawn cap and no key fill it is bare text, as footers drew it before KeyBadge.
+    property bool footer: false
+    property color bare_color: root.st.footer_key_fg
+    property bool bare_bold: false
     readonly property bool pad: root.st.controller !== "" && KeyHints.controller_parts(root.st.controller, root.key).length > 0
+    readonly property bool bare: root.footer && !root.pad && !root.orb && !KeyHints.cap_is_drawn(root.st) && root.st.key_bg.a === 0
     readonly property bool tinted: root.on_fill && root.st.key_bg.a === 0 && !root.orb
 
     // Pixel fonts have no internal leading, so the cap grows with its ring or the ring covers the glyph.
@@ -41,14 +46,14 @@ Rectangle {
         return { top: "transparent", bottom: "transparent", edge: "transparent", hi: "transparent", round: 0, fg: "transparent" };
     }
 
-    implicitWidth: root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + KeyHints.cap_pad_w(root.st) + root.ring_width * 2)
-    implicitHeight: root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2 + KeyHints.cap_gloss_h(root.st)
+    implicitWidth: root.bare ? key_text.implicitWidth : root.pad ? pad_loader.implicitWidth : Math.max(implicitHeight, key_text.implicitWidth + KeyHints.cap_pad_w(root.st) + root.ring_width * 2)
+    implicitHeight: root.bare ? key_text.implicitHeight : root.pad ? Math.max(key_text.implicitHeight + 2, pad_loader.implicitHeight) : key_text.implicitHeight + root.ring_width * 2 + KeyHints.cap_gloss_h(root.st)
     width: implicitWidth
     height: implicitHeight
     radius: root.retro ? Math.min(root.look.round, height / 2) : root.st.key_round ? height / 2 : Style.radius(3)
     readonly property bool orb: root.st.materia.key !== undefined && !root.pad
     color: root.retro ? root.look.top : root.orb || root.pad || root.plain ? "transparent" : root.st.key_bg
-    border.width: root.retro ? 1 : root.orb || root.pad || root.plain ? 0 : root.ring_width
+    border.width: root.retro ? 1 : root.orb || root.pad || root.plain || root.bare ? 0 : root.ring_width
     border.color: root.retro ? root.look.edge : root.tinted ? root.st.tab_active_fg : root.st.key_border
     gradient: root.retro ? retro_gradient : root.glossy ? gloss_gradient : null
 
@@ -98,7 +103,7 @@ Rectangle {
     }
 
     Sheen {
-        color_top: !root.plain && !root.pad && root.st.key_bg.a > 0 ? root.st.sheen : "transparent"
+        color_top: !root.plain && !root.bare && !root.pad && root.st.key_bg.a > 0 ? root.st.sheen : "transparent"
         corner: root.radius
         edge: 1
     }
@@ -144,10 +149,10 @@ Rectangle {
         anchors.centerIn: parent
         anchors.verticalCenterOffset: root.retro ? -1 : 0
         text: root.key
-        color: root.retro ? root.look.fg : root.tinted ? root.st.tab_active_fg : root.st.key_fg
+        color: root.bare ? root.bare_color : root.retro ? root.look.fg : root.tinted ? root.st.tab_active_fg : root.st.key_fg
         font.weight: root.glossy ? Font.DemiBold : Font.Normal
-        font.family: KeyHints.cap_font_family(root.st)
+        font.family: root.bare ? root.st.font_family : KeyHints.cap_font_family(root.st)
         font.pixelSize: root.font_px > 0 ? root.font_px : KeyHints.cap_font_px(root.st)
-        font.bold: root.orb || root.st.mono_font === root.st.font_family
+        font.bold: root.bare ? root.bare_bold : root.orb || root.st.mono_font === root.st.font_family
     }
 }
