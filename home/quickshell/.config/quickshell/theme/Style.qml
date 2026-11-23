@@ -427,6 +427,7 @@ Singleton {
     readonly property color bar_side_bg: root.bar.bar_side_bg
     readonly property color bar_center_bg: root.bar.bar_center_bg
     readonly property color bar_fg: root.bar.bar_fg
+    readonly property color bar_fg_dim: root.bar.bar_fg_dim
     readonly property color bar_clock_bg: root.bar.bar_clock_bg
     readonly property color bar_clock_fg: root.bar.bar_clock_fg
     readonly property string bar_clock_font: root.bar.bar_clock_font || root.bar_font_family
