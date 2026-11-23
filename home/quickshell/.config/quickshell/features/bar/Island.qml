@@ -4,6 +4,7 @@ import QtQuick.Shapes
 import qs.ui.effects
 import qs.ui.gauges
 import qs.styles.metroid.widgets as Metroid
+import qs.core
 import qs.theme
 import qs.features.popups
 import "../../ui/frames/BandGeometry.js" as Band
@@ -248,6 +249,10 @@ Item {
     onGrow_targetChanged: {
         grow_anim.stop();
         shrink_anim.stop();
+        if (!PowerSource.on_ac || !root.visible) {
+            root.grow = root.grow_target;
+            return;
+        }
         grow_anim.to = root.grow_target;
         shrink_to.to = root.grow_target;
         (root.grow_target > root.grow ? grow_anim : shrink_anim).restart();
