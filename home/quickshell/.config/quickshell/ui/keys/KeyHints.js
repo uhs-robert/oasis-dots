@@ -26,12 +26,19 @@ function cap_ring_width(st) {
 }
 
 // Room a drawn cap (key_cap) takes beyond a flat one, read by KeyBadge and by TabRows to reserve it.
+// A key_cap value outside this list (a typo) draws the flat cap, sized as one.
+var drawn_caps = ["ps2_gloss", "ps1_dome", "snes_lavender", "nes_black"];
+
+function cap_is_drawn(st) {
+    return drawn_caps.indexOf(st.key_cap) >= 0;
+}
+
 function cap_pad_w(st) {
-    return st.key_cap === "none" ? 6 : st.key_cap === "ps2_gloss" ? 10 : 8;
+    return !cap_is_drawn(st) ? 6 : st.key_cap === "ps2_gloss" ? 10 : 8;
 }
 
 function cap_gloss_h(st) {
-    return st.key_cap === "none" ? 0 : st.key_cap === "ps2_gloss" ? 3 : 2;
+    return !cap_is_drawn(st) ? 0 : st.key_cap === "ps2_gloss" ? 3 : 2;
 }
 
 function cap_font_family(st) {

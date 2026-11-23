@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/ui/keys/KeyHints.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { controller_parts, button_path };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { controller_parts, button_path, cap_pad_w, cap_gloss_h };", T);
 const K = T.api;
 
 const buttons = (pad, key) => K.controller_parts(pad, key).map(p => p.button || "text:" + p.text);
@@ -31,6 +31,8 @@ const cases = [
   ["single shoulders", () => [buttons("snes", "["), buttons("ps1", "]")], [["l"], ["r1"]]],
   ["a modified key never draws", () => buttons("ps2", "Ctrl+Enter"), []],
   ["no glyphs without a console", () => buttons("", "Enter"), []],
+  ["cap sizes per key_cap", () => ["none", "ps2_gloss", "ps1_dome", "snes_lavender", "nes_black"].map(c => [K.cap_pad_w({ key_cap: c }), K.cap_gloss_h({ key_cap: c })]), [[6, 0], [10, 3], [8, 2], [8, 2], [8, 2]]],
+  ["an unknown key_cap is sized as a flat cap", () => [K.cap_pad_w({ key_cap: "nes_blk" }), K.cap_gloss_h({ key_cap: "nes_blk" })], [6, 0]],
   ["every console resolves a button file", () => ["nes", "snes", "ps1", "ps2", "gameboy"].map(p => K.button_path(p).endsWith(".qml")), Array(5).fill(true)],
 ];
 
