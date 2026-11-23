@@ -2,11 +2,11 @@ import QtQuick
 import qs.theme
 import qs.ui.keys
 
-// A PS2 system dialog's prompt line: each entry is { button or key, text } and clicks run its action.
+// A PS2 system dialog's prompt line: each entry is { key, text } and clicks run its action. KeyBadge draws the key as the console button that matches it, else a cap.
 Row {
     id: root
 
-    // [{ button: "cross" | key: "d", text: "Open", action: function }]
+    // [{ key: "Enter", text: "Open", action: function }]
     property var entries: []
 
     spacing: 14
@@ -25,17 +25,9 @@ Row {
                 id: entry_row
                 spacing: 5
 
-                Ps2Button {
-                    visible: !!entry.modelData.button
-                    anchors.verticalCenter: parent.verticalCenter
-                    button: entry.modelData.button || "cross"
-                    size: Style.fs(-1)
-                }
-
                 KeyBadge {
-                    visible: !entry.modelData.button
                     anchors.verticalCenter: parent.verticalCenter
-                    key: entry.modelData.key || ""
+                    key: entry.modelData.key
                 }
 
                 Text {

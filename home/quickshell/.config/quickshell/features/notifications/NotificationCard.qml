@@ -365,9 +365,9 @@ Item {
                     Layout.topMargin: 4
                     sourceComponent: Ps2.DialogPrompt {
                         entries: [
-                            { button: "cross", text: root.focused_valid ? root.actions[root.focused_action].text : "Open", action: () => root.enter() },
+                            { key: "Enter", text: root.focused_valid ? root.actions[root.focused_action].text : "Open", action: () => root.enter() },
                             { key: "d", text: "Dismiss", action: () => NotificationState.dismiss(root.entry) },
-                            { button: "start", text: "Close", action: () => { ThemeAudio.play("cancel"); Popups.close(); } }
+                            { key: "q", text: "Close", action: () => { ThemeAudio.play("cancel"); Popups.close(); } }
                         ]
                     }
                 }
