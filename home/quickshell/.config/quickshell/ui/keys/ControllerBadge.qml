@@ -33,6 +33,7 @@ Row {
                 onLoaded: {
                     item.button = Qt.binding(() => part.modelData.button || "");
                     item.size = Qt.binding(() => root.size);
+                    if (item.font_px !== undefined) item.font_px = Qt.binding(() => root.font_size);
                 }
             }
 
