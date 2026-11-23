@@ -127,11 +127,13 @@ Singleton {
     // scripts/focus-topgrade.sh finds the window by this class.
     readonly property string upgrade_class: "quickshell-upgrade"
 
-    // Hyprland's term wrapper normalizes every terminal to `term -e cmd`, but may hand the
-    // window to a running instance and exit at once, so the refresh waits on topgrade itself.
+    // Hyprland's term wrapper normalizes every terminal to `term -e cmd`. With kitty
+    // --single-instance, the launch either hands off and exits at once or becomes the host for
+    // every later kitty window and outlives topgrade. setsid -f makes both exit at once and keeps
+    // that host out of the bar's process tree, so the refresh waits on topgrade itself.
     Process {
         id: upgrade_proc
-        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec \"$t\" --class " + root.upgrade_class + " -e topgrade", Paths.term_script]
+        command: ["env", "-u", "TMUX", "-u", "TMUX_PANE", "sh", "-c", "t=\"$0\"; [ -x \"$t\" ] || t=\"${TERMINAL:-kitty}\"; exec setsid -f \"$t\" --class " + root.upgrade_class + " -e topgrade", Paths.term_script]
         onExited: root.upgrade_watching = true
     }
 
