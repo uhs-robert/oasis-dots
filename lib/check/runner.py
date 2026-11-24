@@ -369,8 +369,8 @@ class StepPool:
         self.failed = set()
         # The running steps' processes by pid, each the leader of its own process group.
         self.running = {}
-        # The temp HOME of each running temp_home step, by pid.
-        self.homes = {}
+        # The temp HOMEs not yet removed, so abort() finds each from the moment it exists until it is gone.
+        self.homes = set()
 
     def log_path(self, step):
         return os.path.join(self.logs, step.name + ".log")
@@ -391,6 +391,7 @@ class StepPool:
                 env = self.env
                 if step.temp_home:
                     home = tempfile.mkdtemp(prefix=f"check-home-{step.name}-")
+                    self.homes.add(home)
                     env = temp_home_env(self.env, home)
                 # close_fds keeps lock.sh's slot descriptor (fd 7), and any other, from the steps.
                 process = subprocess.Popen(
@@ -406,12 +407,12 @@ class StepPool:
                 log.close()
                 if home:
                     shutil.rmtree(home, ignore_errors=True)
+                    self.homes.discard(home)
                 self.failed.add(step.name)
                 print_out(f"== {step.name} FAILED (could not start: {error})")
                 return None
             self.running[process.pid] = process
-            if home:
-                self.homes[process.pid] = home
+            process.check_home = home
             return process, log
 
     def end_step(self, process):
@@ -422,9 +423,11 @@ class StepPool:
     def finished(self, process):
         with self.lock:
             self.running.pop(process.pid, None)
-            home = self.homes.pop(process.pid, None)
+        home = process.check_home
         if home:
             shutil.rmtree(home, ignore_errors=True)
+            with self.lock:
+                self.homes.discard(home)
 
     def run_live(self, step):
         """One step at a time: its output shows as it comes, and goes to its log too."""
@@ -540,7 +543,7 @@ class StepPool:
             groups = {pid for pid, process in self.running.items() if process.returncode is None}
             end_processes(lambda: descendant_pids() + group_members(groups))
             shutil.rmtree(self.logs, ignore_errors=True)
-            for home in self.homes.values():
+            for home in self.homes:
                 shutil.rmtree(home, ignore_errors=True)
             os._exit(1)
 
