@@ -78,14 +78,37 @@ local function special_has_window(name)
   return false
 end
 
+--- @type table<string, boolean>
+local claimed_classes = {}
+
+--- Send every window of the entry's class to its special workspace, from the first launch until a reload.
+--- @param name  string
+--- @param class string
+local function claim_class(name, class)
+  if claimed_classes[name] then return end
+  claimed_classes[name] = true
+  hl.window_rule({
+    name = "special-" .. name,
+    match = { class = "^" .. class .. "$" },
+    workspace = "special:" .. name,
+  })
+end
+
 --- Show or hide a special workspace. One declared in Config.special_workspaces with a `cmd` launches it when empty.
 --- @param name string  Special workspace name without the `special:` prefix (e.g. "scratchpad")
 Window.toggle_special = function(name)
   return function()
     local spec = Config.special_workspaces[name]
     if spec and spec.cmd and not special_has_window(name) then
-      -- A non-silent workspace rule opens the special as the window lands, so no toggle is needed.
-      hl.dispatch(hl.dsp.exec_cmd(spec.cmd, { workspace = "special:" .. name }))
+      -- A non-silent workspace rule opens the special as the window lands, so no toggle is needed. The exec rule
+      -- follows the launched PID, which misses a window that a running process opens (kitty --single-instance);
+      -- a class rule catches those.
+      if spec.class then
+        claim_class(name, spec.class)
+        hl.dispatch(hl.dsp.exec_cmd(spec.cmd))
+      else
+        hl.dispatch(hl.dsp.exec_cmd(spec.cmd, { workspace = "special:" .. name }))
+      end
       return
     end
     hl.dispatch(hl.dsp.workspace.toggle_special(name))

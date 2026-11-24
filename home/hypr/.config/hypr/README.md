@@ -113,9 +113,11 @@ Add your own in the machine profile. An entry with a `cmd` launches it when the 
 ```lua
 -- config/machines/<hostname>.lua
 special_workspaces = {
-  notes = { key = "N", label = "Notes", cmd = "term -e nvim ~/notes.md" },
+  notes = { key = "N", label = "Notes", cmd = "kitty --single-instance --class notes -e nvim ~/notes.md", class = "notes" },
 },
 ```
+
+Set `class` when the app hands its window to a process that is already running, as a single-instance terminal does. The launch places only windows from the process it starts, so without `class` that window opens on the current workspace.
 
 ## App Launcher / Sessions
 
