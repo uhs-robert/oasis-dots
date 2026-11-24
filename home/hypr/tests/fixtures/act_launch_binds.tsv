@@ -2,6 +2,7 @@
 # Since redumped only where keys were removed or moved (the Applications submap dropped, SUPER + A for the agents picker).
 # Redumped when the agents picker lost SUPER + A to the restored Applications submap.
 # Redumped for SUPER + SHIFT + T on the Firefox tabs picker and overview.move on SUPER + SHIFT + TAB.
+# Redumped for the dictation history picker on Leader SHIFT + PERIOD.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	-	ALT + GRAVE	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''')
 default	-	ALT + TAB	Workspace overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open)
@@ -26,6 +27,7 @@ default	-	SUPER + P	Color Picker	-	exec_cmd(~/.config/hypr/scripts/screenshot.sh
 default	-	SUPER + PERIOD	Speech to Text	-	exec_cmd(~/.config/hypr/scripts/voxtype-with-media-pause.sh)
 default	-	SUPER + RETURN	Terminal	-	exec_cmd(kitty --single-instance)
 default	-	SUPER + SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop)
+default	-	SUPER + SHIFT + PERIOD	Dictation History	-	exec_cmd(~/.config/hypr/scripts/qs-picker voxtype_history 'voxtype history list -n 500 | grep -E '\''^[0-9]{8}-'\'' | rofi -name rofiDmenu -i -dmenu -p '\''Dictation'\'' | cut -d'\'' '\'' -f1 | xargs -r voxtype history paste --delay-ms 200')
 default	-	SUPER + SHIFT + RETURN	Bottom Terminal	-	exec_cmd(kitty --single-instance --class bottom-half-screen)
 default	-	SUPER + SHIFT + SEMICOLON	HyprVim Terminal	-	hyprvim.command.prompt()
 default	-	SUPER + SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''')
@@ -57,6 +59,7 @@ no-leader	-	PERIOD	Speech to Text	-	exec_cmd(~/.config/hypr/scripts/voxtype-with
 no-leader	-	Print	Screenshot	submap_universal=true	exec_cmd(~/.config/hypr/scripts/screenshot.sh)
 no-leader	-	RETURN	Terminal	-	exec_cmd(kitty --single-instance)
 no-leader	-	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop)
+no-leader	-	SHIFT + PERIOD	Dictation History	-	exec_cmd(~/.config/hypr/scripts/qs-picker voxtype_history 'voxtype history list -n 500 | grep -E '\''^[0-9]{8}-'\'' | rofi -name rofiDmenu -i -dmenu -p '\''Dictation'\'' | cut -d'\'' '\'' -f1 | xargs -r voxtype history paste --delay-ms 200')
 no-leader	-	SHIFT + RETURN	Bottom Terminal	-	exec_cmd(kitty --single-instance --class bottom-half-screen)
 no-leader	-	SHIFT + SEMICOLON	HyprVim Terminal	-	hyprvim.command.prompt()
 no-leader	-	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''')

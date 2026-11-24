@@ -163,6 +163,15 @@ function Menu.clipboard_delete()
   return Menu.picker("clipboard", "cliphist list | " .. picker .. " | cliphist delete", "delete")
 end
 
+--- Return an action that picks a voxtype dictation and types it into the focused window again.
+--- @return fun()
+function Menu.voxtype_history()
+  local picker = DMENU_CMD .. " -p 'Dictation'"
+  -- The plain list starts with a status line; entry lines start with their id. The delay lets focus return from the menu.
+  local list = "voxtype history list -n 500 | grep -E '^[0-9]{8}-' | " .. picker
+  return Menu.picker("voxtype_history", list .. " | cut -d' ' -f1 | xargs -r voxtype history paste --delay-ms 200")
+end
+
 --- Return an action that opens a zoxide directory in the file manager, or in `app` when given.
 --- @param app? string
 --- @return fun()

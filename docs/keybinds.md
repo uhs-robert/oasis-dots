@@ -325,6 +325,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + TAB` | press | global | Workspace overview | `overview.open` |
 | `SUPER + SHIFT + TAB` | press | global | Move window in overview | `overview.move` |
 | `SUPER + CTRL + V` | press | global | Clipboard History | `picker.clipboard` |
+| `SUPER + SHIFT + PERIOD` | press | global | Dictation History | `picker.voxtype_history` |
 | `SUPER + CTRL + SPACE` | press | global | Jump to Directory | `picker.directory` |
 | `SUPER + CTRL + E` | press | global | Emoji Picker | `picker.emoji` |
 | `SUPER + T` | press | global | Search Windows | `picker.windows` |
@@ -567,6 +568,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SHIFT + COMMA` | press | Leader | Stop Voice | `voice.stop` |
 | `CTRL + COMMA` | press | Leader | Rapid Mode | `voice.rapid` |
 | `CTRL + PERIOD` | press | Leader | Wake Word | `voice.wake` |
+| `SHIFT + PERIOD` | press | Leader | Dictation History | `picker.voxtype_history` |
 | `CTRL + SLASH` | press | Leader | Voice Help |  |
 | `G` | press | Leader | +Groups | `submap.enter` |
 | `A` | press | Leader | Agents | `menu.agents` |

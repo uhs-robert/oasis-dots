@@ -264,6 +264,7 @@ ShellRoot {
     WindowsProvider {}
     AppsProvider {}
     ClipboardProvider {}
+    VoxtypeHistoryProvider {}
     EmojiProvider {}
     DirsProvider {}
     ProjectsProvider {}

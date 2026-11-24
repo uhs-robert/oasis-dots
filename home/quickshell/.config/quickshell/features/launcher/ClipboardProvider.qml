@@ -5,7 +5,7 @@ import qs.features.popups
 import qs.theme
 import "ClipboardFilter.js" as ClipboardFilter
 
-// cliphist history, newest first: Enter copies an entry back, `d` deletes it in place, `C` clears the lot after a yes/no,
+// cliphist history, newest first: Enter copies an entry back, `x` deletes it in place, `C` clears the lot after a yes/no,
 // `f` narrows it to text or images.
 PickerProvider {
     id: root
@@ -19,7 +19,7 @@ PickerProvider {
     verb: "copy"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "d", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }, { key: "f", desc: "filter", needs_item: false }]
+    actions: [{ key: "x", desc: "delete" }, { key: "C", desc: "clear all", needs_item: false }, { key: "f", desc: "filter", needs_item: false }]
     // Every listed entry; `items` is the ones the type filter keeps.
     property var entries: []
     // "all", "text" or "image" (ClipboardFilter.filters); every open starts at "all".
@@ -47,7 +47,7 @@ PickerProvider {
     property int ready_seq: 0
     property bool relist: false
     property int items_seq: 0
-    // Actions wait for a list started after this open, so a fast `d` never hits a stale row.
+    // Actions wait for a list started after this open, so a fast `x` never hits a stale row.
     readonly property bool ready: root.ready_seq > 0 && root.items_seq >= root.ready_seq
 
     function parse(text) {
@@ -108,7 +108,7 @@ PickerProvider {
         list_proc.running = true;
     }
 
-    // Mode "delete" opens in NORMAL, ready for `d`.
+    // Mode "delete" opens in NORMAL, ready for `x`.
     function refresh(arg) {
         root.starts_insert = arg !== "delete";
         root.filter = "all";
@@ -173,7 +173,7 @@ PickerProvider {
             if (root.ready) Confirm.ask("Clear all clipboard history?", "", root.clear_answered);
             return;
         }
-        if (key !== "d" || !root.ready || root.deleting[item.id] !== undefined) return;
+        if (key !== "x" || !root.ready || root.deleting[item.id] !== undefined) return;
         const d = Object.assign({}, root.deleting);
         d[item.id] = -1;
         root.deleting = d;
