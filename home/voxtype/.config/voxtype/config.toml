@@ -53,11 +53,14 @@ max_duration_secs = 300
 # (voxtype-with-media-pause.sh).
 pause_media = false
 duck_media = false
+keep_failed_recordings = true
+duck_media_volume_percent = 34
+duck_media_fade_ms = 150
 
 [audio.feedback]
 enabled = false
 theme = "default"
-volume = 0.699999988079071
+volume = 0.7
 
 # [audio.feedback]
 # Enable audio feedback sounds (beeps when recording starts/stops)
@@ -324,6 +327,10 @@ threshold = 0.5
 model = "parakeet-tdt-0.6b-v3"
 streaming = false
 on_demand_loading = false
+
+[history]
+enabled = true
+retention_days = 30
 #
 # Per-state icon overrides (optional, takes precedence over theme)
 # [status.icons]
