@@ -32,6 +32,10 @@ The parallel output of a step is buffered and a passing step prints one line; af
 - `CHECK_HEAVY_SLOTS` (default 1) and `CHECK_LOCK_WAIT_SECS` (default 1200): see "Slots". `CHECK_NO_LOCK=1` runs the heavy steps without a slot, for a check that must never wait.
 - Everything runs at nice 19 in the idle IO class.
 
+### Step timeout
+
+A step that runs past its limit is killed and fails, so a hung step cannot block the check forever. The limit is 30 minutes (`DEFAULT_STEP_TIMEOUT_SECS` in `scopes.py`); a step that needs longer sets `timeout_secs` in its `Step` entry. On expiry the runner sends TERM to the step's process group and to every process below it, then KILL after 2 seconds to whatever is left. Each step runs in a process group of its own for this, so the kill also reaches children that outlived their parent, such as a test binary or a nested compositor. The step's log ends with a line naming the step, the limit and the load average.
+
 ### Where it runs on its own
 
 Nothing runs it at the end of a turn, at a commit or at a PR open. ship-batch runs it once on each PR's branch, while the reviewers are awaited; main is not checked after the merge, run `just check` there when wanted. A worktree has no `repos/`, so its pass does not cover `symlinks` for the main checkout: run the check in the real checkout before merging.
@@ -164,4 +168,4 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 
 ## Slots
 
-At most `CHECK_HEAVY_SLOTS` heavy steps run at once on the machine, each holding a flock'd slot (`lib/check/lock.sh`) and waiting at most `CHECK_LOCK_WAIT_SECS` for one. The heavy steps are the five voxcmd suites and `voxtype-duck`; every other step, `voxcmd-rust` included, takes none. The five voxcmd suites also run one after another in a lane of their own, ahead of the rest, because they are timing-sensitive; `voxtype-duck` takes a slot but runs in the ordinary pool. On INT or TERM the running steps and their children are ended.
+At most `CHECK_HEAVY_SLOTS` heavy steps run at once on the machine, each holding a flock'd slot (`lib/check/lock.sh`) and waiting at most `CHECK_LOCK_WAIT_SECS` for one. The heavy steps are the five voxcmd suites and `voxtype-duck`; every other step, `voxcmd-rust` included, takes none. The five voxcmd suites also run one after another in a lane of their own, ahead of the rest, because they are timing-sensitive; `voxtype-duck` takes a slot but runs in the ordinary pool. On INT, TERM or HUP the running steps, their children and their process groups are ended. A killed step's slot frees with its holder.
