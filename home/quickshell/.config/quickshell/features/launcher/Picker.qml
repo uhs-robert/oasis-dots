@@ -231,14 +231,16 @@ Popup {
         }));
     }
 
-    // A grouped provider's results gather by group, in the order the groups first appear in its items, so a search
-    // ranks inside each group instead of mixing them.
+    // A grouped provider's results gather by group, so a search ranks inside each group instead of mixing them. With no
+    // query the groups keep the order they first appear in its items; while searching, the group holding the best match
+    // comes first (results arrive best first), or a weak match in an early window would sit above the exact one.
     function gathered(results) {
         const p = root.provider;
         if (!p || !p.grouped || !root.browse) return results;
         const order = {};
         let groups = 0;
-        for (const item of p.items) {
+        const source = Fuzzy.terms_of(root.query).length > 0 ? results.map(r => r.item) : p.items;
+        for (const item of source) {
             const key = String(p.group_of(item));
             if (!(key in order)) order[key] = groups++;
         }
