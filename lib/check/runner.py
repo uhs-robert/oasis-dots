@@ -11,6 +11,7 @@ import glob
 import locale
 import os
 import re
+import select
 import shutil
 import signal
 import subprocess
@@ -29,6 +30,8 @@ import scopes  # noqa: E402
 USAGE = "usage: lib/check.sh [--plan] [--changed <base> | --paths-from <file|->] [--only <step>[,<step>...]]"
 SHELL_GROUP_NAMES = ("plain", "sourcing", "agent")
 FAILURE_TAIL_LINES = 25
+# How long a stopped step's processes get to exit on TERM before they get KILL.
+STOP_GRACE_SECS = 2
 
 
 class UsageError(Exception):
@@ -267,8 +270,8 @@ def print_out(text, stream=None):
 
 
 def process_stat(pid):
-    """The fields of /proc/<pid>/stat after the command name (state first, then the parent's pid), or None once the
-    process is gone. The name may hold spaces and parentheses, so the fields count from its last closing one."""
+    """The fields of /proc/<pid>/stat after the command name (state, the parent's pid, the process group), or None once
+    the process is gone. The name may hold spaces and parentheses, so the fields count from its last closing one."""
     try:
         with open(f"/proc/{pid}/stat", "rb") as handle:
             stat = handle.read()
@@ -277,19 +280,61 @@ def process_stat(pid):
     return stat[stat.rindex(b")") + 2 :].split()
 
 
-def descendant_pids():
-    """Every live process below this one: a step's shell may have children of its own."""
-    children = {}
+def live_processes():
+    """The fields of every live process (not a zombie), by pid."""
+    found = {}
     for entry in os.listdir("/proc"):
         fields = process_stat(entry) if entry.isdigit() else None
         if fields and fields[0] != b"Z":
-            children.setdefault(int(fields[1]), []).append(int(entry))
-    found, pending = [], [os.getpid()]
+            found[int(entry)] = fields
+    return found
+
+
+def descendant_pids(root=None):
+    """Every live process below root (default this one): a step's shell may have children of its own."""
+    children = {}
+    for pid, fields in live_processes().items():
+        children.setdefault(int(fields[1]), []).append(pid)
+    found, pending = [], [os.getpid() if root is None else root]
     while pending:
         for child in children.get(pending.pop(), []):
             found.append(child)
             pending.append(child)
     return found
+
+
+def group_members(pgids):
+    """Every live process in one of the process groups pgids, wherever it sits in the tree: a child whose parent died
+    has moved to init but kept its group."""
+    return [pid for pid, fields in live_processes().items() if int(fields[2]) in pgids]
+
+
+def end_processes(find_targets):
+    """TERM to what find_targets() returns, again each round for what a TERM trap starts, then KILL to whatever is left
+    after the grace period: a step can trap or ignore TERM."""
+    signalled = set()
+    deadline = time.monotonic() + STOP_GRACE_SECS
+    while True:
+        for pid in set(find_targets()) - signalled:
+            signalled.add(pid)
+            send_signal(pid, signal.SIGTERM)
+        if not alive(signalled) or time.monotonic() > deadline:
+            break
+        time.sleep(0.05)
+    for pid in alive(signalled):
+        send_signal(pid, signal.SIGKILL)
+
+
+def duration_text(secs):
+    return f"{secs // 60:g} min" if secs >= 60 and secs % 60 == 0 else f"{secs:g}s"
+
+
+def timeout_message(step):
+    load = os.getloadavg()[0]
+    return (
+        f"check: {step.name} timed out after {duration_text(step.timeout_secs)} and was killed with its processes"
+        f" (load average {load:.1f}); its limit is timeout_secs in lib/check/scopes.py\n"
+    ).encode()
 
 
 class StepPool:
@@ -303,13 +348,19 @@ class StepPool:
         self.lock = threading.RLock()
         self.stopping = False
         self.failed = set()
+        # The running steps' processes by pid, each the leader of its own process group.
+        self.running = {}
 
     def log_path(self, step):
         return os.path.join(self.logs, step.name + ".log")
 
     def start(self, step, live):
         """The step's process and its open log, or None once the run is being stopped. A live step's output comes
-        through a pipe, and its stdin is the check's; otherwise both are files, as xargs gave the shell runner's."""
+        through a pipe, otherwise it goes to the log file.
+
+        Each step leads a process group of its own, so a timeout can end all of it, grandchildren that outlived their
+        parent included. So the terminal's INT no longer reaches a step: abort() ends the steps instead. And stdin is
+        never the check's, since a step outside the terminal's foreground group that read it would be stopped."""
         with self.lock:
             if self.stopping:
                 return None
@@ -317,12 +368,23 @@ class StepPool:
             # close_fds keeps lock.sh's slot descriptor (fd 7), and any other, from the steps.
             process = subprocess.Popen(
                 ("sh", "-c", step.command),
-                stdin=None if live else subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE if live else log,
                 stderr=subprocess.STDOUT,
                 env=self.env,
+                process_group=0,
             )
+            self.running[process.pid] = process
             return process, log
+
+    def end_step(self, process):
+        """Ends a step's process group and every process below it (one that left the group too) and reaps it."""
+        end_processes(lambda: group_members({process.pid}) + descendant_pids(process.pid))
+        process.wait()
+
+    def finished(self, process):
+        with self.lock:
+            self.running.pop(process.pid, None)
 
     def run_live(self, step):
         """One step at a time: its output shows as it comes, and goes to its log too."""
@@ -331,13 +393,33 @@ class StepPool:
         if started is None:
             return
         process, log = started
+        deadline = time.monotonic() + step.timeout_secs
+        timed_out = False
         with log:
-            while chunk := os.read(process.stdout.fileno(), 65536):
+            while True:
+                ready, _, _ = select.select((process.stdout,), (), (), max(0, deadline - time.monotonic()))
+                if not ready:
+                    if timed_out:
+                        # A process that left the step's group and tree still holds the pipe: stop reading it.
+                        break
+                    timed_out = True
+                    self.end_step(process)
+                    deadline = time.monotonic() + STOP_GRACE_SECS
+                    continue
+                chunk = os.read(process.stdout.fileno(), 65536)
+                if not chunk:
+                    break
                 write_out(chunk)
                 log.write(chunk)
             process.stdout.close()
-            if process.wait() != 0:
+            status = process.wait()
+            if timed_out:
+                message = timeout_message(step)
+                write_out(message)
+                log.write(message)
+            if status != 0 or timed_out:
                 self.failed.add(step.name)
+        self.finished(process)
 
     def run_buffered(self, step):
         """One of several at once: its output is buffered in its log, so parallel steps never interleave."""
@@ -346,13 +428,21 @@ class StepPool:
         if started is None:
             return
         process, log = started
+        timed_out = False
         with log:
-            status = process.wait()
+            try:
+                status = process.wait(timeout=step.timeout_secs)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                self.end_step(process)
+                status = process.returncode
+                log.write(timeout_message(step))
+        self.finished(process)
         took = int(time.time()) - started_at
         with self.lock:
             if self.stopping:
                 return
-            if status != 0:
+            if status != 0 or timed_out:
                 self.failed.add(step.name)
                 print_out(f"== {step.name} FAILED ({took}s)")
                 with open(self.log_path(step), "rb") as log:
@@ -390,24 +480,13 @@ class StepPool:
             thread.join()
 
     def abort(self):
-        """Ends every running step, its children included, removes the temp dir and exits 1: TERM, then KILL for
-        whatever is left after a grace period. The steps share this process group, so a TERM sent to
-        this process alone would otherwise leave them running. The lock is held to the end,
-        so no step starts and no log is opened behind the removal."""
+        """Ends every running step, its children and its whole process group included, removes the temp dir and exits
+        1. Each step has a group of its own, so a signal sent to this process alone would otherwise leave them
+        running. The lock is held to the end, so no step starts and no log is opened behind the removal."""
         with self.lock:
             self.stopping = True
-            signalled = set()
-            deadline = time.monotonic() + 2
-            while True:
-                # Again each round, for what a step's TERM trap starts.
-                for pid in set(descendant_pids()) - signalled:
-                    signalled.add(pid)
-                    send_signal(pid, signal.SIGTERM)
-                if not alive(signalled) or time.monotonic() > deadline:
-                    break
-                time.sleep(0.05)
-            for pid in alive(signalled):
-                send_signal(pid, signal.SIGKILL)
+            groups = set(self.running)
+            end_processes(lambda: descendant_pids() + group_members(groups))
             shutil.rmtree(self.logs, ignore_errors=True)
             os._exit(1)
 
@@ -504,6 +583,19 @@ def run(options, logs, pool):
     return 0
 
 
+def abort_on_signals(pool):
+    """INT, TERM and HUP end the run and its steps. HUP too, since a closed terminal no longer reaches the steps in
+    their own process groups."""
+
+    def abort_on_signal(signum, frame):
+        pool.abort()
+
+    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        # A signal ignored when the check started (INT in a background job) stays ignored, as it did for the shell.
+        if signal.getsignal(signum) is not signal.SIG_IGN:
+            signal.signal(signum, abort_on_signal)
+
+
 def main(argv):
     try:
         options = Options(argv)
@@ -526,13 +618,7 @@ def main(argv):
     logs = tempfile.mkdtemp()
     pool = StepPool(logs, job_count())
 
-    def abort_on_signal(signum, frame):
-        pool.abort()
-
-    for signum in (signal.SIGINT, signal.SIGTERM):
-        # A signal ignored when the check started (INT in a background job) stays ignored, as it did for the shell.
-        if signal.getsignal(signum) is not signal.SIG_IGN:
-            signal.signal(signum, abort_on_signal)
+    abort_on_signals(pool)
     try:
         return run(options, logs, pool)
     except BrokenPipeError:

@@ -222,6 +222,11 @@ PATH_SCOPES = [
 ]
 
 
+# How long a step may run before the runner kills it and fails it: a hung step would block the check forever. Generous,
+# since load makes slow steps normal; a step that needs longer sets its own timeout_secs.
+DEFAULT_STEP_TIMEOUT_SECS = 30 * 60
+
+
 class Step(NamedTuple):
     name: str
     # Which files the step reads (see PATH_SCOPES). Two scopes are special: "tree" steps scan the whole checkout and
@@ -236,6 +241,7 @@ class Step(NamedTuple):
     skip_reason: str = ""
     # Run one after another in a lane of their own, ahead of the rest: they are timing-sensitive.
     serial_lane: bool = False
+    timeout_secs: float = DEFAULT_STEP_TIMEOUT_SECS
 
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
