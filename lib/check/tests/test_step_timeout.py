@@ -17,7 +17,7 @@ sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DRIVER = """
-import json, os, sys, types
+import json, os, signal, sys, types
 sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[1])
 import runner, scopes
@@ -26,6 +26,9 @@ os.chdir(runner.REPO_DIR)
 if spec.get("select_always_ready"):
     runner.select = types.SimpleNamespace(select=lambda readers, writers, errors, timeout: (list(readers), [], []))
 pool = runner.StepPool(spec["logs"], spec["jobs"])
+# Stands for a check started at a terminal. A check run as a background job (ship-batch runs it with `&`) starts with
+# INT ignored, and the runner keeps it ignored, which would leave the Ctrl-C case nothing to test.
+signal.signal(signal.SIGINT, signal.default_int_handler)
 runner.abort_on_signals(pool)
 steps = [
     scopes.Step(step["name"], "tree", step["command"], serial_lane=step.get("lane", False),
