@@ -82,9 +82,12 @@ def run_qs(scenario, root, seed=None):
     out = "qs exit code %d\n" % proc.returncode + proc.stdout + proc.stderr
     try:
         with open(os.path.join(state, "result.json")) as f:
-            return json.load(f), out
+            result = json.load(f)
     except (FileNotFoundError, ValueError):
         return None, out
+    if result.get("timed_out"):
+        return None, "the harness hard stop fired before the scenario finished (timed_out)\n" + out
+    return result, out
 
 
 def bars_file(root):
@@ -113,7 +116,7 @@ def scenario_rapid(name, count):
     def run(root):
         result, out = run_qs(name, root)
         if result is None:
-            return ["no result file:\n" + out]
+            return ["no result:\n" + out]
         problems = []
         check_monotonic(problems, result["observed"])
         if result["final_k"] != count:
@@ -130,7 +133,7 @@ def scenario_visual_rapid(root):
     """Forty edge moves 2 ms apart: the state only ever steps forward through them and the file ends on the last."""
     result, out = run_qs("visual_rapid", root)
     if result is None:
-        return ["no result file:\n" + out]
+        return ["no result:\n" + out]
     problems = []
     # Key i is h, j, k, l in turn: left, bottom, top, right.
     want = [["left", "bottom", "top", "right"][i % 4] for i in range(40)]
@@ -205,7 +208,7 @@ def scenario_no_import_cycle(root):
 def scenario_external(root):
     result, out = run_qs("external", root)
     if result is None:
-        return ["no result file:\n" + out]
+        return ["no result:\n" + out]
     problems = []
     if 50 not in result["observed"]:
         problems.append("the outside edit was never adopted (sequence %r)" % result["observed"])
@@ -222,7 +225,7 @@ def scenario_coalesce(root):
     result, out = run_qs("rapid_1ms", root)
     watch.stop()
     if result is None:
-        return ["no result file:\n" + out]
+        return ["no result:\n" + out]
     writes = watch.names.count("bars.json")
     problems = []
     if writes > 20:
@@ -237,7 +240,7 @@ def scenario_migrate(root):
     seed = json.dumps({"shared": {"place": {}, "order": []}, "monitors": {"M": {"left": ["workspaces"], "center": [], "right": []}}, "positions": {}})
     result, out = run_qs("idle", root, seed=seed)
     if result is None:
-        return ["no result file:\n" + out]
+        return ["no result:\n" + out]
     problems = []
     on_disk = bars_file(root)
     if on_disk.get("cava_migrated") is not True:
@@ -251,7 +254,7 @@ def scenario_migrate(root):
 def scenario_missing_untouched(root):
     result, out = run_qs("idle", root)
     if result is None:
-        return ["no result file:\n" + out]
+        return ["no result:\n" + out]
     if os.path.exists(os.path.join(root, "state", "quickshell", "bars.json")):
         return ["a load of a missing bars.json created the file"]
     return []
@@ -263,7 +266,7 @@ def scenario_editor(name):
     def run(root):
         result, out = run_qs(name, root)
         if result is None:
-            return ["no result file:\n" + out]
+            return ["no result:\n" + out]
         problems = ["%s: got %r, want %r" % (label, got, want) for label, got, want in result["checks"] if got != want]
         if not result["checks"]:
             problems.append("the scenario recorded no checks:\n" + out)
@@ -282,7 +285,14 @@ SCENARIOS = {
     "editor_keys": scenario_editor("editor_keys"),
     "editor_ownership": scenario_editor("editor_ownership"),
     "editor_popups": scenario_editor("editor_popups"),
-    "editor_hint_keys": scenario_editor("editor_hint_keys"),
+    "editor_hint_keys_monitor": scenario_editor("editor_hint_keys_monitor"),
+    "editor_hint_keys_normal_row": scenario_editor("editor_hint_keys_normal_row"),
+    "editor_hint_keys_normal_column": scenario_editor("editor_hint_keys_normal_column"),
+    "editor_hint_keys_hidden": scenario_editor("editor_hint_keys_hidden"),
+    "editor_hint_keys_carrying": scenario_editor("editor_hint_keys_carrying"),
+    "editor_hint_keys_visual": scenario_editor("editor_hint_keys_visual"),
+    "editor_hint_keys_visual_saved": scenario_editor("editor_hint_keys_visual_saved"),
+    "editor_hint_keys_lualine": scenario_editor("editor_hint_keys_lualine"),
     "editor_hidden_add": scenario_editor("editor_hidden_add"),
     "editor_hidden_empty": scenario_editor("editor_hidden_empty"),
     "editor_module_compact": scenario_editor("editor_module_compact"),

@@ -393,14 +393,28 @@ ShellRoot {
         // The saved edge's own key is the one hjkl press that changes nothing.
         root.check(label + ": the hint bar lists exactly the keys that act", listed.filter(k => !(saved_edge && k === "l")).sort(), accepted.filter(k => !(saved_edge && k === "l")).sort());
     }
-    function scenario_hint_keys() {
+    function scenario_hint_keys_monitor() {
         root.check_hint_keys("monitor select", "monitor", false, false);
+    }
+    function scenario_hint_keys_normal_row() {
         root.check_hint_keys("NORMAL on a row", "normal", false, false);
+    }
+    function scenario_hint_keys_normal_column() {
         root.check_hint_keys("NORMAL on a column", "normal", true, false);
+    }
+    function scenario_hint_keys_hidden() {
         root.check_hint_keys("HIDDEN", "hidden", false, false);
+    }
+    function scenario_hint_keys_carrying() {
         root.check_hint_keys("HIDDEN carrying a module", "carrying", false, false);
+    }
+    function scenario_hint_keys_visual() {
         root.check_hint_keys("VISUAL with nothing saved", "visual", false, false);
+    }
+    function scenario_hint_keys_visual_saved() {
         root.check_hint_keys("VISUAL with a saved edge", "visual", false, true);
+    }
+    function scenario_hint_keys_lualine() {
         // A lualine side bar draws by section like a top one, so the editor walks it in section order: clock (z) last.
         for (const position of ["top", "left"]) {
             BarEditor.close();
@@ -605,7 +619,14 @@ ShellRoot {
     readonly property var plans: ({
         editor_ownership: { steps: [[100, () => root.run_editor("ownership")]], end: 500 },
         editor_popups: { steps: [[100, () => root.run_editor("popups")], [300, () => root.scenario_popups_after()], [500, () => root.scenario_popups_hover()], [700, () => root.scenario_popups_hands_off()]], end: 900 },
-        editor_hint_keys: { steps: [[100, () => root.run_editor("hint_keys")]], end: 500 },
+        editor_hint_keys_monitor: { steps: [[100, () => root.run_editor("hint_keys_monitor")]], end: 500 },
+        editor_hint_keys_normal_row: { steps: [[100, () => root.run_editor("hint_keys_normal_row")]], end: 500 },
+        editor_hint_keys_normal_column: { steps: [[100, () => root.run_editor("hint_keys_normal_column")]], end: 500 },
+        editor_hint_keys_hidden: { steps: [[100, () => root.run_editor("hint_keys_hidden")]], end: 500 },
+        editor_hint_keys_carrying: { steps: [[100, () => root.run_editor("hint_keys_carrying")]], end: 500 },
+        editor_hint_keys_visual: { steps: [[100, () => root.run_editor("hint_keys_visual")]], end: 500 },
+        editor_hint_keys_visual_saved: { steps: [[100, () => root.run_editor("hint_keys_visual_saved")]], end: 500 },
+        editor_hint_keys_lualine: { steps: [[100, () => root.run_editor("hint_keys_lualine")]], end: 500 },
         editor_hidden_add: { steps: [[100, () => root.run_editor("hidden_add")]], end: 500 },
         editor_rule_compact: { steps: [[100, () => root.run_editor("rule_compact")]], end: 500 },
         editor_module_compact: { steps: [[100, () => root.run_editor("module_compact")]], end: 500 },
@@ -648,7 +669,9 @@ ShellRoot {
 
     // The result file ends the process and run.py reads bars.json after it, so the result waits for BarSettings'
     // last write.
+    property bool result_started: false
     function finish() {
+        root.result_started = true;
         settle.start();
     }
 
@@ -695,10 +718,16 @@ ShellRoot {
 
     Component.onCompleted: root.started = Date.now()
 
-    // Hard stop so a scenario that never finishes fails on the missing result file instead of hanging.
+    // Hard stop so a scenario that never finishes fails with a result saying so instead of hanging. The limit counts from the
+    // scenario's own end, and stays under run.py's 30 s timeout. The clock's steps run synchronously, so on a loaded
+    // machine this timer can only fire after a long step returns; the flag keeps it from racing the normal result.
     Timer {
-        interval: 12000
+        interval: root.plan.end + 20000
         running: true
-        onTriggered: Qt.quit()
+        onTriggered: {
+            if (root.result_started) return;
+            root.result_started = true;
+            result_file.setText(JSON.stringify({ timed_out: true, checks: root.checks }));
+        }
     }
 }
