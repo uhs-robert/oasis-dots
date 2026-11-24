@@ -8,7 +8,7 @@ Item {
     property string glyph: ""
     property string count: ""
     property color tint: Theme.yellow
-    // A style's body color for the icon alone, with the lit part in `icon_accent` or `tint` (the badge keeps `tint`); transparent leaves the icon on `tint` and its derived highlight.
+    // A style's body color for the icon alone, with the lit part in `icon_accent` or `tint` (the badge takes the body color too); transparent leaves the icon on `tint` and its derived highlight.
     property color icon_body: "transparent"
     // A style's accent for the icon's lit part (herb leaf, box latch); transparent keeps `tint`. Only used with `icon_body`.
     property color icon_accent: "transparent"
@@ -60,7 +60,7 @@ Item {
         x: root.badge_below ? (glyph_icon.width - count_text.implicitWidth) / 2 : glyph_icon.width - root.badge_overlap
         y: root.badge_below ? glyph_icon.height + 1 : -root.badge_rise
         text: root.count
-        color: root.tint
+        color: root.icon_body.a > 0 ? root.icon_body : root.tint
         font.family: Style.bar_font_family
         style: Style.bar_text_style
         styleColor: Style.bar_glow_color
