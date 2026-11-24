@@ -147,13 +147,19 @@ Item {
                             font.pixelSize: root.st.fs(-5)
                         }
 
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                        }
+
                         // The reset time as a small date panel.
+                        // Fills but caps at its text width: a non-fill layout item is pinned at its preferred width, which blocked shrinking. The spacer takes the slack so the panel sits right.
                         Ps1.BiosPanel {
                             visible: slot.modelData.resets !== ""
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
+                            Layout.preferredWidth: reset_text.implicitWidth + 12
                             Layout.maximumWidth: reset_text.implicitWidth + 12
-                            Layout.alignment: Qt.AlignRight
                             Layout.preferredHeight: reset_text.implicitHeight + 6
 
                             Text {
