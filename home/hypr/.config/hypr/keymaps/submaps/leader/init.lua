@@ -44,6 +44,7 @@ Submap.define({
       { "SHIFT + COMMA", "voice.stop" },
       { "CTRL + COMMA",  "voice.rapid" },
       { "CTRL + PERIOD", "voice.wake" },
+      { "SHIFT + PERIOD", "picker.voxtype_history",                       "Dictation History" },
       -- SHIFT + SLASH would read as help, but every submap keeps it for the which-key toggle.
       { "CTRL + SLASH",  Hypr.exec(Scripts.voxcmd_help),                    "Voice Help" },
 

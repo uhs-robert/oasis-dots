@@ -18,6 +18,12 @@ Act.define("picker.clipboard_delete", {
   run = picker("clipboard_delete"),
 })
 
+Act.define("picker.voxtype_history", {
+  label = "Dictation History",
+  intent = "Pick an earlier voxtype dictation and type it into the focused window again.",
+  run = picker("voxtype_history"),
+})
+
 Act.define("picker.directory", {
   label = "Jump to Directory",
   intent = "Pick a frequently used directory and open it in the file manager.",

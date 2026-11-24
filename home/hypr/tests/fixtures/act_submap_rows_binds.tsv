@@ -7,6 +7,7 @@
 # Leader SHIFT + T for the Firefox tabs picker (it was Go SHIFT + B).
 # Leader T for the Firefox tabs picker, Leader SHIFT + S for the tray, and the tray labelled System Tray.
 # Applications K for the plans board (Kanban Plans).
+# Redumped for the dictation history picker on Leader SHIFT + PERIOD.
 # Columns: config, submap, key, which-key label, flags, what the key does.
 default	Applications	A	Audio (SoundCraft)	-	exec_cmd(soundcraft);submap(reset)
 default	Applications	Alt_L	-	ignore_mods=true,transparent=true	no_op
@@ -145,6 +146,7 @@ default	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup op
 default	Leader	COMMA	Voice Command	-	exec_cmd(~/.local/bin/voxcmd listen);submap(reset)
 default	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session rapid);submap(reset)
 default	Leader	CTRL + PERIOD	Wake Word	-	exec_cmd(~/.local/bin/voxcmd wake toggle);submap(reset)
+default	Leader	SHIFT + PERIOD	Dictation History	-	exec_cmd(~/.config/hypr/scripts/qs-picker voxtype_history 'voxtype history list -n 500 | grep -E '\''^[0-9]{8}-'\'' | rofi -name rofiDmenu -i -dmenu -p '\''Dictation'\'' | cut -d'\'' '\'' -f1 | xargs -r voxtype history paste --delay-ms 200');submap(reset)
 default	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);submap(reset)
 default	Leader	CTRL + T	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
@@ -379,6 +381,7 @@ no-leader	Leader	C	Calendar	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup 
 no-leader	Leader	COMMA	Voice Command	-	exec_cmd(~/.local/bin/voxcmd listen);submap(reset)
 no-leader	Leader	CTRL + COMMA	Rapid Mode	-	exec_cmd(~/.local/bin/voxcmd session rapid);submap(reset)
 no-leader	Leader	CTRL + PERIOD	Wake Word	-	exec_cmd(~/.local/bin/voxcmd wake toggle);submap(reset)
+no-leader	Leader	SHIFT + PERIOD	Dictation History	-	exec_cmd(~/.config/hypr/scripts/qs-picker voxtype_history 'voxtype history list -n 500 | grep -E '\''^[0-9]{8}-'\'' | rofi -name rofiDmenu -i -dmenu -p '\''Dictation'\'' | cut -d'\'' '\'' -f1 | xargs -r voxtype history paste --delay-ms 200');submap(reset)
 no-leader	Leader	CTRL + SLASH	Voice Help	-	exec_cmd(~/.local/bin/voxcmd help);submap(reset)
 no-leader	Leader	CTRL + T	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker tmux 'notify-send '\''Tmux Windows'\'' '\''The tmux picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
