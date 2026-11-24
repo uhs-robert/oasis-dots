@@ -226,12 +226,12 @@ PickerProvider {
 
     card: root.condition_screen ? condition_card : plain_card
 
-    // Its traces scroll only while the grid shows and on mains power.
+    // Its traces scroll only while the card is visible, the grid shows and the machine is on mains power.
     Component {
         id: condition_card
         AgentConditionCard {
             tail: root.tails[entry.id] || ""
-            animating: root.shows_cards && PowerSource.on_ac
+            animating: visible && root.shows_cards && PowerSource.on_ac
         }
     }
 
