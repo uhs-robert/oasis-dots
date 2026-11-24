@@ -4,6 +4,7 @@ import qs.core
 import qs.theme
 import qs.features.popups
 import "KeeptabsFormat.js" as Fmt
+import "Condition.js" as Condition
 
 // The Agents tab as a Resident Evil status screen: the selected session's heart monitor and condition on top, and
 // the whole party below, one row per session with its own small trace. Contract as in AgentsView.
@@ -25,88 +26,12 @@ Item {
     readonly property bool animating: Popups.open_name === "keeptabs" && root.visible && PowerSource.on_ac
     readonly property var colors: ({ error: Style.pal.error, ok: Style.pal.ok, warning: Style.pal.warning, text_primary: root.st.text_fg, text_dim: root.st.text_dim })
 
-    // The word is always the session's own state, so the screen never makes you translate a game term back.
-    // Idle, and any state keeptabs-hook adds later, shows in grey with a flat line instead of a guessed beat.
     function condition(state) {
-        const s = state || "idle";
-        const look = ({
-            waiting: { color: Style.pal.warning, beat: "waiting", ms: 1500 },
-            running: { color: Style.pal.ok, beat: "running", ms: 1000 },
-            done: { color: Style.pal.info, beat: "done", ms: 2400 }
-        })[s] || { color: root.st.text_dim, beat: "idle", ms: 0 };
-        return Object.assign({ word: s.toUpperCase() }, look);
+        return Condition.look(state, { warning: Style.pal.warning, ok: Style.pal.ok, info: Style.pal.info, dim: root.st.text_dim });
     }
 
     function ensure_visible(i) {
         party_list.positionViewAtIndex(i, ListView.Contain);
-    }
-
-    // One heartbeat as (x, y) pairs across a beat's width, y from -1 (top) to 1 (bottom); traced from the mockup.
-    readonly property var beats: ({
-        running: [[0, 0], [0.3, 0], [0.36, -0.25], [0.42, 0.1], [0.48, -1], [0.54, 0.55], [0.6, 0], [1, 0]],
-        waiting: [[0, 0], [0.25, 0], [0.3, -0.4], [0.36, 0.3], [0.42, -0.7], [0.5, 0.5], [0.56, 0], [1, 0]],
-        done: [[0, 0], [0.35, 0], [0.4, -0.3], [0.45, 0], [1, 0]],
-        idle: [[0, 0], [1, 0]]
-    })
-
-    // A trace of `beat_count` beats across its width. It scrolls by moving one wider, pre-drawn canvas a beat to the
-    // left and starting over, so a frame costs a translation and never a repaint.
-    component EcgTrace: Item {
-        id: trace
-
-        property string beat: "idle"
-        property color line_color: "white"
-        property real line_width: 2
-        property int beat_count: 3
-        property int beat_ms: 0
-        property bool running: false
-        readonly property real beat_w: trace.width / trace.beat_count
-
-        clip: true
-
-        Canvas {
-            id: strip
-            width: trace.width + trace.beat_w
-            height: trace.height
-
-            onWidthChanged: strip.requestPaint()
-            onHeightChanged: strip.requestPaint()
-            Connections {
-                target: trace
-                function onBeatChanged() { strip.requestPaint(); }
-                function onLine_colorChanged() { strip.requestPaint(); }
-            }
-
-            onPaint: {
-                const ctx = strip.getContext("2d");
-                ctx.reset();
-                const pts = root.beats[trace.beat] || root.beats.idle;
-                const mid = strip.height / 2;
-                const amp = mid - trace.line_width;
-                ctx.strokeStyle = trace.line_color;
-                ctx.lineWidth = trace.line_width;
-                ctx.lineJoin = "round";
-                ctx.beginPath();
-                for (let r = 0; r <= trace.beat_count; r++) {
-                    for (const p of pts) {
-                        const x = (r + p[0]) * trace.beat_w;
-                        const y = mid + p[1] * amp;
-                        if (r === 0 && p === pts[0]) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                }
-                ctx.stroke();
-            }
-
-            NumberAnimation on x {
-                running: trace.running && trace.beat_ms > 0
-                from: 0
-                to: -trace.beat_w
-                duration: trace.beat_ms
-                loops: Animation.Infinite
-                onRunningChanged: if (!running) strip.x = 0
-            }
-        }
     }
 
     ColumnLayout {
@@ -328,6 +253,19 @@ Item {
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-5)
                         }
+                    }
+
+                    // Context fill, so every row shows it without selecting the session; blank without context data.
+                    Text {
+                        readonly property var pct: member.modelData.context_pct
+                        readonly property bool known: pct !== null && pct !== undefined
+                        Layout.preferredWidth: Style.px(40)
+                        horizontalAlignment: Text.AlignRight
+                        text: known ? pct + "%" : ""
+                        color: known ? Fmt.context_bar_color(pct, root.colors) : root.st.text_dim
+                        font.family: root.st.font_family
+                        font.pixelSize: root.st.fs(-4)
+                        font.bold: true
                     }
 
                     Rectangle {

@@ -196,20 +196,47 @@ PickerProvider {
         }
     }
 
+    // The keeptabs layout Settings calls Condition Screen (PS1's default); the picker borrows its card and Usage looks.
+    readonly property bool condition_screen: Style.keeptabs_layout === "memcard"
+
     alt_preview_name: "usage"
-    // The keeptabs popup's generic Usage view, not the style's own layout: those are drawn for the popup's frame.
+    // The keeptabs popup's generic Usage view, except for the Condition Screen's memory card slots, which also fit the
+    // picker's preview; the other layouts' Usage views are drawn for the popup's frame.
     alt_preview: Component {
         Item {
             Component.onCompleted: ClaudeUsageState.refresh(false)
 
-            UsageView {
+            Loader {
                 anchors.fill: parent
                 anchors.margins: 10
+                sourceComponent: root.condition_screen ? memcard_usage : plain_usage
+            }
+
+            Component {
+                id: plain_usage
+                UsageView {}
+            }
+
+            Component {
+                id: memcard_usage
+                MemCardUsage {}
             }
         }
     }
 
-    card: Component {
+    card: root.condition_screen ? condition_card : plain_card
+
+    // Its traces scroll only while the grid shows and on mains power.
+    Component {
+        id: condition_card
+        AgentConditionCard {
+            tail: root.tails[entry.id] || ""
+            animating: root.shows_cards && PowerSource.on_ac
+        }
+    }
+
+    Component {
+        id: plain_card
         Item {
             id: card
             property var entry: ({})
