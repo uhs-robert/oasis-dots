@@ -64,7 +64,7 @@ Item {
                 readonly property var projection: ClaudeUsageState.projection_of(slot.modelData)
 
                 width: ListView.view.width
-                height: slot_col.implicitHeight + 16
+                height: slot_col.implicitHeight + 12
                 radius: 6
                 color: Qt.alpha(Theme.bg_shadow, 0.35)
                 border.width: 2
@@ -75,7 +75,7 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    anchors.margins: 8
+                    anchors.margins: 6
                     spacing: 4
 
                     RowLayout {
@@ -83,7 +83,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "MEMORY CARD " + (slot.index + 1)
+                            text: "CARD " + (slot.index + 1)
                             color: Theme.theme_primary_light
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-5)
@@ -147,15 +147,13 @@ Item {
                             font.pixelSize: root.st.fs(-5)
                         }
 
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
                         // The reset time as a small date panel.
                         Ps1.BiosPanel {
                             visible: slot.modelData.resets !== ""
-                            Layout.maximumWidth: parent.width - free_text.implicitWidth - 16
-                            Layout.preferredWidth: reset_text.implicitWidth + 12
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.maximumWidth: reset_text.implicitWidth + 12
+                            Layout.alignment: Qt.AlignRight
                             Layout.preferredHeight: reset_text.implicitHeight + 6
 
                             Text {
