@@ -60,7 +60,8 @@ function overrides(t, ctx) {
         bar_workspace_idle: Qt.alpha(t.fg_dim, 0.35),
         bar_hover_bg: Qt.alpha(t.theme_primary, 0.35),
         bar_glow_color: t.bg_shadow,
-        bar_updates_body: bar_fg_dim,
+        bar_updates_body: t.theme_secondary,
+        bar_updates_accent: t.theme_primary,
         bar_text_raised: true,
         bar_icon_set: "ps1",
         bar_meeting_marker: "memory_card"
