@@ -8,8 +8,10 @@ Item {
     property string glyph: ""
     property string count: ""
     property color tint: Theme.yellow
-    // A style's body color for the icon alone, with the lit part in `tint` (the badge keeps `tint` too); transparent leaves the icon on `tint` and its derived highlight.
+    // A style's body color for the icon alone, with the lit part in `icon_accent` or `tint` (the badge keeps `tint`); transparent leaves the icon on `tint` and its derived highlight.
     property color icon_body: "transparent"
+    // A style's accent for the icon's lit part (herb leaf, box latch); transparent keeps `tint`. Only used with `icon_body`.
+    property color icon_accent: "transparent"
     // Pango rise in 1/1024pt, for a bobbing glyph (keeptabs' running/done icons).
     property real glyph_rise: 0
     property real glyph_opacity: 1
@@ -48,7 +50,7 @@ Item {
     Binding {
         target: glyph_icon
         property: "highlight"
-        value: root.tint
+        value: root.icon_accent.a > 0 ? root.icon_accent : root.tint
         when: root.icon_body.a > 0
     }
 
