@@ -29,6 +29,7 @@ Leader+Shift+T or Leader > T (`picker.firefox_tabs`) lists every Firefox tab wit
 - `s` switches the sort. Tab order, the default, groups the tabs by window, each window in its tab-bar order under a header such as `WINDOW 1 · 14 TABS · <title of its active tab>`. Recent is one list, most recently used first, with a `W1` or `W2` badge on each tab for its window. The search bar corner shows the sort (`TAB ORDER` or `RECENT`), and the picker keeps the last one across opens and bar restarts.
 - `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/3` in the corner).
 - `x` closes the tab, and `y` copies its address (the corner says `URL COPIED`).
+- `m` jumps to the tab playing the active media player's track and closes the picker. It follows the player, so a paused track still finds its tab. `SUPER + ALT + G` does the same from anywhere. With no player, or a player that is not Firefox, a notice says so and the picker stays open.
 
 Windows are numbered in the order Firefox opened them, the same in the headers, the badges and the filter. The search matches titles and addresses. In tab order it keeps the groups: a window's header shows only while one of its tabs matches, and counts the matching tabs. The window with the best match comes first. Headers are never selected: `hjkl`, `gg`/`G` and the digits skip them.
 
