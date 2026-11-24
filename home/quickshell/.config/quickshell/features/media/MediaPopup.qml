@@ -85,7 +85,7 @@ Popup {
             MediaState.cycle_loop();
             ThemeAudio.play("confirm");
             event.accepted = true;
-        } else if (event.key === Qt.Key_G) {
+        } else if (event.key === Qt.Key_N) {
             root.jump_to_tab();
             event.accepted = true;
         }
