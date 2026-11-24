@@ -331,25 +331,19 @@ Item {
             }
         }
 
-        // The submap shows as the left island's last item instead of a dropdown tab (lualine styles keep their own mode chip). The left island holds few items, and the centered island does not move when it grows.
-        Rectangle {
+        // The submap, then a voxcmd voice mode, show as the left island's last items instead of dropdown tabs (lualine styles keep their own mode chip and the voice tab). The left island holds few items, and the centered island does not move when it grows.
+        ModeChip {
             visible: root.has_left_chip && SubmapState.indicator_shown && root.focused
             Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
-            implicitWidth: chip_text.implicitWidth + 16
-            implicitHeight: chip_text.implicitHeight + 6
-            radius: Style.radius(4)
-            color: SubmapState.bar_color
+            label: SubmapState.submap_name
+            tint: SubmapState.bar_color
+        }
 
-            Text {
-                id: chip_text
-                anchors.centerIn: parent
-                text: SubmapState.submap_name.toUpperCase()
-                color: Theme.bg_core
-                font.family: Style.font_family
-                font.pixelSize: Style.bar_font_size - 1
-                font.bold: true
-                font.letterSpacing: 1
-            }
+        ModeChip {
+            visible: root.has_left_chip && VoxSessionState.active && root.focused
+            Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            label: VoxSessionState.label
+            tint: VoxSessionState.mode_color
         }
     }
 
@@ -376,7 +370,7 @@ Item {
         tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
-        tab_joined: (SubmapState.indicator_shown && !root.has_left_chip && !root.has_mode_chip) || VoxSessionState.active
+        tab_joined: (SubmapState.indicator_shown && !root.has_left_chip && !root.has_mode_chip) || (VoxSessionState.active && !root.has_left_chip)
         visible: root.has_center
 
         onClicked: if (root.center_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()

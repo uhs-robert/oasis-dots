@@ -23,6 +23,8 @@ PanelWindow {
     readonly property real line_thickness: 3
     // The bar on this screen shows the submap in a lualine mode chip instead.
     property bool chip_shown: false
+    // Narrower than chip_shown: lualine styles keep the voice tab beside their mode chip.
+    property bool voice_chip_shown: false
     property string submap_name: ""
     property color submap_color: Theme.theme_secondary
     // Only the focused monitor shows the tab, so a submap opens one window instead of one per bar.
@@ -31,7 +33,7 @@ PanelWindow {
     property string voice_name: ""
     property color voice_color: Theme.theme_secondary
     readonly property bool want_submap: SubmapState.indicator_shown && !root.chip_shown && root.focused
-    readonly property bool want_voice: VoxSessionState.active && root.focused
+    readonly property bool want_voice: VoxSessionState.active && !root.voice_chip_shown && root.focused
     property real line_progress: 0
     // Tabs drop once the line has drawn and lift before it retracts.
     property real submap_progress: root.want_submap && root.line_progress >= 1 ? 1 : 0
