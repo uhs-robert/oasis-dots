@@ -1,12 +1,12 @@
-"""Tests that a temp_home step runs under a throwaway HOME the runner removes afterwards, and that the real hypr Lua
-steps leave the owner's live theme files alone."""
+"""Tests that a temp_home step runs under a throwaway HOME the runner removes afterwards. Nothing here reads or
+writes the owner's real files."""
 
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,25 +16,6 @@ import scopes  # noqa: E402
 
 # Prints what the step saw into $SCRATCH/seen, one VAR=value per line.
 SEE_ENV = 'env | grep "^\\(HOME\\|XDG_CONFIG_HOME\\|XDG_STATE_HOME\\|XDG_CACHE_HOME\\)=" >"$SCRATCH/seen"; ls "$HOME/.config" >>"$SCRATCH/seen"; '
-
-# Real files and folders the check must not touch, as the owner's live bar and theme read them.
-LIVE_PATHS = (".local/state/quickshell", ".config/rofi", ".config/hypr")
-
-
-def newest_mtimes(root):
-    """Every file under root (or root itself, a file) with its mtime in ns, so a rewrite shows even within a second."""
-    found = {}
-    if os.path.isfile(root):
-        return {root: os.stat(root).st_mtime_ns}
-    for folder, _, names in os.walk(root):
-        for name in names:
-            path = os.path.join(folder, name)
-            try:
-                found[path] = os.stat(path).st_mtime_ns
-            except OSError:
-                pass
-    return found
-
 
 class TempHomeTest(unittest.TestCase):
     def setUp(self):
@@ -81,24 +62,32 @@ class TempHomeTest(unittest.TestCase):
 
     def test_the_hypr_lua_steps_are_flagged_and_the_lints_are_not(self):
         flagged = {step.name for step in scopes.STEPS if step.temp_home}
-        for name in ("registry", "submap-hints", "act-ipc", "docs-generated", "action-registry", "session-start"):
+        for name in ("registry", "submap-hints", "act-ipc", "docs-generated", "action-registry", "session-start", "check-cache"):
             self.assertIn(name, flagged)
         for name in ("stylua", "luacheck"):
             self.assertNotIn(name, flagged)
 
-    @unittest.skipUnless(shutil.which("lua"), "the hypr steps need lua")
-    def test_running_the_hypr_lua_steps_leaves_the_live_theme_files_alone(self):
-        real_home = os.path.expanduser("~")
-        paths = [os.path.join(real_home, rel) for rel in LIVE_PATHS]
-        before = {path: newest_mtimes(path) for path in paths}
-        env = {**os.environ, "CHECK_NO_LOCK": "1"}
-        result = subprocess.run(
-            ["sh", "lib/check.sh", "--only", "registry,submap-hints,act-ipc,docs-generated"],
-            cwd=runner.REPO_DIR, env=env, capture_output=True, text=True, timeout=600,
+    def test_a_theme_write_lands_in_the_temp_home_and_is_gone_afterwards(self):
+        # Stands for a generator writing theme.json: the file must go under the temp HOME, never the real one.
+        command = (
+            'mkdir -p "$XDG_STATE_HOME/quickshell" && echo x >"$XDG_STATE_HOME/quickshell/theme.json"'
+            ' && echo "$XDG_STATE_HOME/quickshell/theme.json" >"$SCRATCH/written"'
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        after = {path: newest_mtimes(path) for path in paths}
-        self.assertEqual(before, after)
+        pool = self.run_step(command, True)
+        self.assertEqual(pool.failed, set())
+        with open(os.path.join(self.scratch, "written")) as handle:
+            written = handle.read().strip()
+        self.assertTrue(written.startswith(tempfile.gettempdir() + os.sep))
+        self.assertFalse(os.path.exists(written), "the written file outlived the step")
+
+    def test_a_step_whose_temp_home_cannot_be_made_fails_the_run(self):
+        for jobs in (1, 2):
+            with self.subTest(jobs=jobs):
+                pool = runner.StepPool(self.logs, jobs)
+                step = scopes.Step("probe", "tree", "true", temp_home=True)
+                with mock.patch.object(runner.tempfile, "mkdtemp", side_effect=OSError("no space")):
+                    pool.run([], [step])
+                self.assertEqual(pool.failed, {"probe"})
 
 
 if __name__ == "__main__":

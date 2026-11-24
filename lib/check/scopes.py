@@ -341,9 +341,10 @@ STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", alw
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 
 # Steps that load the hypr Lua config or its tests. Loading the theme module there runs generators that write the owner's
-# live theme.json, rofi colors and hypr theme.conf, so these run under a temp HOME. The lint steps (stylua, luacheck)
-# load nothing and keep the real one, as does every step outside the hypr Lua tests.
-TEMP_HOME_STEPS = {"registry", "docs-generated", "action-registry"}
+# live theme.json, rofi colors and hypr theme.conf, so these run under a temp HOME. Every hypr-scope step gets it except the
+# lints (stylua, luacheck), which load nothing. These outside the hypr scope load the same Lua and are named here:
+# registry and docs-generated (the keymaps), action-registry, and check-cache (test_registry's real-tree cases).
+TEMP_HOME_STEPS = {"registry", "docs-generated", "action-registry", "check-cache"}
 STEPS = [
     step._replace(temp_home=True) if step.name in TEMP_HOME_STEPS or (step.scope == "hypr" and step.name not in ("stylua", "luacheck")) else step
     for step in STEPS

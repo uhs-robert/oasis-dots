@@ -386,20 +386,29 @@ class StepPool:
             if self.stopping:
                 return None
             log = open(self.log_path(step), "wb")
-            env = self.env
             home = None
-            if step.temp_home:
-                home = tempfile.mkdtemp(prefix=f"check-home-{step.name}-")
-                env = temp_home_env(self.env, home)
-            # close_fds keeps lock.sh's slot descriptor (fd 7), and any other, from the steps.
-            process = subprocess.Popen(
-                ("sh", "-c", step.command),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE if live else log,
-                stderr=subprocess.STDOUT,
-                env=env,
-                process_group=0,
-            )
+            try:
+                env = self.env
+                if step.temp_home:
+                    home = tempfile.mkdtemp(prefix=f"check-home-{step.name}-")
+                    env = temp_home_env(self.env, home)
+                # close_fds keeps lock.sh's slot descriptor (fd 7), and any other, from the steps.
+                process = subprocess.Popen(
+                    ("sh", "-c", step.command),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE if live else log,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    process_group=0,
+                )
+            except Exception as error:
+                # A step that never started must fail the run, not vanish from it.
+                log.close()
+                if home:
+                    shutil.rmtree(home, ignore_errors=True)
+                self.failed.add(step.name)
+                print_out(f"== {step.name} FAILED (could not start: {error})")
+                return None
             self.running[process.pid] = process
             if home:
                 self.homes[process.pid] = home

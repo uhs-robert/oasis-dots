@@ -32,6 +32,10 @@ The parallel output of a step is buffered and a passing step prints one line; af
 - `CHECK_HEAVY_SLOTS` (default 1) and `CHECK_LOCK_WAIT_SECS` (default 1200): see "Slots". `CHECK_NO_LOCK=1` runs the heavy steps without a slot, for a check that must never wait.
 - Everything runs at nice 19 in the idle IO class.
 
+### Temp HOME
+
+A step with `temp_home` set in its `Step` entry runs with `HOME` and the XDG config, state, cache and data dirs under a fresh temp dir, seeded with an empty `.config/quickshell`. The runner removes it when the step ends, on a timeout and on Ctrl-C too. If the dir cannot be made, the step fails. The hypr Lua steps (not the `stylua` and `luacheck` lints), `registry`, `docs-generated`, `action-registry` and `check-cache` have it (`TEMP_HOME_STEPS` in `scopes.py`), since loading the theme module there runs generators that write the owner's live `theme.json`, rofi colors and hypr `theme.conf`. `lib/check/tests/test_temp_home.py` pins it.
+
 ### Step timeout
 
 A step that runs past its limit is killed and fails, so a hung step cannot block the check forever. The limit is 30 minutes (`DEFAULT_STEP_TIMEOUT_SECS` in `scopes.py`); a step that needs longer sets `timeout_secs` in its `Step` entry. On expiry the runner sends TERM to the step's process group and to every process below it, then KILL after 2 seconds to whatever is left. Each step runs in a process group of its own for this, so the kill also reaches children that outlived their parent, such as a test binary or a nested compositor. The step's log ends with a line naming the step, the limit and the load average.
