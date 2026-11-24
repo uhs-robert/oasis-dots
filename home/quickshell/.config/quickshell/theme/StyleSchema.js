@@ -80,6 +80,7 @@ var tokens = [
     tok("meter_outline", "color", "transparent", "Outlines every meter segment; lit hot segments take meter_hot instead."),
     tok("scale", "real", 1.15, ""),
     tok("popup_min_width", "real", 0, "Floor for every popup's width, for wide fonts that overrun the small popups."),
+    tok("popup_min_width_right", "real", 0, "Floor for the width of popups opened from the right island, in design px like preferred_width."),
     tok("show_title", "bool", true, ""),
     tok("title_bg", "color", t => t.theme_secondary, ""),
     tok("title_fg", "color", t => t.bg_crust, ""),

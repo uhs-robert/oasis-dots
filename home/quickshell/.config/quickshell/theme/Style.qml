@@ -354,6 +354,7 @@ Singleton {
     readonly property color meter_outline: root.active.meter_outline
     readonly property real scale: root.active.scale
     readonly property real popup_min_width: root.active.popup_min_width
+    readonly property real popup_min_width_right: root.active.popup_min_width_right
     readonly property bool show_title: root.active.show_title
     readonly property color title_bg: root.active.title_bg
     readonly property color title_fg: root.active.title_fg

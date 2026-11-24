@@ -12,6 +12,7 @@ function overrides(t, ctx) {
         done_anim: "pixel",
         weather_header: "memcard",
         keeptabs_layout: "memcard",
+        popup_min_width_right: 540,
         picker_skin: "scope",
         overview_skin: "scope",
         picker_hud: Qt.tint(t.green, Qt.alpha(t.theme_secondary, 0.35)),
