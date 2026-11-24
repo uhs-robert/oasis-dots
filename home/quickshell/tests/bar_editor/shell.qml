@@ -671,6 +671,7 @@ ShellRoot {
     // last write.
     property bool result_started: false
     function finish() {
+        if (root.result_started) return;
         root.result_started = true;
         settle.start();
     }
@@ -719,14 +720,15 @@ ShellRoot {
     Component.onCompleted: root.started = Date.now()
 
     // Hard stop so a scenario that never finishes fails with a result saying so instead of hanging. The limit counts from the
-    // scenario's own end, and stays under run.py's 30 s timeout. The clock's steps run synchronously, so on a loaded
+    // scenario's own end, and leaves run.py's 30 s timeout room for qs to start (ipc, the longest plan, ends at 9 s). The clock's steps run synchronously, so on a loaded
     // machine this timer can only fire after a long step returns; the flag keeps it from racing the normal result.
     Timer {
-        interval: root.plan.end + 20000
+        interval: root.plan.end + 15000
         running: true
         onTriggered: {
             if (root.result_started) return;
             root.result_started = true;
+            clock.stop();
             result_file.setText(JSON.stringify({ timed_out: true, checks: root.checks }));
         }
     }
