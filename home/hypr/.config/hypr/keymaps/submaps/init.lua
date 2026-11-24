@@ -13,4 +13,5 @@ require("lib.act").load_each("keymaps.submaps", {
   "move",
   "bar",
   "screenshot",
+  "special",
 })

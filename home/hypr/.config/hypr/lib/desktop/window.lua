@@ -1,5 +1,6 @@
---- Window management: focus direction, move direction, close, fullscreen, scratchpad, monitors.
+--- Window management: focus direction, move direction, close, fullscreen, special workspaces, monitors.
 
+local Config = require("config") --- @class Config
 local Workspaces = require("lib.workspaces") --- @class Workspaces
 local Hypr = require("lib.hypr") --- @class HyprLib
 local Closed = require("lib.closed_windows") --- @class ClosedWindows
@@ -38,11 +39,6 @@ local Window = {
   group_lock_toggle = function() return Hypr.dispatch(hl.dsp.group.lock_active({ action = "toggle" })) end,
 }
 
-local SPECIAL_WS = {
-  scratchpad = "special:scratchpad",
-  ai = "special:agents",
-}
-
 --- Focus the monitor in the given slot (1-based index into Config.monitors).
 --- @param slot integer
 Window.focus_monitor = function(slot)
@@ -72,11 +68,32 @@ Window.group_move_in = function(dir) return Hypr.dispatch(hl.dsp.window.move({ i
 --- @param dir string  Direction code: "l", "d", "u", "r"
 Window.group_move_or_create = function(dir) return Hypr.dispatch(hl.dsp.window.move({ into_or_create_group = dir })) end
 
---- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
-Window.toggle_special = function(name) return Hypr.dispatch(hl.dsp.workspace.toggle_special(name)) end
+--- @param name string  Special workspace name without the `special:` prefix
+--- @return boolean
+local function special_has_window(name)
+  local ws_name = "special:" .. name
+  for _, w in ipairs(hl.get_windows()) do
+    if w.workspace and w.workspace.name == ws_name then return true end
+  end
+  return false
+end
 
---- @param name string  Key into SPECIAL_WS (e.g. "scratchpad")
-Window.move_to_special = function(name) return Hypr.dispatch(hl.dsp.window.move({ workspace = SPECIAL_WS[name] })) end
+--- Show or hide a special workspace. One declared in Config.special_workspaces with a `cmd` launches it when empty.
+--- @param name string  Special workspace name without the `special:` prefix (e.g. "scratchpad")
+Window.toggle_special = function(name)
+  return function()
+    local spec = Config.special_workspaces[name]
+    if spec and spec.cmd and not special_has_window(name) then
+      -- A non-silent workspace rule opens the special as the window lands, so no toggle is needed.
+      hl.dispatch(hl.dsp.exec_cmd(spec.cmd, { workspace = "special:" .. name }))
+      return
+    end
+    hl.dispatch(hl.dsp.workspace.toggle_special(name))
+  end
+end
+
+--- @param name string  Special workspace name without the `special:` prefix (e.g. "scratchpad")
+Window.move_to_special = function(name) return Hypr.dispatch(hl.dsp.window.move({ workspace = "special:" .. name })) end
 
 --- Move the active window to the monitor in the given slot.
 --- @param slot integer

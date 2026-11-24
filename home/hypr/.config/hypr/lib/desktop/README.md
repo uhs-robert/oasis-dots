@@ -14,5 +14,5 @@ These files know nothing about action ids. Keymaps, extensions and `custom/` cal
 - `move.lua`: nudge windows, for the Move submap.
 - `resize.lua`: resize windows, for the Resize submap.
 - `terminal.lua`: the configured terminal, a command in it, or the bottom-half terminal.
-- `window.lua`: focus direction, move direction, close, fullscreen, scratchpad and monitors.
+- `window.lua`: focus direction, move direction, close, fullscreen, special workspaces and monitors.
 - `workspace.lua`: focus, move a window, cycle and scroll workspaces.

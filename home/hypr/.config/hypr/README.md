@@ -104,6 +104,19 @@ With two or more monitors connected, each gets `persistent_workspaces` workspace
 
 Workspace numbers never change on dock or undock: only the monitor showing them does. Docking moves each workspace to the monitor whose range holds it, so with the defaults the laptop keeps 1–5 and 6–10 go to monitor 2. A workspace whose monitor is not connected waits on the lowest connected monitor and goes back when its monitor returns. Number keys pick the nth workspace on the focused monitor, so a waiting workspace past a monitor's own range is still on a key there while the monitor has fewer than ten.
 
+### Special workspaces
+
+A special workspace sits off every monitor and shows on whichever one you summon it to. `SUPER + S` toggles the scratchpad and `SUPER + SHIFT + S` sends the focused window there, so hiding a window takes one chord. `SUPER + MINUS` opens the Special submap with every special workspace in `special_workspaces`. Each key toggles its workspace, and `SHIFT` plus the key sends the focused window there.
+
+Add your own in the machine profile. An entry with a `cmd` launches it when the workspace is empty. The key then summons the app the first time and toggles it after that:
+
+```lua
+-- config/machines/<hostname>.lua
+special_workspaces = {
+  notes = { key = "N", label = "Notes", cmd = "term -e nvim ~/notes.md" },
+},
+```
+
 ## App Launcher / Sessions
 
 `extensions/auto_launcher/` launches named sets of apps, each on its own monitor and workspace, from a picker on `SUPER + SHIFT + O`. See [`extensions/auto_launcher/README.md`](extensions/auto_launcher/README.md) for the shipped sessions and how to add your own.

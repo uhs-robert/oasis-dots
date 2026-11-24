@@ -33,7 +33,7 @@ keymaps/
     mouse.lua          mouse binds
   submaps/             submaps: press one key to enter, then another to act
     leader/  apps/  go/  system/  delete/  windows/
-    groups/  cursor/  resize/  move/  bar/  screenshot/
+    groups/  cursor/  resize/  move/  bar/  screenshot/  special/
     bar/rows.lua       the popup keys, shared by Bar and Leader
 ```
 
@@ -366,6 +366,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + C` | press | global | +Cursor |  |
 | `SUPER + R` | press | global | +Resize |  |
 | `SUPER + SHIFT + M` | press | global | +Move |  |
+| `SUPER + MINUS` | press | global | +Special |  |
 | `SPACE` | press | Applications | Search Windows | `picker.windows` |
 | `SLASH` | press | Applications | Search Applications | `menu.drun` |
 | `A` | press | Applications | Audio (SoundCraft) | `apps.open` |
@@ -704,6 +705,12 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `BackSpace` | press | Screenshot | Back |  |
 | `SHIFT + SLASH` | press | Screenshot | Toggle which-key help |  |
 | `catchall` | release | Screenshot |  |  |
+| `S` | press | Special | Scratchpad | `special.toggle` |
+| `SHIFT + S` | press | Special | Move to Scratchpad | `special.move` |
+| `ESCAPE` | press | Special | Exit Special |  |
+| `BackSpace` | press | Special | Back |  |
+| `SHIFT + SLASH` | press | Special | Toggle which-key help |  |
+| `catchall` | release | Special |  |  |
 | `SLASH` | press | System | Edit Keymaps | `system.edit_keymaps` |
 | `SPACE` | press | System | Task Manager | `terminal.task_manager` |
 | `A` | press | System | AI Manager | `terminal.tool` |

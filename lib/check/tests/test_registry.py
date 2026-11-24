@@ -297,6 +297,7 @@ class HeadlessLoadTest(TreeCase):
             "picker.firefox_tabs", "picker.tmux", "picker.windows",
             "resize.reset", "resize.step",
             "scratchpad.move", "scratchpad.toggle",
+            "special.move", "special.toggle",
             "submap.enter",
             "system.edit_keymaps", "system.reload_hyprland", "system.replay_autostart", "system.voxtype_restart", "system.voxtype_settings",
             "terminal.bottom", "terminal.editor", "terminal.open", "terminal.task_manager", "terminal.tool",

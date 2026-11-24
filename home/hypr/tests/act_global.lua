@@ -117,6 +117,8 @@ local function load_keymaps(config)
 		end
 	end
 	binds, performed = {}, {}
+	-- The fixtures name only the fields that vary; every real Config carries the default specials.
+	config.special_workspaces = { scratchpad = { key = "S", label = "Scratchpad" } }
 	package.loaded["config"] = config
 	package.loaded["lib.closed_windows"] = {
 		close = function(windows, action)

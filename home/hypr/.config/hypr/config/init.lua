@@ -38,6 +38,11 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field menu string Menu binary; launcher, run, ssh and window menus are native for rofi, partly for wofi and fuzzel; emulated modes use dmenu_cmd with -p '<mode>: ', and drun on other menus opens only the Quickshell apps picker (default: "rofi")
 --- @field dmenu_cmd string Full dmenu-picker invocation; defaults exist for rofi, fuzzel and wofi, set it for any other menu (default: per menu, "rofi -name rofiDmenu -i -dmenu")
 
+--- @class Config.SpecialWorkspace
+--- @field key string Key inside the Special submap; SHIFT + key sends the focused window there
+--- @field label string Which-key label
+--- @field cmd string|nil Command launched onto the special when it holds no window, e.g. "term -e nvim ~/notes.md"
+
 --- @class Config.Monitor
 --- @field id integer|nil Monitor id as reported by Hyprland
 --- @field name string|nil Monitor name as reported by Hyprland
@@ -68,6 +73,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field app Config.App
 --- @field monitors Config.Monitor[] Ordered list of monitors; position in list maps to jump index 1–9
 --- @field devices HL.DeviceSpec[] Per-device configs applied via hl.device() on startup (default: {})
+--- @field special_workspaces table<string, Config.SpecialWorkspace> Special workspaces in the SUPER + MINUS submap, keyed by name (default: scratchpad)
 local Config = {}
 
 Config.defaults = {
@@ -122,6 +128,9 @@ Config.defaults = {
   },
   monitors = {}, --- @type Config.Monitor[]
   devices = {}, --- @type HL.DeviceSpec[]
+  special_workspaces = {
+    scratchpad = { key = "S", label = "Scratchpad" },
+  },
 }
 
 --- @return string|nil
