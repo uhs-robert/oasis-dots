@@ -354,11 +354,14 @@ PanelWindow {
     implicitWidth: root.drawer ? root.drawer_full.surface.width : root.base_width + root.beside_line_room
     readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? (root.island_grows ? Math.max(root.island_width, root.fit_width) : Math.max(root.island_width + root.fit_side * 2, root.fit_width)) : Math.max(root.own_width, island_floor_width)
     readonly property bool fits: root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center"
+    // The right island's style floor (design px, like preferred_width). Both own_width and fit_width read it, because a
+    // fit_island popup never reaches own_width. A tooltip stays at its island's width.
+    readonly property real right_floor: !root.passive && root.side === "right" ? Style.px(root.st.popup_min_width_right) : 0
     // The width the popup asks for by itself, before any island floor.
-    readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width, root.side === "right" ? Style.px(root.st.popup_min_width_right) : 0)
+    readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width, root.right_floor)
     // A fit popup's floor, the device shell's sides included. Beside an island that grows, the shell lines up with
     // the grown island instead of hanging past both its ends.
-    readonly property real fit_width: Style.px(root.min_width) + root.fit_side * 2
+    readonly property real fit_width: Math.max(Style.px(root.min_width) + root.fit_side * 2, root.right_floor)
     readonly property int fit_side: root.device || root.fit_shell_room && root.st.device_shell ? root.shell_side : 0
     implicitHeight: root.drawer ? root.drawer_full.surface.height : root.base_height
     readonly property real base_height: (root.reserving ? Math.max(reserve_height, shown_body_height) : shown_body_height) + header_height + footer_height + root.drop_room
