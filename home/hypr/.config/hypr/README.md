@@ -129,7 +129,7 @@ Add `title` when other windows share the class, as browser windows do. The launc
 media = { key = "M", label = "Media", cmd = "firefox --new-window https://youtube.com", class = "firefox", title = "YouTube" },
 ```
 
-The window shows on your current workspace until its title appears, then moves. If no such window appears within 10 seconds, the launch gives up and leaves it where it opened.
+The window shows on your current workspace until its title appears, then moves. If no such window appears within 10 seconds, the launch gives up and leaves it where it opened. Until then the key does nothing, so a second press starts no second copy. When the browser is closed, the launch also starts it, and a restored window whose title holds the same text can be moved in place of the new one.
 
 ## App Launcher / Sessions
 
