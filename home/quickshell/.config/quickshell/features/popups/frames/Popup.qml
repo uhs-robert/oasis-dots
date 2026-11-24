@@ -355,7 +355,7 @@ PanelWindow {
     readonly property real base_width: root.passive && !root.beside ? root.island_width : root.fits ? (root.island_grows ? Math.max(root.island_width, root.fit_width) : Math.max(root.island_width + root.fit_side * 2, root.fit_width)) : Math.max(root.own_width, island_floor_width)
     readonly property bool fits: root.fit_island && !root.beside && root.island_width > 0 && root.side !== "center"
     // The width the popup asks for by itself, before any island floor.
-    readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width)
+    readonly property real own_width: Math.max(Style.px(preferred_width) + root.st.lcd_margin * 2 + root.device_side * 2, root.st.popup_min_width, root.side === "right" ? Style.px(root.st.popup_min_width_right) : 0)
     // A fit popup's floor, the device shell's sides included. Beside an island that grows, the shell lines up with
     // the grown island instead of hanging past both its ends.
     readonly property real fit_width: Style.px(root.min_width) + root.fit_side * 2
