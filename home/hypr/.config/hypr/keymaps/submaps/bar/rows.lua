@@ -23,6 +23,7 @@ function BarRows.binds(overrides)
     { "A", "menu.agents", "Agents" },
     BarRows.row("B", "bluetooth", "Bluetooth"),
     BarRows.row("C", "clock", "Calendar"),
+    BarRows.row("E", "mail", "Mail"),
     BarRows.row("I", "network", "Network and Internet"),
     BarRows.row("M", "media", "Media"),
     BarRows.row("N", "notifications", "Notifications"),

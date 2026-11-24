@@ -150,7 +150,6 @@ default	Leader	CTRL + T	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-picker
 default	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
 default	Leader	Control_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Control_R	-	ignore_mods=true,transparent=true	no_op
-default	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 default	Leader	ESCAPE	Exit Leader	-	submap(reset)
 default	Leader	G	+Groups	keep=true	submap(Groups)
 default	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
@@ -165,7 +164,6 @@ default	Leader	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open
 default	Leader	S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 default	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);submap(reset)
 default	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
-default	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 default	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 default	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 default	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
@@ -174,7 +172,6 @@ default	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
 default	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
-default	Leader	T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 default	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 default	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 default	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
@@ -387,7 +384,6 @@ no-leader	Leader	CTRL + T	Tmux Windows	-	exec_cmd(~/.config/hypr/scripts/qs-pick
 no-leader	Leader	CTRL + V	Clipboard	-	exec_cmd(~/.config/hypr/scripts/qs-picker clipboard 'cliphist list | rofi -name rofiDmenu -i -dmenu -p '\''Clipboard'\'' | cliphist decode | wl-copy');submap(reset)
 no-leader	Leader	Control_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Control_R	-	ignore_mods=true,transparent=true	no_op
-no-leader	Leader	E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
 no-leader	Leader	ESCAPE	Exit Leader	-	submap(reset)
 no-leader	Leader	G	+Groups	keep=true	submap(Groups)
 no-leader	Leader	I	Network and Internet	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open network);submap(reset)
@@ -402,7 +398,6 @@ no-leader	Leader	Q	System	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup op
 no-leader	Leader	S	Settings	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open settings);submap(reset)
 no-leader	Leader	SHIFT + COMMA	Stop Voice	-	exec_cmd(~/.local/bin/voxcmd stop);submap(reset)
 no-leader	Leader	SHIFT + O	Session Launcher	-	launcher.show_picker();submap(reset)
-no-leader	Leader	SHIFT + S	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
 no-leader	Leader	SHIFT + SLASH	-	-	hyprvim.whichkey.toggle()
 no-leader	Leader	SLASH	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	SLASH	Directory	-	exec_cmd(~/.config/hypr/scripts/qs-picker dirs 'zoxide query -l | rofi -name rofiDmenu -i -dmenu -theme-str '\''listview { columns: 1; }'\'' -p '\''Directory'\'' | xargs -r -I{} kitty --single-instance --class yazi -e zsh -i -c '\''cd "{}" && if type y >/dev/null 2>&1; then y; else yazi; fi; exec zsh -i'\''' 'yazi');submap(reset)
@@ -411,7 +406,6 @@ no-leader	Leader	Shift_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Shift_R	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Super_L	-	ignore_mods=true,transparent=true	no_op
 no-leader	Leader	Super_R	-	ignore_mods=true,transparent=true	no_op
-no-leader	Leader	T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
 no-leader	Leader	TAB	Workspace Overview	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call overview open);submap(reset)
 no-leader	Leader	U	Updates	-	exec_cmd(~/.config/hypr/scripts/focus-topgrade.sh);submap(reset)
 no-leader	Leader	V	Volume	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open volume);submap(reset)
@@ -479,3 +473,15 @@ no-leader	System	mouse_down	-	ignore_mods=true,non_consuming=true,transparent=tr
 no-leader	System	mouse_left	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse_right	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
 no-leader	System	mouse_up	-	ignore_mods=true,non_consuming=true,transparent=true	submap(reset)
+default	Leader	T	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+no-leader	Bar	E	Mail	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open mail);submap(reset)
+no-leader	Leader	CTRL + E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
+no-leader	Leader	E	Mail	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open mail);submap(reset)
+no-leader	Leader	SHIFT + S	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
+no-leader	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
+no-leader	Leader	T	System Tray	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open tray);submap(reset)
+default	Bar	E	Mail	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open mail);submap(reset)
+default	Leader	CTRL + E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 'rofimoji --action type --selector-args '\''-name rofiDmenu'\''');submap(reset)
+default	Leader	E	Mail	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open mail);submap(reset)
+default	Leader	SHIFT + S	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
+default	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)

@@ -35,7 +35,8 @@ Submap.define({
       { "CTRL + V",      "picker.clipboard",                              "Clipboard" },
       { "TAB",           "overview.open",                                 "Workspace Overview" },
       { "CTRL + T",      "picker.tmux",                                   "Tmux Windows" },
-      { "E",             "picker.emoji",                                  "Emoji" },
+      { "SHIFT + T",     "picker.firefox_tabs",                           "Browser Tabs" },
+      { "CTRL + E",      "picker.emoji",                                  "Emoji" },
 
       -- Commands
       { "PERIOD",        "voice.dictate" },
@@ -53,8 +54,7 @@ Submap.define({
 
     local bar_overrides = {
       S = BarRows.row("S", "settings", "Settings"),
-      ["SHIFT + S"] = BarRows.row("SHIFT + S", "tray", "System Tray"),
-      T = { "T", "picker.firefox_tabs", "Browser Tabs" },
+      ["SHIFT + S"] = BarRows.row("SHIFT + S", "start", "Start Menu"),
     }
     for _, row in ipairs(BarRows.binds(bar_overrides)) do
       table.insert(binds, row)
