@@ -348,6 +348,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + ALT + M` | press | global | Mute | `media.mute` |
 | `XF86AudioMute` | press | global | Mute | `media.mute` |
 | `XF86AudioMicMute` | press | global | Mute Mic | `media.mute_mic` |
+| `SUPER + ALT + G` | press | global | Jump to Media Tab | `media.jump_to_tab` |
 | `XF86MonBrightnessUp` | press | global | Brightness Up | `media.brightness_up` |
 | `XF86MonBrightnessDown` | press | global | Brightness Down | `media.brightness_down` |
 | `switch:on:Lid Switch` | press | global | Lid Closed |  |

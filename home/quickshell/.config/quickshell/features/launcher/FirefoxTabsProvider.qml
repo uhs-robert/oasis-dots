@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.theme
+import qs.features.media
 import "FirefoxTabs.js" as FirefoxTabs
 import "../../core/Fuzzy.js" as Fuzzy
 
@@ -24,7 +25,7 @@ PickerProvider {
     verb: "switch"
     rank_by_usage: false
     keep_order: true
-    actions: [{ key: "x", desc: "close tab" }, { key: "y", desc: "copy URL" }, { key: "f", desc: "window", needs_item: false }, { key: "s", desc: "sort", needs_item: false }]
+    actions: [{ key: "x", desc: "close tab" }, { key: "y", desc: "copy URL" }, { key: "f", desc: "window", needs_item: false }, { key: "s", desc: "sort", needs_item: false }, { key: "m", desc: "media tab", needs_item: false }]
     empty_text: root.host_state === "loading" ? "Loading tabs" : root.host_state === "unavailable" ? root.setup_hint : root.host_state === "sharing_off" ? root.sharing_off_hint : root.host_state === "error" ? "Firefox did not list its tabs: " + root.host_error : "No tabs open"
 
     // voxcmd's bridge client: it checks the socket is the user's own before trusting it, and also switches tabs,
@@ -138,7 +139,18 @@ PickerProvider {
     }
 
     function run_action(key, item) {
-        if (key === "f") {
+        if (key === "m") {
+            // The media player, not an audible check, so a paused track still finds its tab. The picker stays open
+            // when there is nothing to jump to.
+            if (!MediaJumpState.player) {
+                MediaJumpState.say("No media player is active");
+            } else if (!MediaJumpState.player_is_firefox) {
+                MediaJumpState.say("The active player is not Firefox");
+            } else {
+                Pickers.close();
+                MediaJumpState.jump();
+            }
+        } else if (key === "f") {
             root.filter = FirefoxTabs.cycled_filter(root.shown_filter, root.windows);
         } else if (key === "s") {
             FirefoxTabsSettings.set("sort", FirefoxTabs.cycled_sort(root.sort));
