@@ -321,8 +321,13 @@ def end_processes(find_targets):
         if not alive(signalled) or time.monotonic() > deadline:
             break
         time.sleep(0.05)
-    for pid in alive(signalled):
-        send_signal(pid, signal.SIGKILL)
+    # Rediscovered each round, for what a TERM handler started just before its process ended or got KILL.
+    deadline = time.monotonic() + STOP_GRACE_SECS
+    while (left := alive(signalled | set(find_targets()))) and time.monotonic() < deadline:
+        for pid in left:
+            signalled.add(pid)
+            send_signal(pid, signal.SIGKILL)
+        time.sleep(0.05)
 
 
 def duration_text(secs):
@@ -397,8 +402,9 @@ class StepPool:
         timed_out = False
         with log:
             while True:
-                ready, _, _ = select.select((process.stdout,), (), (), max(0, deadline - time.monotonic()))
-                if not ready:
+                # Checked on every pass, since a step that writes steadily never lets select time out.
+                left = deadline - time.monotonic()
+                if left <= 0:
                     if timed_out:
                         # A process that left the step's group and tree still holds the pipe: stop reading it.
                         break
@@ -406,12 +412,22 @@ class StepPool:
                     self.end_step(process)
                     deadline = time.monotonic() + STOP_GRACE_SECS
                     continue
+                ready, _, _ = select.select((process.stdout,), (), (), left)
+                if not ready:
+                    continue
                 chunk = os.read(process.stdout.fileno(), 65536)
                 if not chunk:
                     break
                 write_out(chunk)
                 log.write(chunk)
             process.stdout.close()
+            if not timed_out:
+                # The step closed its output, yet it can still be running.
+                try:
+                    process.wait(timeout=max(0, deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+                    self.end_step(process)
             status = process.wait()
             if timed_out:
                 message = timeout_message(step)
@@ -485,7 +501,8 @@ class StepPool:
         running. The lock is held to the end, so no step starts and no log is opened behind the removal."""
         with self.lock:
             self.stopping = True
-            groups = set(self.running)
+            # A reaped leader's pid can be reused by an unrelated group.
+            groups = {pid for pid, process in self.running.items() if process.returncode is None}
             end_processes(lambda: descendant_pids() + group_members(groups))
             shutil.rmtree(self.logs, ignore_errors=True)
             os._exit(1)
