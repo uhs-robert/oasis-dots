@@ -119,6 +119,14 @@ special_workspaces = {
 
 Set `class` when the app hands its window to a process that is already running, as a single-instance terminal does. The launch places only windows from the process it starts, so without `class` that window opens on the current workspace.
 
+Add `title` when other windows share the class, as browser windows do. The launch then moves only the new window whose title holds that text, and your other windows stay put. This entry opens YouTube in your usual browser profile:
+
+```lua
+music = { key = "M", label = "Music", cmd = "firefox --new-window https://youtube.com", class = "firefox", title = "YouTube" },
+```
+
+The window shows on your current workspace until its title appears, then moves. If no such window appears within 10 seconds, the launch gives up and leaves it where it opened.
+
 ## App Launcher / Sessions
 
 `extensions/auto_launcher/` launches named sets of apps, each on its own monitor and workspace, from a picker on `SUPER + SHIFT + O`. See [`extensions/auto_launcher/README.md`](extensions/auto_launcher/README.md) for the shipped sessions and how to add your own.
