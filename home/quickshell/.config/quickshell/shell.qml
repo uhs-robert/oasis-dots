@@ -136,6 +136,7 @@ ShellRoot {
                     bottom: screen_scope.bar_bottom
                     side: screen_scope.bar_vertical ? screen_scope.bar_position : ""
                     chip_shown: !!bar_loader.item && (bar_loader.item.bar_item.has_mode_chip || bar_loader.item.bar_item.has_left_chip)
+                    voice_chip_shown: !!bar_loader.item && bar_loader.item.bar_item.has_left_chip
                 }
             }
         }
