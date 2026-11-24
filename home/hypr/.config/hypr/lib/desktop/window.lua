@@ -107,12 +107,20 @@ local function show_special(name)
   if not (shown and shown.name == "special:" .. name) then hl.dispatch(hl.dsp.workspace.toggle_special(name)) end
 end
 
+--- Specials with a launch still waiting for its window.
+--- @type table<string, boolean>
+local adopting = {}
+
 --- Launch the entry's cmd, then move only its new window onto the special: the first window that was not open
 --- before, has the entry's class and has its title in the window title. A rule on a shared class (a browser) would
 --- also take the user's other windows, such as the ones a browser restores at its start.
 --- @param name string
 --- @param spec Config.SpecialWorkspace
 local function launch_and_adopt(name, spec)
+  -- A second press before the window shows starts no second launch: its poller could take the first window again
+  -- and leave the second one off the special.
+  if adopting[name] then return end
+  adopting[name] = true
   local before = {}
   for _, w in ipairs(hl.get_windows()) do
     before[w.address] = true
@@ -125,6 +133,7 @@ local function launch_and_adopt(name, spec)
     for _, w in ipairs(hl.get_windows() or {}) do
       if not before[w.address] and w.class == spec.class and string.find(w.title, spec.title, 1, true) then
         timer:set_enabled(false)
+        adopting[name] = nil
         hl.dispatch(
           hl.dsp.window.move({ window = "address:" .. w.address, workspace = "special:" .. name, follow = false })
         )
@@ -132,7 +141,10 @@ local function launch_and_adopt(name, spec)
         return
       end
     end
-    if attempts >= ADOPT_ATTEMPTS then timer:set_enabled(false) end
+    if attempts >= ADOPT_ATTEMPTS then
+      timer:set_enabled(false)
+      adopting[name] = nil
+    end
   end, { timeout = ADOPT_POLL_MS, type = "repeat" })
 end
 
