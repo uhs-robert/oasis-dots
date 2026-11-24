@@ -155,19 +155,23 @@ Item {
                         // The reset time as a small date panel.
                         // Fills but caps at its text width: a non-fill layout item is pinned at its preferred width, which blocked shrinking. The spacer takes the slack so the panel sits right.
                         Ps1.BiosPanel {
+                            id: reset_panel
+                            // Text inset on each side. Rounded up because the layout snaps widths to whole pixels and a fractional text width would elide.
+                            readonly property int pad_x: 6
+                            readonly property int fit_width: Math.ceil(reset_text.implicitWidth) + 2 * reset_panel.pad_x
                             visible: slot.modelData.resets !== ""
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            Layout.preferredWidth: reset_text.implicitWidth + 12
-                            Layout.maximumWidth: reset_text.implicitWidth + 12
+                            Layout.preferredWidth: reset_panel.fit_width
+                            Layout.maximumWidth: reset_panel.fit_width
                             Layout.preferredHeight: reset_text.implicitHeight + 6
 
                             Text {
                                 id: reset_text
                                 anchors.fill: parent
                                 anchors.margins: 3
-                                anchors.leftMargin: 6
-                                anchors.rightMargin: 6
+                                anchors.leftMargin: reset_panel.pad_x
+                                anchors.rightMargin: reset_panel.pad_x
                                 elide: Text.ElideRight
                                 verticalAlignment: Text.AlignVCenter
                                 text: "RESETS " + slot.modelData.resets
