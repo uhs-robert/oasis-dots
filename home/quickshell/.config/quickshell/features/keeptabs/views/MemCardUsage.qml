@@ -58,7 +58,6 @@ Item {
             delegate: Rectangle {
                 id: slot
                 required property var modelData
-                required property int index
                 readonly property int used_blocks: root.blocks_used(slot.modelData.percent)
                 readonly property color fill: Fmt.context_bar_color(slot.modelData.percent, root.colors)
                 readonly property var projection: ClaudeUsageState.projection_of(slot.modelData)
@@ -81,13 +80,6 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-
-                        Text {
-                            text: "CARD " + (slot.index + 1)
-                            color: Theme.theme_primary_light
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-5)
-                        }
 
                         Text {
                             Layout.fillWidth: true
@@ -134,51 +126,26 @@ Item {
                         }
                     }
 
-                    RowLayout {
+                    // The reset time as a small date panel under the bar.
+                    Ps1.BiosPanel {
+                        id: reset_panel
+                        visible: slot.modelData.resets !== ""
                         Layout.fillWidth: true
-                        spacing: 8
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: reset_text.implicitHeight + 6
 
                         Text {
-                            id: free_text
-                            Layout.minimumWidth: implicitWidth
-                            text: "FREE " + (root.card_blocks - slot.used_blocks) + " BLOCKS"
-                            color: root.st.text_muted
+                            id: reset_text
+                            anchors.fill: parent
+                            anchors.margins: 3
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                            text: "RESETS " + slot.modelData.resets
+                            color: Style.text_fg
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-5)
-                        }
-
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                        }
-
-                        // The reset time as a small date panel.
-                        // Fills but caps at its text width: a non-fill layout item is pinned at its preferred width, which blocked shrinking. The spacer takes the slack so the panel sits right.
-                        Ps1.BiosPanel {
-                            id: reset_panel
-                            // Text inset on each side. Rounded up because the layout snaps widths to whole pixels and a fractional text width would elide.
-                            readonly property int pad_x: 6
-                            readonly property int fit_width: Math.ceil(reset_text.implicitWidth) + 2 * reset_panel.pad_x
-                            visible: slot.modelData.resets !== ""
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredWidth: reset_panel.fit_width
-                            Layout.maximumWidth: reset_panel.fit_width
-                            Layout.preferredHeight: reset_text.implicitHeight + 6
-
-                            Text {
-                                id: reset_text
-                                anchors.fill: parent
-                                anchors.margins: 3
-                                anchors.leftMargin: reset_panel.pad_x
-                                anchors.rightMargin: reset_panel.pad_x
-                                elide: Text.ElideRight
-                                verticalAlignment: Text.AlignVCenter
-                                text: "RESETS " + slot.modelData.resets
-                                color: Style.text_fg
-                                font.family: root.st.font_family
-                                font.pixelSize: root.st.fs(-5)
-                            }
                         }
                     }
 
