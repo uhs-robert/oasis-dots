@@ -33,5 +33,7 @@ strip = true
 [profile.dev]
 incremental = false
 
+# The wake_parity test runs the tract ONNX models many times, and unoptimized dependencies make it CPU-bound.
 [profile.dev.package."*"]
+opt-level = 3
 debug = false
