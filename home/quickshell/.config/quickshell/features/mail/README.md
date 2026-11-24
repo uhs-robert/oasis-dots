@@ -8,7 +8,7 @@ The pill and its tooltip show counts only. Sender and subject appear only in the
 
 1. Install the DesertFox command line (`just desertfox-host`) and DesertBird in Thunderbird.
 2. In DesertBird's options turn on `bridge` and `bridge_share_folders`. Both are off by default.
-3. Add `mail` to the bar (it sits after `updates` in the default layout; a monitor with its own layout in the bar editor needs it added).
+3. Add `mail` to the bar in the bar editor. The default layout leaves it out, because new mail already raises a notification. Without the pill, `SUPER + B` then `E` still opens the popup.
 
 The module runs `desertfox --app thunderbird mail folders --json` once a minute and when its popup opens. A bridge that answers but refuses (a share setting is off) shows a warning badge, and its tooltip and the popup give the bridge's message. No `desertfox`, an older one without the mail commands, Thunderbird closed and the bridge off all leave the module hidden.
 
