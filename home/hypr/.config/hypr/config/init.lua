@@ -42,6 +42,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field key string Key inside the Special submap; SHIFT + key sends the focused window there
 --- @field label string Which-key label
 --- @field cmd string|nil Command launched onto the special when it holds no window, e.g. "term -e nvim ~/notes.md"
+--- @field class string|nil Window class the cmd opens; set it when the app hands its window to a running process (a single-instance terminal), which the launch rule misses
 
 --- @class Config.Monitor
 --- @field id integer|nil Monitor id as reported by Hyprland
