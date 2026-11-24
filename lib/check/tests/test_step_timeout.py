@@ -17,12 +17,14 @@ sys.dont_write_bytecode = True
 CHECK_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DRIVER = """
-import json, os, sys
+import json, os, sys, types
 sys.dont_write_bytecode = True
 sys.path.insert(0, sys.argv[1])
 import runner, scopes
 spec = json.loads(sys.argv[2])
 os.chdir(runner.REPO_DIR)
+if spec.get("select_always_ready"):
+    runner.select = types.SimpleNamespace(select=lambda readers, writers, errors, timeout: (list(readers), [], []))
 pool = runner.StepPool(spec["logs"], spec["jobs"])
 runner.abort_on_signals(pool)
 steps = [
@@ -63,22 +65,24 @@ class StepTimeoutTest(unittest.TestCase):
         pids = []
         for name in names:
             with open(os.path.join(self.scratch, name)) as handle:
-                pids.append(int(handle.read()))
+                pids.extend(int(word) for word in handle.read().split())
         return pids
 
     def kill_recorded(self):
         """Kills and forgets the recorded processes, so a failed case leaves nothing behind for the next."""
         for name in os.listdir(self.scratch):
             path = os.path.join(self.scratch, name)
-            try:
-                with open(path) as handle:
-                    os.kill(int(handle.read()), signal.SIGKILL)
-            except (OSError, ValueError):
-                pass
+            with open(path) as handle:
+                words = handle.read().split()
+            for word in words:
+                try:
+                    os.kill(int(word), signal.SIGKILL)
+                except (OSError, ValueError):
+                    pass
             os.remove(path)
 
-    def driver(self, steps, jobs):
-        spec = json.dumps({"logs": self.logs, "jobs": jobs, "steps": steps})
+    def driver(self, steps, jobs, **extra):
+        spec = json.dumps({"logs": self.logs, "jobs": jobs, "steps": steps, **extra})
         return subprocess.Popen(
             (sys.executable, "-B", "-c", DRIVER, CHECK_DIR, spec),
             stdout=subprocess.PIPE,
@@ -86,10 +90,15 @@ class StepTimeoutTest(unittest.TestCase):
             env=self.env,
         )
 
-    def run_steps(self, steps, jobs=2):
+    def run_steps(self, steps, jobs=2, **extra):
         started = time.monotonic()
-        process = self.driver(steps, jobs)
-        output = process.communicate(timeout=60)[0].decode()
+        process = self.driver(steps, jobs, **extra)
+        try:
+            output = process.communicate(timeout=20)[0].decode()
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            self.fail("the check never ended")
         return output, time.monotonic() - started
 
     def failed_line(self, output):
@@ -142,6 +151,33 @@ class StepTimeoutTest(unittest.TestCase):
                 self.assertGreaterEqual(took, 2)
                 self.assertLess(took, 10)
                 self.assert_all_gone(("deaf", "deaf-grandchild"))
+
+    def test_a_live_step_that_writes_steadily_is_stopped(self):
+        # select reports data at once every time, as it does for a writer that outruns the reader.
+        command = 'echo $$ >"$SCRATCH/writer"; while :; do echo tick; sleep 0.05; done'
+        output, _ = self.run_steps(
+            [{"name": "writer", "command": command, "timeout": 0.5}], jobs=1, select_always_ready=True
+        )
+        self.assertEqual(self.failed_line(output), "failed: writer")
+        self.assertIn("writer timed out after 0.5s", output)
+        self.assert_all_gone(("writer",))
+
+    def test_a_live_step_that_closes_its_output_and_keeps_running_is_stopped(self):
+        command = f"exec >/dev/null 2>&1; {sleeper('quiet')}; wait"
+        output, _ = self.run_steps([{"name": "quiet", "command": command, "timeout": 0.5}], jobs=1)
+        self.assertEqual(self.failed_line(output), "failed: quiet")
+        self.assertIn("quiet timed out after 0.5s", output)
+        self.assert_all_gone(("quiet",))
+
+    def test_children_started_during_the_stop_are_killed_too(self):
+        # Ignores TERM and starts a TERM-ignoring child every 10 ms, so some are always newer than the last TERM round.
+        command = "trap '' TERM; while :; do sleep 300 & echo $! >>\"$SCRATCH/spawned\"; sleep 0.01; done"
+        for jobs in (1, 2):
+            with self.subTest(jobs=jobs):
+                self.kill_recorded()
+                output, _ = self.run_steps([{"name": "spawner", "command": command, "timeout": 0.3}], jobs)
+                self.assertEqual(self.failed_line(output), "failed: spawner")
+                self.assert_all_gone(("spawned",))
 
     def test_the_override_sets_the_limit_per_step(self):
         output, _ = self.run_steps(
