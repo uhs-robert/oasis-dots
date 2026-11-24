@@ -1,4 +1,4 @@
--- Actions for the global window keys: help, close, fullscreen, focus and move, scratchpad and monitors. The performers
+-- Actions for the global window keys: help, close, fullscreen, focus and move, scratchpad, special workspaces and monitors. The performers
 -- stay in lib/desktop/window.lua and are required on use, so a headless load needs neither Config nor the session.
 local Act = require("lib.act") ---@class ActionLib
 
@@ -88,6 +88,20 @@ Act.define("scratchpad.move", {
   label = "Move to Scratchpad",
   intent = "Send the focused window to the scratchpad.",
   run = window("move_to_special", "scratchpad"),
+})
+
+Act.define("special.toggle", {
+  label = "Toggle Special Workspace",
+  intent = "Show or hide a named special workspace, launching its app when it is empty.",
+  params = { { name = "name", type = "string" } },
+  run = function(name) require("lib.desktop.window").toggle_special(name)() end,
+})
+
+Act.define("special.move", {
+  label = "Move to Special Workspace",
+  intent = "Send the focused window to a named special workspace.",
+  params = { { name = "name", type = "string" } },
+  run = function(name) require("lib.desktop.window").move_to_special(name)() end,
 })
 
 Act.define("monitor.focus", {
