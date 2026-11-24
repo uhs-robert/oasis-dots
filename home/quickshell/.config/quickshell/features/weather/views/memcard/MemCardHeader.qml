@@ -131,49 +131,61 @@ ColumnLayout {
                     }
                 }
 
-                // Each readout takes an equal share of the slack beyond its text, so the gaps between them match across the wider popup.
-                RowLayout {
+                // Spreads the readouts edge to edge with equal gaps when they fit on one line. A long band (AQI "UNHEALTHY FOR SENSITIVE GROUPS") does not fit, so the Flow wraps at the minimum gap.
+                Flow {
+                    id: readout_flow
                     visible: root.has
                     Layout.fillWidth: true
                     Layout.topMargin: 2
-                    spacing: 12
+
+                    readonly property int min_gap: 10
+                    // Sum of the readout widths, refreshed by each readout as its text changes.
+                    property real total_w: 0
+                    readonly property int count: root.readouts.length
+                    readonly property bool fits: readout_flow.count > 1 && readout_flow.total_w + (readout_flow.count - 1) * readout_flow.min_gap <= readout_flow.width
+                    spacing: readout_flow.fits ? (readout_flow.width - readout_flow.total_w) / (readout_flow.count - 1) : readout_flow.min_gap
+
+                    function measure() {
+                        let sum = 0;
+                        for (let i = 0; i < readout_rep.count; i++) {
+                            const item = readout_rep.itemAt(i);
+                            if (item) sum += item.width;
+                        }
+                        readout_flow.total_w = sum;
+                    }
 
                     Repeater {
+                        id: readout_rep
                         model: root.readouts
+                        onItemAdded: readout_flow.measure()
+                        onItemRemoved: readout_flow.measure()
 
-                        Item {
+                        Row {
                             id: readout
                             required property var modelData
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: readout_row.implicitWidth
-                            Layout.minimumWidth: readout_row.implicitWidth
-                            implicitHeight: readout_row.implicitHeight
+                            spacing: 4
+                            onWidthChanged: readout_flow.measure()
 
-                            Row {
-                                id: readout_row
-                                spacing: 4
+                            Text {
+                                text: readout.modelData[0]
+                                color: Theme.theme_primary_light
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-5)
+                            }
 
-                                Text {
-                                    text: readout.modelData[0]
-                                    color: Theme.theme_primary_light
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.fs(-5)
-                                }
+                            Text {
+                                text: readout.modelData[1]
+                                color: Style.text_fg
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-5)
+                            }
 
-                                Text {
-                                    text: readout.modelData[1]
-                                    color: Style.text_fg
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.fs(-5)
-                                }
-
-                                Text {
-                                    visible: readout.modelData[2] !== ""
-                                    text: readout.modelData[2]
-                                    color: readout.modelData[3]
-                                    font.family: Style.font_family
-                                    font.pixelSize: Style.fs(-5)
-                                }
+                            Text {
+                                visible: readout.modelData[2] !== ""
+                                text: readout.modelData[2]
+                                color: readout.modelData[3]
+                                font.family: Style.font_family
+                                font.pixelSize: Style.fs(-5)
                             }
                         }
                     }
