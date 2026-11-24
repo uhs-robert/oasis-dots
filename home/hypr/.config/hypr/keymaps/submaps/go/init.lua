@@ -9,6 +9,7 @@ local Workspaces = require("lib.workspaces") --- @class Workspaces
 -- The actions the rows name.
 require("lib.act.defs.apps")
 require("lib.act.defs.launch")
+require("lib.act.defs.media")
 require("lib.act.defs.pickers")
 require("lib.act.defs.workspaces")
 
@@ -31,6 +32,7 @@ Submap.define({
       { "C",         focus_app("tmux_config"),              "Tmuxifier Config" },
       { "G",         focus_app("steam"),                    "Games (Steam)" },
       { "M",         focus_app("betterbird"),               "Mail" },
+      { "N",         "media.jump_to_tab",                   "Now Playing" },
       { "P",         "menu.tmux",                           "Projects" },
       { "Q",         focus_app("qutebrowser"),              "QuteBrowser" },
       { "S",         focus_app("slack"),                    "Slack" },

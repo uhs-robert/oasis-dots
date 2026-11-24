@@ -348,7 +348,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `SUPER + ALT + M` | press | global | Mute | `media.mute` |
 | `XF86AudioMute` | press | global | Mute | `media.mute` |
 | `XF86AudioMicMute` | press | global | Mute Mic | `media.mute_mic` |
-| `SUPER + ALT + G` | press | global | Jump to Media Tab | `media.jump_to_tab` |
+| `SUPER + ALT + N` | press | global | Jump to Media Tab | `media.jump_to_tab` |
 | `XF86MonBrightnessUp` | press | global | Brightness Up | `media.brightness_up` |
 | `XF86MonBrightnessDown` | press | global | Brightness Down | `media.brightness_down` |
 | `switch:on:Lid Switch` | press | global | Lid Closed |  |
@@ -517,6 +517,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `C` | press | Go | Tmuxifier Config | `apps.focus` |
 | `G` | press | Go | Games (Steam) | `apps.focus` |
 | `M` | press | Go | Mail | `apps.focus` |
+| `N` | press | Go | Now Playing | `media.jump_to_tab` |
 | `P` | press | Go | Projects | `menu.tmux` |
 | `Q` | press | Go | QuteBrowser | `apps.focus` |
 | `S` | press | Go | Slack | `apps.focus` |

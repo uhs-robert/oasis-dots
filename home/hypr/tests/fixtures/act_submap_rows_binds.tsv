@@ -488,3 +488,5 @@ default	Leader	CTRL + E	Emoji	-	exec_cmd(~/.config/hypr/scripts/qs-picker emoji 
 default	Leader	E	Mail	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open mail);submap(reset)
 default	Leader	SHIFT + S	Start Menu	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call popup open start);submap(reset)
 default	Leader	SHIFT + T	Browser Tabs	-	exec_cmd(~/.config/hypr/scripts/qs-picker firefox_tabs 'notify-send '\''Browser Tabs'\'' '\''The tabs picker needs the Quickshell bar.'\''');submap(reset)
+default	Go	N	Now Playing	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call media jump_to_tab);submap(reset)
+no-leader	Go	N	Now Playing	-	exec_cmd(~/.config/hypr/scripts/qs-ipc call media jump_to_tab);submap(reset)
