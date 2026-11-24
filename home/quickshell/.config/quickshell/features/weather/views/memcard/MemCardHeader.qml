@@ -143,7 +143,7 @@ ColumnLayout {
                     property real total_w: 0
                     readonly property int count: root.readouts.length
                     readonly property bool fits: readout_flow.count > 1 && readout_flow.total_w + (readout_flow.count - 1) * readout_flow.min_gap <= readout_flow.width
-                    spacing: readout_flow.fits ? (readout_flow.width - readout_flow.total_w) / (readout_flow.count - 1) : readout_flow.min_gap
+                    spacing: readout_flow.fits ? Math.floor((readout_flow.width - readout_flow.total_w) / (readout_flow.count - 1)) : readout_flow.min_gap
 
                     function measure() {
                         let sum = 0;
