@@ -30,7 +30,7 @@ Leader+Shift+T or Leader > T (`picker.firefox_tabs`) lists every Firefox tab wit
 - `f` cycles all windows, then each Firefox window in turn (`WINDOW 1/3` in the corner).
 - `x` closes the tab, and `y` copies its address (the corner says `URL COPIED`).
 
-Windows are numbered in the order Firefox opened them, the same in the headers, the badges and the filter. The search matches titles and addresses. In tab order it keeps the groups: a window's header shows only while one of its tabs matches, and counts the matching tabs. Headers are never selected: `hjkl`, `gg`/`G` and the digits skip them.
+Windows are numbered in the order Firefox opened them, the same in the headers, the badges and the filter. The search matches titles and addresses. In tab order it keeps the groups: a window's header shows only while one of its tabs matches, and counts the matching tabs. The window with the best match comes first. Headers are never selected: `hjkl`, `gg`/`G` and the digits skip them.
 
 The list shows at once with the pictures saved last time. Fresh ones then swap in a few tabs at a time, the selected tab first. An unloaded tab keeps its last picture, dimmed, and says `unloaded`. A tab never captured shows its icon and title. Only icons Firefox hands over inline are drawn, so the bar fetches nothing from the web. Other tabs get a globe.
 
