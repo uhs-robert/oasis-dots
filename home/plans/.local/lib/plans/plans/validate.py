@@ -1,13 +1,11 @@
 """The lint rules for plan docs, and the detection of the layouts that came before them."""
 
-import fnmatch
 import os
 import re
-import subprocess
 
 from typing import NamedTuple
 
-from . import parse, roots
+from . import parse
 
 # The Conventional Commits type of the PR that ships the piece. Every doc is a plan doc, so `plan` is no kind.
 KINDS = ("feature", "bug", "refactor", "docs", "chore", "research", "design")
@@ -224,24 +222,4 @@ def old_layouts(repo):
         found.append(".plans/roadmap.md")
     if os.path.isdir(os.path.join(repo, ".plans", "projects")):
         found.append(".plans/projects/")
-    excluded = excluded_root_docs(repo)
-    if excluded:
-        found.append("root docs in info/exclude: " + ", ".join(excluded))
     return [f"{layout}; {MIGRATE}" for layout in found]
-
-
-def excluded_root_docs(repo):
-    """Untracked `.md` files at the repo root that a pattern in `<git-common-dir>/info/exclude` hides."""
-    try:
-        exclude = os.path.join(roots.git_common_dir(repo), "info", "exclude")
-        with open(exclude, encoding="utf-8") as handle:
-            patterns = [line.strip() for line in handle if line.strip() and not line.startswith("#")]
-    except (roots.NotInRepo, OSError):
-        return []
-    root_docs = sorted(name for name in os.listdir(repo) if name.endswith(".md") and os.path.isfile(os.path.join(repo, name)))
-    matched = [name for name in root_docs if any(fnmatch.fnmatchcase(name, pattern.lstrip("/")) for pattern in patterns)]
-    if not matched:
-        return []
-    listed = subprocess.run(["git", "-C", repo, "ls-files", "-z", "--", *matched], capture_output=True, text=True).stdout
-    tracked = listed.split("\0")
-    return [name for name in matched if name not in tracked]

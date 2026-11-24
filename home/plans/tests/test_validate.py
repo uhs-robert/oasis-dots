@@ -149,19 +149,11 @@ class OldLayoutTest(unittest.TestCase):
         self.write(".planning/roadmap.md")
         self.write(".plans/roadmap.md")
         self.write(".plans/projects/x.md")
-        self.write("NOTES.md")
-        self.write("README.md")
-        self.write("my notes.md")
-        self.write("other.txt")
-        subprocess.run(["git", "-C", self.repo, "add", "README.md", "my notes.md"], check=True)
-        with open(os.path.join(self.repo, ".git", "info", "exclude"), "a") as handle:
-            handle.write("/NOTES.md\n*.md\nother.txt\n")
         found = validate.old_layouts(self.repo)
         self.assertEqual(found, [
             ".planning/roadmap.md; migrate this repo",
             ".plans/roadmap.md; migrate this repo",
             ".plans/projects/; migrate this repo",
-            "root docs in info/exclude: NOTES.md; migrate this repo",
         ])
 
 
