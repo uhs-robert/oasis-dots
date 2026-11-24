@@ -7,6 +7,10 @@ local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local hypr_dir = here .. "/../.config/hypr"
 package.path = hypr_dir .. "/?.lua;" .. hypr_dir .. "/?/init.lua;" .. package.path
 
+-- The palette the selection border takes its colour from. The real module loads the machine's theme and, when it
+-- cannot resolve it (a worktree), regenerates and writes the owner's theme files.
+package.loaded["theme"] = { colors = { theme_secondary = "#F0E68C" } }
+
 Stubs.binds = {}
 Stubs.submap_body_errors = 0
 Stubs.performed = {}
