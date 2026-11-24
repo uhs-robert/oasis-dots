@@ -342,6 +342,20 @@ def timeout_message(step):
     ).encode()
 
 
+def temp_home_env(env, home):
+    """env with HOME and the XDG base dirs under home, seeded with the empty .config/quickshell the theme generators
+    expect. XDG_RUNTIME_DIR stays: tests that need a socket dir make their own."""
+    os.makedirs(os.path.join(home, ".config", "quickshell"))
+    return {
+        **env,
+        "HOME": home,
+        "XDG_CONFIG_HOME": os.path.join(home, ".config"),
+        "XDG_STATE_HOME": os.path.join(home, ".local", "state"),
+        "XDG_CACHE_HOME": os.path.join(home, ".cache"),
+        "XDG_DATA_HOME": os.path.join(home, ".local", "share"),
+    }
+
+
 class StepPool:
     """Runs the steps. A failing step's log is kept for the tail printed at the end."""
 
@@ -355,6 +369,8 @@ class StepPool:
         self.failed = set()
         # The running steps' processes by pid, each the leader of its own process group.
         self.running = {}
+        # The temp HOME of each running temp_home step, by pid.
+        self.homes = {}
 
     def log_path(self, step):
         return os.path.join(self.logs, step.name + ".log")
@@ -370,16 +386,23 @@ class StepPool:
             if self.stopping:
                 return None
             log = open(self.log_path(step), "wb")
+            env = self.env
+            home = None
+            if step.temp_home:
+                home = tempfile.mkdtemp(prefix=f"check-home-{step.name}-")
+                env = temp_home_env(self.env, home)
             # close_fds keeps lock.sh's slot descriptor (fd 7), and any other, from the steps.
             process = subprocess.Popen(
                 ("sh", "-c", step.command),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE if live else log,
                 stderr=subprocess.STDOUT,
-                env=self.env,
+                env=env,
                 process_group=0,
             )
             self.running[process.pid] = process
+            if home:
+                self.homes[process.pid] = home
             return process, log
 
     def end_step(self, process):
@@ -390,6 +413,9 @@ class StepPool:
     def finished(self, process):
         with self.lock:
             self.running.pop(process.pid, None)
+            home = self.homes.pop(process.pid, None)
+        if home:
+            shutil.rmtree(home, ignore_errors=True)
 
     def run_live(self, step):
         """One step at a time: its output shows as it comes, and goes to its log too."""
@@ -505,6 +531,8 @@ class StepPool:
             groups = {pid for pid, process in self.running.items() if process.returncode is None}
             end_processes(lambda: descendant_pids() + group_members(groups))
             shutil.rmtree(self.logs, ignore_errors=True)
+            for home in self.homes.values():
+                shutil.rmtree(home, ignore_errors=True)
             os._exit(1)
 
 

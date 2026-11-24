@@ -242,6 +242,8 @@ class Step(NamedTuple):
     # Run one after another in a lane of their own, ahead of the rest: they are timing-sensitive.
     serial_lane: bool = False
     timeout_secs: float = DEFAULT_STEP_TIMEOUT_SECS
+    # Run with HOME and the XDG dirs under a fresh temp dir, removed when the step ends (see TEMP_HOME_STEPS).
+    temp_home: bool = False
 
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -337,6 +339,15 @@ STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", 
 STEPS += discovered("home/agents/tests/*.sh", "install", "bash %s", maybe_needs=("python3",))
 STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
+
+# Steps that load the hypr Lua config or its tests. Loading the theme module there runs generators that write the owner's
+# live theme.json, rofi colors and hypr theme.conf, so these run under a temp HOME. The lint steps (stylua, luacheck)
+# load nothing and keep the real one, as does every step outside the hypr Lua tests.
+TEMP_HOME_STEPS = {"registry", "docs-generated", "action-registry"}
+STEPS = [
+    step._replace(temp_home=True) if step.name in TEMP_HOME_STEPS or (step.scope == "hypr" and step.name not in ("stylua", "luacheck")) else step
+    for step in STEPS
+]
 
 # The shell files by the group shellcheck lints them in, as shell globs (one left unmatched stays in the list as
 # written). A group is linted whole when any member changes, since a member can source another.
