@@ -394,6 +394,7 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `A` | press | Bar | Agents | `menu.agents` |
 | `B` | press | Bar | Bluetooth | `popup.open` |
 | `C` | press | Bar | Calendar | `popup.open` |
+| `E` | press | Bar | Mail | `popup.open` |
 | `I` | press | Bar | Network and Internet | `popup.open` |
 | `M` | press | Bar | Media | `popup.open` |
 | `N` | press | Bar | Notifications | `popup.open` |
@@ -559,7 +560,8 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `CTRL + V` | press | Leader | Clipboard | `picker.clipboard` |
 | `TAB` | press | Leader | Workspace Overview | `overview.open` |
 | `CTRL + T` | press | Leader | Tmux Windows | `picker.tmux` |
-| `E` | press | Leader | Emoji | `picker.emoji` |
+| `SHIFT + T` | press | Leader | Browser Tabs | `picker.firefox_tabs` |
+| `CTRL + E` | press | Leader | Emoji | `picker.emoji` |
 | `PERIOD` | press | Leader | Speech to Text | `voice.dictate` |
 | `COMMA` | press | Leader | Voice Command | `voice.command` |
 | `SHIFT + COMMA` | press | Leader | Stop Voice | `voice.stop` |
@@ -570,14 +572,15 @@ The table is read with no monitors connected. The `Go` submap gains one row per 
 | `A` | press | Leader | Agents | `menu.agents` |
 | `B` | press | Leader | Bluetooth | `popup.open` |
 | `C` | press | Leader | Calendar | `popup.open` |
+| `E` | press | Leader | Mail | `popup.open` |
 | `I` | press | Leader | Network and Internet | `popup.open` |
 | `M` | press | Leader | Media | `popup.open` |
 | `N` | press | Leader | Notifications | `popup.open` |
 | `P` | press | Leader | Power and Brightness | `popup.open` |
 | `Q` | press | Leader | System | `popup.open` |
 | `S` | press | Leader | Settings | `popup.open` |
-| `SHIFT + S` | press | Leader | System Tray | `popup.open` |
-| `T` | press | Leader | Browser Tabs | `picker.firefox_tabs` |
+| `SHIFT + S` | press | Leader | Start Menu | `popup.open` |
+| `T` | press | Leader | System Tray | `popup.open` |
 | `U` | press | Leader | Updates | `system.update` |
 | `V` | press | Leader | Volume | `popup.open` |
 | `W` | press | Leader | Weather | `popup.open` |
