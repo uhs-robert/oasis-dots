@@ -89,7 +89,8 @@ local function claim_class(name, class)
   claimed_classes[name] = true
   hl.window_rule({
     name = "special-" .. name,
-    match = { class = "^" .. class .. "$" },
+    -- Hyprland reads match.class as a regex; escape it so a class such as "notes+work" matches literally.
+    match = { class = "^" .. class:gsub("[%^%$%(%)%.%[%]%*%+%?{}|\\]", "\\%0") .. "$" },
     workspace = "special:" .. name,
   })
 end
