@@ -43,6 +43,7 @@ local Utils = require("lib.utils") ---@class Utils
 --- @field label string Which-key label
 --- @field cmd string|nil Command launched onto the special when it holds no window, e.g. "term -e nvim ~/notes.md"
 --- @field class string|nil Window class the cmd opens; set it when the app hands its window to a running process (a single-instance terminal), which the launch rule misses
+--- @field title string|nil Text in the launched window's title; with `class`, only the new window of that class whose title holds it moves, so a shared class (a browser) keeps its other windows
 
 --- @class Config.Monitor
 --- @field id integer|nil Monitor id as reported by Hyprland

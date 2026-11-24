@@ -95,6 +95,47 @@ local function claim_class(name, class)
   })
 end
 
+-- 10 s: a browser can take a few seconds to load the page and set its title.
+local ADOPT_POLL_MS = 250
+local ADOPT_ATTEMPTS = 40
+
+--- Show the special workspace on the focused monitor unless it is already up there.
+--- @param name string
+local function show_special(name)
+  local monitor = hl.get_active_monitor()
+  local shown = monitor and monitor.active_special_workspace
+  if not (shown and shown.name == "special:" .. name) then hl.dispatch(hl.dsp.workspace.toggle_special(name)) end
+end
+
+--- Launch the entry's cmd, then move only its new window onto the special: the first window that was not open
+--- before, has the entry's class and has its title in the window title. A rule on a shared class (a browser) would
+--- also take the user's other windows, such as the ones a browser restores at its start.
+--- @param name string
+--- @param spec Config.SpecialWorkspace
+local function launch_and_adopt(name, spec)
+  local before = {}
+  for _, w in ipairs(hl.get_windows()) do
+    before[w.address] = true
+  end
+  hl.dispatch(hl.dsp.exec_cmd(spec.cmd))
+  local attempts = 0
+  local timer
+  timer = hl.timer(function()
+    attempts = attempts + 1
+    for _, w in ipairs(hl.get_windows() or {}) do
+      if not before[w.address] and w.class == spec.class and string.find(w.title, spec.title, 1, true) then
+        timer:set_enabled(false)
+        hl.dispatch(
+          hl.dsp.window.move({ window = "address:" .. w.address, workspace = "special:" .. name, follow = false })
+        )
+        show_special(name)
+        return
+      end
+    end
+    if attempts >= ADOPT_ATTEMPTS then timer:set_enabled(false) end
+  end, { timeout = ADOPT_POLL_MS, type = "repeat" })
+end
+
 --- Show or hide a special workspace. One declared in Config.special_workspaces with a `cmd` launches it when empty.
 --- @param name string  Special workspace name without the `special:` prefix (e.g. "scratchpad")
 Window.toggle_special = function(name)
@@ -104,7 +145,9 @@ Window.toggle_special = function(name)
       -- A non-silent workspace rule opens the special as the window lands, so no toggle is needed. The exec rule
       -- follows the launched PID, which misses a window that a running process opens (kitty --single-instance);
       -- a class rule catches those.
-      if spec.class then
+      if spec.class and spec.title then
+        launch_and_adopt(name, spec)
+      elseif spec.class then
         claim_class(name, spec.class)
         hl.dispatch(hl.dsp.exec_cmd(spec.cmd))
       else
