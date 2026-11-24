@@ -36,6 +36,9 @@ pool.run([step for step in steps if step.serial_lane], [step for step in steps i
 print("failed:" + "".join(" " + name for name in sorted(pool.failed)))
 """
 
+LEADERS = "leaders"
+
+
 # Writes its pid to $SCRATCH/<name> and sleeps: a child of whatever shell runs it.
 def sleeper(name):
     return f'sleep 300 & echo $! >"$SCRATCH/{name}"'
@@ -61,34 +64,55 @@ class StepTimeoutTest(unittest.TestCase):
         for name in ("CHECK_LOCK_HELD", "CHECK_NO_LOCK", "CHECK_HEAVY_SLOTS", "SANDBOX_REAL_XDG_RUNTIME_DIR"):
             self.env.pop(name, None)
 
+    def pids_in(self, name):
+        """The pids in $SCRATCH/<name>, or [] while it is missing or holds no whole pid yet."""
+        try:
+            with open(os.path.join(self.scratch, name)) as handle:
+                words = handle.read().split()
+        except FileNotFoundError:
+            return []
+        return [int(word) for word in words if word.isdigit()]
+
     def recorded_pids(self, names):
+        """Every pid recorded in the named files, each of which must hold one: an empty record proves nothing."""
         pids = []
         for name in names:
-            with open(os.path.join(self.scratch, name)) as handle:
-                pids.extend(int(word) for word in handle.read().split())
+            found = self.pids_in(name)
+            self.assertTrue(found, f"no pid recorded in {name}")
+            pids.extend(found)
         return pids
 
     def kill_recorded(self):
-        """Kills and forgets the recorded processes, so a failed case leaves nothing behind for the next."""
+        """Kills and forgets the recorded processes and every step's process group, so a failed case leaves nothing
+        behind for the next, such as a step that keeps spawning when the timeout fails to stop it."""
         for name in os.listdir(self.scratch):
             path = os.path.join(self.scratch, name)
-            with open(path) as handle:
-                words = handle.read().split()
-            for word in words:
+            kill = os.killpg if name == LEADERS else os.kill
+            for pid in self.pids_in(name):
                 try:
-                    os.kill(int(word), signal.SIGKILL)
-                except (OSError, ValueError):
+                    kill(pid, signal.SIGKILL)
+                except OSError:
                     pass
             os.remove(path)
 
+    def stop_driver(self, process):
+        self.kill_recorded()
+        process.kill()
+        process.wait(timeout=10)
+        process.stdout.close()
+
     def driver(self, steps, jobs, **extra):
+        # Each step's shell records itself, the leader of its process group.
+        steps = [{**step, "command": f'echo $$ >>"$SCRATCH/{LEADERS}"; ' + step["command"]} for step in steps]
         spec = json.dumps({"logs": self.logs, "jobs": jobs, "steps": steps, **extra})
-        return subprocess.Popen(
+        process = subprocess.Popen(
             (sys.executable, "-B", "-c", DRIVER, CHECK_DIR, spec),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=self.env,
         )
+        self.addCleanup(self.stop_driver, process)
+        return process
 
     def run_steps(self, steps, jobs=2, **extra):
         started = time.monotonic()
@@ -96,8 +120,7 @@ class StepTimeoutTest(unittest.TestCase):
         try:
             output = process.communicate(timeout=20)[0].decode()
         except subprocess.TimeoutExpired:
-            process.kill()
-            process.communicate()
+            self.stop_driver(process)
             self.fail("the check never ended")
         return output, time.monotonic() - started
 
@@ -111,13 +134,11 @@ class StepTimeoutTest(unittest.TestCase):
             time.sleep(0.05)
         self.assertEqual([pid for pid in pids if process_alive(pid)], [])
 
-    def wait_for_files(self, names):
+    def wait_for_pids(self, names):
         deadline = time.monotonic() + 10
-        while not all(os.path.exists(os.path.join(self.scratch, name)) for name in names):
+        while not all(self.pids_in(name) for name in names):
             self.assertLess(time.monotonic(), deadline, "the step never started its children")
             time.sleep(0.05)
-        # The pid is written after the file is created.
-        time.sleep(0.1)
 
     # A child, a grandchild, and an orphan whose parent exits: it moves to init but stays in the step's group.
     HUNG = (
@@ -241,7 +262,7 @@ class StepTimeoutTest(unittest.TestCase):
                 if jobs > 1:
                     steps.append({"name": "deaf", "command": deaf})
                 process = self.driver(steps, jobs)
-                self.wait_for_files(("child", "grandchild", "orphan") + (("deaf",) if jobs > 1 else ()))
+                self.wait_for_pids(("child", "grandchild", "orphan") + (("deaf",) if jobs > 1 else ()))
                 process.send_signal(signal.SIGINT)
                 self.assertEqual(process.wait(timeout=10), 1)
                 process.stdout.close()
