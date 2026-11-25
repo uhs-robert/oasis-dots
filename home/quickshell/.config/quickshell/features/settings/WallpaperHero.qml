@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.core
 import qs.theme
 import "WallpaperStrip.js" as Strip
 
@@ -19,7 +20,9 @@ ColumnLayout {
     property int target: 0
     // True while the keys move the filmstrip; the cursor frames are muted otherwise.
     property bool active: false
-    readonly property string current_path: root.images[root.cursor] || ""
+    // The file the preview and the name show. It is the cursor image while browsing, and the monitor's own image otherwise,
+    // which may not be in the listed collection.
+    property string path: ""
     readonly property real cell_width: Style.px(128)
     readonly property real cell_height: Math.round(root.cell_width * 9 / 16)
 
@@ -39,7 +42,7 @@ ColumnLayout {
         Image {
             anchors.fill: parent
             anchors.margins: 1
-            source: root.current_path !== "" ? WallpaperSettings.url_of(root.current_path) : ""
+            source: root.path !== "" ? WallpaperSettings.url_of(root.path) : ""
             sourceSize: Qt.size(960, 540)
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
@@ -50,7 +53,7 @@ ColumnLayout {
     Text {
         Layout.fillWidth: true
         horizontalAlignment: Text.AlignHCenter
-        text: WallpaperSettings.base_name(root.current_path) + (root.images.length > 0 ? "  (" + (root.cursor + 1) + "/" + root.images.length + ")" : "")
+        text: WallpaperSettings.base_name(root.path) + (root.images[root.cursor] === root.path ? "  (" + (root.cursor + 1) + "/" + root.images.length + ")" : "")
         elide: Text.ElideMiddle
         color: root.st.text_fg
         font.family: root.st.font_family
@@ -69,7 +72,7 @@ ColumnLayout {
             Text {
                 required property int index
                 required property var modelData
-                readonly property bool here: root.pins[modelData.key] === root.current_path
+                readonly property bool here: root.pins[modelData.key] === root.path
                 readonly property bool pinned: modelData.key in root.pins
                 readonly property bool is_target: index === root.target
                 text: (is_target ? "> " : "") + (index + 1) + " " + modelData.name + (here ? ": pinned here" : pinned ? ": pinned" : ": automatic")
@@ -94,7 +97,9 @@ ColumnLayout {
         model: root.images
         contentX: Strip.centre_x(root.cursor, root.cell_width, filmstrip.width)
 
+        // Animates only on AC power and while shown (README: nothing animates on battery or hidden).
         Behavior on contentX {
+            enabled: PowerSource.on_ac && root.visible
             NumberAnimation {
                 duration: 120
                 easing.type: Easing.OutCubic

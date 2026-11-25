@@ -41,3 +41,9 @@ function pinned_on(monitors, pins, path) {
     });
     return out;
 }
+
+// The state of a `gg` chord after a key: `pending` is true after a lone g; a second g right after it asks for `first`.
+// Any other key clears the chord, so g, x, g is not gg.
+function gg(pending, is_g) {
+    return { pending: is_g && !pending, first: is_g && pending };
+}
