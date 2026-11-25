@@ -528,6 +528,30 @@ def check_imports(tree, repo, consumer, origin):
     return found
 
 
+SETTINGS_SKINS = "features/settings/skins/"
+
+
+def check_skin_imports(repo, consumer, origin):
+    """A settings skin imports only qs.theme, qs.ui and the widgets of its own style (styles/<name>/widgets), so a skin
+    cannot reach a service or another feature. Default has no style and so no widgets."""
+    if not (consumer.startswith(SETTINGS_SKINS) and consumer.endswith(".qml")):
+        return []
+    style = posixpath.splitext(posixpath.basename(consumer))[0].lower()
+    own = f"styles/{style}/widgets"
+    found = []
+    for kind, target, line in imports(os.path.join(repo, origin)):
+        if kind == "qs":
+            ok = target.split("/")[0] in ("theme", "ui") or (style != "default" and (target + "/").startswith(own + "/"))
+            text = "qs" + ("." + target.replace("/", ".") if target else "")
+        else:
+            path = norm(posixpath.join(posixpath.dirname(consumer), target))
+            ok = style != "default" and (path + "/").startswith(own + "/")
+            text = f'"{target}"'
+        if not ok:
+            found.append(Finding(origin, line, f"settings skin imports {text}; a skin may import only qs.theme, qs.ui and {own}"))
+    return found
+
+
 def check_outside(repo, layout, listing, shell):
     found = []
     for consumer, target in layout.outside_refs:
@@ -561,6 +585,8 @@ def run_checks(repo, layout=Layout()):
             for site in call_sites(os.path.join(repo, origin), consumer.endswith(".qml")):
                 findings += check_site(repo, layout, tree, consumer, origin, site)
             findings += check_imports(tree, repo, consumer, origin)
+            if tree is shell:
+                findings += check_skin_imports(repo, consumer, origin)
     findings += check_outside(repo, layout, listing, shell)
     return sorted(set(findings))
 

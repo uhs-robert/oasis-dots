@@ -334,6 +334,22 @@ class MissingFileTest(PathsCase):
         )
 
 
+class SettingsSkinImportTest(PathsCase):
+    SKIN = "qs/features/settings/skins/Nes.qml"
+
+    def skin(self, text):
+        files = {self.SKIN: text, "qs/theme/T.qml": "", "qs/ui/U.qml": "", "qs/ui/menu/M.qml": "", "qs/styles/nes/widgets/W.qml": "", "qs/services/S.qml": "", "qs/styles/snes/widgets/W.qml": "", "qs/features/bar/B.qml": ""}
+        return self.check(files)
+
+    def test_theme_ui_and_own_widgets_pass(self):
+        self.assertEqual(self.skin("import qs.theme\nimport qs.ui.menu\nimport qs.styles.nes.widgets\nimport \"../../../styles/nes/widgets\"\nimport QtQuick\n"), [])
+
+    def test_a_service_another_style_or_a_sibling_feature_fails(self):
+        found = self.skin("import qs.services\nimport qs.styles.snes.widgets\nimport qs.features.bar\n")
+        self.assertEqual(len(found), 3)
+        self.assertTrue(all("settings skin imports" in f for f in found))
+
+
 class LiveTreeTest(unittest.TestCase):
     def test_the_repository_passes(self):
         self.assertEqual(qml_paths.run_checks(REPO_DIR), [])

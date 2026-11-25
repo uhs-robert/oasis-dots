@@ -19,6 +19,16 @@ A section's rows can sit under headings (Style: Style, Colors, Screen, Workspace
 
 The ids of sections since merged still open the merged one where they went (`colors` opens Style at Colors, `clock` and `calendar` open Date & time at Format and Calendar, `login` opens Lock & login at Login); `Sections.aliases` lists them.
 
+## A settings skin
+
+A style changes how Settings looks with a file `skins/<Style>.qml` (the style name with a capital, such as `Nes.qml`). A style with no file draws with `skins/Default.qml`, and `SettingsSkins` picks the file. A skin is a `QtObject` of three `Component` slots:
+
+- `nav_item`: one section row. It sets `need`, the width it wants (the list takes the widest), and exposes `selected`. `reveal_selected` finds the row through `selected`, so a row without it stops scroll-to-selection. The row height is the popup's pitch, not the skin's.
+- `backdrop`: behind the whole body, filling it.
+- `panel_art`: over the docked panel, filling it.
+
+`SettingsPopup` loads each slot with a `ctx` property: `st`, `text_bump`, `row_extra`, `group_fg`, `portrait`, `in_pane`, `nav_index`, `body_width` and `body_height`; `nav_item` also gets `section`, `index` and `selected`. A skin never takes focus or keys, since `SettingsPopup` owns them. Heavy art (images, shaders, animated items) goes in `styles/<name>/widgets/`, and a skin imports only `qs.theme`, `qs.ui` and that folder. The `settings-skins` and `qml-paths` checks enforce the slots, the style names, the no-focus rule, `selected` and the imports.
+
 ## Date & time settings
 
 Settings > Date & time sets the time format and the calendar's first day of week (under Format) and connects a calendar (under Calendar, see `features/clock/README.md`). Time format is the locale's convention (the default), 12-hour or 24-hour, and every clock follows it: the bar clock in each style, the clock popup, weather hours and the Updates, Keeptabs and notification times. Lock-screen skins with a fixed game-style clock keep their own format. First day of week follows the locale (the default), or is Monday or Sunday. An old `time_format` in `weather.local.json` is carried over once and then removed. It saves to `clock.json` in the Quickshell state folder (`$XDG_STATE_HOME/quickshell/`, or `~/.local/state/quickshell/`).
