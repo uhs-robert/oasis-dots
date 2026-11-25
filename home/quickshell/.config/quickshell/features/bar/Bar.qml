@@ -557,8 +557,12 @@ Item {
             if (has_center_slot) center_names.push("settings");
             else right_names.push("settings");
         }
-        Popups.register_order(root.screen_name, root.position, root.popup_names(root.left_entries).concat(center_names, right_names));
+        root.registered_order = root.popup_names(root.left_entries).concat(center_names, right_names);
+        Popups.register_order(root.screen_name, root.position, root.registered_order);
     }
+
+    // What this bar last stored as its edge's walk order; on teardown the edge may already hold the other bar's.
+    property var registered_order: []
 
     // Syncing earlier reads bindings that are still mid-evaluation (undefined); onCompleted does the first sync.
     property bool popups_ready: false
@@ -587,7 +591,7 @@ Item {
         BarItems.forget_owner(root);
         if (!root.primary) {
             for (const i of [left_island, center_island, right_island]) Popups.unregister("clock", root.screen_name, i.body_item);
-            Popups.register_order(root.screen_name, root.position, []);
+            if (Popups.order_on(root.screen_name, root.position) === root.registered_order) Popups.register_order(root.screen_name, root.position, []);
             return;
         }
         Popups.unregister_screen(root.screen_name);

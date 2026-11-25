@@ -276,12 +276,12 @@ def scenario_editor(name):
 
 
 def scenario_two_bars(root):
-    """Edits on a screen with two bars; the file then holds the shared layout as a `bars` list, as bars.json rules do."""
+    """Edits on a screen with two bars; the file keeps the first bar at the root, where main reads it, and the second
+    bar under `second_bar`."""
     problems = scenario_editor("editor_two_bars")(root)
     shared = bars_file(root).get("shared", {})
-    bars = shared.get("bars")
-    if not isinstance(bars, list) or len(bars) != 2 or "place" in shared or "order" in shared:
-        problems.append("the shared layout was not written as a bars list: %r" % shared)
+    if "bars" in shared or "place" not in shared or "order" not in shared or not isinstance(shared.get("second_bar"), dict):
+        problems.append("the shared layout was not written with the first bar at the root and second_bar apart: %r" % shared)
     return problems
 
 

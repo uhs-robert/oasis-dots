@@ -161,29 +161,19 @@ function lists_of(bar) {
     return { left: unique(bar && bar.left), center: unique(bar && bar.center), right: unique(bar && bar.right) };
 }
 
-// The shared layout's `bars` list read like a rule's (fold_bars): the first bar's `place` and `order` at the root, the
-// second bar's in `second_bar`.
-function fold_shared(shared) {
-    if (!Array.isArray(shared.bars)) return shared;
-    const first = is_object(shared.bars[0]) ? shared.bars[0] : {};
-    const out = Object.assign({}, shared, { place: first.place, order: first.order });
-    delete out.bars;
-    if (is_object(shared.bars[1])) out.second_bar = shared.bars[1];
-    return out;
-}
-
-// Clean copy of a state file's contents; throws on the wrong shape. A layout with second-bar edits comes back folded,
-// its second bar in `second_bar`, as a rule does from fold_bars; `to_file` writes it out as a `bars` list again.
+// Clean copy of a state file's contents; throws on the wrong shape. The first bar sits at the root (the shared `place`
+// and `order`, an own layout's `left`/`center`/`right`), where builds without a second bar read it, and a layout's
+// second-bar edits sit apart under `second_bar`. An older build then drops only the second bar's edits, never the first's.
 function normalize(raw) {
     if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {}, positions: {} };
     if (!is_object(raw)) throw new Error("bars.json state must be a JSON object");
-    const shared = is_object(raw.shared) ? fold_shared(raw.shared) : {};
+    const shared = is_object(raw.shared) ? raw.shared : {};
     const place = clean_place(shared.place, true);
     const monitors = {};
     if (is_object(raw.monitors)) {
         for (const k of Object.keys(raw.monitors)) {
             if (!is_object(raw.monitors[k])) continue;
-            const m = fold_bars(raw.monitors[k]);
+            const m = raw.monitors[k];
             monitors[k] = Object.assign(lists_of(m), { last_side: clean_last(m.last_side) });
             if (is_object(m.second_bar)) monitors[k].second_bar = lists_of(m.second_bar);
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
@@ -223,26 +213,6 @@ function normalize(raw) {
     if (raw.cava_migrated === true) out.cava_migrated = true;
     if (raw.auto_compact === false) out.auto_compact = false;
     return out;
-}
-
-// A normalized state as the file holds it: a layout with a second bar keeps both bars in a `bars` list, the shape
-// bars.json rules use; a single-bar layout keeps the old shape, so files without second-bar edits do not change.
-function to_file(state) {
-    const unfold = (holder, keys) => {
-        if (!holder.second_bar) return holder;
-        const first = {};
-        const out = Object.assign({}, holder);
-        for (const k of keys) {
-            first[k] = holder[k];
-            delete out[k];
-        }
-        delete out.second_bar;
-        out.bars = [first, holder.second_bar];
-        return out;
-    };
-    const monitors = {};
-    for (const k of Object.keys(state.monitors)) monitors[k] = unfold(state.monitors[k], sides);
-    return Object.assign({}, state, { shared: unfold(state.shared, ["place", "order"]), monitors: monitors });
 }
 
 // The global auto compact switch: on by default, saved only while off.
@@ -705,8 +675,10 @@ function edit(rule, state, key, op) {
     // `effective` would otherwise apply after it.
     // A hide is written on the first bar, whichever bar it came from.
     const home = op.type === "hide" ? 0 : bar;
+    // A second-bar placement keeps the first bar's: monitors sharing the layout with one bar read only that one, and
+    // `effective` applies the second after it on a screen with two.
     if (op.type !== "move") {
-        layers.forEach((layer, b) => Object.keys(layer.place).filter(k => plain_entry(k) === plain && (k !== plain || b !== home)).forEach(k => delete layer.place[k]));
+        layers.forEach((layer, b) => Object.keys(layer.place).filter(k => (home === 0 || b === 1) && plain_entry(k) === plain && (k !== plain || b !== home)).forEach(k => delete layer.place[k]));
     }
     if (op.type === "hide") {
         next.shared.place[plain] = "hidden";
@@ -830,6 +802,17 @@ function move_to_bar(rule, state, key, entry, bar) {
     const view = layout_of(effective(rule, next, key));
     const from = bar_holding(view, entry);
     if (!view.second_bar || from < 0 || from === bar) return next;
+    // Back to the first bar of a shared layout: dropping the second-bar placement is enough when the first bar's still
+    // shows the module, and keeps that placement as the one-bar monitors sharing the layout see it.
+    if (bar === 0 && is_sharing(next, key) && next.shared.second_bar) {
+        const plain = plain_entry(entry);
+        const back = normalize(next);
+        Object.keys(back.shared.second_bar.place).filter(k => plain_entry(k) === plain).forEach(k => delete back.shared.second_bar.place[k]);
+        if (bar_holding(layout_of(effective(rule, back, key)), entry) === 0) {
+            if (Object.keys(back.shared.second_bar.place).length === 0 && back.shared.second_bar.order.length === 0) delete back.shared.second_bar;
+            return back;
+        }
+    }
     return edit(rule, next, key, { type: "side", entry: entry, side: side_of(bar_view(view, from), entry), index: -1, bar: bar });
 }
 

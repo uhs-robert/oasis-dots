@@ -519,7 +519,8 @@ ShellRoot {
         root.keys("j Esc");
         root.check("VISUAL j sends it back down", BarEditor.bars.map(b => b.position), ["top", "bottom"]);
         root.check("the shared layout keeps the second bar's edits apart", Object.keys(BarSettings.state.shared.second_bar || {}).sort(), ["order", "place"]);
-        root.check("a screen with one bar ignores them", BarLayout.layout_of(BarLayout.effective(root.layout_rule, BarSettings.state, "")).right, ["tray", "volume"]);
+        // K placed battery on the first bar, which J keeps for the one-bar screens.
+        root.check("a screen with one bar ignores them", BarLayout.layout_of(BarLayout.effective(root.layout_rule, BarSettings.state, "")).right, ["tray", "volume", "battery"]);
         BarEditor.close();
         BarEditor.open("B");
         root.check("each open starts on the first bar", BarEditor.edited_bar, 0);

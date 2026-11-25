@@ -60,7 +60,8 @@ Singleton {
 
     // A load is the first read or an edit from outside; our own writes never come back as one.
     function adopt_loaded() {
-        const loaded = store.values;
+        // Early edits reach `values` through the store's merge unchecked, so the load is cleaned again here.
+        const loaded = BarLayout.normalize(store.values);
         root.state = loaded;
         let next = loaded;
         // A missing file has nothing to migrate.
@@ -84,7 +85,7 @@ Singleton {
     function set_state(next) {
         // Anything this build writes is past the one-time cava migration.
         root.state = Object.assign(BarLayout.normalize(next), { cava_migrated: true });
-        store.replace(BarLayout.to_file(root.state));
+        store.replace(root.state);
     }
 
     readonly property var directory_switches: BarLayout.directory_switches(root.state)
