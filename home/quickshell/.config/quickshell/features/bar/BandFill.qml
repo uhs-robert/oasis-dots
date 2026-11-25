@@ -37,6 +37,9 @@ Item {
     // The band's offset in a pattern shared with neighbouring bands, so their dither and scanlines line up.
     property real phase_x: 0
     property real phase_y: 0
+    // The dither's own row phase: a band mirrored against the pattern pairs the checker's rows differently from its
+    // 1 px scanlines, so one phase cannot line up both (DrawerGeometry.texture_phase).
+    property real dither_phase_y: root.phase_y
     // Drawn above the rim, in the band frame, clipped to the band.
     property Component ornament: null
     // { x, y, w, h } in the band frame where the inset line, rim and ornament are left out, for a drawer's mouth.
@@ -96,7 +99,7 @@ Item {
         Loader {
             id: dither_layer
             readonly property real shift_x: Band.phase_wrap(root.phase_x, 4)
-            readonly property real shift_y: Band.phase_wrap(root.phase_y, 4)
+            readonly property real shift_y: Band.phase_wrap(root.dither_phase_y, 4)
             x: -shift_x
             y: -shift_y
             width: root.length + shift_x
