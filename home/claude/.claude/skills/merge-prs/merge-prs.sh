@@ -1074,7 +1074,12 @@ fi
 printf 'pid %s on %s, merging %s\n' "$$" "$HOSTNAME" "${prs[*]}" >"$lock_file"
 # The first check ran before the wait; threads and reviewer states can have changed since, and the head gate follows
 # the head this second check saw.
-! $waited_for_lock || check_reviews
+# It only reads: waiting or requesting a review here would hold the lock for up to 20 minutes per reviewer.
+if $waited_for_lock; then
+  wait_review=false
+  request_review=false
+  check_reviews
+fi
 
 for pr in "${prs[@]}"; do
   merge_pr "$pr"

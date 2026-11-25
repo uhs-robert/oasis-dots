@@ -261,6 +261,11 @@ case "$args" in
 "pr view"*"--json headRefOid --jq"*) reported_oid ;;
 "pr view"*"--json state"*) get state ;;
 "pr merge"*)
+  # A child that outlives this call, the way git's detached auto-gc does; GH_LINGER names the file for its pid.
+  [[ -z ${GH_LINGER-} ]] || {
+    sleep 30 >/dev/null 2>&1 </dev/null &
+    echo $! >>"$GH_LINGER"
+  }
   [[ $args == *"--match-head-commit $(head_oid)"* ]] || {
     echo "Head branch was modified" >&2
     exit 1

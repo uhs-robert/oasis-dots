@@ -1200,6 +1200,34 @@ out=$(<"$root/run.out")
 show "$out"
 check "a thread opened during the wait blocks the merge" "[[ $code != 0 ]] && grep -q '1 unresolved review thread' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
 
+echo "== lock: the second gate does not wait for a reviewer while holding the lock"
+cr_setup "30 min"
+cr_run completed success "25 min" "20 min"
+cr_reviewed_head
+hold_lock
+MERGE_PRS_REVIEW_POLL=0 MERGE_PRS_REVIEW_WAIT=600 PATH="$here:$PATH" timeout 30 "$script" --wait-review --request-review 7 >"$root/run.out" 2>&1 &
+run=$!
+fixtures+=("$run")
+await "$run" "the run to report the wait" "grep -q 'waiting for the merge lock' '$root/run.out'" "$root/run.out"
+sed -i '/^cr_run=/d' "$GH_STATE"
+cr_run in_progress "" "25 min" ""
+release_holder
+wait "$run"
+code=$?
+out=$(<"$root/run.out")
+show "$out"
+check "stops on the running reviewer instead of waiting for it" "[[ $code == 1 ]] && grep -q 'the CodeRabbit check is in_progress' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
+echo "== lock: a child of gh that outlives the run does not keep the lock"
+setup
+GH_LINGER=$root/linger PATH="$here:$PATH" "$script" 7 >"$root/run.out" 2>&1
+code=$?
+show "$(<"$root/run.out")"
+check "the run merged" "[[ $code == 0 ]]"
+check "the child is still running" "alive \"\$(head -n 1 '$root/linger')\""
+check "the lock is free right after the run" "flock -n '$(lock_path)' true"
+xargs -r kill <"$root/linger" 2>/dev/null
+
 echo "== lock: the wait times out"
 setup
 hold_lock
