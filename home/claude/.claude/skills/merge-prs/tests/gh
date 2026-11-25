@@ -263,7 +263,7 @@ case "$args" in
 "pr merge"*)
   # A child that outlives this call, the way git's detached auto-gc does; GH_LINGER names the file for its pid.
   [[ -z ${GH_LINGER-} ]] || {
-    sleep 30 >/dev/null 2>&1 </dev/null &
+    sleep 30 >/dev/null 2>&1 &
     echo $! >>"$GH_LINGER"
   }
   [[ $args == *"--match-head-commit $(head_oid)"* ]] || {
