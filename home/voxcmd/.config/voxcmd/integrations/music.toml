@@ -1,0 +1,19 @@
+#:schema ../../../.local/share/voxcmd/integration.schema.json
+# The bar's music mode (the audio-reactive screen frame) by voice: "music mode on" and "music mode off". The state lives in
+# the bar and is set through `qs-ipc call music set`; "toggle music" and "pause music" stay with Media.
+name = "Music"
+# The frame appearing or going away is the feedback; only a failure shows a toast.
+silent = true
+
+# Both verbs name "mode", which no Media verb does, and `{target}` catch-alls elsewhere (Apps, Keybinds) are tried only
+# after a specific verb has matched, so "music mode on" never reaches them.
+verbs = [
+  { action = "music_on",  match = 'music mode on|turn on (the )?music mode' },
+  { action = "music_off", match = 'music mode off|turn off (the )?music mode' },
+]
+
+examples = ["music mode on", "music mode off"]
+
+[actions]
+music_on = "music_mode_set true"
+music_off = "music_mode_set false"
