@@ -28,7 +28,7 @@ GOOD_LIST = {"version": 1, "actions": [
 ZOOM_STEP = {"id": "zoom.step", "perform": {"kind": "ipc", "target": "zoom", "function": "step", "args": ["{by}", "px"]}}
 
 
-# Actions with no key whose run is an Ipc call (lib/act/defs/{notifications,style,lock,power,screenshot,zoom,overview,settings,launcher,bareditor,submap_hints}.lua).
+# Actions with no key whose run is an Ipc call (lib/act/defs/{notifications,style,lock,power,screenshot,zoom,overview,settings,launcher,bareditor,music,submap_hints}.lua).
 KEYLESS_IPC_IDS = [
     "notifications.toggle_dnd",
     "notifications.clear_all",
@@ -54,6 +54,7 @@ KEYLESS_IPC_IDS = [
     "picker.close",
     "bareditor.open",
     "bareditor.toggle",
+    "music.toggle",
     "bareditor.close",
     "submap.hints_toggle",
 ]

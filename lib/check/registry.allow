@@ -79,6 +79,7 @@ ipc hyprvim_prompt open close           # called by the hyprvim plugin
 ipc hyprvim_whichkey open close         # called by the hyprvim plugin
 ipc lock lock_auto preview preview_close state  # idle lock and the lock-preview tooling; lock.open is the command
 ipc notifications close focus_toast get_dnd get_last has_toast history open  # queries and drivers of the notification surfaces; toggle_dnd, clear_all and the dismiss calls are actions
+ipc music set state                    # voxcmd's music mode on/off verbs call set (bar-music-mode PR4); state is a query; music.toggle is the action
 ipc osd state                           # a state query
 ipc overview act save_session state     # the overview's own driver and queries; overview.toggle and close are actions
 ipc picker open_with                    # the picker launcher scripts pass a provider and arguments

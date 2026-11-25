@@ -101,7 +101,7 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `lock` | `state(): string` |  |
 | `media` | `jump_to_tab(): string` | `media.jump_to_tab` |
 | `music` | `set(on: bool): void` |  |
-| `music` | `toggle(): void` |  |
+| `music` | `toggle(): void` | `music.toggle` |
 | `music` | `state(): string` |  |
 | `notifications` | `toggle_dnd(): void` | `notifications.toggle_dnd` |
 | `notifications` | `get_dnd(): bool` |  |

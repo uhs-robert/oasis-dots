@@ -7,5 +7,6 @@ uncalled cmdstatus                    # the module id is also the target; nothin
 uncalled weather                      # README-documented preview hook for fixtures (permanent)
 uncalled transition                   # a debugging hook, called by hand (permanent)
 uncalled osd                          # shadow.sh wait reaches it through a computed target (permanent)
+uncalled music                        # only the music.toggle action calls it so far; voxcmd calls set in PR4 (bar-music-mode PR4)
 frozen hyprvim_prompt open close      # called by repos/hyprvim, outside this repo (permanent)
 frozen hyprvim_whichkey open close    # called by repos/hyprvim and .claude/skills/shadow/smoke.sh (permanent)
