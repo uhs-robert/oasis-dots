@@ -95,6 +95,7 @@ PATH_SCOPES = [
     ("lib/check/qml*", "checkscope quickshell"),
     ("lib/check/steps/qml*", "checkscope quickshell"),
     ("lib/check/steps/lock-skins.sh", "checkscope quickshell"),
+    ("lib/check/steps/settings-skins.sh", "checkscope quickshell"),
     ("lib/check/steps/style-exports.sh", "checkscope quickshell"),
     ("lib/check/steps/time-format.sh", "checkscope quickshell"),
     ("lib/check/steps/shaders.sh", "checkscope quickshell"),
@@ -305,6 +306,7 @@ STEPS = [
     # single scope covers them. No `needs`: a missing lua must fail the step, not skip it.
     Step("registry", "tree", "python3 -B ./lib/check/steps/registry.py"),
     Step("lock-skins", "quickshell", "bash ./lib/check/steps/lock-skins.sh"),
+    Step("settings-skins", "quickshell", "bash ./lib/check/steps/settings-skins.sh"),
     Step("docs-generated", "docsgen", "sh ./lib/check/steps/docs-generated.sh", ("lua", "python3"), skip_reason="the generated table checks need lua and python3"),
     Step("style-exports", "quickshell", "sh ./lib/check/steps/style-exports.sh"),
     # A probe, not the script's own skip line, so a run without qsb records no pass that would hide a stale .qsb later.
