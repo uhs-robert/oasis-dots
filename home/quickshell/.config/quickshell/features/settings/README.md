@@ -1,6 +1,6 @@
 # Settings panel
 
-`settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings`, `HyprInputSettings` and `WorkspaceSettings`.
+`settings/` holds the Settings panel (`SettingsPopup`, its row and picker widgets, `Sections.js` and the `sections/`), `SettingsNav` and its IPC handler, `SettingsSkins` (the skin list) and `skins/Default.qml` (the look of the section rows, the backdrop and the panel art), and the settings services `DefaultAppsSettings`, `WallpaperSettings`, `HotCornersSettings`, `HyprInputSettings` and `WorkspaceSettings`.
 
 Settings takes 80% of the screen each way: with the screen frame on it grows out of the frame as a drawer, otherwise it drops from the centre of the bar like the other popups. It holds the section list on the left, sized to its labels, the selected section in the middle and a docked panel on the right (about 1.25 times the list's width; under the rows on a portrait or small screen) that explains the selected setting in full; the section gets the rest. Open it with `SUPER + SPACE` then `S`, `SUPER + B` then `SHIFT + S`, from the Start menu, or with `qs ipc call settings open <section>` (section ids are in `features/settings/Sections.js`).
 

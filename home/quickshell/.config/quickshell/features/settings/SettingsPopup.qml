@@ -87,6 +87,27 @@ Popup {
         Qt.callLater(root.reveal_nav);
     }
 
+    // The style's skin (skins/<Style>.qml, else Default); a style switch reloads it and nothing else here.
+    readonly property var skin: skin_loader.item
+    readonly property bool portrait: root.screen ? root.screen.height > root.screen.width : false
+    // What every skin part reads. Per-row parts add section, index and selected.
+    readonly property var skin_ctx: ({
+        st: root.st,
+        text_bump: root.text_bump,
+        row_extra: root.row_extra,
+        group_fg: root.group_fg,
+        portrait: root.portrait,
+        in_pane: root.in_pane,
+        nav_index: root.nav_index,
+        body_width: body.width,
+        body_height: body.height
+    })
+
+    Loader {
+        id: skin_loader
+        source: SettingsSkins.url_for(Style.name)
+    }
+
     Timer {
         id: load_timer
         interval: 120
@@ -267,6 +288,19 @@ Popup {
             event.accepted = true;
         }
 
+        Loader {
+            id: backdrop
+            anchors.fill: parent
+            z: -1
+            sourceComponent: root.skin ? root.skin.backdrop : null
+        }
+
+        Binding {
+            target: backdrop.item
+            property: "ctx"
+            value: root.skin_ctx
+        }
+
         Flickable {
             id: nav_flick
             width: nav.width
@@ -322,7 +356,8 @@ Popup {
                             required property int index
                             required property var modelData
                             readonly property bool first: entry.index === 0 || Sections.list[entry.index - 1].group !== entry.modelData.group
-                            readonly property real need: 16 + nav_row.inset + nav_row.key_space + nav_layout.implicitWidth
+                            readonly property real need: nav_item.item ? nav_item.item.need : 0
+                            readonly property var ctx: Object.assign({}, root.skin_ctx, { section: entry.modelData, index: entry.index, selected: entry.index === root.nav_index })
 
                             width: nav_col.width
                             spacing: 4
@@ -336,45 +371,26 @@ Popup {
                                 fg_override: root.group_fg
                             }
 
-                            MenuRow {
-                                id: nav_row
+                            // The row's look is the skin's; the pitch, the click and the selection stay here.
+                            Loader {
+                                id: nav_item
                                 width: entry.width
                                 height: Style.px(28) + root.row_extra
-                                base_radius: 6
-                                selected: entry.index === root.nav_index
-                                key: entry.index < 9 ? String(entry.index + 1) : ""
+                                sourceComponent: root.skin ? root.skin.nav_item : null
+                            }
 
-                                RowLayout {
-                                    id: nav_layout
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8 + nav_row.inset
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 8 + nav_row.key_space
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 8
+                            Binding {
+                                target: nav_item.item
+                                property: "ctx"
+                                value: entry.ctx
+                            }
 
-                                    Text {
-                                        text: entry.modelData.glyph
-                                        color: nav_row.fg(root.st.text_accent)
-                                        font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size + root.text_bump
-                                    }
-
-                                    RowLabel {
-                                        Layout.fillWidth: true
-                                        label: entry.modelData.label
-                                        color: nav_row.fg(root.st.text_fg)
-                                        font.family: root.st.font_family
-                                        font.pixelSize: root.st.font_size + root.text_bump
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: {
-                                        root.nav_index = entry.index;
-                                        root.enter_pane();
-                                    }
+                            MouseArea {
+                                parent: nav_item
+                                anchors.fill: parent
+                                onClicked: {
+                                    root.nav_index = entry.index;
+                                    root.enter_pane();
                                 }
                             }
                         }
@@ -467,6 +483,21 @@ Popup {
             y: body.height - body.help_height
             width: body.help_width
             height: body.help_height
+        }
+
+        Loader {
+            id: panel_art
+            x: panel.x
+            y: panel.y
+            width: panel.width
+            height: panel.height
+            sourceComponent: root.skin ? root.skin.panel_art : null
+        }
+
+        Binding {
+            target: panel_art.item
+            property: "ctx"
+            value: root.skin_ctx
         }
 
         NumberAnimation {
