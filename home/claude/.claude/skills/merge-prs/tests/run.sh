@@ -1168,14 +1168,14 @@ check "passes while the lock is held" "[[ $code == 0 ]] && grep -q '^ready' <<<\
 echo "== lock: a caller's own lock file does not block it"
 setup
 (
-  exec 8>>"$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/ship-batch.lock"
+  exec 8>>"$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/wrapper.lock"
   flock 8
   PATH="$here:$PATH" "$script" 7 >"$root/nested.out" 2>&1
 )
 code=$?
 out=$(<"$root/nested.out")
 show "$out"
-check "merges while ship-batch.lock is held" "[[ $code == 0 ]] && grep -q '^7 merged' <<<\"\$out\""
+check "merges while wrapper.lock is held" "[[ $code == 0 ]] && grep -q '^7 merged' <<<\"\$out\""
 
 echo "== lock: two runs on different PRs take turns"
 setup
