@@ -11,4 +11,5 @@ require("lib.act").load_defs({
   "settings",
   "launcher",
   "bareditor",
+  "music",
 })
