@@ -5,15 +5,19 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/ui/frames/MusicGeometry.js"), "utf8");
-const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { music_bars, music_bars_for_layout, frame_from_layout, level_at };", T);
+const root = path.join(__dirname, "../.config/quickshell/ui/frames");
+const read = name => fs.readFileSync(path.join(root, name), "utf8").replace(/^\.(pragma|import).*$/gm, "");
+const load = (name, imports) => { const ctx = vm.createContext(imports); vm.runInContext(read(name), ctx); return ctx; };
+const O = load("IslandOutlines.js", {});
+const C = load("Corners.js", { Outlines: O });
+const F = load("FrameGeometry.js", { Outlines: O, Corners: C });
+const T = load("MusicGeometry.js", { Frame: F });
+vm.runInContext("this.api = { music_bars, music_bars_for_layout, music_slots, bars_from_slots, frame_from_layout, level_at };", T);
 const M = T.api;
 
-// A layout with the fields frame_layout documents (top bar: near is the bar's height).
-const layout = (edge, has_bar) => ({
-  edge, has_bar, length: 1000, depth: 600, near: has_bar ? 40 : 8, far: 592, start: 8, end: 8, radius: 20,
-});
+// The real frame_layout on a 1000 x 600 screen with a 40 px bar (or none): hole inset 8, corner radius 20.
+const kit = { corner: "round", radius: 20, thickness: 8, ornament: "" };
+const layout = (edge, has_bar) => F.frame_layout(1000, 600, has_bar ? edge : "", 40, kit);
 const loud = Array(48).fill(1);
 const quiet = Array(48).fill(0);
 const on_edge = (bars, e) => bars.filter(b => b.edge === e);
@@ -55,15 +59,40 @@ const cases = [
   ["no levels draw nothing", () => M.music_bars_for_layout(layout("top", true), []), []],
   ["non-numbers count as zero", () => M.music_bars_for_layout(layout("top", true), Array(48).fill(NaN)), []],
   ["a louder level gives a taller bar", () => {
-    const lv = Array(48).fill(0); lv[0] = 0.25; const a = M.music_bars_for_layout(layout("top", true), lv);
-    lv[0] = 1; const b = M.music_bars_for_layout(layout("top", true), lv);
+    const lv = Array(48).fill(0); lv[0] = 0.25; const a = M.music_bars_for_layout(layout("top", true), lv, hole_opt);
+    lv[0] = 1; const b = M.music_bars_for_layout(layout("top", true), lv, hole_opt);
     return b[0].h > a[0].h && a[0].h > 0;
   }, true],
-  ["levels spread over the perimeter by position", () => {
+  ["levels spread over the perimeter by position (hole mode, top bar)", () => {
     const lv = Array(48).fill(0); for (let i = 0; i < 12; i++) lv[i] = 1;
+    const bars = M.music_bars_for_layout(layout("top", true), lv, hole_opt);
+    return [on_edge(bars, "top").length > 0, on_edge(bars, "bottom").length, on_edge(bars, "left").length];
+  }, [true, 0, 0]],
+  ["band mode, top bar: the bass lands on the first drawn side (right)", () => {
+    const lv = Array(48).fill(0); lv[0] = 1;
     const bars = M.music_bars_for_layout(layout("top", true), lv);
-    return [on_edge(bars, "top").length > 0, on_edge(bars, "bottom").length];
-  }, [true, 0]],
+    return [bars.length > 0, bars.every(b => b.edge === "right")];
+  }, [true, true]],
+  ["band mode, bottom bar: the treble lands on the last drawn side (left)", () => {
+    const lv = Array(48).fill(0); lv[47] = 1;
+    const bars = M.music_bars_for_layout(layout("bottom", true), lv);
+    return [bars.length > 0, bars.every(b => b.edge === "left")];
+  }, [true, true]],
+  ["default mode, bottom bar: the bottom strip stays free and the top side draws", () => [strip_free(M.music_bars_for_layout(layout("bottom", true), loud), 0, 40), on_edge(M.music_bars_for_layout(layout("bottom", true), loud), "top").every(b => b.y === 0 && b.h === 8), on_edge(M.music_bars_for_layout(layout("bottom", true), loud), "bottom").length], [true, true, 0]],
+  ["levels rise clockwise: top, right, then bottom and left read from their far ends", () => {
+    const ramp = Array.from({ length: 48 }, (_, i) => i / 47);
+    const bars = M.music_bars_for_layout(layout("top", false), ramp);
+    const len = b => (b.edge === "top" || b.edge === "bottom") ? b.h : b.w;
+    const by = (e, key, dir) => on_edge(bars, e).sort((p, q) => dir * (p[key] - q[key]));
+    const walk = [].concat(by("top", "x", 1), by("right", "y", 1), by("bottom", "x", -1), by("left", "y", -1)).map(len);
+    return [walk.length > 8, walk.every((v, i) => i === 0 || v >= walk[i - 1])];
+  }, [true, true]],
+  ["bars sit on whole pixels", () => band_top.every(b => [b.x, b.y, b.w, b.h].every(Number.isInteger)), true],
+  ["cached slots give the same bars as the one-call form", () => {
+    const frame = M.frame_from_layout(layout("top", true));
+    const ramp = Array.from({ length: 48 }, (_, i) => i / 47);
+    return JSON.stringify(M.bars_from_slots(M.music_slots(frame), ramp)) === JSON.stringify(M.music_bars(frame, ramp));
+  }, true],
   ["bars do not overlap on one edge", () => { const t = on_edge(top_bar, "top"); return t.every((b, i) => i === 0 || b.x >= t[i - 1].x + t[i - 1].w); }, true],
   ["a tiny hole draws nothing and does not throw", () => M.music_bars({ w: 40, h: 40, hole: { x: 5, y: 5, w: 30, h: 30 }, radius: 15, strips: [] }, loud), []],
   ["levels are not mutated", () => { const l = [1, 0.5]; M.music_bars_for_layout(layout("top", true), l); return l; }, [1, 0.5]],
