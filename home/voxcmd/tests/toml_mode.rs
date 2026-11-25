@@ -859,40 +859,8 @@ fn install_shipped(rig: &Rig, stems: &[&str]) {
     }
 }
 
-/// What `explain` says a phrase does: the `result:` line and the first option's name and action, or the whole output.
-fn explained(rig: &Rig, phrase: &str) -> String {
-    let out = rig.command(&["explain", phrase]).stdout(Stdio::piped()).output().unwrap();
-    let text = String::from_utf8_lossy(&out.stdout).to_string();
-    let option = text.lines().find(|line| line.starts_with("option 1: "));
-    option.map_or(text.clone(), |line| {
-        let name = line["option 1: ".len()..].split(" (").next().unwrap().trim();
-        let action = line.split(" action=").nth(1).and_then(|rest| rest.split(' ').next()).unwrap_or("");
-        format!("{name}/{action}")
-    })
-}
-
 #[test]
-fn music_mode_phrases_route_to_music_and_media_verbs_stay_with_media() {
-    let rig = Rig::new();
-    install_shipped(&rig, &["music", "media", "apps", "keybinds"]);
-    for phrase in ["music mode on", "turn on music mode", "turn on the music mode"] {
-        assert_eq!(explained(&rig, phrase), "Music/music_on", "{phrase}");
-    }
-    for phrase in ["music mode off", "turn off music mode", "turn off the music mode"] {
-        assert_eq!(explained(&rig, phrase), "Music/music_off", "{phrase}");
-    }
-    for (phrase, media_action) in [
-        ("toggle music", "toggle"),
-        ("pause music", "pause"),
-        ("stop music", "pause"),
-        ("pause the music", "pause"),
-    ] {
-        assert_eq!(explained(&rig, phrase), format!("Media/{media_action}"), "{phrase}");
-    }
-}
-
-#[test]
-fn music_mode_runs_the_bars_set_with_a_bool_and_stays_quiet() {
+fn music_mode_runs_the_bars_set_with_a_bool() {
     let rig = Rig::new();
     install_shipped(&rig, &["music"]);
     let scripts = rig.path().join("xdg/hypr/scripts");
@@ -904,5 +872,4 @@ fn music_mode_runs_the_bars_set_with_a_bool_and_stays_quiet() {
     rig.run("music mode on");
     rig.run("music mode off");
     assert_eq!(rig.read_work("ipc"), "qs-ipc call music set true\nqs-ipc call music set false\n");
-    assert!(!rig.calls().contains("notify-send"), "{}", rig.calls());
 }

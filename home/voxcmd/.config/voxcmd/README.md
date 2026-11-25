@@ -509,10 +509,10 @@ Every phrase ends in "session" after a name, so "open the session launcher" stil
 
 | Say                                              | Does                                         |
 | ------------------------------------------------ | -------------------------------------------- |
-| "music mode on", "turn on music mode"            | `qs-ipc call music set true`                 |
-| "music mode off", "turn off music mode"          | `qs-ipc call music set false`                |
+| "music mode on", "turn on music mode", any `{activate}` | `qs-ipc call music set true`                 |
+| "music mode off" ("of" too), "turn off music mode", any `{deactivate}` | `qs-ipc call music set false`                |
 
-- The actions are [silent](#silent-actions), since the frame appearing is the feedback. `set` takes a value, so saying "on" twice stays on.
+- The actions keep voxcmd's normal confirmation, since the frame may not draw. `set` takes a value, so saying "on" twice stays on.
 - Playback phrases ("toggle music", "pause music", "stop music") stay with [Media](#integrations); every music mode phrase has the word "mode", which no Media verb takes.
 
 ### Notifications
