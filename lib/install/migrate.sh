@@ -265,7 +265,7 @@ _TBKEYS_ROOT_FILES=(
 
 # Removes the tbkeys and Betterbird autoconfig leftovers: the root files above (the hook first, so a pacman run never restores
 # what is being removed) and the ~/.config/tbkeys stow link, which dangles once the package no longer ships the folder.
-# Only touches sudo when a root file exists, so a migrated machine is not prompted. A failed removal of the pref stops the step
+# Only touches sudo when a root file exists and OPT_SYSTEM_FILES is not 0, so a migrated machine is not prompted. A failed removal of the pref stops the step
 # before the cfg, so the cfg is never gone while the pref stays. $1 is a root prefix and BETTERBIRD_SUDO the sudo command
 # (empty for none), both for the tests.
 migrate_retire_tbkeys() {
@@ -273,18 +273,21 @@ migrate_retire_tbkeys() {
   local -a sudo_cmd=()
   [[ -n "$sudo" ]] && sudo_cmd=("$sudo")
 
-  for file in "${_TBKEYS_ROOT_FILES[@]}"; do
-    path=$root$file
-    [[ -e "$path" || -L "$path" ]] || continue
-    info "Removing the retired tbkeys file $file"
-    if ! _migrate_run ${sudo_cmd[@]+"${sudo_cmd[@]}"} rm -f -- "$path"; then
-      warn "Could not remove $file; stopping before the files that depend on it. Rerun the install."
-      return 0
+  # --no-system-files (also --minimal and --server) must leave root alone, so only the home link is cleaned then.
+  if [[ "${OPT_SYSTEM_FILES:-1}" -eq 1 ]]; then
+    for file in "${_TBKEYS_ROOT_FILES[@]}"; do
+      path=$root$file
+      [[ -e "$path" || -L "$path" ]] || continue
+      info "Removing the retired tbkeys file $file"
+      if ! _migrate_run ${sudo_cmd[@]+"${sudo_cmd[@]}"} rm -f -- "$path"; then
+        warn "Could not remove $file; stopping before the files that depend on it. Rerun the install."
+        return 0
+      fi
+    done
+    # Only an emptied directory goes; rmdir refuses otherwise.
+    if [[ -d "$root/usr/local/share/betterbird-autoconfig" && "${MIGRATE_DRY_RUN:-0}" -ne 1 ]]; then
+      ${sudo_cmd[@]+"${sudo_cmd[@]}"} rmdir "$root/usr/local/share/betterbird-autoconfig" 2>/dev/null || true
     fi
-  done
-  # Only an emptied directory goes; rmdir refuses otherwise.
-  if [[ -d "$root/usr/local/share/betterbird-autoconfig" && "${MIGRATE_DRY_RUN:-0}" -ne 1 ]]; then
-    ${sudo_cmd[@]+"${sudo_cmd[@]}"} rmdir "$root/usr/local/share/betterbird-autoconfig" 2>/dev/null || true
   fi
 
   # Dangling only: a link that still resolves points at files that exist, and a real directory is the owner's.
