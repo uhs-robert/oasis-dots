@@ -15,11 +15,22 @@ RowsSection {
     // Set while the collection is being listed, so the image list opens for the monitor that asked.
     property var awaiting: null
     property bool editing: false
+    // Mockup switch: "strip_grid" (A), "hero_strip" (B) or "today" (the current single preview, no grid).
+    property string wallpaper_look: "strip_grid"
+    readonly property bool grid_on: root.wallpaper_look !== "today"
+    property bool in_grid: false
+    property int grid_cursor: -1
+    property int grid_target: 0
+    property bool g_pending: false
+    readonly property var grid_images: WallpaperSettings.images
+    property string listed_for: ""
+    readonly property int grid_at: root.grid_cursor >= 0 ? root.grid_cursor : Math.floor(root.grid_images.length / 2)
+    readonly property var grid_monitor: root.monitors[Math.min(root.grid_target, root.monitors.length - 1)] || null
     readonly property string home_dir: Quickshell.env("HOME")
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.in_grid ? "hjkl move · gg/G first/last · Enter pin on " + (root.grid_monitor ? root.grid_monitor.name : "") + " · Tab next monitor · p unpin · Esc back to rows" : root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     function toggle_row(label, key, desc) {
         return {
@@ -43,7 +54,7 @@ RowsSection {
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
             set: v => v === "pinned" ? root.pin_current(m) : WallpaperSettings.clear_pin(m.key),
             pick: false,
-            activate: () => root.choose_image(m)
+            activate: () => root.grid_on ? root.enter_grid(m) : root.choose_image(m)
         };
     }
 
@@ -126,6 +137,55 @@ RowsSection {
         WallpaperSettings.say(m ? "New image for " + m.name : "New images for the automatic monitors");
     }
 
+    // The listing runs one at a time: a folder change during a run is picked up when that run ends.
+    function refresh_grid() {
+        if (!root.grid_on || WallpaperSettings.listing) return;
+        root.listed_for = WallpaperSettings.collection;
+        WallpaperSettings.list_images();
+    }
+
+    function enter_grid(m) {
+        root.grid_target = Math.max(0, root.monitors.indexOf(m));
+        if (root.grid_cursor < 0) root.grid_cursor = root.grid_at;
+        root.in_grid = true;
+    }
+
+    function grid_cols() {
+        return grid_view.cols;
+    }
+
+    // hjkl on the grid; the hero strip is one row, so j/k switch the target monitor there.
+    function grid_key(event) {
+        const n = root.grid_images.length;
+        const hero = root.wallpaper_look === "hero_strip";
+        const cols = hero ? 1 : root.grid_cols();
+        const at = root.grid_at;
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+        if (event.key === Qt.Key_Escape) root.in_grid = false;
+        else if (event.key === Qt.Key_H) root.grid_cursor = Math.max(0, at - 1);
+        else if (event.key === Qt.Key_L) root.grid_cursor = Math.min(n - 1, at + 1);
+        else if (event.key === Qt.Key_J && hero) root.grid_target = (root.grid_target + 1) % Math.max(1, root.monitors.length);
+        else if (event.key === Qt.Key_K && hero) root.grid_target = (root.grid_target + root.monitors.length - 1) % Math.max(1, root.monitors.length);
+        else if (event.key === Qt.Key_J) root.grid_cursor = Math.min(n - 1, at + cols);
+        else if (event.key === Qt.Key_K) root.grid_cursor = Math.max(0, at - cols);
+        else if (event.key === Qt.Key_G && shift) root.grid_cursor = n - 1;
+        else if (event.key === Qt.Key_G) {
+            if (root.g_pending) root.grid_cursor = 0;
+            root.g_pending = !root.g_pending;
+            event.accepted = true;
+            return;
+        }
+        else if (event.key === Qt.Key_Tab) root.grid_target = (root.grid_target + 1) % Math.max(1, root.monitors.length);
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            const m = root.grid_monitor;
+            if (m && n > 0) WallpaperSettings.set_pin(m.key, root.grid_images[at]);
+        }
+        else if (event.key === Qt.Key_P && root.grid_monitor) root.toggle_pin(root.grid_monitor);
+        else return;
+        root.g_pending = false;
+        event.accepted = true;
+    }
+
     function choose_image(m) {
         root.awaiting = m;
         WallpaperSettings.list_images();
@@ -142,6 +202,10 @@ RowsSection {
 
     onFirst_key: event => {
         if (root.editing) return;
+        if (root.in_grid) {
+            root.grid_key(event);
+            return;
+        }
         const open = event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_L || event.key === Qt.Key_Space;
         if (root.cursor !== root.top_count - 1 || !open) return;
         root.start_edit();
@@ -160,7 +224,14 @@ RowsSection {
 
     Connections {
         target: WallpaperSettings
+        // A new folder (or the first status read) changes what the grid lists.
+        function onCollectionChanged() {
+            root.refresh_grid();
+        }
+
         function onImages_ready() {
+            if (root.grid_on && root.listed_for !== WallpaperSettings.collection) root.refresh_grid();
+            if (root.awaiting === null) return;
             const m = root.awaiting;
             root.awaiting = null;
             if (m && root.live) root.open_images(m);
@@ -168,6 +239,7 @@ RowsSection {
     }
 
     Component.onCompleted: {
+        root.refresh_grid();
         Displays.refresh();
         WallpaperSettings.watching = true;
     }
@@ -224,8 +296,32 @@ RowsSection {
 
         // One preview of the selected monitor's image, marked when it is the pin, at 16:9 and centered. Its height is capped
         // by what the visible pane has left under the rows, not by the pane's own height, which grows with its content.
+        WallpaperGrid {
+            id: grid_view
+            visible: root.grid_on && !root.picking && root.grid_images.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: grid_view.visible ? grid_view.implicitHeight : 0
+            st: root.st
+            look: root.wallpaper_look
+            images: root.grid_images
+            monitors: root.monitors
+            pins: WallpaperSettings.pins
+            shown: {
+                const out = {};
+                for (const name in WallpaperSettings.live) {
+                    const e = WallpaperSettings.live[name];
+                    if (e && typeof e.path === "string") out[name] = e.path;
+                }
+                return out;
+            }
+            cursor: root.grid_at
+            target: root.grid_target
+            active: root.in_grid
+        }
+
         Item {
             id: preview
+            visible: !root.grid_on && !root.picking && !!preview.monitor
             readonly property var monitor: root.current_monitor
             readonly property bool pinned: !!preview.monitor && preview.monitor.key in WallpaperSettings.pins
             readonly property var entry: preview.monitor ? WallpaperSettings.live[preview.monitor.name] : undefined
@@ -237,7 +333,6 @@ RowsSection {
             readonly property real shown: Math.max(0, Math.min(preview.wanted, Math.max(preview.free, preview.least)))
             readonly property real free: preview.view_height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
 
-            visible: !root.picking && !!preview.monitor
             Layout.fillWidth: true
             Layout.preferredHeight: preview.shown + preview_label.implicitHeight + 2
 
