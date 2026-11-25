@@ -68,11 +68,12 @@ QtObject {
             id: art
             property var ctx
             Rectangle {
-                // Drawn in the gap left of the panel so it never touches the help text.
-                x: -Style.px(12)
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: 1
+                // Follows the help divider, which sits Style.px(12) outside the help area, so it never touches the text.
+                readonly property bool below: art.ctx.help_below
+                x: below ? 0 : -Style.px(12)
+                y: below ? -Style.px(12) : 0
+                width: below ? parent.width : 1
+                height: below ? 1 : parent.height
                 color: art.ctx.in_pane ? art.ctx.st.caret_color : art.ctx.st.text_muted
                 opacity: art.ctx.in_pane ? 0.9 : 0.35
             }
