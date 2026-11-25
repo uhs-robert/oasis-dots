@@ -512,3 +512,13 @@ resize the window to 1200 by 800	Apps/resize
 1200 by 800	Apps/resize_spoken_size	no target: the size is read from the transcript
 make it wider	Apps/resize	no amount: answered with a hint
 swap this window with firefox	Apps/swap
+music mode on	Music/music_on
+music mode off	Music/music_off
+music mode of	Music/music_off	misheard "off"
+turn on music mode	Music/music_on
+turn off the music mode	Music/music_off
+enable music mode	Music/music_on
+disable the music mode	Music/music_off
+toggle music	Media/toggle	stays with Media
+pause music	Media/pause	stays with Media
+stop music	Media/pause	stays with Media
