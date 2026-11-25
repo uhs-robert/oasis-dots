@@ -576,13 +576,13 @@ Item {
         sync_popups();
     }
     Component.onDestruction: {
+        // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
+        Popups.set_bar_hover(root.screen_name, false);
         BarItems.forget_owner(root);
         if (!root.primary) {
             for (const i of [left_island, center_island, right_island]) Popups.unregister("clock", root.screen_name, i.body_item);
             return;
         }
-        // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
-        Popups.set_bar_hover(root.screen_name, false);
         Popups.unregister_screen(root.screen_name);
     }
 }
