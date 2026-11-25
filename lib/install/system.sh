@@ -27,10 +27,6 @@ install_system_files() {
   sudo systemctl daemon-reload
   sudo install -Dm644 system/etc/pacman.d/hooks/voxtype-gpu-setup.hook /etc/pacman.d/hooks/voxtype-gpu-setup.hook
   sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
-  sudo install -Dm644 system/etc/pacman.d/hooks/betterbird-autoconfig.hook /etc/pacman.d/hooks/betterbird-autoconfig.hook
-  sudo install -Dm755 system/usr/local/bin/betterbird-autoconfig-setup /usr/local/bin/betterbird-autoconfig-setup
-  sudo install -Dm644 system/opt/betterbird/defaults/pref/autoconfig.js /usr/local/share/betterbird-autoconfig/autoconfig.js
-  sudo install -Dm644 system/opt/betterbird/betterbird.cfg /usr/local/share/betterbird-autoconfig/betterbird.cfg
   # Firefox autoconfig: the package owns neither path (pacman -Qo), so upgrades leave them alone and no pacman hook is needed.
   # It is a root-level chrome-code hook, so it goes in only for a user who has the script it loads. mozilla.cfg goes in first:
   # autoconfig.js names it, and Firefox refuses to start when that file is missing.
@@ -41,12 +37,6 @@ install_system_files() {
     info "No Firefox profile has chrome/bigicons.uc.js, skipping the Firefox autoconfig"
   fi
   success "System config files installed"
-
-  if [[ -d /opt/betterbird ]]; then
-    info "Applying Betterbird tbkeys autoconfig..."
-    sudo /usr/local/bin/betterbird-autoconfig-setup
-    success "Betterbird tbkeys autoconfig applied"
-  fi
 }
 
 set_default_shell() {

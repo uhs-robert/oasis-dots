@@ -120,6 +120,7 @@ main() {
   migrate_quickshell_state
   migrate_quickshell_input
   migrate_quickshell_weather
+  migrate_retire_tbkeys
   do_stow "${core[@]}"
   seed_generated_defaults "${core[@]}"
 

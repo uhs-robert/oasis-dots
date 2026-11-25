@@ -24,7 +24,6 @@ Before editing an area, read its README's code map: the `## Code` section of a f
 | Installer, stow, external repos | [`lib/install/README.md`](lib/install/README.md) |
 | Package manifests | [`packages/README.md`](packages/README.md) |
 | The check runner | [`lib/check/README.md`](lib/check/README.md) |
-| Betterbird / tbkeys | [`home/thunderbird/README.md`](home/thunderbird/README.md) |
 | Yazi | [`home/yazi/.config/yazi/README.md`](home/yazi/.config/yazi/README.md) |
 | Agent cgroup (`agents.slice`, `agent-run`) | [`home/agents/README.md`](home/agents/README.md) |
 | The `plans` CLI for plan docs | [`home/plans/README.md`](home/plans/README.md) |
@@ -45,7 +44,7 @@ just unstow <pkg>
 just stow-core        # packages under [CORE] in packages/stow.ini
 just stow-optional    # packages under [OPTIONAL]
 just system-diff      # dry-run rsync of system/ into / (no sudo); skips installer-managed files
-just system-apply     # apply system/ into / (sudo); skips installer-managed files (greeter via `just greeter-sync --install`, SSH server via `just ssh-server`, tuigreet config and Betterbird via `install.sh`)
+just system-apply     # apply system/ into / (sudo); skips installer-managed files (greeter via `just greeter-sync --install`, SSH server via `just ssh-server`, tuigreet config via `install.sh`)
 just sync-root-yazi   # regenerate root's Yazi keymap
 just repos [--dev]    # set up repos/ without a full install
 just update-repos     # pull non-linked clones in repos/
