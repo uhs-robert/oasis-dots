@@ -14,16 +14,56 @@ RowsSection {
     readonly property bool on_colors: root.cursor_heading === "Colors"
     readonly property string card_name: root.on_colors && root.highlighted_value !== undefined ? root.highlighted_value : Palettes.current
 
+    // Look mock: "grid" (variant A) or "carousel" (variant B). Change here to shoot the other.
+    readonly property string gallery_variant: "carousel"
+    readonly property int grid_columns: 3
+    readonly property bool on_style: root.cursor_heading === "Style"
+    // The gallery cursor: an index into Style.names, separate from the saved style.
+    property int gallery_index: Math.max(0, Style.names.indexOf(Style.saved_name))
+
+    function gallery_move(dx, dy) {
+        const n = Style.names.length;
+        if (root.gallery_variant === "carousel") {
+            if (dy !== 0) return false;
+            root.gallery_index = (root.gallery_index + dx + n) % n;
+            return true;
+        }
+        const cols = root.grid_columns;
+        const col = root.gallery_index % cols;
+        if (dx !== 0) {
+            // Plain h leaves the gallery at the left edge, to the sidebar.
+            if (col + dx < 0) return false;
+            root.gallery_index = Math.min(n - 1, root.gallery_index + dx);
+            return true;
+        }
+        const next = root.gallery_index + dy * cols;
+        if (next < 0 || next >= n) return false;
+        root.gallery_index = next;
+        return true;
+    }
+
+    onFirst_key: event => {
+        if (!root.on_style || root.picking) return;
+        const mods = event.modifiers & Qt.ShiftModifier;
+        let moved = false;
+        if (event.key === Qt.Key_H && !mods) moved = root.gallery_move(-1, 0);
+        else if (event.key === Qt.Key_L && !mods) moved = root.gallery_move(1, 0);
+        else if (event.key === Qt.Key_J) moved = root.gallery_move(0, 1);
+        else if (event.key === Qt.Key_K) moved = root.gallery_move(0, -1);
+        if (moved) event.accepted = true;
+    }
+
     footer_hint: "j/k move · " + root.layout_hint + "Enter list · h/Esc sections · q close"
     rows: [
         { heading: "Style" },
         {
             label: "Style",
-            desc: "The shell's look: fonts, frames, meters and sounds. Colors come from the palette.",
+            desc: "The shell's look: fonts, frames, meters and sounds. Colors come from the palette. hjkl move over the cards, Enter applies.",
             values: () => Style.names,
             text: v => Style.label(v) + (v === Style.saved_name ? " (active)" : ""),
-            value: () => Style.saved_name,
+            value: () => Style.names[root.gallery_index],
             set: v => Transitions.commit(v),
+            activate: () => Transitions.commit(Style.names[root.gallery_index]),
             cycle: false
         },
         { heading: "Colors" },
@@ -112,71 +152,141 @@ RowsSection {
         };
     }
 
-    preview: Rectangle {
-        id: card
-        objectName: "card"
-        visible: root.on_colors
-        readonly property var c: Palettes.colors[root.card_name] || ({})
+    preview: ColumnLayout {
         Layout.fillWidth: true
-        Layout.preferredHeight: card_col.implicitHeight + 16
-        color: card.c.bg_core || "transparent"
-        border.width: 1
-        border.color: card.c.ui_border || "transparent"
-        radius: Style.px(4)
+        spacing: 6
 
-        ColumnLayout {
-            id: card_col
-            anchors.fill: parent
-            anchors.margins: 8
-            spacing: 4
+        GridLayout {
+            visible: root.gallery_variant === "grid"
+            Layout.fillWidth: true
+            columns: root.grid_columns
+            columnSpacing: 6
+            rowSpacing: 6
+            uniformCellWidths: true
 
-            Text {
-                text: Palettes.label(root.card_name)
-                color: card.c.theme_primary || "transparent"
-                font.family: root.st.font_family
-                font.pixelSize: root.st.font_size
-            }
+            Repeater {
+                model: Style.names
 
-            Text {
-                Layout.fillWidth: true
-                text: "Body text and a <b>strong</b> word"
-                textFormat: Text.RichText
-                color: card.c.fg_core || "transparent"
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-2)
-            }
-
-            // Flows, since the help column beside the rows is narrow.
-            Flow {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Repeater {
-                    model: ["theme_primary", "theme_secondary", "theme_accent", "ok", "warning", "error", "info", "hint"]
-
-                    Text {
-                        required property string modelData
-                        text: modelData.replace("theme_", "")
-                        color: card.c[modelData] || "transparent"
-                        font.family: root.st.font_family
-                        font.pixelSize: root.st.fs(-3)
+                StyleCard {
+                    required property string modelData
+                    required property int index
+                    style_name: modelData
+                    st: root.st
+                    current: modelData === Style.saved_name
+                    picked: root.on_style && index === root.gallery_index
+                    onClicked: {
+                        root.gallery_index = index;
+                        Transitions.commit(modelData);
                     }
                 }
             }
+        }
 
-            Flow {
-                Layout.fillWidth: true
-                spacing: 2
+        // Variant B: one large card with its neighbours as small cards either side.
+        RowLayout {
+            visible: root.gallery_variant === "carousel"
+            Layout.fillWidth: true
+            spacing: 6
 
-                Repeater {
-                    model: Palettes.swatch_keys.concat(["yellow", "cyan", "bright_black", "bright_white"])
+            Repeater {
+                model: [-1, 0, 1]
 
-                    Rectangle {
-                        required property string modelData
-                        width: Style.px(14)
-                        height: Style.px(10)
-                        radius: 2
-                        color: card.c[modelData] || "transparent"
+                StyleCard {
+                    required property int modelData
+                    readonly property int at: (root.gallery_index + modelData + Style.names.length) % Style.names.length
+                    Layout.fillWidth: modelData === 0
+                    Layout.preferredWidth: modelData === 0 ? 0 : Style.px(64)
+                    Layout.preferredHeight: modelData === 0 ? Math.round(width * 0.78) : Style.px(64)
+                    Layout.alignment: Qt.AlignVCenter
+                    opacity: modelData === 0 ? 1 : 0.55
+                    large: modelData === 0
+                    style_name: Style.names[at]
+                    st: root.st
+                    current: style_name === Style.saved_name
+                    picked: modelData === 0 && root.on_style
+                    onClicked: {
+                        root.gallery_index = at;
+                        if (modelData === 0) Transitions.commit(style_name);
+                    }
+                }
+            }
+        }
+
+        Text {
+            visible: root.gallery_variant === "carousel"
+            Layout.alignment: Qt.AlignHCenter
+            text: (root.gallery_index + 1) + " / " + Style.names.length
+            color: Style.text_dim
+            font.family: root.st.font_family
+            font.pixelSize: root.st.fs(-3)
+        }
+
+        Rectangle {
+            id: card
+            objectName: "card"
+            visible: root.on_colors
+            readonly property var c: Palettes.colors[root.card_name] || ({})
+            Layout.fillWidth: true
+            Layout.preferredHeight: card_col.implicitHeight + 16
+            color: card.c.bg_core || "transparent"
+            border.width: 1
+            border.color: card.c.ui_border || "transparent"
+            radius: Style.px(4)
+
+            ColumnLayout {
+                id: card_col
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 4
+
+                Text {
+                    text: Palettes.label(root.card_name)
+                    color: card.c.theme_primary || "transparent"
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.font_size
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Body text and a <b>strong</b> word"
+                    textFormat: Text.RichText
+                    color: card.c.fg_core || "transparent"
+                    font.family: root.st.font_family
+                    font.pixelSize: root.st.fs(-2)
+                }
+
+                // Flows, since the help column beside the rows is narrow.
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Repeater {
+                        model: ["theme_primary", "theme_secondary", "theme_accent", "ok", "warning", "error", "info", "hint"]
+
+                        Text {
+                            required property string modelData
+                            text: modelData.replace("theme_", "")
+                            color: card.c[modelData] || "transparent"
+                            font.family: root.st.font_family
+                            font.pixelSize: root.st.fs(-3)
+                        }
+                    }
+                }
+
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    Repeater {
+                        model: Palettes.swatch_keys.concat(["yellow", "cyan", "bright_black", "bright_white"])
+
+                        Rectangle {
+                            required property string modelData
+                            width: Style.px(14)
+                            height: Style.px(10)
+                            radius: 2
+                            color: card.c[modelData] || "transparent"
+                        }
                     }
                 }
             }
