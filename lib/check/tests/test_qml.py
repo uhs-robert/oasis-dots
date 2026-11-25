@@ -119,6 +119,23 @@ class PruneQmltypesTest(TreeCase):
             self.assertEqual(file.read(), "")
 
 
+class FillEmptyModulesTest(TreeCase):
+    def test_empty_module_gets_a_placeholder_and_others_stay(self):
+        real = "Module {\n    Component {\n        name: \"Real\"\n    }\n}\n"
+        write_tree(self.root, {
+            "Quickshell/Hyprland/qmldir": "module Quickshell.Hyprland\n",
+            "Quickshell/Hyprland/h.qmltypes": "import QtQuick.tooling 1.2\n\nModule {}\n",
+            "Quickshell/Other/qmldir": "module Quickshell.Other\n",
+            "Quickshell/Other/o.qmltypes": real,
+        })
+        qml.fill_empty_modules(self.root)
+        with open(self.path("Quickshell/Hyprland/h.qmltypes")) as file:
+            text = file.read()
+        self.assertIn('exports: ["Quickshell.Hyprland/EmptyModulePlaceholder 1.0"]', text)
+        with open(self.path("Quickshell/Other/o.qmltypes")) as file:
+            self.assertEqual(file.read(), real)
+
+
 def report(*warnings):
     return [{"files": [{"filename": "/s/F.qml", "warnings": list(warnings)}]}]
 
