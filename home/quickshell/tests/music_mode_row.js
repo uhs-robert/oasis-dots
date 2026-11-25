@@ -8,9 +8,9 @@ const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/featu
 const block = source.match(/\{\s*label: "Music mode",[\s\S]*?\n        \}/);
 if (!block) { console.error("FAIL no Music mode row in StyleSection.qml"); process.exit(1); }
 
-function row_for(frame_on) {
+function row_for(frame_on, saved_on = false) {
   const Style = { screen_frame_on: frame_on };
-  const MusicModeSettings = { on: false, set_on(v) { this.on = v; } };
+  const MusicModeSettings = { on: saved_on, set_on(v) { this.on = v; } };
   const row = new Function("Style", "MusicModeSettings", "return (" + block[0] + ");")(Style, MusicModeSettings);
   return { row, MusicModeSettings };
 }
@@ -19,11 +19,12 @@ const off = "off (needs the screen frame)";
 const cases = [
   ["frame off: one fixed value", () => row_for(false).row.values(), [off]],
   ["frame off: value is the fixed text", () => row_for(false).row.value(), off],
+  ["frame off, switch on: value is still the fixed text", () => row_for(false, true).row.value(), off],
   ["frame off: row does not cycle or pick", () => { const r = row_for(false).row; return [r.cycle, r.pick]; }, [false, false]],
   ["frame off: set is ignored", () => { const { row, MusicModeSettings } = row_for(false); row.set("on"); return MusicModeSettings.on; }, false],
   ["frame on: on and off", () => row_for(true).row.values(), ["on", "off"]],
   ["frame on: set changes the state", () => { const { row, MusicModeSettings } = row_for(true); row.set("on"); return [MusicModeSettings.on, row.value()]; }, [true, "on"]],
-  ["frame on: the row cycles", () => row_for(true).row.cycle, true],
+  ["frame on: the row cycles, no list", () => { const r = row_for(true).row; return [r.cycle, r.pick]; }, [true, false]],
 ];
 
 let failed = 0;
