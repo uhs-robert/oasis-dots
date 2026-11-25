@@ -210,7 +210,10 @@ reload_bar() {
   # The old instance still answers IPC while the new one loads, so wait for the log line before asking it anything.
   local seen=0
   for _ in $(seq 150); do
-    (($(qlog | grep -c 'Configuration Loaded') > loaded)) && { seen=1; break; }
+    (($(qlog | grep -c 'Configuration Loaded') > loaded)) && {
+      seen=1
+      break
+    }
     # A config that fails to load leaves the old instance answering, so give up at once.
     qlog | tail -n 5 | grep -q 'Failed to load configuration' && return 1
     sleep 0.2
@@ -218,7 +221,10 @@ reload_bar() {
   ((seen)) || return 1
   for _ in $(seq 50); do
     # The windows and the Hyprland event connection settle a moment after the log line.
-    q style get >/dev/null 2>&1 && { sleep 2; return 0; }
+    q style get >/dev/null 2>&1 && {
+      sleep 2
+      return 0
+    }
     sleep 0.2
   done
   return 1
