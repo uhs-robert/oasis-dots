@@ -39,7 +39,7 @@ Settings > Style > OSD edge (under Screen) picks the edge the volume, brightness
 
 ## Music mode
 
-Settings > Style > Music mode (under Screen) switches music mode on or off, and `qs ipc call music set true`, `toggle` and `state` do the same from a script. It is one setting for every style, saved as `on` in `music_mode.json` in the state folder, and it is off by default. It needs the screen frame: with the frame off the row reads "off (needs the screen frame)" and does nothing.
+Settings > Style > Music mode (under Screen) switches music mode on or off, and `qs ipc call music set true`, `toggle` and `state` do the same from a script. It is one setting for every style, saved as `on` in `music_mode.json` in the state folder, and it is off by default. It needs the screen frame: with the frame off the row reads "off (needs the screen frame)" and does nothing. The IPC call and the voice command set the switch in any style, so `music state` can read "on" while the row shows the fixed off text. Bars draw only where the frame is on.
 
 ## Flush single windows
 
@@ -87,6 +87,7 @@ What you set here is saved as state under `~/.local/state` (or `$XDG_STATE_HOME`
 | `quickshell/theme_options.json`           | Per-style option overrides                       |
 | `quickshell/bars.json`                    | Bar module layout, merged over the tracked `bars.json` |
 | `quickshell/hot_corners.json`             | Hot corners on or off                            |
+| `quickshell/music_mode.json`              | Music mode on or off                             |
 | `quickshell/audio.json`                   | Theme audio choices                              |
 | `quickshell/lock.json`                    | Lock skin, tint, backdrop, music                 |
 | `quickshell/greeter.json`                 | Login screen choices                             |
