@@ -320,6 +320,32 @@ def prune_qmltypes(module_copy):
             file.write("".join(line + "\n" for line in kept))
 
 
+def fill_empty_modules(module_copy):
+    """Qt 6.12 qmllint fails an import whose top-level qmltypes is an empty `Module {}`, which is how Quickshell.Hyprland
+    and Quickshell.I3 ship (their types live in the underscore submodules). Gives each such staged file one dummy
+    exported Component, named after the module in the sibling qmldir, so the import resolves."""
+    for directory, _, names in os.walk(module_copy):
+        for name in names:
+            path = os.path.join(directory, name)
+            if not name.endswith(".qmltypes") or "".join(read_lines(path)).split("Module")[-1].strip() != "{}":
+                continue
+            module = next(
+                (line.split()[1] for line in read_lines(os.path.join(directory, "qmldir")) if line.startswith("module ")),
+                None,
+            )
+            if module is None:
+                continue
+            with open(path, "w", encoding="utf-8") as file:
+                file.write(
+                    "import QtQuick.tooling 1.2\n\nModule {\n    Component {\n"
+                    '        name: "EmptyModulePlaceholder"\n'
+                    '        accessSemantics: "reference"\n'
+                    '        prototype: "QObject"\n'
+                    f'        exports: ["{module}/EmptyModulePlaceholder 1.0"]\n'
+                    "        exportMetaObjectRevisions: [256]\n    }\n}\n"
+                )
+
+
 def stage_quickshell_module(stage, qmllint):
     """A copy of the installed Quickshell module without the stubs, and the Qt QML dir it came from; (None, None) when
     Qt has no Quickshell module. The copy only wins under --bare, which drops the default import paths so it can be
@@ -330,6 +356,7 @@ def stage_quickshell_module(stage, qmllint):
             module_copy = os.path.join(stage, "qml")
             shutil.copytree(installed, os.path.join(module_copy, "Quickshell"), symlinks=True, dirs_exist_ok=True)
             prune_qmltypes(module_copy)
+            fill_empty_modules(module_copy)
             return module_copy, qt_dir
     return None, None
 
