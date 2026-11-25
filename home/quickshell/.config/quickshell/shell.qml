@@ -111,8 +111,7 @@ ShellRoot {
                 // One rule per bar: the first on the rule's edge, then the second on the opposite edge when the rule has one.
                 readonly property var bar_rules: screen_scope.has_bar ? BarSettings.bars_for(screen_scope.rule) : []
                 readonly property var frame: ScreenFrames.layout_for(screen_scope.modelData)
-                // The frame lays out one bar edge, so a framed screen draws its first bar only.
-                readonly property var second_rule: screen_scope.bar_rules.length > 1 && !screen_scope.frame ? screen_scope.bar_rules[1] : null
+                readonly property var second_rule: screen_scope.bar_rules.length > 1 ? screen_scope.bar_rules[1] : null
                 // The last frame, held so the frame's bindings never see null while its loader drops it.
                 property var drawn_frame: null
                 onFrameChanged: if (screen_scope.frame) screen_scope.drawn_frame = screen_scope.frame
@@ -139,6 +138,7 @@ ShellRoot {
                         screen: screen_scope.modelData
                         screen_name: screen_scope.modelData.name
                         rule: screen_scope.second_rule
+                        frame: screen_scope.frame
                         primary: false
                     }
                 }

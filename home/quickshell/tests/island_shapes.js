@@ -26,9 +26,9 @@ vm.runInContext(read("ui/frames/Corners.js").replace(/^\.(pragma|import).*$/gm, 
 const F = vm.createContext({ Outlines: O, Corners: C });
 vm.runInContext(read("ui/frames/FrameGeometry.js").replace(/^\.(pragma|import).*$/gm, ""), F);
 const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };
-const top_frame = F.frame_layout(1920, 1080, "top", 30, kit);
-const bottom_frame = F.frame_layout(1920, 1080, "bottom", 30, kit);
-const bare_frame = F.frame_layout(1920, 1080, "", 30, kit);
+const top_frame = F.frame_layout(1920, 1080, { top: 30 }, kit);
+const bottom_frame = F.frame_layout(1920, 1080, { bottom: 30 }, kit);
+const bare_frame = F.frame_layout(1920, 1080, {}, kit);
 const near_point = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.1;
 // Shoelace area of a closed loop, unsigned.
 const loop_area = loop => Math.abs(loop.reduce((s, p, k) => k === 0 ? 0 : s + loop[k - 1][0] * p[1] - p[0] * loop[k - 1][1], 0)) / 2;
@@ -107,8 +107,8 @@ const cases = [
   ["frame hole top bar", () => [top_frame.near, top_frame.far, top_frame.start, top_frame.end], [30, 1074, 6, 6]],
   ["frame hole no bar starts past a band", () => bare_frame.near, 6],
   ["frame straight stretch", () => plain(top_frame.straight), [18, 1902]],
-  ["frame radius clamps to half the hole", () => F.frame_layout(100, 1080, "top", 30, Object.assign({}, kit, { radius: 80 })).radius, 44],
-  ["frame radius never negative", () => F.frame_layout(10, 20, "top", 30, kit).radius, 0],
+  ["frame radius clamps to half the hole", () => F.frame_layout(100, 1080, { top: 30 }, Object.assign({}, kit, { radius: 80 })).radius, 44],
+  ["frame radius never negative", () => F.frame_layout(10, 20, { top: 30 }, kit).radius, 0],
   ["hole path starts at the straight stretch's far end", () => near_point(F.hole_path(top_frame)[0], [1902, 30]), true],
   ["hole path ends at the straight stretch's near end", () => near_point(F.hole_path(top_frame).slice(-1)[0], [18, 30]), true],
   ["hole path reaches the far corners", () => F.hole_path(top_frame).some(p => near_point(p, [6, 1062])) && F.hole_path(top_frame).some(p => near_point(p, [1914, 1062])), true],
@@ -121,18 +121,18 @@ const cases = [
   // The strip's rim and the frame's stroke meet at the same depth, the stroke starting exactly where the rim stops, so
   // the two neither leave a notch nor draw over each other.
   ["frame stroke picks up the strip rim", () => {
-    const w = 2, rim = B.band_rim_stroke(1920, 30, top_frame.straight[0], 1920 - top_frame.straight[1], w), stroke = F.frame_stroke(top_frame, w / 2);
+    const w = 2, rim = B.band_rim_stroke(1920, 30, top_frame.straight[0], 1920 - top_frame.straight[1], w), stroke = F.frame_strokes(top_frame, w / 2)[0];
     const a = stroke[0], z = stroke.slice(-1)[0], e = 1e-6;
     return Math.abs(a[1] - rim[1][1]) < e && Math.abs(z[1] - rim[0][1]) < e
       && Math.abs(a[0] - rim[1][0]) < e && Math.abs(z[0] - rim[0][0]) < e;
   }, true],
-  ["frame stroke with no bar closes round the hole", () => { const s = F.frame_stroke(bare_frame, 1); return near_point(s[0], s.slice(-1)[0]) && Math.abs(s[0][1] - 5) < 0.1; }, true],
-  ["frame stroke stays out of the hole", () => F.frame_stroke(top_frame, 1).every(p => p[0] <= 6 || p[0] >= 1914 || p[1] <= 30 || p[1] >= 1074 || (p[0] < 18 || p[0] > 1902) && (p[1] < 42 || p[1] > 1062)), true],
+  ["frame stroke with no bar closes round the hole", () => { const s = F.frame_strokes(bare_frame, 1)[0]; return near_point(s[0], s.slice(-1)[0]) && Math.abs(s[0][1] - 5) < 0.1; }, true],
+  ["frame stroke stays out of the hole", () => F.frame_strokes(top_frame, 1)[0].every(p => p[0] <= 6 || p[0] >= 1914 || p[1] <= 30 || p[1] >= 1074 || (p[0] < 18 || p[0] > 1902) && (p[1] < 42 || p[1] > 1062)), true],
   ["frame blocks disjoint (bar)", () => blocks_disjoint(F.frame_blocks(top_frame)), true],
   ["frame blocks disjoint (no bar)", () => blocks_disjoint(F.frame_blocks(bare_frame)), true],
   ["frame blocks area (bar)", () => Math.abs(blocks_area(F.frame_blocks(top_frame)) - frame_area(top_frame)) < 0.01 * frame_area(top_frame), true],
   ["frame blocks area (no bar)", () => Math.abs(blocks_area(F.frame_blocks(bare_frame)) - frame_area(bare_frame)) < 0.01 * frame_area(bare_frame), true],
-  ["translucent islands: region and blocks start at near, no overlap", () => { const l = F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit, { fill_overlap: 0 })); return Math.min(...F.frame_region(l)[0].map(p => p[1])) === l.near && F.frame_blocks(l).every(b => b.y >= l.near); }, true],
+  ["translucent islands: region and blocks start at near, no overlap", () => { const l = F.frame_layout(1920, 1080, { top: 30 }, Object.assign({}, kit, { fill_overlap: 0 })); return Math.min(...F.frame_region(l)[0].map(p => p[1])) === l.near && F.frame_blocks(l).every(b => b.y >= l.near); }, true],
   ["frame blocks reach 1 px under the strip, no further", () => F.frame_blocks(top_frame).every(b => b.y >= top_frame.near - 1) && F.frame_blocks(top_frame).some(b => b.y === top_frame.near - 1), true],
   // The frame window may stack above the strip; if its stroke clip started below its fill's top, the fill's overlap row
   // would hide the strip's half of the corner's rim and inset line.
@@ -140,7 +140,7 @@ const cases = [
     const fill_top = Math.min(...F.frame_region(top_frame)[0].map(p => p[1]), ...F.frame_blocks(top_frame).map(b => b.y));
     return F.stroke_clip_top(top_frame) <= fill_top - 1;
   }, true],
-  ["translucent islands: frame stroke clip stays at near", () => F.stroke_clip_top(F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit, { fill_overlap: 0 }))), 30],
+  ["translucent islands: frame stroke clip stays at near", () => F.stroke_clip_top(F.frame_layout(1920, 1080, { top: 30 }, Object.assign({}, kit, { fill_overlap: 0 }))), 30],
   ["frame to_screen top is the band frame", () => plain(F.to_screen(top_frame)), plain(B.band_affine("top", 1080))],
   ["frame to_screen bottom is the band frame", () => plain(F.to_screen(bottom_frame)), plain(B.band_affine("bottom", 1080))],
   // A side bar's islands draw in the same top-bar frame, turned onto the edge by band_affine (Island.qml's deco_frame).

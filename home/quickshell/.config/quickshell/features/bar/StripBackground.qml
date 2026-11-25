@@ -10,10 +10,12 @@ import "../../ui/frames/IslandOutlines.js" as Outlines
 BandFill {
     id: root
 
-    // A screen frame's layout (FrameGeometry.frame_layout) when the strip is its bar edge: the rim and inset line then
+    // A screen frame's layout (FrameGeometry.frame_layout) when the strip is one of its bar edges: the rim and inset line then
     // stop where the hole's corners begin and carry on round them, the strip drawing the part above its open edge, the
     // whole line lit on the focused monitor and dim elsewhere, as ScreenFrame's part is.
     property var frame: null
+    // The frame from this strip's own edge, so a bottom bar under two bars draws its part of the line as the near strip.
+    readonly property var own_frame: root.frame ? FrameGeometry.seen_from(root.frame, root.edge) : null
     property string screen_name: ""
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property color frame_rim_color: Style.screen_frame_rim_color(root.focused)
@@ -50,7 +52,7 @@ BandFill {
     Component {
         id: frame_corners
         FrameStrokes {
-            layout: root.frame
+            layout: root.own_frame
             rim_width: Style.bar_border_width
             rim_color: root.frame_rim_color
             inset_gap: Style.bar_inset_gap
