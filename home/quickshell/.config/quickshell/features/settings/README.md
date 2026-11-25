@@ -21,13 +21,20 @@ The ids of sections since merged still open the merged one where they went (`col
 
 ## A settings skin
 
-A style changes how Settings looks with a file `skins/<Style>.qml` (the style name with a capital, such as `Nes.qml`). A style with no file draws with `skins/Default.qml`, and `SettingsSkins` picks the file. A skin is a `QtObject` of three `Component` slots:
+A style changes how Settings looks with a file `skins/<Style>.qml` (the style name with a capital, such as `Nes.qml`). A style with no file draws with `skins/Default.qml`, and `SettingsSkins` picks the file. A skin is a `QtObject` of three `Component` slots (and an optional fourth, below):
 
 - `nav_item`: one section row. It sets `need`, the width it wants (the list takes the widest), and exposes `selected`. `reveal_selected` finds the row through `selected`, so a row without it stops scroll-to-selection. The row height is the popup's pitch, not the skin's.
 - `backdrop`: behind the whole body, filling it.
 - `panel_art`: over the docked panel, filling it.
 
 `SettingsPopup` loads each slot with a `ctx` property: `st`, `text_bump`, `row_extra`, `group_fg`, `portrait`, `in_pane`, `nav_index`, `body_width`, `body_height` and `help_below` (the help text sits under the pane, not beside it); `nav_item` also gets `section`, `index` and `selected`. A skin never takes focus or keys, since `SettingsPopup` owns them. Heavy art (images, shaders, animated items) goes in `styles/<name>/widgets/`, and a skin imports only `qs.theme`, `qs.ui` and that folder. The `settings-skins` and `qml-paths` checks enforce the slots, the style names, the no-focus rule, `selected` and the imports.
+
+A skin may also give a fourth slot, `layout`, to draw the whole body itself. Default and Terminal do not. Under a `layout` the section list, its divider and the help column are hidden, and the layout places the two things that stay real: the pane (the rows) and the docked panel (description, keys, preview). The layout item gets the `ctx` above plus `open` (Settings is open; a layout runs animation only then), `groups` (`{ name, sections, labels }`, the section indexes and labels of each group), `group_index`, `section_index` (inside the group), `help_shown`, `picking` (a list is open), `wide` (the section needs room: Wallpaper's filmstrip, set with `wide: true` in `Sections.js`), `time_text(date)` (a time in the Settings > Date & time format), `description` and the callbacks `select_section(index)`, `select_group(index)` and `enter()`. It must expose these properties, with rects in the body's coordinates:
+
+- `pane_rect`: where the rows go. Clipped and scrolling, like the stock pane.
+- `panel_rect`, `panel_shown` and `panel_stacked`: where the panel goes, whether it shows, and whether help and preview sit side by side. A layout that keeps the pane small has to give a picked list, the full help and a `wide` section the room they have in Default, since the pane hosts them.
+
+Keys stay in `SettingsPopup`. It gains `H`/`L` (previous and next group, on the section list) and, under a `layout`, `?` to open and close the full help (`Esc` closes it first). A layout whose `panel_stacked` is true shows the panel at all times, and `?` then stays the popup's own key help.
 
 ## Date & time settings
 

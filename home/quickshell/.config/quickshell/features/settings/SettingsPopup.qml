@@ -7,6 +7,7 @@ import qs.features.popups
 import qs.features.popups.frames
 import qs.features.audio
 import qs.features.bar
+import qs.features.clock
 import "Sections.js" as Sections
 import "SettingsScale.js" as SScale
 import "../../ui/scroll/ScrollCue.js" as Cue
@@ -44,7 +45,7 @@ Popup {
         if (!horizontal) root.nav_index = root.clamp_index(root.nav_index, dir, 0, Sections.list.length);
     }
     search_enabled: true
-    footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : "/ find · j/k move · C-d/C-u half page · l enter · 1-9 pick · gg/G first/last · q close"
+    footer_hint: root.in_pane && root.pane ? root.pane.shown_hint : root.custom_layout ? root.layout_hint : "/ find · j/k move · C-d/C-u half page · l enter · 1-9 pick · gg/G first/last · q close"
 
     // The lock's full-screen preview (LockPreview), for the lock section's p key.
     property var previewer: null
@@ -89,6 +90,16 @@ Popup {
 
     // The style's skin (skins/<Style>.qml, else Default); a style switch reloads it and nothing else here.
     readonly property var skin: skin_loader.item
+    // A skin that gives the optional `layout` slot owns the whole body: the section list, divider and help column
+    // below stay loaded for their keys and state but are hidden, and the pane and help panel go where the layout says.
+    readonly property bool custom_layout: !!(root.skin && root.skin.layout)
+    // The full help (the docked panel) shown over a layout's face. A layout that always shows the panel ignores it.
+    property bool help_shown: false
+    // The layout shows the panel at all times when it stacks it under the case; `?` is then the popup's own key help.
+    readonly property bool panel_always: !!layout_loader.item && layout_loader.item.panel_stacked
+    readonly property string layout_hint: root.panel_always ? "j/k section · H/L group · l rows · / find · q close" : "j/k section · H/L group · l rows · ? help · / find · q close"
+    readonly property var groups: Sections.groups()
+    readonly property int group_index: root.groups.findIndex(g => g.sections.indexOf(root.nav_index) >= 0)
     readonly property bool portrait: root.screen ? root.screen.height > root.screen.width : false
     // What every skin part reads. Per-row parts add section, index and selected.
     readonly property var skin_ctx: ({
@@ -104,6 +115,32 @@ Popup {
         help_below: body.help_below
     })
 
+    // What a `layout` part reads on top of skin_ctx. The callbacks are the only way a layout changes the selection:
+    // keys and focus stay here.
+    readonly property var layout_ctx: Object.assign({}, root.skin_ctx, {
+        groups: root.groups,
+        group_index: root.group_index,
+        section_index: root.group_index < 0 ? -1 : root.groups[root.group_index].sections.indexOf(root.nav_index),
+        open: root.is_open,
+        help_shown: root.help_shown,
+        wide: Sections.list[root.nav_index].wide === true,
+        time_text: date => TimeFormat.digits(date, false),
+        picking: !!root.pane && root.pane.picking === true,
+        description: root.pane && root.pane.description ? root.pane.description : "",
+        select_section: index => {
+            root.nav_index = index;
+        },
+        select_group: index => root.step_group(index - root.group_index),
+        enter: () => root.enter_pane()
+    })
+
+    // Moves to the first section of the group `delta` groups on, wrapping.
+    function step_group(delta) {
+        const count = root.groups.length;
+        if (count === 0 || delta === 0) return;
+        root.nav_index = root.groups[((root.group_index + delta) % count + count) % count].sections[0];
+    }
+
     Loader {
         id: skin_loader
         source: SettingsSkins.url_for(Style.name)
@@ -118,6 +155,7 @@ Popup {
         load_timer.stop();
         if (!root.is_open) {
             root.in_pane = false;
+            root.help_shown = false;
             return;
         }
         if (!root.apply_request()) {
@@ -168,6 +206,12 @@ Popup {
         if (root.in_pane) ThemeAudio.play("cancel");
         root.in_pane = false;
         nav.forceActiveFocus();
+    }
+
+    function toggle_help(event) {
+        if (!root.custom_layout || root.panel_always || !root.is_help_key(event)) return false;
+        root.help_shown = !root.help_shown;
+        return true;
     }
 
     // Selects the section SettingsNav names and enters it; false when none was asked for.
@@ -289,6 +333,16 @@ Popup {
 
         // Runs after the section: Esc, h and Tab it did not use go back to the sidebar.
         Keys.onPressed: event => {
+            if (root.toggle_help(event)) {
+                event.accepted = true;
+                return;
+            }
+            // Esc closes the full help before it leaves the section or the popup.
+            if (root.help_shown && event.key === Qt.Key_Escape) {
+                root.help_shown = false;
+                event.accepted = true;
+                return;
+            }
             if (root.in_pane && (event.modifiers & Qt.ControlModifier) && (event.key === Qt.Key_D || event.key === Qt.Key_U)) {
                 root.half_page_pane(event.key === Qt.Key_D ? 1 : -1);
                 event.accepted = true;
@@ -314,12 +368,29 @@ Popup {
             value: root.skin_ctx
         }
 
+        // The skin's own layout, under the pane and the panel, which it places through its `pane_rect`, `panel_rect`,
+        // `panel_shown` and `panel_stacked` (rects in body coordinates).
+        Loader {
+            id: layout_loader
+            anchors.fill: parent
+            sourceComponent: root.custom_layout ? root.skin.layout : null
+        }
+
+        Binding {
+            target: layout_loader.item
+            property: "ctx"
+            value: root.layout_ctx
+        }
+
         Flickable {
             id: nav_flick
-            width: nav.width
+            // Under a custom layout the list keeps focus and its keys but takes no room and no clicks: zero width and
+            // clipped, not hidden, because an invisible item cannot hold the focus.
+            width: body.custom ? 0 : nav.width
+            opacity: body.custom ? 0 : 1
             height: body.height
             // Only while scrolling: a selected row's glow reaches past the viewport edge, which fitting panels keep.
-            clip: nav_flick.contentHeight > nav_flick.height
+            clip: body.custom || nav_flick.contentHeight > nav_flick.height
             contentWidth: width
             contentHeight: nav.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
@@ -347,7 +418,9 @@ Popup {
                         return;
                     }
                     if (event.modifiers & Qt.ControlModifier) return;
-                    if (event.key === Qt.Key_J) root.nav_index = root.wrap_index(root.nav_index, 1, 0, count);
+                    if (event.key === Qt.Key_H && (event.modifiers & Qt.ShiftModifier)) root.step_group(-1);
+                    else if (event.key === Qt.Key_L && (event.modifiers & Qt.ShiftModifier)) root.step_group(1);
+                    else if (event.key === Qt.Key_J) root.nav_index = root.wrap_index(root.nav_index, 1, 0, count);
                     else if (event.key === Qt.Key_K) root.nav_index = root.wrap_index(root.nav_index, -1, 0, count);
                     else if (event.key === Qt.Key_L || event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Tab) root.enter_pane();
                     else if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && event.key - Qt.Key_1 < count) root.nav_index = event.key - Qt.Key_1;
@@ -414,6 +487,7 @@ Popup {
 
         ScrollCue {
             id: nav_cue
+            visible: !body.custom
             target: nav_flick
             st: root.st
             gutter: nav_divider.x - nav_flick.width
@@ -421,6 +495,7 @@ Popup {
 
         Rectangle {
             id: nav_divider
+            visible: !body.custom
             x: nav.width + Style.px(12)
             width: 1
             height: body.height
@@ -437,19 +512,26 @@ Popup {
         // keep each value near its label themselves (RowsSection.value_column).
         readonly property real help_width: body.help_below ? body.side_room : body.side_help_width
         readonly property real help_height: body.help_below ? Math.round(body.height * 0.3) : body.height
-        readonly property real pane_width: body.help_below ? body.side_room : body.side_room - body.help_width - Style.px(48)
-        readonly property real pane_height: body.help_below ? body.height - body.help_height - Style.px(24) : body.height
+        readonly property real pane_width: body.custom ? body.pane_rect.width : body.help_below ? body.side_room : body.side_room - body.help_width - Style.px(48)
+        readonly property real pane_height: body.custom ? body.pane_rect.y + body.pane_rect.height : body.help_below ? body.height - body.help_height - Style.px(24) : body.height
+
+        // A custom layout's geometry, in this body's coordinates.
+        readonly property var lay: layout_loader.item
+        readonly property bool custom: !!body.lay
+        readonly property rect pane_rect: body.lay ? body.lay.pane_rect : Qt.rect(0, 0, 0, 0)
+        readonly property rect panel_rect: body.lay ? body.lay.panel_rect : Qt.rect(0, 0, 0, 0)
 
         Column {
             id: pinned_host
             x: pane_flick.x
+            y: body.custom ? body.pane_rect.y : 0
             width: body.pane_width
         }
 
         Flickable {
             id: pane_flick
-            x: nav_divider.x + Style.px(24)
-            y: pinned_host.height > 0 ? pinned_host.height + Style.px(12) : 0
+            x: body.custom ? body.pane_rect.x : nav_divider.x + Style.px(24)
+            y: (body.custom ? body.pane_rect.y : 0) + (pinned_host.height > 0 ? pinned_host.height + Style.px(12) : 0)
             width: body.pane_width
             height: body.pane_height - pane_flick.y
             clip: pane_flick.contentHeight > pane_flick.height
@@ -475,11 +557,12 @@ Popup {
             target: pane_flick
             st: root.st
             // Up to the help column's divider, or (help below) the body's own margin at the popup's edge.
-            gutter: body.help_below ? body.anchors.rightMargin : help_divider.x - pane_flick.x - pane_flick.width
+            gutter: body.custom ? 0 : body.help_below ? body.anchors.rightMargin : help_divider.x - pane_flick.x - pane_flick.width
         }
 
         Rectangle {
             id: help_divider
+            visible: !body.custom
             x: body.help_below ? pane_flick.x : body.width - body.help_width - Style.px(12)
             y: body.help_below ? body.height - body.help_height - Style.px(12) : 0
             width: body.help_below ? body.help_width : 1
@@ -490,16 +573,18 @@ Popup {
         SettingsPanel {
             id: panel
             st: root.st
-            stacked: body.help_below
+            visible: !body.custom || body.lay.panel_shown
+            stacked: body.custom ? body.lay.panel_stacked : body.help_below
             right_room: body.anchors.rightMargin
-            x: body.width - body.help_width
-            y: body.height - body.help_height
-            width: body.help_width
-            height: body.help_height
+            x: body.custom ? body.panel_rect.x : body.width - body.help_width
+            y: body.custom ? body.panel_rect.y : body.height - body.help_height
+            width: body.custom ? body.panel_rect.width : body.help_width
+            height: body.custom ? body.panel_rect.height : body.help_height
         }
 
         Loader {
             id: panel_art
+            visible: !body.custom
             x: panel.x
             y: panel.y
             width: panel.width

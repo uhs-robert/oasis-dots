@@ -6,6 +6,7 @@ import qs.theme
 // The look every style gets unless it has its own skin file. A skin holds three parts as Components, and SettingsPopup
 // loads each with a `ctx` property (st, text_bump, row_extra, group_fg, portrait, in_pane, nav_index, body_width,
 // body_height, help_below (the help text sits under the pane, not beside it); nav_item adds section, index and selected). A skin never takes focus or keys: SettingsPopup owns them.
+// A skin may also give an optional `layout` part that replaces the whole body; Default does not, see the README.
 QtObject {
     // One section row. Sets `need`, the width the row wants, which SettingsPopup takes the widest of for the list.
     // The row's height is the popup's pitch, not the skin's.

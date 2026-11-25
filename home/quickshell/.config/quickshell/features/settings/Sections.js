@@ -1,9 +1,9 @@
 .pragma library
 
-// Settings sections in sidebar order; `source` is relative to the settings folder.
+// Settings sections in sidebar order; `source` is relative to the settings folder. `wide` marks a section that needs more room than a round layout gives its pane.
 var list = [
     { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint hot corners overview osd volume brightness popup edge left right side colors color scheme palette oasis swatch neovim flush frame screen music", source: "sections/StyleSection.qml" },
-    { id: "wallpaper", group: "Appearance", label: "Wallpaper", glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
+    { id: "wallpaper", group: "Appearance", label: "Wallpaper", wide: true, glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
     { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options opacity transparency islands frame corner skins picker overview osd workspaces icons text size", source: "sections/ThemeOptionsSection.qml" },
     { id: "audio", group: "Appearance", label: "Theme audio", glyph: "󰕾", keywords: "sound chiptune notification cursor confirm cancel volume effects pack", source: "sections/AudioSection.qml" },
     { id: "bar", group: "Bar", label: "Bar modules", glyph: "󰕮", keywords: "edit editor bar modules directory", source: "sections/BarModulesSection.qml" },
@@ -38,4 +38,19 @@ function resolve(id) {
         if (list[i].id === target) return { index: i, part: alias ? alias.part : "" };
     }
     return { index: -1, part: "" };
+}
+
+// The groups in sidebar order, each as { name, sections, labels } with the indexes into `list` of its sections and their labels.
+function groups() {
+    const out = [];
+    list.forEach((section, index) => {
+        let group = out.find(g => g.name === section.group);
+        if (!group) {
+            group = { name: section.group, sections: [], labels: [] };
+            out.push(group);
+        }
+        group.sections.push(index);
+        group.labels.push(section.label);
+    });
+    return out;
 }
