@@ -238,8 +238,9 @@ PanelWindow {
     // Full width along the bottom of the screen, rising from its edge; the frame loses its rounded corners.
     property bool dock_bottom: false
     readonly property real frame_radius: root.drawer ? root.drawer_fillet : root.dock_bottom ? 0 : root.st.frame_radius
-    // The screen edge this popup hangs from: the bar's, or the bottom for a docked one. Drawer geometry takes it by name.
-    readonly property string edge: root.dock_bottom ? "bottom" : BarSettings.position_on(root.held_screen_name)
+    // The screen edge this popup hangs from: that of the bar holding its anchor (a screen can have a top and a bottom bar), or
+    // the bottom for a docked one. Drawer geometry takes it by name.
+    readonly property string edge: root.dock_bottom ? "bottom" : Popups.bar_edge_of(root.held_anchor, root.held_screen_name)
     // Over a bottom bar the popup rises from it: everything named for the bar side ("top" below) lands on the frame's
     // bottom edge instead, and the drop room and shadow go above the frame.
     readonly property bool rises: root.edge === "bottom" && !root.dock_bottom

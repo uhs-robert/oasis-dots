@@ -86,8 +86,23 @@ Singleton {
     // screen_name -> { module_name: { item, color } }, so each bar keeps its own anchors.
     property var default_anchors: ({})
 
-    // screen_name -> ordered popup names in bar order, kept by Bar for Ctrl+H/L walking.
+    // screen_name -> { bar edge: ordered popup names in that bar's order }, kept by each Bar for Ctrl+H/L walking.
     property var popup_order: ({})
+
+    // The edge of the bar an anchor sits on: the anchor is an island body, whose parent Island knows its bar's edge. Without
+    // one (an unanchored popup) the screen's first bar's edge.
+    function bar_edge_of(anchor_item, screen_name) {
+        const island = anchor_item ? anchor_item.parent : null;
+        return island && typeof island.edge === "string" ? island.edge : BarSettings.position_on(screen_name);
+    }
+
+    // The bar the open popup hangs from, whose walk order the walk keys follow.
+    readonly property string open_edge: root.bar_edge_of(root.open_anchor, root.open_screen_name)
+
+    function order_on(screen_name, edge) {
+        const orders = root.popup_order[screen_name];
+        return orders && orders[edge] || [];
+    }
 
     // Lets a module register the item/color its popup anchors to when opened without a click (IPC).
     // `owner` is the registering module; it defaults to the anchor item (the clock has no module).
@@ -96,8 +111,9 @@ Singleton {
         default_anchors[screen_name][name] = { item: item, color: color, owner: owner || item, back_to: back_to || "" };
     }
 
-    function register_order(screen_name, names) {
-        popup_order[screen_name] = names;
+    function register_order(screen_name, edge, names) {
+        if (!popup_order[screen_name]) popup_order[screen_name] = {};
+        popup_order[screen_name][edge] = names;
     }
 
     // Called when a bar is destroyed so a popup never anchors to a deleted item.
@@ -149,14 +165,14 @@ Singleton {
     // it was opened from a bar popup (back_name), because Ctrl+J/K are its own row keys.
     function walkable() {
         if (root.open_name === "picker") return false;
-        const order = root.popup_order[root.open_screen_name] || [];
+        const order = root.order_on(root.open_screen_name, root.open_edge);
         return order.indexOf(root.open_name) !== -1 || (root.back_name !== "" && order.indexOf(root.back_name) !== -1);
     }
 
-    // Steps to the next (delta 1) or previous (delta -1) module's popup in that screen's bar order, wrapping.
+    // Steps to the next (delta 1) or previous (delta -1) module's popup in the open popup's bar's order, wrapping.
     function walk(delta) {
         const screen_name = root.open_screen_name;
-        const order = root.popup_order[screen_name] || [];
+        const order = root.order_on(screen_name, root.open_edge);
         if (order.length === 0) return;
         let idx = order.indexOf(root.open_name);
         if (idx === -1) {

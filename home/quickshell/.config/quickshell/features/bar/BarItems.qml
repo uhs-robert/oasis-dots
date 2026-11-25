@@ -2,9 +2,10 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// Where each live bar module sits, for the bar editor's overlay: "screen|entry" -> the module Item, and "screen|bar" -> the
-// screen's first Bar. A screen shows each module once across both its bars, so the key needs no edge. Each item keeps
-// the Bar that registered it, so one of a screen's two bars going away forgets only its own.
+// Where each live bar module sits, for the bar editor's overlay: "screen|entry" -> the module Item, "screen|bar" -> the
+// screen's first Bar and "screen|second_bar" -> its second. A screen shows each module once across both its bars, so the
+// key needs no edge. Each item keeps the Bar that registered it, so one of a screen's two bars going away forgets only its
+// own, and the editor can tell which bar a module is on.
 // Kept apart from BarEditor so Bar.qml can publish into it without importing the editor.
 Singleton {
     id: root
@@ -37,5 +38,11 @@ Singleton {
     function item_of(screen_name, entry) {
         const _ = root.revision;
         return root.items[screen_name + "|" + entry] || null;
+    }
+
+    // The Bar that shows `entry` on the screen, or null.
+    function bar_of(screen_name, entry) {
+        const _ = root.revision;
+        return root.owners[screen_name + "|" + entry] || null;
     }
 }

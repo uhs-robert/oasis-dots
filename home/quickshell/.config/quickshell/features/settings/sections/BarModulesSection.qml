@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.ui.menu
 import qs.theme
 import qs.features.settings
@@ -8,8 +9,8 @@ import qs.features.bar_editor
 import qs.features.popups
 import "../SettingsScale.js" as SScale
 
-// Layout editing lives in the bar editor; this pane only opens it and holds the global switches: auto compact and the
-// Directory module's.
+// Layout editing lives in the bar editor; this pane only opens it, lists the modules of each bar on the popup's screen,
+// and holds the global switches: auto compact and the Directory module's.
 SettingsPane {
     id: root
 
@@ -33,6 +34,12 @@ SettingsPane {
         const need = Math.max(...root.labels.map(l => label_metrics.advanceWidth(l)));
         return Math.min(Math.ceil(need) + Style.px(40), Math.round(root.width * 0.6));
     }
+    // The bars of the screen Settings is open on, each { position, left, center, right }: one, or a top and a bottom.
+    readonly property var screen_bars: {
+        const screen = Quickshell.screens.find(s => s.name === Popups.open_screen_name);
+        const rule = screen ? BarSettings.rule_for(screen) : null;
+        return rule && rule.bar !== false ? BarSettings.bars_for(rule) : [];
+    }
     readonly property int described_index: root.hovered_index >= 0 && root.hovered_index < root.total ? root.hovered_index : root.cursor
     readonly property var directory_notes: ({
             app_name: "Show the focused window's app name in the Directory module and the NeoVim statusline. Applies to every monitor and style.",
@@ -55,7 +62,7 @@ SettingsPane {
     implicitHeight: col.implicitHeight
 
     function describe(index) {
-        if (index === 0) return "Edit the bars live on screen: move, hide, add and re-place modules, give a monitor its own layout, make one module or the whole bar compact, move the bar to another edge. Esc/q leaves.";
+        if (index === 0) return "Edit the bars live on screen: move, hide, add and re-place modules, give a monitor its own layout, make one module or the whole bar compact, move the bar to another edge, move a module between a top and a bottom bar. Esc/q leaves.";
         if (index === 1) return "Make a bar compact while its islands would overlap, and full again once they fit. Modules with their own compact setting in the bar editor keep it. Applies to every monitor.";
         return root.directory_notes[root.directory_rows[index - root.directory_first].name];
     }
@@ -118,6 +125,22 @@ SettingsPane {
                 root.focus_pane();
                 root.cursor = 0;
                 root.open_editor();
+            }
+        }
+
+        // Display only; the editor changes them.
+        Repeater {
+            model: root.screen_bars
+
+            Text {
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.leftMargin: 8
+                text: BarSettings.bar_summary(modelData)
+                elide: Text.ElideRight
+                color: root.st.text_dim
+                font.family: root.st.font_family
+                font.pixelSize: root.st.fs(-3)
             }
         }
 

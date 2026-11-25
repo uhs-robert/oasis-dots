@@ -2,8 +2,9 @@
 
 // The keys a mode offers, in groups by purpose. Each key is [cap, label]; the hint bar shows every one of them.
 // `compact` is what `c` acts on now: the selected module's override in NORMAL ("inherit", "on", "off", "none" with no
-// compact form), the whole bar's compact in VISUAL ("on", "off").
-function groups(mode, carrying, vertical, can_forget, compact) {
+// compact form), the whole bar's compact in VISUAL ("on", "off"). `other_bar` is the edge of the screen's other bar
+// ("top", "bottom"), "" with one bar: `j` or `k` toward it edits it, Shift moves the module there.
+function groups(mode, carrying, vertical, can_forget, compact, other_bar) {
     const compact_key = ["c", "compact: " + (compact || "off")];
     const quit = ["q", "quit"];
     const help = ["?", "help"];
@@ -35,9 +36,16 @@ function groups(mode, carrying, vertical, can_forget, compact) {
             { name: "leave", keys: [["Enter/Esc", "done"], quit, hide, help] }
         ];
     }
+    const toward = other_bar === "bottom" ? "j" : "k";
+    const select = [[vertical ? "h/l j/k" : "h/l", "select"]];
+    const edit = [[vertical ? "H/L J/K" : "H/L", "move"]];
+    if (other_bar) {
+        select.push([toward, other_bar + " bar"]);
+        edit.push([toward.toUpperCase(), "to " + other_bar + " bar"]);
+    }
     return [
-        { name: "select", keys: [[vertical ? "h/l j/k" : "h/l", "select"]] },
-        { name: "edit", keys: [[vertical ? "H/L J/K" : "H/L", "move"], ["x", "hide"], compact_key, ["o", "own"]] },
+        { name: "select", keys: select },
+        { name: "edit", keys: edit.concat([["x", "hide"], compact_key, ["o", "own"]]) },
         { name: "modes", keys: [["Tab", "hidden"], ["V", "bar"]] },
         { name: "history", keys: [["u", "undo"], ["^R", "redo"]] },
         { name: "leave", keys: [["Esc", "back"], quit, hide, help] }

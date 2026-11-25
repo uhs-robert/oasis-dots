@@ -25,6 +25,8 @@ Singleton {
     property string mode: "monitor"
     // The monitor whose bar is picked or edited, and the only screen that takes the keyboard.
     property string focus_screen: ""
+    // Which of its bars is edited: 0 the first, 1 the second (a rule's `bars`), the BarLayout.bars_of index.
+    property int edited_bar: 0
     property string selected: ""
     // The hidden module the cursor is on, and the one picked up (already on the bar, still being placed).
     property string hidden_selected: ""
@@ -54,9 +56,17 @@ Singleton {
     readonly property var tracked: root.focus_screen_object ? root.tracked_of(root.focus_screen_object) : null
     readonly property string screen_key: root.focus_screen_object ? root.key_of(root.focus_screen_object) : ""
     readonly property var edited_rule: root.tracked ? BarLayout.effective(root.tracked, BarSettings.state, root.screen_key) : null
-    readonly property var view: BarLayout.layout_of(root.edited_rule)
-    readonly property bool vertical: BarLayout.is_vertical(BarLayout.position_of(root.edited_rule))
-    readonly property string position_edge: BarLayout.position_of(root.edited_rule) || "top"
+    // The bars the screen draws, each { position, left, center, right }.
+    readonly property var bars: BarLayout.bars_of(root.edited_rule).bars
+    readonly property int bar_count: root.bars.length
+    // Both bars' lists, for what the hidden list leaves out.
+    readonly property var full_view: BarLayout.layout_of(root.edited_rule)
+    // The edited bar's lists as drawn.
+    readonly property var view: root.bars[root.edited_bar] || BarLayout.layout_of(null)
+    readonly property string position_edge: root.view.position || "top"
+    readonly property bool vertical: BarLayout.is_vertical(root.position_edge)
+    // The edge of the bar `j`/`k` reach from the edited one, "" on a screen with one bar.
+    readonly property string other_bar_edge: root.bar_count > 1 ? root.bars[1 - root.edited_bar].position : ""
     readonly property string position_source: BarLayout.position_source(root.tracked, BarSettings.state, root.screen_key)
     // False when `x` in VISUAL would change nothing, so the hint does not offer it.
     readonly property bool can_forget: JSON.stringify(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key)) !== JSON.stringify(BarSettings.state)
@@ -65,7 +75,7 @@ Singleton {
     readonly property var order: BarLayout.nav_order(root.view, root.sectioned)
     readonly property bool sharing: BarLayout.is_sharing(BarSettings.state, root.screen_key)
     readonly property int sharing_count: root.sharing ? root.sharing_screens().length : 0
-    readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.view).filter(BarLayout.is_known_entry)
+    readonly property var hidden_list: BarLayout.addable_entries(BarSettings.rules, BarSettings.state, root.full_view).filter(BarLayout.is_known_entry)
     // The shown modules with a compact override of their own, as { entry, on }, which the overlay marks on the bar.
     readonly property var compact_marks: root.compact_marks_for(root.focus_screen)
     // The selected module's override ("inherit", "on", "off"), or "none" when it has no compact form.
@@ -117,6 +127,7 @@ Singleton {
         root.notice = "";
         SubmapState.hints_hidden = SubmapState.hints_start_hidden;
         root.focus_screen = root.monitors.some(m => m.name === wanted) ? wanted : root.monitors[0].name;
+        root.edited_bar = 0;
         root.mode = "normal";
         root.selected = root.order[0] || "";
         root.active = true;
@@ -127,6 +138,7 @@ Singleton {
         if (root.picked !== "") root.cancel_pick();
         root.active = false;
         root.focus_screen = "";
+        root.edited_bar = 0;
         root.selected = "";
         root.picked = "";
         root.help_open = false;
@@ -144,7 +156,7 @@ Singleton {
     }
 
     function state_json() {
-        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, position_edge: root.position_edge, position_source: root.position_source, compact: root.selected_compact, bar_compact: root.bar_compact, undo: root.undo_stack.length, redo: root.redo_stack.length });
+        return JSON.stringify({ active: root.active, mode: root.mode, focus_screen: root.focus_screen, edited_bar: root.edited_bar, selected: root.selected, picked: root.picked, sharing: root.sharing, sharing_count: root.sharing_count, position_edge: root.position_edge, position_source: root.position_source, compact: root.selected_compact, bar_compact: root.bar_compact, undo: root.undo_stack.length, redo: root.redo_stack.length });
     }
 
     // Applies an edit as one undo step; an edit that changes nothing is not one.
@@ -175,6 +187,7 @@ Singleton {
     // Keeps the selection on something that exists after any change to the layout, the monitors or the mode.
     function ensure_selection() {
         if (!root.active || root.mode === "monitor") return;
+        if (root.edited_bar >= root.bar_count) root.edited_bar = 0;
         if (root.mode === "hidden") {
             if (root.picked === "" && root.hidden_list.indexOf(root.hidden_selected) < 0) root.hidden_selected = root.hidden_list[0] || "";
             return;
@@ -200,6 +213,7 @@ Singleton {
 
     onMonitorsChanged: root.reconcile()
     onOrderChanged: root.ensure_selection()
+    onBar_countChanged: root.ensure_selection()
     onHidden_listChanged: root.ensure_selection()
 
     // A popup that takes the keyboard, opened under the editor (a keybind or IPC), would contest it, so the editor yields.
@@ -249,7 +263,26 @@ Singleton {
 
     function move_selected(delta) {
         if (root.selected === "") return;
-        root.commit(BarLayout.move_step(root.tracked, BarSettings.state, root.screen_key, root.selected, delta, root.sectioned));
+        root.commit(BarLayout.move_step(root.tracked, BarSettings.state, root.screen_key, root.selected, delta, root.sectioned, root.edited_bar));
+    }
+
+    // `j`/`k`: edits the bar on that edge, keeping the selection when the module is there, else its first module.
+    function select_bar(edge) {
+        const to = root.bars.findIndex(b => b.position === edge);
+        if (to < 0 || to === root.edited_bar) return;
+        root.edited_bar = to;
+        if (root.order.indexOf(root.selected) < 0) root.selected = root.order[0] || "";
+    }
+
+    // `J`/`K`: moves the selected module to the bar on that edge, and the editing follows it there.
+    function move_selected_to_bar(edge) {
+        const to = root.bars.findIndex(b => b.position === edge);
+        const entry = root.selected;
+        if (entry === "" || to < 0 || to === root.edited_bar) return;
+        if (!root.commit(BarLayout.move_to_bar(root.tracked, BarSettings.state, root.screen_key, entry, to))) return;
+        // The commit has already moved the selection off the module, which the edited bar no longer shows.
+        root.edited_bar = to;
+        root.selected = entry;
     }
 
     function hide_selected() {
@@ -265,7 +298,7 @@ Singleton {
         if (entry === "") return;
         const base = BarSettings.state;
         const redo = root.redo_stack;
-        if (!root.commit(BarLayout.unhide_place(BarSettings.rules, root.tracked, BarSettings.state, root.screen_key, entry))) return;
+        if (!root.commit(BarLayout.unhide_place(BarSettings.rules, root.tracked, BarSettings.state, root.screen_key, entry, root.edited_bar))) return;
         root.pick_base = base;
         root.pick_redo = redo;
         root.picked = entry;
@@ -273,7 +306,7 @@ Singleton {
     }
 
     function place_picked(delta) {
-        BarSettings.set_state(BarLayout.move_step(root.tracked, BarSettings.state, root.screen_key, root.picked, delta, root.sectioned));
+        BarSettings.set_state(BarLayout.move_step(root.tracked, BarSettings.state, root.screen_key, root.picked, delta, root.sectioned, root.edited_bar));
     }
 
     function drop_picked() {
@@ -303,7 +336,7 @@ Singleton {
         if (!s) return [];
         const tracked = root.tracked_of(s);
         const key = root.key_of(s);
-        const shown = BarLayout.nav_order(BarLayout.layout_of(BarLayout.effective(tracked, BarSettings.state, key)), root.sectioned);
+        const shown = BarLayout.bars_of(BarLayout.effective(tracked, BarSettings.state, key)).bars.reduce((all, bar) => all.concat(BarLayout.nav_order(bar, root.sectioned)), []);
         return shown.map(e => ({ entry: e, override: BarLayout.compact_override(tracked, BarSettings.state, key, e) })).filter(m => m.override !== "inherit").map(m => ({ entry: m.entry, on: m.override === "on" }));
     }
 
@@ -324,8 +357,14 @@ Singleton {
         root.commit(BarLayout.forget_position_for_mode(BarSettings.state, root.screen_key));
     }
 
+    // The second bar sits opposite the first, so moving it moves the first bar to the other edge.
     function set_edge(position) {
-        root.commit(BarLayout.set_position_for_mode(BarSettings.state, root.screen_key, position));
+        if (root.edited_bar === 1 && BarLayout.is_vertical(position)) {
+            root.notice = "a second bar stays on the top or bottom edge";
+            return;
+        }
+        const first_edge = root.edited_bar === 1 ? (position === "top" ? "bottom" : "top") : position;
+        root.commit(BarLayout.set_position_for_mode(BarSettings.state, root.screen_key, first_edge));
     }
 
     // One key, named like "h", "H" (Shift), "Ctrl+r", "Enter", "Esc", "Tab", "Backspace", "?". True when the editor used it,
@@ -364,8 +403,10 @@ Singleton {
         const d = root.directions[spec];
         if (d) {
             root.focus_screen = root.pick_monitor(root.focus_screen, d[0], d[1]);
+            root.edited_bar = 0;
         } else if (spec === "Enter") {
             root.mode = "normal";
+            root.edited_bar = 0;
             root.selected = root.order[0] || "";
         } else if (spec === "Esc") {
             root.close();
@@ -377,6 +418,10 @@ Singleton {
             root.select_by(spec === "h" || spec === "k" ? -1 : 1);
         } else if (spec === "H" || spec === "L" || (root.vertical && (spec === "J" || spec === "K"))) {
             root.move_selected(spec === "H" || spec === "K" ? -1 : 1);
+        } else if (spec === "j" || spec === "k") {
+            root.select_bar(spec === "j" ? "bottom" : "top");
+        } else if (spec === "J" || spec === "K") {
+            root.move_selected_to_bar(spec === "J" ? "bottom" : "top");
         } else if (spec === "c") {
             root.cycle_compact_selected();
         } else if (spec === "o") {
