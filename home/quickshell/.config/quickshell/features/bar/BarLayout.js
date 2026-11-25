@@ -310,9 +310,18 @@ function migrate_cava_to_media(state) {
     return next;
 }
 
+// A rule's lists. A rule with a second bar keeps its lists in `second_bar`, so the editor's view knows what that bar shows.
 function layout_of(rule) {
     const r = fold_bars(rule);
-    return { left: unique(r && r.left), center: unique(r && r.center), right: unique(r && r.right) };
+    const out = { left: unique(r && r.left), center: unique(r && r.center), right: unique(r && r.right) };
+    if (r && is_object(r.second_bar)) out.second_bar = Object.assign({}, r.second_bar, layout_of(r.second_bar));
+    return out;
+}
+
+// Every entry a layout shows, the second bar's included.
+function shown_entries(layout) {
+    const bar_entries = bar => sides.reduce((all, s) => all.concat(bar[s]), []);
+    return bar_entries(layout).concat(layout.second_bar ? bar_entries(layout.second_bar) : []);
 }
 
 // A rule's `bars` list read into the single-bar shape every other function here takes: the first bar's lists and
@@ -339,7 +348,8 @@ var opposite_edge = { top: "bottom", bottom: "top" };
 // bar, and a module the first bar shows is dropped from the second, as a screen shows each module once.
 function bars_of(rule) {
     if (!rule) return { bars: [], problems: [] };
-    const first = Object.assign({ position: position_of(rule) }, layout_of(rule));
+    const lists = layout_of(rule);
+    const first = { position: position_of(rule), left: lists.left, center: lists.center, right: lists.right };
     const problems = [];
     if (rule.extra_bars) problems.push("a bars.json rule lists " + (rule.extra_bars + 2) + " bars; drawing the first two");
     const second = rule.second_bar;
@@ -464,7 +474,8 @@ function hidden_entries(rules, state, layout) {
         for (const s of sides) m[s].forEach(add);
         Object.keys(m.last_side).forEach(add);
     }
-    return all.filter(e => side_of(layout, e) === "");
+    const shown = shown_entries(layout);
+    return all.filter(e => shown.indexOf(e) < 0);
 }
 
 // Side a tracked rule gives an entry, else "".
@@ -561,7 +572,7 @@ function plain_entry(entry) {
 // What the editor's hidden list offers for the layout being edited: the hidden modules, then every `base:arg` variant not on
 // it. An entry and its `same_as` twin count as one, so system:cpu is never offered (system is) and CPU cannot land twice.
 function addable_entries(rules, state, layout) {
-    const on = sides.reduce((all, s) => all.concat(layout[s]), []).map(plain_entry);
+    const on = shown_entries(layout).map(plain_entry);
     const out = [];
     const add = entry => {
         const plain = plain_entry(entry);

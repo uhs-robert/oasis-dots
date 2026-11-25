@@ -55,6 +55,7 @@ Item {
     readonly property color end_fill: root.last_lit ? root.hover_fill : root.fill
 
     onFirst_litChanged: root.publish()
+    onFill_keyChanged: root.publish()
     Component.onCompleted: root.publish()
     function publish() {
         if (root.fill_key !== "") LualineState.set_right_first_fill(root.fill_key, root.first_lit ? root.hover_fill : Qt.rgba(0, 0, 0, 0));

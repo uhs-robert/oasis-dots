@@ -51,6 +51,8 @@ ShellRoot {
 
         // One bar's rule from BarSettings.bars_for.
         property var rule: null
+        // From the screen's Variants entry, not `screen`: a hot-plug can rebind the window's screen before it is torn down.
+        property string screen_name: ""
         property var frame: null
         property bool primary: true
         property bool other_bar_lists_media: false
@@ -79,7 +81,7 @@ ShellRoot {
         Bar {
             id: bar
             anchors.fill: parent
-            screen_name: bar_window.screen ? bar_window.screen.name : ""
+            screen_name: bar_window.screen_name
             rule: bar_window.rule
             frame: bar_window.frame
             primary: bar_window.primary
@@ -122,17 +124,20 @@ ShellRoot {
 
                     BarWindow {
                         screen: screen_scope.modelData
+                        screen_name: screen_scope.modelData.name
                         rule: screen_scope.bar_rules[0] || null
                         frame: screen_scope.frame
-                        other_bar_lists_media: BarLayout.rule_lists(screen_scope.second_rule, "media")
+                        other_bar_lists_media: !!second_bar_loader.item && second_bar_loader.item.bar_item.lists_media
                     }
                 }
 
                 LazyLoader {
+                    id: second_bar_loader
                     active: screen_scope.second_rule !== null
 
                     BarWindow {
                         screen: screen_scope.modelData
+                        screen_name: screen_scope.modelData.name
                         rule: screen_scope.second_rule
                         primary: false
                     }
