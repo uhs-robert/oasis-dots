@@ -14,6 +14,8 @@ RowsSection {
     readonly property var monitors: Displays.monitors.filter(m => !m.disabled)
     readonly property var current_monitor: root.cursor >= root.top_count ? root.monitors[root.cursor - root.top_count] || null : null
     property bool editing: false
+    // Set while the collection is being listed for the searchable pin list, so it opens for the monitor that asked.
+    property var awaiting: null
     // True while the keys move the filmstrip; Enter on a monitor row goes in and Esc comes back to the rows.
     property bool in_strip: false
     property int strip_cursor: 0
@@ -38,7 +40,11 @@ RowsSection {
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · / search · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · / search · p pin/unpin · / search images · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+
+    // On the strip the help card lists the strip's keys instead of the monitor row's.
+    description: root.in_strip ? "Pick an image for " + (root.strip_monitor ? root.strip_monitor.name : "a monitor") + " from the collection." : root.described_row && root.described_row.desc ? root.described_row.desc : ""
+    description_keys: root.in_strip ? "h/l move · gg/G first/last · j/k or Tab monitor · Enter pin · p unpin · / search list · Esc back" : root.keys_of(root.described_row)
 
     function toggle_row(label, key, desc) {
         return {
@@ -56,7 +62,7 @@ RowsSection {
         return {
             label: m.model !== "" ? m.name + " · " + m.model : m.name,
             desc: "Automatic follows the rotation. Pinned keeps one image on this screen.",
-            keys: "H/L mode · Enter browse images · p pin/unpin · r rotate " + m.name,
+            keys: "H/L mode · Enter browse images · / search images · p pin/unpin · r rotate " + m.name,
             values: () => ["auto", "pinned"],
             text: v => v === "pinned" ? "Pinned" : "Automatic",
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
@@ -152,6 +158,20 @@ RowsSection {
         WallpaperSettings.list_images();
     }
 
+    function choose_image(m) {
+        root.awaiting = m;
+        WallpaperSettings.list_images();
+    }
+
+    function open_images(m) {
+        const images = WallpaperSettings.images;
+        if (images.length === 0) {
+            WallpaperSettings.say("No images found in " + WallpaperSettings.collection);
+            return;
+        }
+        root.open_list("Pin image on " + m.name, images, images.map(p => WallpaperSettings.base_name(p)), WallpaperSettings.pins[m.key], p => WallpaperSettings.set_pin(m.key, p), images.map(p => WallpaperSettings.url_of(p)), true);
+    }
+
     function enter_strip(m) {
         if (root.images.length === 0) {
             WallpaperSettings.say("No images found in " + WallpaperSettings.collection);
@@ -169,6 +189,9 @@ RowsSection {
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
         const m = root.strip_monitor;
         if (event.key === Qt.Key_Escape) root.in_strip = false;
+        else if (event.key === Qt.Key_Slash) {
+            if (m) root.choose_image(m);
+        }
         else if (event.key === Qt.Key_H) root.strip_cursor = Strip.move(root.strip_cursor, "prev", n);
         else if (event.key === Qt.Key_L) root.strip_cursor = Strip.move(root.strip_cursor, "next", n);
         else if (event.key === Qt.Key_J || event.key === Qt.Key_Tab) root.strip_target = Strip.step_monitor(root.strip_target, 1, count);
@@ -197,6 +220,11 @@ RowsSection {
             root.strip_key(event);
             return;
         }
+        if (event.key === Qt.Key_Slash && root.current_monitor) {
+            root.choose_image(root.current_monitor);
+            event.accepted = true;
+            return;
+        }
         const open = event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_L || event.key === Qt.Key_Space;
         if (root.cursor !== root.top_count - 1 || !open) return;
         root.start_edit();
@@ -222,6 +250,9 @@ RowsSection {
 
         function onImages_ready() {
             if (root.listed_for !== WallpaperSettings.collection) root.refresh_images();
+            const asked = root.awaiting;
+            root.awaiting = null;
+            if (asked && root.live) root.open_images(asked);
             root.strip_cursor = Strip.move(root.strip_cursor, "stay", root.images.length);
             if (root.images.length === 0) root.in_strip = false;
         }
