@@ -956,7 +956,8 @@ run_pre_merge() {
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$head_oid" || die "cannot create a worktree for $head"
   echo "merge-prs: pre-merge #$pr"
-  if ! (cd "$tmp_root/wt" && MERGE_PRS_PR=$pr MERGE_PRS_BRANCH=$head MERGE_PRS_BASE=$base MERGE_PRS_REPO_ROOT=$main_dir "$hook"); then
+  # The hook runs without the merge lock's descriptor: a hook that outlives a killed run must not keep the lock held.
+  if ! (cd "$tmp_root/wt" && exec {lock_fd}>&- && MERGE_PRS_PR=$pr MERGE_PRS_BRANCH=$head MERGE_PRS_BASE=$base MERGE_PRS_REPO_ROOT=$main_dir "$hook"); then
     remove_tmp
     die "the pre-merge step failed on #$pr; fix it and rerun for #$pr and the PRs after it"
   fi
@@ -1048,6 +1049,20 @@ if $check_only; then
 fi
 
 check_reviews
+
+# One merge run at a time per repo: two runs would race the rebase force-pushes, the pre-merge commits and the local
+# cleanup. It is a different file from any caller's own lock (ship-batch holds its own while it calls this script), so a
+# nested call cannot deadlock. The kernel drops the lock when the process ends, so every exit path and signal frees it.
+lock_wait_s=${MERGE_PRS_LOCK_WAIT:-900}
+[[ $lock_wait_s =~ ^[0-9]+$ ]] || die "MERGE_PRS_LOCK_WAIT must be a number of seconds, not $lock_wait_s"
+lock_file=$(git rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock
+exec {lock_fd}>>"$lock_file" || die "cannot open the lock file $lock_file"
+if ! flock -n "$lock_fd"; then
+  echo "merge-prs: waiting for the merge lock held by: $(head -n 1 "$lock_file" 2>/dev/null || true)" >&2
+  flock -w "$lock_wait_s" "$lock_fd" ||
+    die "gave up after ${lock_wait_s}s waiting for the merge lock $lock_file held by: $(head -n 1 "$lock_file" 2>/dev/null || true)"
+fi
+printf 'pid %s on %s, merging %s\n' "$$" "$(hostname)" "${prs[*]}" >"$lock_file"
 
 for pr in "${prs[@]}"; do
   merge_pr "$pr"
