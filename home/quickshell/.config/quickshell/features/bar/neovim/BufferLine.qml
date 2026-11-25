@@ -19,14 +19,17 @@ Item {
     readonly property int arrow: Math.round(root.bar_height * 0.4)
     readonly property color accent: SubmapState.bar_color
 
+    // Empty until Bar.qml tells the host its bar's edge, so nothing lands under a key no bar reads.
+    readonly property string fill_key: root.host && root.host.bar_edge ? LualineState.key_of(root.host.screen_name, root.host.bar_edge) : ""
+
     implicitWidth: row.implicitWidth
     implicitHeight: root.bar_height
 
     // This is the only writer of the fills, which the chip and island cap keep reading while the lualine bar is on.
     Component.onDestruction: {
-        if (!root.host) return;
-        LualineState.set_first_fill(root.host.screen_name, Qt.rgba(0, 0, 0, 0));
-        LualineState.set_last_fill(root.host.screen_name, Qt.rgba(0, 0, 0, 0));
+        if (root.fill_key === "") return;
+        LualineState.set_first_fill(root.fill_key, Qt.rgba(0, 0, 0, 0));
+        LualineState.set_last_fill(root.fill_key, Qt.rgba(0, 0, 0, 0));
     }
 
     Row {
@@ -54,13 +57,15 @@ Item {
                 readonly property color next_fill: !!slot.next_slot && slot.next_slot.lit ? slot.next_slot.lit_fill : "transparent"
 
                 onLit_fillChanged: slot.publish()
+                readonly property string fill_key: root.fill_key
+                onFill_keyChanged: slot.publish()
                 onLitChanged: slot.publish()
                 Component.onCompleted: slot.publish()
                 function publish() {
-                    if (!root.host) return;
+                    if (root.fill_key === "") return;
                     const fill = slot.lit ? slot.lit_fill : Qt.rgba(0, 0, 0, 0);
-                    if (slot.index === 0) LualineState.set_first_fill(root.host.screen_name, fill);
-                    if (slot.is_last) LualineState.set_last_fill(root.host.screen_name, fill);
+                    if (slot.index === 0) LualineState.set_first_fill(root.fill_key, fill);
+                    if (slot.is_last) LualineState.set_last_fill(root.fill_key, fill);
                 }
 
                 height: row.height

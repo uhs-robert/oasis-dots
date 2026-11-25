@@ -2,12 +2,15 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// Where each live bar module sits, for the bar editor's overlay: "screen|entry" -> the module Item, and "screen|bar" -> the Bar.
+// Where each live bar module sits, for the bar editor's overlay: "screen|entry" -> the module Item, and "screen|bar" -> the
+// screen's first Bar. A screen shows each module once across both its bars, so the key needs no edge. Each item keeps
+// the Bar that registered it, so one of a screen's two bars going away forgets only its own.
 // Kept apart from BarEditor so Bar.qml can publish into it without importing the editor.
 Singleton {
     id: root
 
     property var items: ({})
+    property var owners: ({})
     // Bumped on every change, so a binding that looked an item up looks again.
     property int revision: 0
 
@@ -15,15 +18,18 @@ Singleton {
         return screen_name + "|" + entry.base + (entry.arg ? ":" + entry.arg : "");
     }
 
-    function register(key, item) {
+    function register(key, item, owner) {
         root.items[key] = item;
+        root.owners[key] = owner;
         root.revision++;
     }
 
-    // The bar of a screen that went away.
-    function forget_screen(screen_name) {
+    // What a Bar that went away registered (its monitor unplugged, or its screen lost the second bar).
+    function forget_owner(owner) {
         for (const key of Object.keys(root.items)) {
-            if (key.indexOf(screen_name + "|") === 0) delete root.items[key];
+            if (root.owners[key] !== owner) continue;
+            delete root.items[key];
+            delete root.owners[key];
         }
         root.revision++;
     }

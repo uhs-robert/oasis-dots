@@ -28,6 +28,8 @@ Item {
     property int bar_height: 30
     // Set by Bar.qml on a left or right bar: the pills stack as a column. The art styles that draw their own row (listed below) fall back to the plain pill column, since they have no vertical art.
     property bool vertical: false
+    // Set by Bar.qml: the edge of the bar this sits on, which keys the buffer line's fills in LualineState. Empty until then.
+    property string bar_edge: ""
 
     // Final Fantasy Tactics map: an isometric tile per workspace, stretching so every app stands on it.
     readonly property bool slots: !root.vertical && Style.workspace_art === "slots"

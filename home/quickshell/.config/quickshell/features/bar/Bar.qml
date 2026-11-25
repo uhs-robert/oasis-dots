@@ -20,7 +20,13 @@ Item {
     property string screen_name: ""
     // Only the focused monitor's bar shows the submap chip, as only its tab shows.
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
+    // One bar's rule (BarSettings.bars_for): the screen's rule with this bar's edge and module lists.
     property var rule: null
+    // The screen's first bar. A screen with a second bar has one set of screen-wide popup anchors (power, confirm,
+    // settings, the media fallback), one walk order and one `screen|bar` key for the editor, and this bar holds them.
+    property bool primary: true
+    // Whether the screen's other bar lists media, so the first bar does not drop the media popup from its own island.
+    property bool other_bar_lists_media: false
     // The screen frame's layout (FrameGeometry.frame_layout) while one is on: the side islands move in to the hole's
     // sides, where the frame's side zones put the side popups too.
     property var frame: null
@@ -84,6 +90,7 @@ Item {
     readonly property bool lists_cava: BarLayout.rule_lists(root.rule, "cava") || BarLayout.rule_lists(root.rule, "media")
     readonly property bool rule_lists_media: BarLayout.rule_lists(root.rule, "media")
     readonly property bool lists_media: [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "media"))
+    readonly property bool screen_lists_media: root.lists_media || root.other_bar_lists_media
     // Everything the lualine right island holds: center modules, then right ones.
     readonly property var lualine_entries: root.center_entries.concat(root.right_entries)
     readonly property var right_side: root.lualine ? root.lualine_entries : root.right_entries
@@ -109,11 +116,12 @@ Item {
 
     // Sets island/screen/stat properties a module declares, after the Loader instantiates it.
     function wire_module(item, entry, island) {
-        BarItems.register(BarItems.key_of(root.screen_name, entry), item);
+        BarItems.register(BarItems.key_of(root.screen_name, entry), item, root);
         item.compact = Qt.binding(() => BarSettings.module_compact_for(root.compact_rule, entry.entry));
         item.screen_name = Qt.binding(() => root.screen_name);
         item.bar_height = Qt.binding(() => root.bar_height);
         if (item.hasOwnProperty("vertical")) item.vertical = Qt.binding(() => root.vertical);
+        if (item.hasOwnProperty("bar_edge")) item.bar_edge = Qt.binding(() => root.position);
         if (entry.base === "clock") root.clock_item = item;
         if (entry.base === "clock" && island === center_island) {
             root.horizon_clock = item;
@@ -219,6 +227,7 @@ Item {
     // the side bands keep the frame's colour. The corners of the hole start below the bar, so nothing here clips an arrow.
     readonly property real lualine_start: root.frame ? root.frame.start : 0
     readonly property real lualine_end: root.frame ? root.width - root.frame.end : root.vertical ? root.height : root.width
+    readonly property string lualine_key: LualineState.key_of(root.screen_name, root.position)
 
     HoverHandler {
         onHoveredChanged: Popups.set_bar_hover(root.screen_name, hovered)
@@ -288,7 +297,7 @@ Item {
     Island {
         thickness: root.bar_height
         id: left_island
-        cap_right_fill: root.lualine && LualineState.last_fill[root.screen_name] ? LualineState.last_fill[root.screen_name] : "transparent"
+        cap_right_fill: root.lualine && LualineState.last_fill[root.lualine_key] ? LualineState.last_fill[root.lualine_key] : "transparent"
         x: root.vertical ? root.cross_center : root.frame ? root.frame.start : root.strip_side
         y: root.vertical ? root.strip_side : root.cross_center
         bg_color: Style.strip_shape ? Style.strip_color : Style.bar_side_bg
@@ -475,7 +484,7 @@ Item {
         capsule_inset: Style.bar_capsule
         sheen_color: Style.sheen
         edge: root.position
-        cap_left_fill: root.lualine && LualineState.right_first_fill[root.screen_name] ? LualineState.right_first_fill[root.screen_name] : "transparent"
+        cap_left_fill: root.lualine && LualineState.right_first_fill[root.lualine_key] ? LualineState.right_first_fill[root.lualine_key] : "transparent"
         cap_left: true
         visible: root.right_side.length > 0
         grow_room: root.vertical ? 0 : Math.max(0, right_island.x - (root.has_center ? center_island.x + center_island.width : left_island.visible ? left_island.x + left_island.width : 0) - root.grow_gap)
@@ -514,6 +523,7 @@ Item {
         const island = has_clock(root.left_entries) ? left_island : root.has_center && has_clock(root.center_entries) ? center_island : has_clock(root.right_side) ? right_island : null;
         for (const i of [left_island, center_island, right_island]) Popups.unregister("clock", root.screen_name, i.body_item);
         if (island) Popups.register_default("clock", island.body_item, island.bg_color, root.screen_name);
+        if (!root.primary) return;
         // Keybind power confirms and the confirm card drop from the center island, else wherever the clock sits.
         const power_island = root.has_center ? center_island : island || right_island;
         Popups.register_default("power", power_island.body_item, power_island.bg_color, root.screen_name);
@@ -524,9 +534,9 @@ Item {
         // Without a media module in bars.json, the media popup drops from the center island.
         Popups.unregister("media", root.screen_name, center_island.body_item);
         Popups.unregister("media", root.screen_name, right_island.body_item);
-        if (root.has_center && !root.lists_media) Popups.register_default("media", center_island.body_item, center_island.bg_color, root.screen_name);
+        if (root.has_center && !root.screen_lists_media) Popups.register_default("media", center_island.body_item, center_island.bg_color, root.screen_name);
         // Lualine has no center island, so the media popup drops from the right one.
-        else if (root.lualine && !root.lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
+        else if (root.lualine && !root.screen_lists_media) Popups.register_default("media", right_island.body_item, right_island.bg_color, root.screen_name);
     }
 
     // Popup names in bar order for Ctrl+H/L walking.
@@ -536,7 +546,7 @@ Item {
 
     function sync_popup_order() {
         const center_names = root.has_center ? root.popup_names(root.center_entries) : [];
-        if ((root.has_center || root.lualine) && !root.lists_media) center_names.push("media");
+        if ((root.has_center || root.lualine) && !root.screen_lists_media) center_names.push("media");
         const right_names = root.popup_names(root.right_drawn);
         // Settings drops from the center; with no center it drops from the right end, so it walks last.
         const has_center_slot = root.has_center || root.lualine;
@@ -551,22 +561,28 @@ Item {
     function sync_popups() {
         if (!root.popups_ready) return;
         sync_clock_anchor();
-        sync_popup_order();
+        // The other bar's modules are not in the walk yet: Ctrl+H/L walks the first bar.
+        if (root.primary) sync_popup_order();
     }
 
     onLeft_entriesChanged: sync_popups()
     onCenter_entriesChanged: sync_popups()
     onHas_centerChanged: sync_popups()
     onRight_drawnChanged: sync_popups()
+    onScreen_lists_mediaChanged: sync_popups()
     Component.onCompleted: {
         root.popups_ready = true;
-        BarItems.register(root.screen_name + "|bar", root);
+        if (root.primary) BarItems.register(root.screen_name + "|bar", root, root);
         sync_popups();
     }
     Component.onDestruction: {
+        BarItems.forget_owner(root);
+        if (!root.primary) {
+            for (const i of [left_island, center_island, right_island]) Popups.unregister("clock", root.screen_name, i.body_item);
+            return;
+        }
         // A destroyed bar (monitor unplugged under the pointer) sends no hover end.
         Popups.set_bar_hover(root.screen_name, false);
         Popups.unregister_screen(root.screen_name);
-        BarItems.forget_screen(root.screen_name);
     }
 }
