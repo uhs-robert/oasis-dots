@@ -4,7 +4,7 @@
 #        watch.sh --nudge <fleet-session> <project> <name>
 # Output, and the exit status is 0 for all of these:
 #   ok             every session is moving or already handled; the planner's loop keeps sleeping
-#   all finished   every fleet session is finished
+#   all finished   every fleet session is finished and no approved doc waits without an owner
 #   one line per problem, each wakes the planner once per stall:
 #     STUCK <name>    idle with an empty prompt box, no activity for the stuck time, an unfinished piece (`building`,
 #                     `review` or `approved`) with `waiting_on` empty
@@ -455,6 +455,23 @@ pass() {
       acted_hash[$name]='' acted_at[$name]=0
     fi
   done
+  # An idle session that finished a piece can sit behind a predecessor with no claim yet, so every session looks
+  # finished while an approved doc still has no owner. Any such doc in the filter blocks finishing, no roster needed.
+  if ((all_finished)); then
+    local unowned
+    if ! unowned=$(plans ls --status approved "${project_filter[@]}" --json 2>/dev/null) || [[ -z $unowned ]]; then
+      log "plans ls for unowned approved docs failed; fleet not finished"
+      all_finished=0
+    elif ids=$(jq -r '[.[] | select(.status == "approved" and ((.owner_session // "") == "" or .owner_session == "none")) | .id] | join(",")' <<<"$unowned" 2>/dev/null); then
+      if [[ -n $ids ]]; then
+        log "waiting: $ids"
+        all_finished=0
+      fi
+    else
+      log "unowned approved docs unreadable; fleet not finished"
+      all_finished=0
+    fi
+  fi
   forget_dead_hung
   check_ci
   save_state
