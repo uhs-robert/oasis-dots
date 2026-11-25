@@ -70,6 +70,9 @@ FocusScope {
 
     onLiveChanged: if (!root.live) root.hide_picker()
 
+    // Asks the popup to scroll `item` into view; the popup listens, so a section only emits it.
+    signal reveal_request(var item)
+
     function focus_pane() {
         if (root.popup) root.popup.enter_pane();
     }
