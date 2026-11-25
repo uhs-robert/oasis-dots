@@ -1051,7 +1051,7 @@ fi
 check_reviews
 
 # One merge run at a time per repo: two runs would race the rebase force-pushes, the pre-merge commits and the local
-# cleanup. It is a different file from any caller's own lock (ship-batch holds its own while it calls this script), so a
+# cleanup. It is a different file from any caller's own lock (a wrapper may hold its own while it calls this script), so a
 # nested call cannot deadlock. The kernel drops the lock when the process ends, so every exit path and signal frees it.
 lock_wait_s=${MERGE_PRS_LOCK_WAIT:-900}
 [[ $lock_wait_s =~ ^[0-9]+$ ]] || die "MERGE_PRS_LOCK_WAIT must be a number of seconds, not $lock_wait_s"
