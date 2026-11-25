@@ -1228,6 +1228,22 @@ check "the child is still running" "alive \"\$(head -n 1 '$root/linger')\""
 check "the lock is free right after the run" "flock -n '$(lock_path)' true"
 xargs -r kill <"$root/linger" 2>/dev/null
 
+echo "== lock: a reviewer that appears during the wait gates the second check"
+gate_setup
+hold_lock
+PATH="$here:$PATH" timeout 30 "$script" 7 >"$root/run.out" 2>&1 &
+run=$!
+fixtures+=("$run")
+await "$run" "the run to report the wait" "grep -q 'waiting for the merge lock' '$root/run.out'" "$root/run.out"
+sed -i '/^history_logins=/d' "$GH_STATE"
+printf 'history_logins=chatgpt-codex-connector\ncodex=Running\ncodex_commit=%s\n' "$(head_of | cut -c1-7)" >>"$GH_STATE"
+release_holder
+wait "$run"
+code=$?
+out=$(<"$root/run.out")
+show "$out"
+check "Codex's first summary during the wait blocks the merge" "[[ $code == 1 ]] && grep -qi 'codex' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
 echo "== lock: the wait times out"
 setup
 hold_lock

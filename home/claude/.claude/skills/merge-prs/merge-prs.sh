@@ -1078,6 +1078,8 @@ printf 'pid %s on %s, merging %s\n' "$$" "$HOSTNAME" "${prs[*]}" >"$lock_file"
 if $waited_for_lock; then
   wait_review=false
   request_review=false
+  # A reviewer can have installed itself during the wait, so the discovery the first gate cached is read again.
+  suite_slugs="" suites_loaded=false history_logins="" history_loaded=false
   check_reviews
 fi
 
