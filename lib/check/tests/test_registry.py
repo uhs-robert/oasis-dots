@@ -54,8 +54,8 @@ KEYLESS_IPC_IDS = [
     "picker.close",
     "bareditor.open",
     "bareditor.toggle",
-    "music.toggle",
     "bareditor.close",
+    "music.toggle",
     "submap.hints_toggle",
 ]
 
