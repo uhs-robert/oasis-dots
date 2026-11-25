@@ -1050,19 +1050,31 @@ fi
 
 check_reviews
 
+# Once the lock is held, git and gh run without its descriptor: a detached child they leave behind (git's auto-gc) would
+# otherwise keep the lock after this script ends.
+lock_fd=""
+git() { if [[ -n $lock_fd ]]; then command git "$@" {lock_fd}>&-; else command git "$@"; fi; }
+gh() { if [[ -n $lock_fd ]]; then command gh "$@" {lock_fd}>&-; else command gh "$@"; fi; }
+
 # One merge run at a time per repo: two runs would race the rebase force-pushes, the pre-merge commits and the local
 # cleanup. It is a different file from any caller's own lock (a wrapper may hold its own while it calls this script), so a
-# nested call cannot deadlock. The kernel drops the lock when the process ends, so every exit path and signal frees it.
+# nested call cannot deadlock. The kernel drops the lock when this process ends, so every exit path and signal frees it,
+# and no child holds it open.
+waited_for_lock=false
 lock_wait_s=${MERGE_PRS_LOCK_WAIT:-900}
 [[ $lock_wait_s =~ ^[0-9]+$ ]] || die "MERGE_PRS_LOCK_WAIT must be a number of seconds, not $lock_wait_s"
 lock_file=$(git rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock
 exec {lock_fd}>>"$lock_file" || die "cannot open the lock file $lock_file"
 if ! flock -n "$lock_fd"; then
+  waited_for_lock=true
   echo "merge-prs: waiting for the merge lock held by: $(head -n 1 "$lock_file" 2>/dev/null || true)" >&2
   flock -w "$lock_wait_s" "$lock_fd" ||
     die "gave up after ${lock_wait_s}s waiting for the merge lock $lock_file held by: $(head -n 1 "$lock_file" 2>/dev/null || true)"
 fi
-printf 'pid %s on %s, merging %s\n' "$$" "$(hostname)" "${prs[*]}" >"$lock_file"
+printf 'pid %s on %s, merging %s\n' "$$" "$HOSTNAME" "${prs[*]}" >"$lock_file"
+# The first check ran before the wait; threads and reviewer states can have changed since, and the head gate follows
+# the head this second check saw.
+! $waited_for_lock || check_reviews
 
 for pr in "${prs[@]}"; do
   merge_pr "$pr"

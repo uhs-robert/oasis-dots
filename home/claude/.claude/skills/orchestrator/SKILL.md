@@ -97,6 +97,6 @@ Before every `AskUserQuestion`, write a brief in the reply text, conclusion firs
 
 10. Create a PR against the appropriate base branch, or push to the existing PR's branch when working on one. Reference and close the issue, if one exists.
 
-11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` (with `--skip-review-gate` for a trivial piece or one where the owner waived the reviewers) and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready. A repo can name its own merge command in `AGENTS.md`; use it instead of `merge-prs.sh` for the merge itself.
+11. Run `~/.claude/skills/merge-prs/merge-prs.sh --check <pr>` (with `--skip-review-gate` for a trivial piece or one where the owner waived the reviewers) and resolve any thread or reviewer problem it reports. Only a passing check makes the PR ready. A repo can name its own merge command in `AGENTS.md`. Use it instead of `merge-prs.sh` for the merge itself.
 
 12. Report: issue URL, PR URL, summary, validation, notable findings and dispositions (every declined thread listed), which reviewer ran (quoting the line Codex printed after `codex unavailable:`, if any), remaining risks, and whether it is ready for human review.

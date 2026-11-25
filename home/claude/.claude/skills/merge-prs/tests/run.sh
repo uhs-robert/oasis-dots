@@ -1117,39 +1117,95 @@ check "a null commit is Unreviewed" "[[ \$(pr_json '$old' '[]' 'codex-pull-reque
 broken_marker_body='codex-pull-request-review-summary <!-- codex-review-state:v1 {oops} --> | **Completed** | `abc1234` |'
 check "a broken marker falls back to the table" "[[ \$(pr_json '$old' '[]' \"\$broken_marker_body\" | review_status) == Completed ]]"
 
-# Holds merge-prs.lock for $1 seconds from a background shell, the way a running merge-prs.sh does, and waits until it is
-# held.
+# Background processes a lock case started; a failed wait kills them so the suite does not hang or leak them.
+fixtures=()
+stop_fixtures() {
+  local pid
+  for pid in "${fixtures[@]}"; do
+    pkill -P "$pid" 2>/dev/null
+    kill "$pid" 2>/dev/null
+  done
+  fixtures=()
+}
+alive() { [[ -n $(ps -o stat= -p "$1" 2>/dev/null) && $(ps -o stat= -p "$1") != Z* ]]; }
+# await <pid> <what> <condition> [log]: polls the condition for up to 30 s. A dead <pid> or the deadline fails the whole
+# suite, showing the log, since every later case in the group depends on it.
+await() {
+  local pid=$1 what=$2 cond=$3 log=${4-} i
+  for ((i = 0; i < 600; i++)); do
+    eval "$cond" && return 0
+    alive "$pid" || break
+    sleep 0.05
+  done
+  eval "$cond" && return 0
+  echo "FAIL waiting for $what ($(alive "$pid" && echo "timed out" || echo "process exited"))"
+  [[ -z $log || ! -f $log ]] || show "$(<"$log")"
+  stop_fixtures
+  exit 1
+}
+lock_path() { echo "$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock"; }
+# Holds merge-prs.lock the way a running merge-prs.sh does, until $root/release appears (or 60 s pass), and returns once it
+# is held.
 hold_lock() {
   local lock
-  lock=$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock
+  lock=$(lock_path)
+  rm -f "$root/release"
   (
     exec 9>>"$lock"
     flock 9
     echo "pid 4242 on testhost, merging 99" >"$lock"
-    sleep "$1"
+    for ((i = 0; i < 600; i++)); do
+      [[ -e $root/release ]] && break
+      sleep 0.1
+    done
   ) &
   holder=$!
-  until [[ -s $lock ]]; do sleep 0.05; done
+  fixtures+=("$holder")
+  await "$holder" "the fixture to take the lock" "[[ -s '$lock' ]]"
+}
+release_holder() {
+  touch "$root/release"
+  wait "$holder" 2>/dev/null
+  fixtures=()
 }
 
 echo "== lock: a second run waits for the first and names the holder"
 setup
-hold_lock 2
-out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+hold_lock
+PATH="$here:$PATH" "$script" 7 >"$root/run.out" 2>&1 &
+run=$!
+fixtures+=("$run")
+await "$run" "the run to report the wait" "grep -q 'waiting for the merge lock' '$root/run.out'" "$root/run.out"
+release_holder
+wait "$run"
 code=$?
-wait "$holder"
+out=$(<"$root/run.out")
 show "$out"
 check "exits 0 once the holder lets go" "[[ $code == 0 ]]"
 check "names the holder" "grep -q 'waiting for the merge lock held by: pid 4242 on testhost, merging 99' <<<\"\$out\""
 check "merges after the wait" "grep -q '^7 merged' <<<\"\$out\""
 
+echo "== lock: the gate is read again after the wait"
+setup
+hold_lock
+PATH="$here:$PATH" "$script" 7 >"$root/run.out" 2>&1 &
+run=$!
+fixtures+=("$run")
+await "$run" "the run to report the wait" "grep -q 'waiting for the merge lock' '$root/run.out'" "$root/run.out"
+echo "open_threads=1" >>"$GH_STATE"
+release_holder
+wait "$run"
+code=$?
+out=$(<"$root/run.out")
+show "$out"
+check "a thread opened during the wait blocks the merge" "[[ $code != 0 ]] && grep -q '1 unresolved review thread' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
 echo "== lock: the wait times out"
 setup
-hold_lock 5
+hold_lock
 out=$(MERGE_PRS_LOCK_WAIT=1 PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
-kill "$holder" 2>/dev/null
-wait "$holder" 2>/dev/null
+release_holder
 show "$out"
 check "exits non-zero" "[[ $code != 0 ]]"
 check "says it gave up and who holds the lock" "grep -q 'gave up after 1s waiting for the merge lock.*pid 4242' <<<\"\$out\""
@@ -1157,11 +1213,10 @@ check "merges nothing" "! grep -q '^7 merged' <<<\"\$out\""
 
 echo "== lock: --check never waits on it"
 setup
-hold_lock 5
+hold_lock
 out=$(MERGE_PRS_LOCK_WAIT=1 PATH="$here:$PATH" timeout 4 "$script" --check 7 2>&1)
 code=$?
-kill "$holder" 2>/dev/null
-wait "$holder" 2>/dev/null
+release_holder
 show "$out"
 check "passes while the lock is held" "[[ $code == 0 ]] && grep -q '^ready' <<<\"\$out\""
 
@@ -1187,20 +1242,30 @@ g push -q origin child2
 g switch -q child
 printf 'head=child2\nbase=main\nstate=OPEN\n' >"$GH_STATE.8"
 cp "$GH_STATE" "$GH_STATE.7"
+# The hook logs its start and end and holds PR 7 until the test sees PR 8 waiting.
 # shellcheck disable=SC2016 # The hook's own source.
-pre_merge_hook 'sleep 2; echo "end $MERGE_PRS_PR" >>"'"$root"'/order"'
+pre_merge_hook 'echo "start $MERGE_PRS_PR" >>"'"$root"'/order"; touch "'"$root"'/started.$MERGE_PRS_PR"
+for i in $(seq 300); do [ -e "'"$root"'/release" ] && break; sleep 0.1; done
+echo "end $MERGE_PRS_PR" >>"'"$root"'/order"'
 PATH="$here:$PATH" "$script" 7 >"$root/run7.out" 2>&1 &
 first=$!
-until [[ -e $root/env ]]; do sleep 0.05; done
-PATH="$here:$PATH" "$script" 8 >"$root/run8.out" 2>&1
-code8=$?
+fixtures+=("$first")
+await "$first" "the first hook to start" "[[ -e '$root/started.7' ]]" "$root/run7.out"
+PATH="$here:$PATH" "$script" 8 >"$root/run8.out" 2>&1 &
+second=$!
+fixtures+=("$second")
+await "$second" "the second run to report the wait" "grep -q 'waiting for the merge lock' '$root/run8.out'" "$root/run8.out"
+touch "$root/release"
 wait "$first"
 code7=$?
+wait "$second"
+code8=$?
+fixtures=()
 show "$(<"$root/run8.out")"
 check "both exit 0" "[[ $code7 == 0 && $code8 == 0 ]]"
-check "the second run waited" "grep -q 'waiting for the merge lock' '$root/run8.out'"
+check "the second run waited and named the first as the holder" "grep -q 'held by: pid $first on $HOSTNAME, merging 7' '$root/run8.out'"
 check "the first run did not wait" "! grep -q 'waiting for the merge lock' '$root/run7.out'"
-check "the first run's hook finished before the second's started" "[[ \$(head -n 1 '$root/order') == 'end 7' ]]"
+check "the hooks ran one after the other" "[[ \$(paste -sd, '$root/order') == 'start 7,end 7,start 8,end 8' ]]"
 
 echo "== lock: released after a failed run"
 setup
@@ -1208,19 +1273,21 @@ pre_merge_hook 'exit 1'
 out=$(PATH="$here:$PATH" "$script" 7 2>&1)
 code=$?
 check "the run failed" "[[ $code != 0 ]]"
-lock=$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock
-check "the lock is free" "flock -n '$lock' true"
+check "the lock is free" "flock -n '$(lock_path)' true"
 
 echo "== lock: released after a signal"
 setup
-pre_merge_hook 'sleep 30'
-PATH="$here:$PATH" "$script" 7 >/dev/null 2>&1 &
+# shellcheck disable=SC2016 # The hook's own source.
+pre_merge_hook 'for i in $(seq 300); do [ -e "'"$root"'/release" ] && break; sleep 0.1; done'
+PATH="$here:$PATH" "$script" 7 >"$root/run.out" 2>&1 &
 victim=$!
-until [[ -e $root/env ]]; do sleep 0.05; done
+fixtures+=("$victim")
+await "$victim" "the hook to start" "[[ -e '$root/env' ]]" "$root/run.out"
 kill -TERM "$victim"
 wait "$victim" 2>/dev/null
-lock=$(git -C "$root/main" rev-parse --path-format=absolute --git-common-dir)/merge-prs.lock
-check "the lock is free" "timeout 5 flock -w 3 '$lock' true"
+check "the lock is free while the hook may still run" "timeout 5 flock -w 3 '$(lock_path)' true"
+touch "$root/release"
+fixtures=()
 
 echo "== resolve-thread.sh"
 bash "$here/resolve-thread.sh" || fail=$((fail + 1))
