@@ -219,7 +219,11 @@ RowsSection {
         event.accepted = true;
     }
 
-    onIn_stripChanged: root.g_pending = false
+    onIn_stripChanged: {
+        root.g_pending = false;
+        // Leaving the strip brings the selected monitor row back into view on a short pane.
+        if (!root.in_strip && root.popup) Qt.callLater(root.popup.reveal_pane);
+    }
 
     onFirst_key: event => {
         if (root.editing) return;
