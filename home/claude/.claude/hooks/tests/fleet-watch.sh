@@ -26,11 +26,19 @@ mkdir "$work/bin" "$work/plans-data"
 cat >"$work/bin/plans" <<'STANDIN'
 #!/bin/sh
 owner=
+status=
 while [ $# -gt 0 ]; do
   [ "$1" = --owner ] && owner=$2
+  [ "$1" = --status ] && status=$2
   shift
 done
 [ -e "$PLANS_DATA/FAIL" ] && exit 1
+# The query for open work without an owner: plans-data/APPROVED.json, and FAIL_APPROVED makes only it fail.
+if [ -n "$status" ]; then
+  [ -e "$PLANS_DATA/FAIL_APPROVED" ] && exit 1
+  cat "$PLANS_DATA/APPROVED.json" 2>/dev/null || echo '[]'
+  exit 0
+fi
 cat "$PLANS_DATA/$owner.json" 2>/dev/null || echo '[]'
 STANDIN
 # Pane stand-ins. A pane that shows an empty prompt box and appends every line typed into it to $TYPED.
@@ -423,6 +431,29 @@ rm -rf "$nogit"
 check "no arguments are refused" bash -c "cd $work && '$skill/watch.sh' >/dev/null 2>&1; test \$? -eq 2"
 check "a bad fleet name is refused" bash -c "cd $work && '$skill/watch.sh' 'a b' p >/dev/null 2>&1; test \$? -eq 2"
 check "--nudge without a name is refused" bash -c "cd $work && '$skill/watch.sh' --nudge f1 p >/dev/null 2>&1; test \$? -eq 2"
+
+# An approved doc without an owner keeps the fleet from finishing: its session waits behind a predecessor
+win f14 df-w1 pane-idle
+sleep 1
+doc df-w1 piece-w1 building
+watch f14 wt >/dev/null 2>&1
+rm "$PLANS_DATA/df-w1.json"
+jq -n '[{id: "piece-next", project: "p", status: "approved", owner_session: ""}]' >"$PLANS_DATA/APPROVED.json"
+out=$(watch f14 wt 2>&1)
+check "an approved doc without an owner keeps the fleet from finishing" test -z "$(grep 'all finished' <<<"$out")"
+check "the waiting doc is logged" grep -q 'waiting: piece-next' <<<"$(log_of wt)"
+jq -n '[{id: "piece-next", project: "p", status: "approved", owner_session: "df-w1"}]' >"$PLANS_DATA/APPROVED.json"
+out=$(watch f14 wt 2>&1)
+check "an approved doc that has an owner does not block finishing" test "$out" = "all finished"
+rm "$PLANS_DATA/APPROVED.json"
+
+# A failed query for unowned work is not an empty list
+touch "$PLANS_DATA/FAIL_APPROVED"
+out=$(watch f14 wt 2>&1)
+check "a failed query for unowned approved docs does not finish the fleet" test -z "$(grep 'all finished' <<<"$out")"
+rm "$PLANS_DATA/FAIL_APPROVED"
+out=$(watch f14 wt 2>&1)
+check "the fleet finishes once the query works and nothing waits" test "$out" = "all finished"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

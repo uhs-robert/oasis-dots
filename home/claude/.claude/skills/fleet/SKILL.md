@@ -99,6 +99,8 @@ It sleeps first, so its first check does not compare against a manual run. It ch
 
 A check prints `ok`, `all finished`, or one line per problem:
 
+`all finished` means every session is finished and no `approved` doc in the project has an owner of `none`, so a session waiting for its next piece blocks it. A leftover approved doc blocks it too, and the log shows `waiting: <ids>`.
+
 - `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns an unfinished piece (`building`, `review` or `approved` status) with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
 - `PROMPT <name>`: the session waits on a permission prompt.
 - `LOST <name>`: claude exited while the session still owns unfinished pieces, or before its first claim. Such a session never counts as finished.
