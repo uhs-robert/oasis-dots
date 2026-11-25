@@ -92,7 +92,7 @@ remove_repo_links() {
 # a pacman hook pointing at a removed script.
 remove_system_files() {
   [[ $OPT_SYSTEM_FILES -eq 0 ]] && return
-  confirm "Remove installed system files (/etc/greetd, /var/lib/qs-greeter, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, betterbird autoconfig, the Tailscale-only sshd config, etc.)?" || return
+  confirm "Remove installed system files (/etc/greetd, /var/lib/qs-greeter, /etc/tuigreet, /etc/vtrgb-oasis, /etc/keyd, pacman hooks, the Tailscale-only sshd config, etc.)?" || return
 
   local files=(
     /etc/greetd/config.toml
@@ -110,12 +110,6 @@ remove_system_files() {
     /etc/systemd/system/user@.service.d/50-cpuweight.conf
     /etc/pacman.d/hooks/voxtype-gpu-setup.hook
     /usr/local/bin/voxtype-gpu-setup
-    /etc/pacman.d/hooks/betterbird-autoconfig.hook
-    /usr/local/bin/betterbird-autoconfig-setup
-    /usr/local/share/betterbird-autoconfig/autoconfig.js
-    /usr/local/share/betterbird-autoconfig/betterbird.cfg
-    /opt/betterbird/defaults/pref/autoconfig.js
-    /opt/betterbird/betterbird.cfg
     /usr/lib/firefox/defaults/pref/autoconfig.js
     /usr/lib/firefox/mozilla.cfg
     /etc/ssh/sshd_config.d/10-tailnet-only.conf
@@ -137,7 +131,6 @@ remove_system_files() {
   # The removed drop-in keeps its weight on the user manager until systemd reloads (the mirror of install_system_files).
   sudo rmdir /etc/systemd/system/user@.service.d 2>/dev/null || true
   sudo systemctl daemon-reload
-  sudo rmdir /usr/local/share/betterbird-autoconfig 2>/dev/null || true
   if [[ -f /etc/greetd/hyprland.lua.bak ]]; then
     sudo mv /etc/greetd/hyprland.lua.bak /etc/greetd/hyprland.lua && success "Restored /etc/greetd/hyprland.lua from its pre-install backup"
   fi

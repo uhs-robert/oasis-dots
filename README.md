@@ -259,7 +259,7 @@ When it finishes, reboot. Without greetd you can instead log out and run `start-
 It uses `sudo` for these; the flags in brackets skip them.
 
 - Packages through pacman and paru [`--no-aur` for paru], the `rustup` toolchain with both stable and nightly [`--no-cargo`] and the latest Maple Mono NF release, unpinned, in `/usr/local/share/fonts`.
-- `/etc`: `vtrgb-oasis`, `keyd/default.conf`, the `70-dotfiles-uinput.rules` udev rule (write access to `/dev/uinput` for the logged-in user, for ydotool), the `user@.service.d/50-cpuweight.conf` systemd drop-in (a lower CPU weight for the user manager, so Hyprland wins contended CPU) and two pacman hooks; `/usr/local/bin` and `/usr/local/share/betterbird-autoconfig` for the voxtype GPU and Betterbird autoconfig helpers, which also patch `/opt/betterbird` when it exists; and the Firefox autoconfig in `/usr/lib/firefox` when Firefox is installed and a profile has `chrome/bigicons.uc.js` (`mozilla.cfg` loads only that file) [`--no-system-files`].
+- `/etc`: `vtrgb-oasis`, `keyd/default.conf`, the `70-dotfiles-uinput.rules` udev rule (write access to `/dev/uinput` for the logged-in user, for ydotool), the `user@.service.d/50-cpuweight.conf` systemd drop-in (a lower CPU weight for the user manager, so Hyprland wins contended CPU) and a pacman hook; `/usr/local/bin` for the voxtype GPU helper; and the Firefox autoconfig in `/usr/lib/firefox` when Firefox is installed and a profile has `chrome/bigicons.uc.js` (`mozilla.cfg` loads only that file) [`--no-system-files`].
 - `/root`: links root's `.zshrc`, `.zsh_plugins.txt`, Neovim and Yazi config to yours, and adds `yazi-root` and a `/usr/local/sbin/yazi` wrapper, after a prompt [`--no-system-files`].
 - greetd, after a prompt: `/etc/greetd`, `/etc/tuigreet`, `/usr/local/bin/tuigreet-oasis`, the Quickshell greeter in `/etc/greetd/quickshell`, `/usr/local/bin/qs-greeter` and `/var/lib/qs-greeter`, then enables `greetd` [`--no-services`]. Save a picture as `~/.face` first and it becomes your avatar on the login screen.
 - After a prompt: `pacman.conf` gets `Color`, `ILoveCandy`, `VerbosePkgLists` and `ParallelDownloads = 10` inside `[options]` only (a higher value is kept), `pacman-contrib` is installed with `paccache.timer` enabled, and `/etc/makepkg.conf.d/oasis.conf` sets `MAKEFLAGS` to all cores and turns off debug packages [`--no-system-files`; the timer also `--no-services`]. Run it later with `just pacman-tweaks`.
@@ -363,10 +363,6 @@ just update-repos     # pull the external repos cloned into repos/
 just desertfox-host   # install or update the DesertFox native hosts
 just ssh-server       # opt in to an SSH server reachable only over Tailscale
 ```
-
-## ✉️ Betterbird / tbkeys
-
-Vim-style keybindings for Betterbird through the tbkeys add-on, with a Neovim compose bridge. See [home/thunderbird/README.md](home/thunderbird/README.md).
 
 ## 🦊 Firefox autoconfig
 
