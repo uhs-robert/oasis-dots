@@ -11,7 +11,7 @@ QtObject {
             id: row
             property var ctx: ({ st: Style, section: { glyph: "", label: "" }, index: 0, selected: false, text_bump: 0 })
             // Room for the prompt, so the label does not shift when the row is selected.
-            readonly property real prompt_space: 18
+            readonly property real prompt_space: Style.px(18)
             readonly property real need: 16 + row.inset + row.prompt_space + row.key_space + layout.implicitWidth
 
             base_radius: 2
@@ -20,7 +20,7 @@ QtObject {
 
             Text {
                 visible: row.selected
-                x: 6
+                x: Style.px(6)
                 anchors.verticalCenter: parent.verticalCenter
                 text: ">"
                 color: row.ctx.st.caret_color
@@ -69,7 +69,7 @@ QtObject {
             property var ctx
             Rectangle {
                 // Drawn in the gap left of the panel so it never touches the help text.
-                x: -Style.px(6)
+                x: -Style.px(12)
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 1
