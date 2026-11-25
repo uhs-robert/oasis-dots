@@ -871,5 +871,8 @@ fn music_mode_runs_the_bars_set_with_a_bool() {
     );
     rig.run("music mode on");
     rig.run("music mode off");
-    assert_eq!(rig.read_work("ipc"), "qs-ipc call music set true\nqs-ipc call music set false\n");
+    assert_eq!(
+        rig.read_work("ipc"),
+        "qs-ipc call music set true\nqs-ipc call music set false\n"
+    );
 }
