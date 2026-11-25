@@ -5,6 +5,7 @@ import qs.theme
 import qs.features.display
 import qs.features.settings
 import qs.features.popups
+import "../WallpaperStrip.js" as Strip
 
 RowsSection {
     id: root
@@ -12,14 +13,32 @@ RowsSection {
     readonly property int top_count: 6
     readonly property var monitors: Displays.monitors.filter(m => !m.disabled)
     readonly property var current_monitor: root.cursor >= root.top_count ? root.monitors[root.cursor - root.top_count] || null : null
-    // Set while the collection is being listed, so the image list opens for the monitor that asked.
-    property var awaiting: null
     property bool editing: false
+    // True while the keys move the filmstrip; Enter on a monitor row goes in and Esc comes back to the rows.
+    property bool in_strip: false
+    property int strip_cursor: 0
+    property int strip_target: 0
+    // A lone g waits here for the second one of gg.
+    property bool g_pending: false
+    // The folder the last listing was made for, to list again when the folder changes during a run.
+    property string listed_for: ""
+    readonly property var images: WallpaperSettings.images
+    // Outside the filmstrip the hero shows what the selected monitor shows now.
+    readonly property int shown_target: root.in_strip ? root.strip_target : Math.max(0, root.monitors.indexOf(root.current_monitor))
+    readonly property string shown_path: {
+        const m = root.monitors[root.shown_target];
+        if (!m) return "";
+        if (m.key in WallpaperSettings.pins) return WallpaperSettings.pins[m.key];
+        const entry = WallpaperSettings.live[m.name];
+        return entry && typeof entry.path === "string" ? entry.path : "";
+    }
+    readonly property int shown_cursor: root.in_strip ? root.strip_cursor : Strip.index_of(root.images, root.shown_path, Math.floor(root.images.length / 2))
+    readonly property var strip_monitor: root.monitors[root.strip_target] || null
     readonly property string home_dir: Quickshell.env("HOME")
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.current_monitor ? "j/k move · H/L change · Enter image · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     function toggle_row(label, key, desc) {
         return {
@@ -37,13 +56,13 @@ RowsSection {
         return {
             label: m.model !== "" ? m.name + " · " + m.model : m.name,
             desc: "Automatic follows the rotation. Pinned keeps one image on this screen.",
-            keys: "H/L mode · Enter choose image · p pin/unpin · r rotate " + m.name,
+            keys: "H/L mode · Enter browse images · p pin/unpin · r rotate " + m.name,
             values: () => ["auto", "pinned"],
             text: v => v === "pinned" ? "Pinned" : "Automatic",
             value: () => m.key in WallpaperSettings.pins ? "pinned" : "auto",
             set: v => v === "pinned" ? root.pin_current(m) : WallpaperSettings.clear_pin(m.key),
             pick: false,
-            activate: () => root.choose_image(m)
+            activate: () => root.enter_strip(m)
         };
     }
 
@@ -126,22 +145,58 @@ RowsSection {
         WallpaperSettings.say(m ? "New image for " + m.name : "New images for the automatic monitors");
     }
 
-    function choose_image(m) {
-        root.awaiting = m;
+    // The listing runs one at a time: a folder change during a run is picked up when that run ends.
+    function refresh_images() {
+        if (WallpaperSettings.listing) return;
+        root.listed_for = WallpaperSettings.collection;
         WallpaperSettings.list_images();
     }
 
-    function open_images(m) {
-        const images = WallpaperSettings.images;
-        if (images.length === 0) {
+    function enter_strip(m) {
+        if (root.images.length === 0) {
             WallpaperSettings.say("No images found in " + WallpaperSettings.collection);
             return;
         }
-        root.open_list("Pin image on " + m.name, images, images.map(p => WallpaperSettings.base_name(p)), WallpaperSettings.pins[m.key], p => WallpaperSettings.set_pin(m.key, p), images.map(p => WallpaperSettings.url_of(p)), true);
+        root.strip_target = Math.max(0, root.monitors.indexOf(m));
+        root.strip_cursor = root.shown_cursor;
+        root.in_strip = true;
+    }
+
+    // The strip takes Esc, h and Tab before the popup would use them to go back to the sidebar.
+    function strip_key(event) {
+        const n = root.images.length;
+        const count = root.monitors.length;
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+        const m = root.strip_monitor;
+        if (event.key === Qt.Key_Escape) root.in_strip = false;
+        else if (event.key === Qt.Key_H) root.strip_cursor = Strip.move(root.strip_cursor, "prev", n);
+        else if (event.key === Qt.Key_L) root.strip_cursor = Strip.move(root.strip_cursor, "next", n);
+        else if (event.key === Qt.Key_J || event.key === Qt.Key_Tab) root.strip_target = Strip.step_monitor(root.strip_target, 1, count);
+        else if (event.key === Qt.Key_K || event.key === Qt.Key_Backtab) root.strip_target = Strip.step_monitor(root.strip_target, -1, count);
+        else if (event.key === Qt.Key_G && shift) root.strip_cursor = Strip.move(root.strip_cursor, "last", n);
+        else if (event.key === Qt.Key_G) {
+            if (root.g_pending) root.strip_cursor = Strip.move(root.strip_cursor, "first", n);
+            root.g_pending = !root.g_pending;
+            event.accepted = true;
+            return;
+        }
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            if (m && n > 0) WallpaperSettings.set_pin(m.key, root.images[root.strip_cursor]);
+        }
+        else if (event.key === Qt.Key_P) {
+            if (m) WallpaperSettings.clear_pin(m.key);
+        }
+        else return;
+        root.g_pending = false;
+        event.accepted = true;
     }
 
     onFirst_key: event => {
         if (root.editing) return;
+        if (root.in_strip) {
+            root.strip_key(event);
+            return;
+        }
         const open = event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_L || event.key === Qt.Key_Space;
         if (root.cursor !== root.top_count - 1 || !open) return;
         root.start_edit();
@@ -160,14 +215,20 @@ RowsSection {
 
     Connections {
         target: WallpaperSettings
+        // A new folder, or the first status read, changes what the filmstrip lists.
+        function onCollectionChanged() {
+            root.refresh_images();
+        }
+
         function onImages_ready() {
-            const m = root.awaiting;
-            root.awaiting = null;
-            if (m && root.live) root.open_images(m);
+            if (root.listed_for !== WallpaperSettings.collection) root.refresh_images();
+            root.strip_cursor = Strip.move(root.strip_cursor, "stay", root.images.length);
+            if (root.images.length === 0) root.in_strip = false;
         }
     }
 
     Component.onCompleted: {
+        root.refresh_images();
         Displays.refresh();
         WallpaperSettings.watching = true;
     }
@@ -222,92 +283,16 @@ RowsSection {
             }
         }
 
-        // One preview of the selected monitor's image, marked when it is the pin, at 16:9 and centered. Its height is capped
-        // by what the visible pane has left under the rows, not by the pane's own height, which grows with its content.
-        Item {
-            id: preview
-            readonly property var monitor: root.current_monitor
-            readonly property bool pinned: !!preview.monitor && preview.monitor.key in WallpaperSettings.pins
-            readonly property var entry: preview.monitor ? WallpaperSettings.live[preview.monitor.name] : undefined
-            readonly property string path: preview.pinned ? WallpaperSettings.pins[preview.monitor.key] : preview.entry && typeof preview.entry.path === "string" ? preview.entry.path : ""
-            readonly property real wanted: Math.round(width * 9 / 16)
-            readonly property real view_height: root.popup && root.popup.pane_view_height ? root.popup.pane_view_height : root.height
-            // Never below a usable size when many monitor rows leave no room; the pane then scrolls to it.
-            readonly property real least: Math.min(Style.px(160), preview.view_height - preview_label.implicitHeight - 6)
-            readonly property real shown: Math.max(0, Math.min(preview.wanted, Math.max(preview.free, preview.least)))
-            readonly property real free: preview.view_height - root.footer_top - (root.editing ? edit_box.height + 4 : 0) - preview_label.implicitHeight - 6
-
-            visible: !root.picking && !!preview.monitor
+        WallpaperHero {
+            visible: !root.picking && root.images.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: preview.shown + preview_label.implicitHeight + 2
-
-            Rectangle {
-                id: frame
-                width: Math.round(frame.height * 16 / 9)
-                height: preview.shown
-                anchors.horizontalCenter: parent.horizontalCenter
-                color: Theme.bg_shadow
-                border.width: 1
-                border.color: preview.pinned ? root.st.text_accent : Qt.alpha(root.st.text_muted, 0.4)
-                radius: Style.px(4)
-                clip: true
-
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    source: preview.path !== "" ? WallpaperSettings.url_of(preview.path) : ""
-                    sourceSize: Qt.size(960, 540)
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    cache: true
-                }
-
-                Rectangle {
-                    visible: preview.pinned
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.margins: 6
-                    width: badge_row.implicitWidth + 12
-                    height: badge_row.implicitHeight + 6
-                    radius: Style.px(4)
-                    color: Qt.alpha(Theme.bg_shadow, 0.85)
-                    border.width: 1
-                    border.color: root.st.text_accent
-
-                    Row {
-                        id: badge_row
-                        anchors.centerIn: parent
-                        spacing: 4
-
-                        Text {
-                            text: "\uf08d"
-                            color: root.st.text_accent
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-3)
-                        }
-
-                        Text {
-                            text: "Pinned"
-                            color: root.st.text_accent
-                            font.family: root.st.font_family
-                            font.pixelSize: root.st.fs(-3)
-                        }
-                    }
-                }
-            }
-
-            Text {
-                id: preview_label
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: frame.bottom
-                anchors.topMargin: 2
-                text: (preview.pinned ? "Pinned" : "Showing") + (preview.path !== "" ? " · " + WallpaperSettings.base_name(preview.path) : "")
-                elide: Text.ElideRight
-                color: root.st.text_dim
-                font.family: root.st.font_family
-                font.pixelSize: root.st.fs(-3)
-            }
+            st: root.st
+            images: root.images
+            monitors: root.monitors
+            pins: WallpaperSettings.pins
+            cursor: root.shown_cursor
+            target: root.shown_target
+            active: root.in_strip
         }
     }
 }

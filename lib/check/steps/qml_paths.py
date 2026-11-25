@@ -173,6 +173,7 @@ OUTSIDE_REFS = [
     ("home/quickshell/tests/media_settings.js", "features/media/MediaSettings.js"),
     ("home/quickshell/tests/media_jump.js", "features/media/MediaJump.js"),
     ("home/quickshell/tests/settings_scale.js", "features/settings/SettingsScale.js"),
+    ("home/quickshell/tests/wallpaper_strip.js", "features/settings/WallpaperStrip.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarLayout.js"),
     ("home/quickshell/tests/bar_layout.js", "features/bar/BarModules.js"),
     ("home/quickshell/tests/bar_vertical.js", "features/bar/VerticalLayout.js"),
