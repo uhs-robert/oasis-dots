@@ -7,7 +7,7 @@ const assert = require("assert");
 
 const source = fs.readFileSync(path.join(__dirname, "../.config/quickshell/features/settings/WallpaperStrip.js"), "utf8");
 const T = vm.createContext({});
-vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { move, step_monitor, centre_x, index_of, pinned_on };", T);
+vm.runInContext(source.replace(/^\.pragma.*$/m, "") + "\nthis.api = { move, step_monitor, centre_x, index_of, pinned_on, gg };", T);
 const S = T.api;
 
 const mons = [{ key: "A" }, { key: "B" }];
@@ -30,6 +30,8 @@ const cases = [
   ["the cell centre is the view centre at every index", () => { for (let i = 0; i < 30; i++) { const x = S.centre_x(i, 96, 700); if (i * 96 + 48 - x !== 350) return i; } return "ok"; }, "ok"],
   ["index_of finds a listed path", () => S.index_of(["a", "b", "c"], "b", -1), 1],
   ["index_of falls back for a missing or empty path", () => [S.index_of(["a"], "z", 3), S.index_of(["a"], "", 3), S.index_of(["a"], undefined, 3)], [3, 3, 3]],
+  ["gg: a lone g waits, a second g asks for first", () => [S.gg(false, true), S.gg(true, true)], [{ pending: true, first: false }, { pending: false, first: true }]],
+  ["gg: another key clears the chord, so g, x, g is not gg", () => { let st = S.gg(false, true); st = S.gg(st.pending, false); return S.gg(st.pending, true); }, { pending: true, first: false }],
   ["pinned_on lists 1-based monitor numbers", () => S.pinned_on(mons, { A: "x", B: "x" }, "x"), [1, 2]],
   ["pinned_on skips other pins", () => S.pinned_on(mons, { A: "x", B: "y" }, "y"), [2]],
 ];

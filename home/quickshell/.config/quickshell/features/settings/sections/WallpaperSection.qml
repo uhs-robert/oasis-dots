@@ -34,13 +34,15 @@ RowsSection {
         const entry = WallpaperSettings.live[m.name];
         return entry && typeof entry.path === "string" ? entry.path : "";
     }
+    // The hero previews what the monitor really shows, even when that file is not in the listed collection; the index only seeds the filmstrip.
+    readonly property string hero_path: root.in_strip ? root.images[root.strip_cursor] || "" : root.shown_path
     readonly property int shown_cursor: root.in_strip ? root.strip_cursor : Strip.index_of(root.images, root.shown_path, Math.floor(root.images.length / 2))
     readonly property var strip_monitor: root.monitors[root.strip_target] || null
     readonly property string home_dir: Quickshell.env("HOME")
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · / search · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · / search · p pin/unpin · / search images · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · / search · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · / search images · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     // On the strip the help card lists the strip's keys instead of the monitor row's.
     description: root.in_strip ? "Pick an image for " + (root.strip_monitor ? root.strip_monitor.name : "a monitor") + " from the collection." : root.described_row && root.described_row.desc ? root.described_row.desc : ""
@@ -160,7 +162,7 @@ RowsSection {
 
     function choose_image(m) {
         root.awaiting = m;
-        WallpaperSettings.list_images();
+        root.refresh_images();
     }
 
     function open_images(m) {
@@ -184,6 +186,8 @@ RowsSection {
 
     // The strip takes Esc, h and Tab before the popup would use them to go back to the sidebar.
     function strip_key(event) {
+        if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return;
+        if (event.key !== Qt.Key_G || (event.modifiers & Qt.ShiftModifier)) root.g_pending = false;
         const n = root.images.length;
         const count = root.monitors.length;
         const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
@@ -198,8 +202,9 @@ RowsSection {
         else if (event.key === Qt.Key_K || event.key === Qt.Key_Backtab) root.strip_target = Strip.step_monitor(root.strip_target, -1, count);
         else if (event.key === Qt.Key_G && shift) root.strip_cursor = Strip.move(root.strip_cursor, "last", n);
         else if (event.key === Qt.Key_G) {
-            if (root.g_pending) root.strip_cursor = Strip.move(root.strip_cursor, "first", n);
-            root.g_pending = !root.g_pending;
+            const g = Strip.gg(root.g_pending, true);
+            if (g.first) root.strip_cursor = Strip.move(root.strip_cursor, "first", n);
+            root.g_pending = g.pending;
             event.accepted = true;
             return;
         }
@@ -210,9 +215,10 @@ RowsSection {
             if (m) WallpaperSettings.clear_pin(m.key);
         }
         else return;
-        root.g_pending = false;
         event.accepted = true;
     }
+
+    onIn_stripChanged: root.g_pending = false
 
     onFirst_key: event => {
         if (root.editing) return;
@@ -249,12 +255,16 @@ RowsSection {
         }
 
         function onImages_ready() {
-            if (root.listed_for !== WallpaperSettings.collection) root.refresh_images();
+            root.strip_cursor = Strip.move(root.strip_cursor, "stay", root.images.length);
+            if (root.images.length === 0) root.in_strip = false;
+            // These results are for an older folder: list the current one and keep any pending search waiting for it.
+            if (root.listed_for !== WallpaperSettings.collection) {
+                root.refresh_images();
+                return;
+            }
             const asked = root.awaiting;
             root.awaiting = null;
             if (asked && root.live) root.open_images(asked);
-            root.strip_cursor = Strip.move(root.strip_cursor, "stay", root.images.length);
-            if (root.images.length === 0) root.in_strip = false;
         }
     }
 
@@ -321,6 +331,7 @@ RowsSection {
             images: root.images
             monitors: root.monitors
             pins: WallpaperSettings.pins
+            path: root.hero_path
             cursor: root.shown_cursor
             target: root.shown_target
             active: root.in_strip
