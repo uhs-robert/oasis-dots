@@ -208,10 +208,14 @@ reload_bar() {
   loaded=$(qlog | grep -c 'Configuration Loaded')
   echo "// reload $RANDOM$RANDOM" >>"$qs_copy/shell.qml"
   # The old instance still answers IPC while the new one loads, so wait for the log line before asking it anything.
+  local seen=0
   for _ in $(seq 150); do
-    (($(qlog | grep -c 'Configuration Loaded') > loaded)) && break
+    (($(qlog | grep -c 'Configuration Loaded') > loaded)) && { seen=1; break; }
+    # A config that fails to load leaves the old instance answering, so give up at once.
+    qlog | tail -n 5 | grep -q 'Failed to load configuration' && return 1
     sleep 0.2
   done
+  ((seen)) || return 1
   for _ in $(seq 50); do
     # The windows and the Hyprland event connection settle a moment after the log line.
     q style get >/dev/null 2>&1 && { sleep 2; return 0; }
@@ -263,7 +267,7 @@ restore() {
   sh_hyprctl dispatch "hl.dsp.submap('reset')" >/dev/null 2>&1 || true
   if ((state_saved)); then
     restore_state
-    ((started_shadow)) || reload_bar
+    ((started_shadow)) || reload_bar || echo "warning: bar did not reload while restoring" >&2
   fi
   if ((started_shadow)); then
     "$shadow" down "$name" >&2 || true
