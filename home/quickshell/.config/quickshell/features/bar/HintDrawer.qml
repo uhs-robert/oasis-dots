@@ -7,7 +7,8 @@ import qs.ui.keys
 // The window both hint bars share (features/submap_hints/SubmapHintBar.qml, features/bar_editor/HintDrawerWindow.qml), one
 // per screen, shown while `wanted`. With the screen frame on it is a plain-centre TransientDrawer on the edge the bar is not
 // on, grown out of the frame and folded back, like the OSD; with `floating_fallback` a screen without the frame keeps a
-// floating plate instead, otherwise the window stays hidden there. Display only: the caller's content is the plate's one child,
+// floating plate instead, otherwise the window stays hidden there. A screen with a top and a bottom bar has no free edge,
+// so there the hints sit at the bottom of the hole, above the bottom bar, as a drawer out of its strip or floating over it. Display only: the caller's content is the plate's one child,
 // and the plate takes its size. The caller holds any content that must outlive `wanted` through the fold.
 PanelWindow {
     id: root
@@ -20,7 +21,11 @@ PanelWindow {
     default property alias content: plate.contents
 
     readonly property var bar_item: BarItems.item_of(root.modelData.name, "bar")
-    readonly property bool on_top: root.bar_item !== null && root.bar_item.position === "bottom"
+    readonly property var second_bar_item: BarItems.item_of(root.modelData.name, "second_bar")
+    readonly property bool on_top: root.second_bar_item === null && root.bar_item !== null && root.bar_item.position === "bottom"
+    // How far the floating plate stays up off the screen's bottom edge besides its gap: the bottom bar's thickness when
+    // there is one under it.
+    readonly property real bottom_bar_room: root.second_bar_item === null ? 0 : root.bar_item && root.bar_item.position === "bottom" ? root.bar_item.height : root.second_bar_item.height
     readonly property bool drawer: scaffold.active
     // How far the drawer has grown, 0 to 1; a caller that swaps content waits for 0.
     readonly property real progress: scaffold.progress
@@ -36,7 +41,7 @@ PanelWindow {
     anchors.left: root.drawer ? scaffold.place.anchor_left : false
     anchors.right: root.drawer ? scaffold.place.anchor_right : false
     margins.top: root.drawer ? scaffold.place.margin_top : root.edge_gap
-    margins.bottom: root.drawer ? scaffold.place.margin_bottom : root.edge_gap
+    margins.bottom: root.drawer ? scaffold.place.margin_bottom : root.edge_gap + root.bottom_bar_room
     margins.left: root.drawer ? scaffold.place.margin_left : 0
     margins.right: root.drawer ? scaffold.place.margin_right : 0
     implicitWidth: root.drawer ? scaffold.full.surface.width : plate.width

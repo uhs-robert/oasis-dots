@@ -20,32 +20,39 @@ PanelWindow {
     readonly property bool peer: !root.keyboard_owner && BarEditor.sharing && BarEditor.sharing_screens().indexOf(root.screen_name) >= 0
     readonly property bool carrying: BarEditor.mode === "hidden" && BarEditor.picked !== ""
     readonly property bool shows_selection: BarEditor.mode === "normal" || root.carrying
-    readonly property var bar_item: BarItems.item_of(root.screen_name, "bar")
+    // The edited bar on this screen: the first, or the second while BarEditor edits a screen's second bar.
+    readonly property var bar_item: BarItems.item_of(root.screen_name, BarEditor.edited_bar === 1 ? "second_bar" : "bar")
+    readonly property var first_bar_item: BarItems.item_of(root.screen_name, "bar")
+    readonly property var second_bar_item: BarItems.item_of(root.screen_name, "second_bar")
 
     // The bar re-lays out a frame after an edit, so geometry is read again on a short tick.
     property int tick: 0
-    // Where a module sits on this screen. The bar window is anchored to an edge, so its origin is not always the screen's; the Bar fills it.
-    function rect_of(item) {
+    // Where an item of `bar` sits on this screen. The bar window is anchored to an edge, so its origin is not always the screen's; the Bar fills it.
+    function rect_in(item, bar) {
         const _ = root.tick;
-        if (!item || !root.bar_item) return Qt.rect(0, 0, 0, 0);
-        const p = item.mapToItem(root.bar_item, 0, 0);
-        const ox = root.bar_item.position === "right" ? root.width - root.bar_item.width : 0;
-        const oy = root.bar_item.position === "bottom" ? root.height - root.bar_item.height : 0;
+        if (!item || !bar) return Qt.rect(0, 0, 0, 0);
+        const p = item.mapToItem(bar, 0, 0);
+        const ox = bar.position === "right" ? root.width - bar.width : 0;
+        const oy = bar.position === "bottom" ? root.height - bar.height : 0;
         return Qt.rect(p.x + ox, p.y + oy, item.width, item.height);
+    }
+    // A module's rect, on whichever of the screen's bars shows it.
+    function entry_rect(entry) {
+        return root.rect_in(BarItems.item_of(root.screen_name, entry), BarItems.bar_of(root.screen_name, entry));
     }
     // Where `entry` sits, or where it would: a module the bar hides while it has nothing to show is zero wide and has no
     // position of its own, so it takes the edge of the nearest shown module before it (else after it).
     function placed_rect(entry) {
-        const own = root.rect_of(BarItems.item_of(root.screen_name, entry));
+        const own = root.entry_rect(entry);
         if (own.width >= 1 && own.height >= 1) return { rect: own, found: true };
         const order = BarEditor.order;
         const at = order.indexOf(entry);
         for (let j = at - 1; j >= 0; j--) {
-            const r = root.rect_of(BarItems.item_of(root.screen_name, order[j]));
+            const r = root.entry_rect(order[j]);
             if (r.width >= 1 && r.height >= 1) return { rect: root.vertical ? Qt.rect(r.x, r.y + r.height, r.width, 0) : Qt.rect(r.x + r.width, r.y, 0, r.height), found: true };
         }
         for (let j = at + 1; at >= 0 && j < order.length; j++) {
-            const r = root.rect_of(BarItems.item_of(root.screen_name, order[j]));
+            const r = root.entry_rect(order[j]);
             if (r.width >= 1 && r.height >= 1) return { rect: root.vertical ? Qt.rect(r.x, r.y, r.width, 0) : Qt.rect(r.x, r.y, 0, r.height), found: true };
         }
         return { rect: own, found: false };
@@ -53,9 +60,10 @@ PanelWindow {
     readonly property var placed: root.placed_rect(BarEditor.selected)
     readonly property rect sel: root.placed.rect
     readonly property bool vertical: root.bar_item !== null && root.bar_item.vertical
-    readonly property rect bar_rect: root.rect_of(root.bar_item)
-    // Hints go to the screen edge the bar is not on.
-    readonly property bool hints_on_top: root.bar_item !== null && root.bar_item.position === "bottom"
+    readonly property rect bar_rect: root.rect_in(root.bar_item, root.bar_item)
+    // Hints go to the screen edge the bar is not on; with a top and a bottom bar, just above the bottom one (as HintDrawer).
+    readonly property bool hints_on_top: root.second_bar_item === null && root.first_bar_item !== null && root.first_bar_item.position === "bottom"
+    readonly property real hints_bottom_room: root.second_bar_item === null ? 0 : root.first_bar_item && root.first_bar_item.position === "bottom" ? root.first_bar_item.height : root.second_bar_item.height
     // With the screen frame on, the hints (and the monitor map) are HintDrawerWindow's drawer instead of HintBox and monitor_box.
     readonly property bool hints_in_drawer: ScreenFrames.layout_for(root.modelData) !== null
     // A module the bar hides while it has nothing to show is zero wide; it still gets a mark.
@@ -311,6 +319,7 @@ PanelWindow {
         id: hint_box
         visible: root.keyboard_owner && BarEditor.mode !== "monitor" && !root.hints_in_drawer && !SubmapState.hints_hidden
         on_top: root.hints_on_top
+        bottom_room: root.hints_bottom_room
         carrying: root.carrying
         vertical: root.vertical
     }
@@ -389,7 +398,7 @@ PanelWindow {
             anchors.topMargin: help_title.y + help_title.height + 8
             anchors.margins: 12
             popup_keys: false
-            text: "h/l select module · H/L move module · c module compact (inherit, on, off) · o own layout · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, c toggles the bar's compact, x forgets the saved position, u undoes) · Esc monitor select · q close"
+            text: "h/l select module · H/L move module · j/k edit the bottom or top bar and J/K move the module there (with two bars) · c module compact (inherit, on, off) · o own layout · x hide · u undo · Ctrl+R redo · Tab hidden modules · Shift+V whole bar (then hjkl moves it to an edge, c toggles the bar's compact, x forgets the saved position, u undoes) · Esc monitor select · q close"
         }
     }
 }

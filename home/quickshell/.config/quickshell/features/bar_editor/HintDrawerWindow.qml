@@ -2,7 +2,7 @@ import QtQuick
 import qs.features.bar
 
 // The editor's hint bar as a screen-frame drawer, one per screen, for a screen that has the frame: it grows out of the edge
-// the bar is not on, like the submap hint bar (features/submap_hints/SubmapHintBar.qml); in monitor select it carries the
+// the bar is not on (the bottom bar's, with two bars), like the submap hint bar (features/submap_hints/SubmapHintBar.qml); in monitor select it carries the
 // monitor map above the hints and follows the picked screen. A screen without a frame layout keeps HintBox and the floating
 // monitor box inside BarEditorWindow; the two never show together.
 HintDrawer {

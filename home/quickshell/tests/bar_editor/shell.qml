@@ -49,6 +49,11 @@ ShellRoot {
         root.checks = root.checks.concat([[name, got, want]]);
     }
     readonly property var layout_rule: ({ match: "*", left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] })
+    readonly property var dual_rule: ({ match: "*", bars: [{ left: ["start", "workspaces"], center: ["clock"], right: ["tray"] }, { left: ["media"], center: [], right: ["volume", "battery"] }] })
+    // The drawn lists of each bar of the edited screen, as [position, left, center, right].
+    function bars_now() {
+        return BarEditor.bars.map(b => [b.position, b.left, b.center, b.right]);
+    }
     function fake_screen(name, x, bar) {
         return { name: name, model: "M" + name, x: x, y: 0, width: 1920, height: 1080, bar: bar };
     }
@@ -354,18 +359,20 @@ ShellRoot {
     // ones that change anything must be exactly HintData's list.
     readonly property var probe_keys: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?".split("").concat(["Tab", "Enter", "Esc", "Ctrl+r", "Backspace"])
     function snapshot() {
-        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length, BarEditor.notice, SubmapState.hints_hidden]);
+        return JSON.stringify([BarSettings.state, BarEditor.mode, BarEditor.active, BarEditor.help_open, BarEditor.focus_screen, BarEditor.edited_bar, BarEditor.selected, BarEditor.hidden_selected, BarEditor.picked, BarEditor.undo_stack.length, BarEditor.redo_stack.length, BarEditor.notice, SubmapState.hints_hidden]);
     }
     // A fresh editor in `mode` with something to undo and redo and every key's target in reach.
-    function hint_fixture(mode, vertical, saved_edge) {
+    // `on_bar` is "" for one bar, or "top" or "bottom" for the bar edited on a screen with two.
+    function hint_fixture(mode, vertical, saved_edge, on_bar) {
         BarEditor.close();
         BarSettings.set_state(BarLayout.normalize(null));
         const plus = [["N", 1920, -1080], ["W", 0, 0], ["B", 1920, 0], ["E", 3840, 0], ["S", 1920, 1080]];
         root.install(plus.map(p => Object.assign(root.fake_screen(p[0], p[1], true), { y: p[2] })));
-        BarEditor.tracked_of = s => Object.assign({}, root.layout_rule, vertical ? { position: "left" } : {});
+        BarEditor.tracked_of = s => on_bar ? root.dual_rule : Object.assign({}, root.layout_rule, vertical ? { position: "left" } : {});
         BarEditor.open("B");
         if (mode === "visual" && saved_edge) root.keys("V l Enter");
         root.keys("l l L H u");
+        if (on_bar === "bottom") root.keys("j l");
         if (mode === "monitor") root.keys("Esc");
         if (mode === "hidden") {
             root.keys("Tab");
@@ -378,18 +385,18 @@ ShellRoot {
         }
         if (mode === "visual") root.keys("V");
     }
-    function check_hint_keys(label, mode, vertical, saved_edge) {
+    function check_hint_keys(label, mode, vertical, saved_edge, on_bar) {
         const carrying = mode === "carrying";
         const real = carrying ? "hidden" : mode;
         const accepted = [];
         for (const k of root.probe_keys) {
-            root.hint_fixture(mode, vertical, saved_edge);
+            root.hint_fixture(mode, vertical, saved_edge, on_bar);
             const before = root.snapshot();
             BarEditor.press(k);
             if (root.snapshot() !== before) accepted.push(k);
         }
-        root.hint_fixture(mode, vertical, saved_edge);
-        const listed = HintData.keys_of(HintData.groups(real, carrying, BarEditor.vertical, BarEditor.can_forget));
+        root.hint_fixture(mode, vertical, saved_edge, on_bar);
+        const listed = HintData.keys_of(HintData.groups(real, carrying, BarEditor.vertical, BarEditor.can_forget, undefined, BarEditor.other_bar_edge));
         // The saved edge's own key is the one hjkl press that changes nothing.
         root.check(label + ": the hint bar lists exactly the keys that act", listed.filter(k => !(saved_edge && k === "l")).sort(), accepted.filter(k => !(saved_edge && k === "l")).sort());
     }
@@ -401,6 +408,12 @@ ShellRoot {
     }
     function scenario_hint_keys_normal_column() {
         root.check_hint_keys("NORMAL on a column", "normal", true, false);
+    }
+    function scenario_hint_keys_normal_top_of_two() {
+        root.check_hint_keys("NORMAL on the top bar of two", "normal", false, false, "top");
+    }
+    function scenario_hint_keys_normal_bottom_of_two() {
+        root.check_hint_keys("NORMAL on the bottom bar of two", "normal", false, false, "bottom");
     }
     function scenario_hint_keys_hidden() {
         root.check_hint_keys("HIDDEN", "hidden", false, false);
@@ -472,6 +485,58 @@ ShellRoot {
         root.keys("k");
         stage_hints.on_top = false;
         root.check("k moves it back: hints return to the bottom, not stretched", [plate.height, plate.y], [fresh_height, 1080 - fresh_height - 24]);
+    }
+
+    // A screen with two bars: j/k pick the bar, J/K move a module across, and every edit works on the picked bar.
+    function scenario_two_bars() {
+        BarEditor.tracked_of = s => root.dual_rule;
+        BarEditor.open("B");
+        root.check("opens on the first bar", [BarEditor.edited_bar, BarEditor.position_edge, BarEditor.other_bar_edge, BarEditor.selected], [0, "top", "bottom", "start"]);
+        root.keys("k");
+        root.check("k on the top bar stays there", BarEditor.edited_bar, 0);
+        root.keys("j");
+        root.check("j edits the bottom bar from its first module", [BarEditor.edited_bar, BarEditor.position_edge, BarEditor.other_bar_edge, BarEditor.order, BarEditor.selected], [1, "bottom", "top", ["media", "volume", "battery"], "media"]);
+        root.keys("l l H");
+        root.check("H moves a module along the bottom bar", root.bars_now()[1], ["bottom", ["media"], [], ["battery", "volume"]]);
+        root.keys("K");
+        root.check("K moves it to the top bar and the editing follows", [root.bars_now()[0][3], root.bars_now()[1][3], BarEditor.edited_bar, BarEditor.selected], [["tray", "battery"], ["volume"], 0, "battery"]);
+        root.keys("J");
+        root.check("J takes it back down", [root.bars_now()[0][3], root.bars_now()[1][3], BarEditor.edited_bar], [["tray"], ["volume", "battery"], 1]);
+        root.keys("u");
+        root.check("u undoes a move between bars as one step", [root.bars_now()[0][3], root.bars_now()[1][3]], [["tray", "battery"], ["volume"]]);
+        root.keys("Ctrl+r j");
+        BarEditor.selected = "media";
+        root.keys("x");
+        root.check("x on the bottom bar hides the module from the screen", [root.bars_now()[1][1], BarEditor.hidden_list.indexOf("media") >= 0], [[], true]);
+        root.keys("Tab");
+        BarEditor.hidden_selected = "media";
+        root.keys("Enter Enter");
+        root.check("a module picked up while editing the bottom bar lands there", [root.bars_now()[0][1], root.bars_now()[1][1], BarEditor.mode, BarEditor.selected], [["start", "workspaces"], ["media"], "normal", "media"]);
+        root.keys("V k");
+        root.check("VISUAL k on the bottom bar puts it on top, the first bar under it", [BarEditor.bars.map(b => b.position), BarEditor.edited_bar, BarEditor.position_edge], [["bottom", "top"], 1, "top"]);
+        root.keys("h");
+        root.check("VISUAL h on the second bar says why it stays", [BarEditor.notice !== "", BarEditor.bars.length], [true, 2]);
+        root.keys("j Esc");
+        root.check("VISUAL j sends it back down", BarEditor.bars.map(b => b.position), ["top", "bottom"]);
+        root.check("the shared layout keeps the second bar's edits apart", Object.keys(BarSettings.state.shared.second_bar || {}).sort(), ["order", "place"]);
+        root.check("a screen with one bar ignores them", BarLayout.layout_of(BarLayout.effective(root.layout_rule, BarSettings.state, "")).right, ["tray", "volume"]);
+        BarEditor.close();
+        BarEditor.open("B");
+        root.check("each open starts on the first bar", BarEditor.edited_bar, 0);
+    }
+    // An own layout with two bars: `o` copies both, and the second bar's edits stay in that monitor's layout.
+    function scenario_two_bars_own() {
+        BarEditor.tracked_of = s => root.dual_rule;
+        BarEditor.open("B");
+        root.keys("o j J");
+        const own = BarSettings.state.monitors["MB @ B"];
+        root.check("o copies both bars and j J stays on the bottom bar", [own.left, own.second_bar.left, BarEditor.edited_bar], [["start", "workspaces"], ["media"], 1]);
+        root.keys("K");
+        const moved = BarSettings.state.monitors["MB @ B"];
+        root.check("K writes both lists of the own layout", [moved.left, moved.second_bar.left, BarSettings.state.shared.second_bar === undefined], [["start", "workspaces", "media"], [], true]);
+        BarEditor.screens = [root.fake_screen("B", 1920, true)];
+        BarEditor.tracked_of = s => root.layout_rule;
+        root.check("the screen losing its second bar edits the first", [BarEditor.bar_count, BarEditor.edited_bar, BarEditor.order.indexOf(BarEditor.selected) >= 0], [1, 0, true]);
     }
 
     function scenario_pick_redo() {
@@ -622,6 +687,10 @@ ShellRoot {
         editor_hint_keys_monitor: { steps: [[100, () => root.run_editor("hint_keys_monitor")]], end: 500 },
         editor_hint_keys_normal_row: { steps: [[100, () => root.run_editor("hint_keys_normal_row")]], end: 500 },
         editor_hint_keys_normal_column: { steps: [[100, () => root.run_editor("hint_keys_normal_column")]], end: 500 },
+        editor_hint_keys_normal_top_of_two: { steps: [[100, () => root.run_editor("hint_keys_normal_top_of_two")]], end: 500 },
+        editor_hint_keys_normal_bottom_of_two: { steps: [[100, () => root.run_editor("hint_keys_normal_bottom_of_two")]], end: 500 },
+        editor_two_bars: { steps: [[100, () => root.run_editor("two_bars")]], end: 500 },
+        editor_two_bars_own: { steps: [[100, () => root.run_editor("two_bars_own")]], end: 500 },
         editor_hint_keys_hidden: { steps: [[100, () => root.run_editor("hint_keys_hidden")]], end: 500 },
         editor_hint_keys_carrying: { steps: [[100, () => root.run_editor("hint_keys_carrying")]], end: 500 },
         editor_hint_keys_visual: { steps: [[100, () => root.run_editor("hint_keys_visual")]], end: 500 },

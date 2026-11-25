@@ -7,7 +7,7 @@ import "../../ui/keys/KeyHints.js" as KeyHints
 
 // The compact key hints of the submap Hyprland is in (Submap.define `hint`, sent over `submap_hints set`), on the
 // focused screen, placed as the bar editor's hint bar: bottom centre, or top centre while that screen's bar is on the
-// bottom. The window is the shared HintDrawer: with the screen frame on a plain-centre drawer on that edge, like the OSD
+// bottom, and just above the bottom bar on a screen with two bars. The window is the shared HintDrawer: with the screen frame on a plain-centre drawer on that edge, like the OSD
 // (grown out of the frame, folded back on close); a screen without a frame layout keeps the floating plate. Display only:
 // Hyprland's submap keeps the keyboard and the pointer passes through.
 HintDrawer {

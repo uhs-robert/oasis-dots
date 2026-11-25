@@ -23,7 +23,8 @@ Item {
     // One bar's rule (BarSettings.bars_for): the screen's rule with this bar's edge and module lists.
     property var rule: null
     // The screen's first bar. A screen with a second bar has one set of screen-wide popup anchors (power, confirm,
-    // settings, the media fallback), one walk order and one `screen|bar` key for the editor, and this bar holds them.
+    // settings, the media fallback), and this bar holds them. Each bar has its own walk order, and the editor finds the
+    // first under `screen|bar`, the second under `screen|second_bar`.
     property bool primary: true
     // Whether the screen's other bar lists media, so the first bar does not drop the media popup from its own island.
     property bool other_bar_lists_media: false
@@ -100,7 +101,8 @@ Item {
     // The start button draws the HyprVim mode chip on a lualine bar.
     // Any horizontal non-lualine bar with left modules draws the submap as a chip on its left island.
     // With no left modules the left island is hidden, so the bar has no chip and the dropdown tab shows instead.
-    readonly property bool has_left_chip: !root.vertical && !root.lualine && root.left_entries.length > 0
+    // A screen's second bar never draws it: the first owns the chip, as the screen has one submap tab.
+    readonly property bool has_left_chip: root.primary && !root.vertical && !root.lualine && root.left_entries.length > 0
     readonly property bool has_mode_chip: root.lualine && [root.left_entries, root.center_entries, root.right_entries].some(l => l.some(e => e.base === "start"))
 
     // The oasis horizon decorates the center island when it holds the clock; that clock makes room for it and lends it the time.
@@ -379,7 +381,7 @@ Item {
         tail_span: center_cava.tail_span
         cap_left: true
         cap_right: true
-        tab_joined: (SubmapState.indicator_shown && !root.has_left_chip && !root.has_mode_chip) || (VoxSessionState.active && !root.has_left_chip)
+        tab_joined: root.primary && ((SubmapState.indicator_shown && !root.has_left_chip && !root.has_mode_chip) || (VoxSessionState.active && !root.has_left_chip))
         visible: root.has_center
 
         onClicked: if (root.center_entries.some(e => e.base === "clock")) root.clock_item && root.clock_item.click_popup()
@@ -546,13 +548,16 @@ Item {
 
     function sync_popup_order() {
         const center_names = root.has_center ? root.popup_names(root.center_entries) : [];
-        if ((root.has_center || root.lualine) && !root.screen_lists_media) center_names.push("media");
         const right_names = root.popup_names(root.right_drawn);
-        // Settings drops from the center; with no center it drops from the right end, so it walks last.
-        const has_center_slot = root.has_center || root.lualine;
-        if (has_center_slot) center_names.push("settings");
-        else right_names.push("settings");
-        Popups.register_order(root.screen_name, root.popup_names(root.left_entries).concat(center_names, right_names));
+        // The screen-wide anchors are the first bar's.
+        if (root.primary) {
+            if ((root.has_center || root.lualine) && !root.screen_lists_media) center_names.push("media");
+            // Settings drops from the center; with no center it drops from the right end, so it walks last.
+            const has_center_slot = root.has_center || root.lualine;
+            if (has_center_slot) center_names.push("settings");
+            else right_names.push("settings");
+        }
+        Popups.register_order(root.screen_name, root.position, root.popup_names(root.left_entries).concat(center_names, right_names));
     }
 
     // Syncing earlier reads bindings that are still mid-evaluation (undefined); onCompleted does the first sync.
@@ -561,8 +566,7 @@ Item {
     function sync_popups() {
         if (!root.popups_ready) return;
         sync_clock_anchor();
-        // The other bar's modules are not in the walk yet: Ctrl+H/L walks the first bar.
-        if (root.primary) sync_popup_order();
+        sync_popup_order();
     }
 
     onLeft_entriesChanged: sync_popups()
@@ -570,9 +574,11 @@ Item {
     onHas_centerChanged: sync_popups()
     onRight_drawnChanged: sync_popups()
     onScreen_lists_mediaChanged: sync_popups()
+    // The walk order is kept per bar edge, and the two bars trade edges when the first moves.
+    onPositionChanged: sync_popups()
     Component.onCompleted: {
         root.popups_ready = true;
-        if (root.primary) BarItems.register(root.screen_name + "|bar", root, root);
+        BarItems.register(root.screen_name + (root.primary ? "|bar" : "|second_bar"), root, root);
         sync_popups();
     }
     Component.onDestruction: {
@@ -581,6 +587,7 @@ Item {
         BarItems.forget_owner(root);
         if (!root.primary) {
             for (const i of [left_island, center_island, right_island]) Popups.unregister("clock", root.screen_name, i.body_item);
+            Popups.register_order(root.screen_name, root.position, []);
             return;
         }
         Popups.unregister_screen(root.screen_name);

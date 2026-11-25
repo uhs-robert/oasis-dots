@@ -84,7 +84,7 @@ Singleton {
     function set_state(next) {
         // Anything this build writes is past the one-time cava migration.
         root.state = Object.assign(BarLayout.normalize(next), { cava_migrated: true });
-        store.replace(root.state);
+        store.replace(BarLayout.to_file(root.state));
     }
 
     readonly property var directory_switches: BarLayout.directory_switches(root.state)
@@ -186,6 +186,11 @@ Singleton {
             console.warn("BarSettings: " + problem);
         }
         return BarLayout.bar_rules(rule);
+    }
+
+    // One bar's modules on a line for Settings (BarLayout.bar_summary).
+    function bar_summary(bar) {
+        return BarLayout.bar_summary(bar);
     }
 
     // The screen height a bar on `position` takes; none for a side bar.

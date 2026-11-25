@@ -145,24 +145,47 @@ function put_compact_modules(holder, raw) {
     return holder;
 }
 
-// Clean copy of a state file's contents; throws on the wrong shape.
+// `hidden` is a first-bar placement only: a module hidden from either bar is off the screen.
+function clean_place(raw, allow_hidden) {
+    const out = {};
+    if (is_object(raw)) {
+        for (const k of Object.keys(raw)) {
+            const side = raw[k];
+            if ((allow_hidden && side === "hidden") || sides.indexOf(side) >= 0) out[k] = side;
+        }
+    }
+    return out;
+}
+
+function lists_of(bar) {
+    return { left: unique(bar && bar.left), center: unique(bar && bar.center), right: unique(bar && bar.right) };
+}
+
+// The shared layout's `bars` list read like a rule's (fold_bars): the first bar's `place` and `order` at the root, the
+// second bar's in `second_bar`.
+function fold_shared(shared) {
+    if (!Array.isArray(shared.bars)) return shared;
+    const first = is_object(shared.bars[0]) ? shared.bars[0] : {};
+    const out = Object.assign({}, shared, { place: first.place, order: first.order });
+    delete out.bars;
+    if (is_object(shared.bars[1])) out.second_bar = shared.bars[1];
+    return out;
+}
+
+// Clean copy of a state file's contents; throws on the wrong shape. A layout with second-bar edits comes back folded,
+// its second bar in `second_bar`, as a rule does from fold_bars; `to_file` writes it out as a `bars` list again.
 function normalize(raw) {
     if (raw === null || raw === undefined) return { shared: { place: {}, order: [], last_side: {} }, monitors: {}, positions: {} };
     if (!is_object(raw)) throw new Error("bars.json state must be a JSON object");
-    const shared = is_object(raw.shared) ? raw.shared : {};
-    const place = {};
-    if (is_object(shared.place)) {
-        for (const k of Object.keys(shared.place)) {
-            const side = shared.place[k];
-            if (side === "hidden" || sides.indexOf(side) >= 0) place[k] = side;
-        }
-    }
+    const shared = is_object(raw.shared) ? fold_shared(raw.shared) : {};
+    const place = clean_place(shared.place, true);
     const monitors = {};
     if (is_object(raw.monitors)) {
         for (const k of Object.keys(raw.monitors)) {
-            const m = raw.monitors[k];
-            if (!is_object(m)) continue;
-            monitors[k] = { left: unique(m.left), center: unique(m.center), right: unique(m.right), last_side: clean_last(m.last_side) };
+            if (!is_object(raw.monitors[k])) continue;
+            const m = fold_bars(raw.monitors[k]);
+            monitors[k] = Object.assign(lists_of(m), { last_side: clean_last(m.last_side) });
+            if (is_object(m.second_bar)) monitors[k].second_bar = lists_of(m.second_bar);
             if (typeof m.compact === "boolean") monitors[k].compact = m.compact;
             put_compact_modules(monitors[k], m.compact_modules);
         }
@@ -180,6 +203,10 @@ function normalize(raw) {
         if (!(k in saved_positions) && positions.indexOf(nested_position) >= 0) saved_positions[k] = nested_position;
     }
     const out_shared = { place: place, order: unique(shared.order), last_side: clean_last(shared.last_side) };
+    if (is_object(shared.second_bar)) {
+        const second = { place: clean_place(shared.second_bar.place, false), order: unique(shared.second_bar.order) };
+        if (Object.keys(second.place).length > 0 || second.order.length > 0) out_shared.second_bar = second;
+    }
     if (positions.indexOf(shared.position) >= 0) out_shared.position = shared.position;
     // The compact setting of the shared layout; a monitor with its own layout has its own.
     if (typeof shared.compact === "boolean") out_shared.compact = shared.compact;
@@ -196,6 +223,26 @@ function normalize(raw) {
     if (raw.cava_migrated === true) out.cava_migrated = true;
     if (raw.auto_compact === false) out.auto_compact = false;
     return out;
+}
+
+// A normalized state as the file holds it: a layout with a second bar keeps both bars in a `bars` list, the shape
+// bars.json rules use; a single-bar layout keeps the old shape, so files without second-bar edits do not change.
+function to_file(state) {
+    const unfold = (holder, keys) => {
+        if (!holder.second_bar) return holder;
+        const first = {};
+        const out = Object.assign({}, holder);
+        for (const k of keys) {
+            first[k] = holder[k];
+            delete out[k];
+        }
+        delete out.second_bar;
+        out.bars = [first, holder.second_bar];
+        return out;
+    };
+    const monitors = {};
+    for (const k of Object.keys(state.monitors)) monitors[k] = unfold(state.monitors[k], sides);
+    return Object.assign({}, state, { shared: unfold(state.shared, ["place", "order"]), monitors: monitors });
 }
 
 // The global auto compact switch: on by default, saved only while off.
@@ -279,8 +326,10 @@ function has_cava(state) {
     const s = normalize(state);
     const in_list = list => list.some(e => e.split(":")[0] === "cava");
     const in_map = map => !!map && "cava" in map;
+    const second = s.shared.second_bar;
     return "cava" in s.shared.place || "cava" in s.shared.last_side || in_list(s.shared.order) || in_map(s.shared.compact_modules)
-        || Object.values(s.monitors).some(m => sides.some(side => in_list(m[side])) || "cava" in m.last_side || in_map(m.compact_modules));
+        || (!!second && ("cava" in second.place || in_list(second.order)))
+        || Object.values(s.monitors).some(m => shown_entries(m).some(e => e.split(":")[0] === "cava") || "cava" in m.last_side || in_map(m.compact_modules));
 }
 
 // `cava` was renamed `media`. A list that names both keeps the `media` one; otherwise `cava` takes `media`'s name in
@@ -302,8 +351,13 @@ function migrate_cava_to_media(state) {
     rename_keys(next.shared.last_side);
     if (next.shared.compact_modules) rename_keys(next.shared.compact_modules);
     next.shared.order = rename_list(next.shared.order);
+    if (next.shared.second_bar) {
+        rename_keys(next.shared.second_bar.place);
+        next.shared.second_bar.order = rename_list(next.shared.second_bar.order);
+    }
     for (const m of Object.values(next.monitors)) {
         for (const side of sides) m[side] = rename_list(m[side]);
+        if (m.second_bar) for (const side of sides) m.second_bar[side] = rename_list(m.second_bar[side]);
         rename_keys(m.last_side);
         if (m.compact_modules) rename_keys(m.compact_modules);
     }
@@ -369,6 +423,13 @@ function bars_of(rule) {
     return { bars: [first, out], problems: problems };
 }
 
+// A bar's modules on one line for Settings, labelled by its edge: "Top bar: start workspaces · clock · tray", an empty
+// side as a dash.
+function bar_summary(bar) {
+    const edge = bar.position.charAt(0).toUpperCase() + bar.position.slice(1);
+    return edge + " bar: " + sides.map(s => bar[s].length > 0 ? bar[s].join(" ") : "-").join(" · ");
+}
+
 // One rule per bar a screen draws (bars_of), for Bar.qml: the screen's rule with that bar's edge and lists.
 function bar_rules(rule) {
     return bars_of(rule).bars.map(bar => {
@@ -415,23 +476,37 @@ function effective(rule, state, key) {
     const own = key && state.monitors[key];
     // The editor's per-module overrides win over the rule's, entry by entry, like its layout compact over the rule's.
     const with_overrides = layer => put_compact_modules(out, Object.assign(clean_compact_modules(rule.compact_modules), layer.compact_modules));
+    // The rule decides whether the screen has a second bar; a saved second bar only fills one the rule has.
+    const second = out.second_bar ? Object.assign({}, out.second_bar, lists_of(out.second_bar)) : null;
+    if (second) out.second_bar = second;
     if (own) {
         for (const s of sides) out[s] = own[s].slice();
+        if (second && own.second_bar) Object.assign(second, lists_of(own.second_bar));
         if (own.compact !== undefined) out.compact = own.compact;
         return with_overrides(own);
     }
     if (state.shared.compact !== undefined) out.compact = state.shared.compact;
     with_overrides(state.shared);
-    const place = state.shared.place;
-    for (const entry of Object.keys(place)) {
-        const to = place[entry];
-        // A plain entry's placement covers its twin too (system:cpu); a saved twin's own entry stays exact, so a stale one cannot hide the plain module.
-        const is_entry = e => e === entry || (plain_entry(entry) === entry && plain_entry(e) === entry);
-        if (to !== "hidden" && out[to].indexOf(entry) >= 0 && !sides.some(s => out[s].some(e => e !== entry && is_entry(e)))) continue;
-        for (const s of sides) out[s] = out[s].filter(e => !is_entry(e));
-        if (to !== "hidden") out[to].push(entry);
-    }
-    for (const s of sides) out[s] = sort_side(out[s], state.shared.order);
+    const bars = second ? [out, second] : [out];
+    const layers = second && state.shared.second_bar ? [state.shared, state.shared.second_bar] : [state.shared];
+    layers.forEach((layer, b) => {
+        for (const entry of Object.keys(layer.place)) {
+            const to = layer.place[entry];
+            // A plain entry's placement covers its twin too (system:cpu); a saved twin's own entry stays exact, so a stale one cannot hide the plain module.
+            const is_entry = e => e === entry || (plain_entry(entry) === entry && plain_entry(e) === entry);
+            const elsewhere = sides.some(s => bars[b][s].some(e => e !== entry && is_entry(e))) || bars.some((bar, i) => i !== b && sides.some(s => bar[s].some(is_entry)));
+            if (to !== "hidden" && bars[b][to].indexOf(entry) >= 0 && !elsewhere) continue;
+            // Off both bars, as a screen shows each module once, then onto this layer's bar.
+            for (const bar of bars) {
+                for (const s of sides) bar[s] = bar[s].filter(e => !is_entry(e));
+            }
+            if (to !== "hidden") bars[b][to].push(entry);
+        }
+    });
+    bars.forEach((bar, b) => {
+        const order = layers[b] ? layers[b].order : [];
+        for (const s of sides) bar[s] = sort_side(bar[s], order);
+    });
     return out;
 }
 
@@ -464,14 +539,12 @@ function hidden_entries(rules, state, layout) {
     const add = e => {
         if (all.indexOf(e) < 0 && aliases.indexOf(e) < 0) all.push(e);
     };
-    for (const rule of rules) {
-        const lists = layout_of(rule);
-        for (const s of sides) lists[s].forEach(add);
-    }
+    for (const rule of rules) shown_entries(layout_of(rule)).forEach(add);
     Object.keys(state.shared.place).forEach(add);
+    if (state.shared.second_bar) Object.keys(state.shared.second_bar.place).forEach(add);
     Object.keys(state.shared.last_side).forEach(add);
     for (const m of Object.values(state.monitors)) {
-        for (const s of sides) m[s].forEach(add);
+        shown_entries(m).forEach(add);
         Object.keys(m.last_side).forEach(add);
     }
     const shown = shown_entries(layout);
@@ -481,10 +554,22 @@ function hidden_entries(rules, state, layout) {
 // Side a tracked rule gives an entry, else "".
 function tracked_side(rules, entry) {
     for (const rule of rules) {
-        const s = side_of(layout_of(rule), entry);
+        const lists = layout_of(rule);
+        const s = side_of(lists, entry) || (lists.second_bar ? side_of(lists.second_bar, entry) : "");
         if (s) return s;
     }
     return "";
+}
+
+// Which bar of `layout` (a layout_of view) shows `entry`: 0 the first, 1 the second, -1 neither.
+function bar_holding(layout, entry) {
+    if (side_of(layout, entry)) return 0;
+    return layout.second_bar && side_of(layout.second_bar, entry) ? 1 : -1;
+}
+
+// The lists of bar `bar` (0 or 1) of a layout_of view; the first bar when the view has no second.
+function bar_view(layout, bar) {
+    return bar === 1 && layout.second_bar ? layout.second_bar : layout;
 }
 
 function apply_op(layout, op) {
@@ -548,8 +633,13 @@ function purge(state, entry) {
     next.shared.order = next.shared.order.filter(e => e !== entry);
     const drop_override = map => without(without(map, entry), plain_entry(entry));
     if (next.shared.compact_modules) put_compact_modules(next.shared, drop_override(next.shared.compact_modules));
+    if (next.shared.second_bar) {
+        delete next.shared.second_bar.place[entry];
+        next.shared.second_bar.order = next.shared.second_bar.order.filter(e => e !== entry);
+    }
     for (const m of Object.values(next.monitors)) {
         for (const s of sides) m[s] = m[s].filter(e => e !== entry);
+        if (m.second_bar) for (const s of sides) m.second_bar[s] = m.second_bar[s].filter(e => e !== entry);
         delete m.last_side[entry];
         if (m.compact_modules) put_compact_modules(m, drop_override(m.compact_modules));
     }
@@ -586,33 +676,55 @@ function addable_entries(rules, state, layout) {
 }
 
 // op: { type: "hide" | "show" | "side" | "remove", entry, side?, index? } or { type: "move", entry, delta } or { type: "move", entry, with } to swap with another entry. Returns a new state.
+// `op.bar` (0, the default, or 1) is the bar the op works on: a show or side op lands the entry on that bar and takes it
+// off the other one.
 function edit(rule, state, key, op) {
     const next = normalize(state);
     const view = layout_of(effective(rule, next, key));
     const own = key && next.monitors[key];
     if (op.type === "remove") return purge(next, op.entry);
-    const after = apply_op(view, op);
-    const was = side_of(view, op.entry);
+    const bar = op.bar === 1 && view.second_bar ? 1 : 0;
+    const after = apply_op(bar_view(view, bar), op);
+    const held_by = bar_holding(view, op.entry);
+    const was_view = bar_view(view, held_by);
+    const was = held_by < 0 ? "" : side_of(was_view, op.entry);
+    const remembered = () => ({ side: was, index: was_view[was].indexOf(op.entry) });
     if (own) {
-        next.monitors[key] = Object.assign({}, own, after);
-        if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
+        const other = bar === 1 ? view : view.second_bar;
+        const other_after = other && op.type !== "move" ? apply_op(other, { type: "hide", entry: op.entry }) : other;
+        const first = bar === 1 ? other_after : after;
+        next.monitors[key] = Object.assign({}, own, lists_of(first));
+        if (view.second_bar) next.monitors[key].second_bar = lists_of(bar === 1 ? after : other_after);
+        if (op.type === "hide" && was) next.monitors[key].last_side[op.entry] = remembered();
         return next;
     }
-    // A new placement under the plain name replaces any saved twin placement, which `effective` would otherwise apply after it.
-    if (op.type !== "move") Object.keys(next.shared.place).filter(k => k !== plain_entry(op.entry) && plain_entry(k) === plain_entry(op.entry)).forEach(k => delete next.shared.place[k]);
-    if (op.type === "hide") {
-        next.shared.place[plain_entry(op.entry)] = "hidden";
-        if (was) next.shared.last_side[op.entry] = { side: was, index: view[was].indexOf(op.entry) };
-    } else {
-        if (op.type !== "move") next.shared.place[plain_entry(op.entry)] = op.side;
-        next.shared.order = order_from(after, next.shared.order);
+    const plain = plain_entry(op.entry);
+    if (bar === 1 && !next.shared.second_bar) next.shared.second_bar = { place: {}, order: [] };
+    const layers = [next.shared].concat(next.shared.second_bar ? [next.shared.second_bar] : []);
+    // A new placement under the plain name replaces any saved twin placement, and the other bar's placement of it, which
+    // `effective` would otherwise apply after it.
+    // A hide is written on the first bar, whichever bar it came from.
+    const home = op.type === "hide" ? 0 : bar;
+    if (op.type !== "move") {
+        layers.forEach((layer, b) => Object.keys(layer.place).filter(k => plain_entry(k) === plain && (k !== plain || b !== home)).forEach(k => delete layer.place[k]));
     }
+    if (op.type === "hide") {
+        next.shared.place[plain] = "hidden";
+        if (was) next.shared.last_side[op.entry] = remembered();
+    } else {
+        if (op.type !== "move") layers[bar].place[plain] = op.side;
+        layers[bar].order = order_from(after, layers[bar].order);
+    }
+    if (next.shared.second_bar && Object.keys(next.shared.second_bar.place).length === 0 && next.shared.second_bar.order.length === 0) delete next.shared.second_bar;
     return next;
 }
 
 function set_own(state, key, layout, compact, compact_modules) {
     const next = normalize(state);
-    next.monitors[key] = put_compact_modules(Object.assign({}, layout_of(layout), { compact: compact }), compact_modules);
+    const lists = layout_of(layout);
+    const own = Object.assign(lists_of(lists), { compact: compact });
+    if (lists.second_bar) own.second_bar = lists_of(lists.second_bar);
+    next.monitors[key] = put_compact_modules(own, compact_modules);
     return next;
 }
 
@@ -685,9 +797,10 @@ function lualine_shown(layout) {
 // Moves `entry` one place along the bar: swaps with the neighbor on its side, or crosses to the next side at the end of
 // it (left to center to right). A sectioned (lualine) bar draws center and right as one sorted list, so there the neighbor
 // is the next module shown, even on the other side, and it never swaps a module out of its section; the left side is not sectioned.
-function move_step(rule, state, key, entry, delta, sectioned) {
+// `bar` (0 or 1) is the bar being edited.
+function move_step(rule, state, key, entry, delta, sectioned, bar) {
     const next = normalize(state);
-    const view = layout_of(effective(rule, next, key));
+    const view = bar_view(layout_of(effective(rule, next, key)), bar);
     const side = side_of(view, entry);
     if (side === "") return next;
     const is_sectioned = sectioned && side !== "left";
@@ -701,13 +814,23 @@ function move_step(rule, state, key, entry, delta, sectioned) {
         const neighbor = neighbor_pair[0];
         if (is_sectioned && lualine_section(neighbor) !== lualine_section(entry)) return next;
         const neighbor_side = neighbor_pair[1];
-        if (neighbor_side === side) return edit(rule, next, key, { type: "move", entry: entry, with: neighbor });
+        if (neighbor_side === side) return edit(rule, next, key, { type: "move", entry: entry, with: neighbor, bar: bar });
         // Onto the other side of the neighbor, so the two trade places in the drawn order.
-        return edit(rule, next, key, { type: "side", entry: entry, side: neighbor_side, index: view[neighbor_side].indexOf(neighbor) + (delta > 0 ? 1 : 0) });
+        return edit(rule, next, key, { type: "side", entry: entry, side: neighbor_side, index: view[neighbor_side].indexOf(neighbor) + (delta > 0 ? 1 : 0), bar: bar });
     }
     const to = is_sectioned ? (delta < 0 ? "left" : undefined) : sides[sides.indexOf(side) + delta];
     if (to === undefined) return next;
-    return edit(rule, next, key, { type: "side", entry: entry, side: to, index: delta > 0 ? 0 : -1 });
+    return edit(rule, next, key, { type: "side", entry: entry, side: to, index: delta > 0 ? 0 : -1, bar: bar });
+}
+
+// Moves `entry` onto bar `bar` (0 or 1), on the side it had, at that side's end. Nothing changes without a second bar
+// or when the entry is already there.
+function move_to_bar(rule, state, key, entry, bar) {
+    const next = normalize(state);
+    const view = layout_of(effective(rule, next, key));
+    const from = bar_holding(view, entry);
+    if (!view.second_bar || from < 0 || from === bar) return next;
+    return edit(rule, next, key, { type: "side", entry: entry, side: side_of(bar_view(view, from), entry), index: -1, bar: bar });
 }
 
 // Takes the module off the bar into the hidden list. Nothing is purged, so it can come back.
@@ -715,11 +838,11 @@ function hide_entry(rule, state, key, entry) {
     return edit(rule, state, key, { type: "hide", entry: entry });
 }
 
-// Puts a hidden module back on the side it left (else the tracked side, else right).
-function unhide_place(rules, rule, state, key, entry) {
+// Puts a hidden module back on the side it left (else the tracked side, else right), on bar `bar` (0 or 1), the one being edited.
+function unhide_place(rules, rule, state, key, entry, bar) {
     const next = normalize(state);
     const back = restore_side(rules, next, key, entry);
-    return edit(rule, next, key, { type: "show", entry: entry, side: back.side, index: back.index });
+    return edit(rule, next, key, { type: "show", entry: entry, side: back.side, index: back.index, bar: bar });
 }
 
 // `o`: a sharing monitor gets a copy of what it shows now; a monitor with its own layout goes back to the shared one.

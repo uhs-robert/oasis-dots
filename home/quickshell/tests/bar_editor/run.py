@@ -275,6 +275,16 @@ def scenario_editor(name):
     return run
 
 
+def scenario_two_bars(root):
+    """Edits on a screen with two bars; the file then holds the shared layout as a `bars` list, as bars.json rules do."""
+    problems = scenario_editor("editor_two_bars")(root)
+    shared = bars_file(root).get("shared", {})
+    bars = shared.get("bars")
+    if not isinstance(bars, list) or len(bars) != 2 or "place" in shared or "order" in shared:
+        problems.append("the shared layout was not written as a bars list: %r" % shared)
+    return problems
+
+
 SCENARIOS = {
     "rapid_1ms": scenario_rapid("rapid_1ms", 60),
     "rapid_5ms": scenario_rapid("rapid_5ms", 60),
@@ -288,6 +298,10 @@ SCENARIOS = {
     "editor_hint_keys_monitor": scenario_editor("editor_hint_keys_monitor"),
     "editor_hint_keys_normal_row": scenario_editor("editor_hint_keys_normal_row"),
     "editor_hint_keys_normal_column": scenario_editor("editor_hint_keys_normal_column"),
+    "editor_hint_keys_normal_top_of_two": scenario_editor("editor_hint_keys_normal_top_of_two"),
+    "editor_hint_keys_normal_bottom_of_two": scenario_editor("editor_hint_keys_normal_bottom_of_two"),
+    "editor_two_bars": scenario_two_bars,
+    "editor_two_bars_own": scenario_editor("editor_two_bars_own"),
     "editor_hint_keys_hidden": scenario_editor("editor_hint_keys_hidden"),
     "editor_hint_keys_carrying": scenario_editor("editor_hint_keys_carrying"),
     "editor_hint_keys_visual": scenario_editor("editor_hint_keys_visual"),
