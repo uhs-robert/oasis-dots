@@ -182,6 +182,7 @@ RowsSection {
         root.strip_target = Math.max(0, root.monitors.indexOf(m));
         root.strip_cursor = root.shown_cursor;
         root.in_strip = true;
+        root.reveal_request(hero);
     }
 
     // The strip takes Esc, h and Tab before the popup would use them to go back to the sidebar.
@@ -325,6 +326,7 @@ RowsSection {
         }
 
         WallpaperHero {
+            id: hero
             visible: !root.picking && root.images.length > 0
             Layout.fillWidth: true
             st: root.st

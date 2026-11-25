@@ -214,7 +214,10 @@ Popup {
     // and the row stays clear of the scroll fades of `cue`, the ScrollCue over `flick`.
     function reveal_selected(flick, scope, cue) {
         const row = root.selected_under(scope);
-        if (!row) return;
+        if (row) root.reveal_item(flick, row, cue);
+    }
+
+    function reveal_item(flick, row, cue) {
         const top = row.mapToItem(flick.contentItem, 0, 0).y;
         const lead = Style.px(24) + root.row_extra;
         flick.contentY = Cue.reveal_target(top, row.height, flick.contentY, flick.height, flick.contentHeight, lead, cue.fade_height);
@@ -230,11 +233,20 @@ Popup {
         root.reveal_selected(pane_flick, pane_loader, pane_cue);
     }
 
+    // A section asks to see something that is not a selectable row (Wallpaper's filmstrip) with `reveal_request(item)`.
+    function reveal_pane_item(item) {
+        if (item) root.reveal_item(pane_flick, item, pane_cue);
+    }
+
     Connections {
         target: root.pane
         ignoreUnknownSignals: true
         function onCursorChanged() {
             Qt.callLater(root.reveal_pane);
+        }
+
+        function onReveal_request(item) {
+            Qt.callLater(root.reveal_pane_item, item);
         }
     }
 
