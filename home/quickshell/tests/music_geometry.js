@@ -88,11 +88,13 @@ const cases = [
     return [walk.length > 8, walk.every((v, i) => i === 0 || v >= walk[i - 1])];
   }, [true, true]],
   ["bars sit on whole pixels", () => band_top.every(b => [b.x, b.y, b.w, b.h].every(Number.isInteger)), true],
-  ["cached slots give the same bars as the one-call form", () => {
+  ["one cached plan serves changing levels like a fresh plan each time", () => {
     const frame = M.frame_from_layout(layout("top", true));
     const ramp = Array.from({ length: 48 }, (_, i) => i / 47);
-    return JSON.stringify(M.bars_from_slots(M.music_slots(frame), ramp)) === JSON.stringify(M.music_bars(frame, ramp));
-  }, true],
+    const falling = ramp.slice().reverse();
+    const plan = M.music_slots(frame);
+    return [ramp, falling, ramp].map(lv => JSON.stringify(M.bars_from_slots(plan, lv)) === JSON.stringify(M.bars_from_slots(M.music_slots(frame), lv)) && M.bars_from_slots(plan, lv).length > 0);
+  }, [true, true, true]],
   ["bars do not overlap on one edge", () => { const t = on_edge(top_bar, "top"); return t.every((b, i) => i === 0 || b.x >= t[i - 1].x + t[i - 1].w); }, true],
   ["a tiny hole draws nothing and does not throw", () => M.music_bars({ w: 40, h: 40, hole: { x: 5, y: 5, w: 30, h: 30 }, radius: 15, strips: [] }, loud), []],
   ["levels are not mutated", () => { const l = [1, 0.5]; M.music_bars_for_layout(layout("top", true), l); return l; }, [1, 0.5]],

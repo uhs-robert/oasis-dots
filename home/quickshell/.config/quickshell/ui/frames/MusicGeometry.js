@@ -72,7 +72,7 @@ function music_slots(frame, options) {
           rect: (at, len) => ({ x: at, y: into_hole ? hole.y + hole.h - len : hole.y + hole.h, w: o.bar_width, h: len }) },
         { edge: "left", from: hole.y + r, to: hole.y + hole.h - r,
           rect: (at, len) => ({ x: into_hole ? hole.x : hole.x - len, y: at, w: len, h: o.bar_width }) }
-    ].filter(s => s.to - s.from > 0 && (into_hole ? hole_reach : depth[s.edge]) > 0);
+    ].filter(s => s.to - s.from > 0 && (into_hole ? hole_reach : depth[s.edge]) >= 1);
     const total = sides.reduce((sum, s) => sum + (s.to - s.from), 0);
     const slots = [];
     let before = 0;
