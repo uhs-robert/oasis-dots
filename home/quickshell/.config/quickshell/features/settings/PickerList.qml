@@ -232,7 +232,6 @@ ColumnLayout {
 
     ColumnLayout {
         id: list_col
-        objectName: "split_list"
         parent: root.split ? root.list_host : root
         // Out in the host it no longer inherits the list's visibility.
         visible: root.visible

@@ -102,7 +102,8 @@ Popup {
         body_width: body.width,
         body_height: body.height,
         help_below: body.help_below,
-        help_full: panel.help_full
+        // A split picker list fills the help column; the panel adds the case of long help.
+        help_full: !!(root.pane && root.pane.picking && root.pane.pick_list && root.pane.pick_list.split) || panel.help_full
     })
 
     Loader {
