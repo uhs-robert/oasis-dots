@@ -108,14 +108,15 @@ A check prints `ok`, `all finished`, or one line per problem:
 - `STOPPED <fleet>`: the fleet's tmux session is gone.
 - `HUNG <name> <pid> <elapsed>`: a test or e2e runner (`node --test`, `npm test`, `npm run e2e`, `just test`, `labwc`, or Betterbird or Thunderbird on a `/tmp` profile) runs longer than 2 hours. Its cwd or command line is inside a worktree of that session. Set the time with `FLEET_HUNG_SECONDS`. The owner's own Betterbird and Firefox never match. Each pid is reported once.
 
-A doc that is `approved` with no owner keeps the fleet from finishing, and the log shows `waiting: <ids>`. `all finished` means every session is finished and no such doc is left.
 - `CI_RED <repo> <run url>`: the latest completed GitHub Actions run on the repo's default branch failed. Each head sha is reported once. The check is skipped when `gh` is missing or offline.
+
+A doc that is `approved` with no owner keeps the fleet from finishing, and the log shows `waiting: <ids>`. `all finished` means every session is finished and no such doc is left.
 
 When the loop exits, read its output, then:
 
 1. `all finished` or `STOPPED`: tell the owner and stop. Do not start the loop again.
 2. Look at each named session with `tmux capture-pane -p -t <fleet-session>:<name>`.
-3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the unfinished piece, or set `waiting_on` and say why it is held. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
+3. A `STUCK` session that is really stuck gets a nudge by `SendMessage` to its `ListAgents` name: continue the unfinished piece, or set `waiting_on` and say why it is held. For `WAITING`, find who should own the doc in the roster and `SendMessage` that session, or tell the owner. Tell the owner about `PROMPT`, `LOST`, `EXITED` and `GONE`.
 4. A `HUNG` run: look at the process (`ps -o pid,etime,args -p <pid>`). If it is really hung, `SendMessage` the named session to kill that pid and rerun the test. The planner kills nothing itself.
 5. A `CI_RED` main: find the session that merged the failed run's head. Take the run id from the URL, then `gh run view <run id> --json headSha -q .headSha`, `git fetch origin` and `git log -1 --format=%an%n%s <head sha>`. Find the merged piece's owner in `plans ls`, and tell it by `SendMessage` that main is red, with the run URL. Tell the owner as well.
 6. Start the loop again with the same command.
