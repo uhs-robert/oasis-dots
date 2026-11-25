@@ -3,7 +3,7 @@
 default:
     @just --list
 
-system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/opt/ --exclude=/usr/lib/firefox/ --exclude=/etc/ssh/"
+system_excludes := "--exclude=/etc/tuigreet/config.toml --exclude=/etc/greetd/quickshell/ --exclude=/etc/greetd/hyprland.lua --exclude=/usr/local/bin/qs-greeter --exclude=/usr/lib/firefox/ --exclude=/etc/ssh/"
 
 # Show pending changes between system/ and / (dry run, no sudo)
 system-diff:

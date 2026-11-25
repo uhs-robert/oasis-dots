@@ -91,5 +91,16 @@ mv "$r/home/.config/real" "$r/home/.config/tbkeys"
 HOME=$(home_for "$r") migrate_retire_tbkeys "$r" >/dev/null 2>&1
 check test -d "$r/home/.config/tbkeys"
 
+case_name='with system files off, root stays untouched and sudo is never called, but the dangling link goes'
+r=$scratch/f
+make_root "$r"
+ln -s ../dotfiles/missing "$r/home/.config/tbkeys"
+: >"$FAKE_SUDO_LOG"
+OPT_SYSTEM_FILES=0 HOME=$(home_for "$r") migrate_retire_tbkeys "$r" >/dev/null 2>&1
+for f in "${_TBKEYS_ROOT_FILES[@]}"; do check test -e "$r$f"; done
+check test -d "$r/usr/local/share/betterbird-autoconfig"
+check test ! -s "$FAKE_SUDO_LOG"
+check test ! -L "$r/home/.config/tbkeys"
+
 [[ $failures -eq 0 ]] && echo "migrate-retire-tbkeys: all passed"
 exit $((failures > 0))
