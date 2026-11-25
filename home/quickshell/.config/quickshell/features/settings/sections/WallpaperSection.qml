@@ -42,11 +42,11 @@ RowsSection {
     readonly property string hint: WallpaperSettings.notice !== "" ? WallpaperSettings.notice : WallpaperSettings.alive ? "" : "The rotator is not running; changes apply when it starts."
 
     section_keys: "o open folder"
-    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · / search · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · / search images · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
+    footer_hint: root.editing ? "Enter save · empty resets · Ctrl+u clear · Esc cancel" : root.in_strip ? "h/l move · gg/G first/last · j/k monitor · Enter pin on " + (root.strip_monitor ? root.strip_monitor.name : "") + " · p unpin · r rotate · / search · Esc back to rows" : root.current_monitor ? "j/k move · H/L change · Enter images · / search images · p pin/unpin · r rotate " + root.current_monitor.name + " · o open folder · h/Esc sections · q close" : "j/k move · H/L change · Enter list · r rotate all · o open folder · h/Esc sections · q close"
 
     // On the strip the help card lists the strip's keys instead of the monitor row's.
     description: root.in_strip ? "Pick an image for " + (root.strip_monitor ? root.strip_monitor.name : "a monitor") + " from the collection." : root.described_row && root.described_row.desc ? root.described_row.desc : ""
-    description_keys: root.in_strip ? "h/l move · gg/G first/last · j/k or Tab monitor · Enter pin · p unpin · / search list · Esc back" : root.keys_of(root.described_row)
+    description_keys: root.in_strip ? "h/l move · gg/G first/last · j/k or Tab monitor · Enter pin · p unpin · r rotate · / search list · Esc back" : root.keys_of(root.described_row)
 
     function toggle_row(label, key, desc) {
         return {
