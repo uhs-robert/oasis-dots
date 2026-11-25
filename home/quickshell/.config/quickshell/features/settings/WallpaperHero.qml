@@ -23,6 +23,8 @@ ColumnLayout {
     // The file the preview and the name show. It is the cursor image while browsing, and the monitor's own image otherwise,
     // which may not be in the listed collection.
     property string path: ""
+    // What the section asks the popup to scroll into view: the filmstrip, not the whole hero, which can be taller than a short pane.
+    readonly property Item filmstrip_item: filmstrip
     readonly property real cell_width: Style.px(128)
     readonly property real cell_height: Math.round(root.cell_width * 9 / 16)
 
@@ -86,6 +88,7 @@ ColumnLayout {
 
     ListView {
         id: filmstrip
+        visible: root.images.length > 0
         Layout.fillWidth: true
         Layout.preferredHeight: root.cell_height + 4
         orientation: ListView.Horizontal
