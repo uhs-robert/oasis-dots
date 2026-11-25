@@ -27,6 +27,12 @@ Item {
     readonly property bool has_preview: root.preview_height > 0
     // The help card's height, for a list a pane puts there in place of the card (PickerList.list_host).
     readonly property real help_room: help_flick.height
+    // Where a skin must not draw: a split picker list sits in the help column (PickerList tags it "split_list"), or the
+    // content reaches down to the corner where a skin may put a dial.
+    readonly property bool help_full: {
+        for (const child of help_slot.children) if (child.visible && child.objectName === "split_list") return true;
+        return root.help_content > root.help_room - Style.px(170);
+    }
 
     // A preview is pinned to the panel's top (or its right half when stacked) and the help card takes the rest, so
     // neither the focused row's text nor an open list hiding the card moves the preview.

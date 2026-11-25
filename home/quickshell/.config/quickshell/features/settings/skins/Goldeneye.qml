@@ -61,16 +61,16 @@ QtObject {
         }
     }
 
-    // Bottom corner of the panel, where the help card is shortest. Hidden when help is stacked under the pane, since the
-    // panel is then a thin strip with no room for a dial.
+    // Bottom corner of the panel. Hidden when help is stacked under the pane (a thin strip) or when the help column is
+    // full (a split picker list or long help), so the dial never covers content.
     readonly property Component panel_art: Component {
         Item {
             id: art
-            property var ctx: ({ help_below: true, body_height: 0 })
+            property var ctx: ({ help_below: true, help_full: true, body_height: 0 })
 
             SettingsWatch {
                 readonly property real side: Math.round(Math.min(art.width * 0.5, art.height * 0.3, 150))
-                visible: !art.ctx.help_below && side >= 64
+                visible: !art.ctx.help_below && !art.ctx.help_full && side >= 64
                 running: art.visible && art.Window.window !== null && art.Window.window.visible
                 width: side
                 height: side

@@ -344,9 +344,6 @@ class SettingsSkinImportTest(PathsCase):
     def test_theme_ui_and_own_widgets_pass(self):
         self.assertEqual(self.skin("import qs.theme\nimport qs.ui.menu\nimport qs.styles.nes.widgets\nimport \"../../../styles/nes/widgets\"\nimport QtQuick\n"), [])
 
-    def test_own_style_root_passes(self):
-        self.assertEqual(self.skin("import qs.styles.nes\nimport \"../../../styles/nes\"\n"), [])
-
     def test_a_service_another_style_or_a_sibling_feature_fails(self):
         found = self.skin("import qs.services\nimport qs.styles.snes.widgets\nimport qs.features.bar\n")
         self.assertEqual(len(found), 3)

@@ -532,12 +532,12 @@ SETTINGS_SKINS = "features/settings/skins/"
 
 
 def check_skin_imports(repo, consumer, origin):
-    """A settings skin imports only qs.theme, qs.ui and its own style folder (styles/<name>, widgets included), so a skin
-    cannot reach a service or another feature. Default has no style and so no folder."""
+    """A settings skin imports only qs.theme, qs.ui and the widgets of its own style (styles/<name>/widgets), so a skin
+    cannot reach a service or another feature. Default has no style and so no widgets."""
     if not (consumer.startswith(SETTINGS_SKINS) and consumer.endswith(".qml")):
         return []
     style = posixpath.splitext(posixpath.basename(consumer))[0].lower()
-    own = f"styles/{style}"
+    own = f"styles/{style}/widgets"
     found = []
     for kind, target, line in imports(os.path.join(repo, origin)):
         if kind == "qs":
