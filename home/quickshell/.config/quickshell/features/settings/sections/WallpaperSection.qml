@@ -182,7 +182,7 @@ RowsSection {
         root.strip_target = Math.max(0, root.monitors.indexOf(m));
         root.strip_cursor = root.shown_cursor;
         root.in_strip = true;
-        root.reveal_request(hero);
+        root.reveal_request(hero.filmstrip_item);
     }
 
     // The strip takes Esc, h and Tab before the popup would use them to go back to the sidebar.
@@ -215,7 +215,9 @@ RowsSection {
         else if (event.key === Qt.Key_P) {
             if (m) WallpaperSettings.clear_pin(m.key);
         }
-        else return;
+        else if (event.key === Qt.Key_R) root.rotate(m);
+        // Space would fall through to the monitor row's mode toggle, which is not the browsed monitor.
+        else if (event.key !== Qt.Key_Space) return;
         event.accepted = true;
     }
 
@@ -331,7 +333,7 @@ RowsSection {
 
         WallpaperHero {
             id: hero
-            visible: !root.picking && root.images.length > 0
+            visible: !root.picking && (root.images.length > 0 || root.hero_path !== "")
             Layout.fillWidth: true
             st: root.st
             images: root.images
