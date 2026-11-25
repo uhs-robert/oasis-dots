@@ -455,5 +455,26 @@ rm "$PLANS_DATA/FAIL_APPROVED"
 out=$(watch f14 wt 2>&1)
 check "the fleet finishes once the query works and nothing waits" test "$out" = "all finished"
 
+# The owner value plans writes for a freed doc is "none"
+jq -n '[{id: "piece-next", project: "p", status: "approved", owner_session: "none"}]' >"$PLANS_DATA/APPROVED.json"
+out=$(watch f14 wt 2>&1)
+check "an approved doc with owner none keeps the fleet from finishing" test -z "$(grep 'all finished' <<<"$out")"
+
+# A waiting set that stands for the stuck time wakes the planner once, and a changed set starts the time again
+stuck=2
+sleep 3
+out=$(watch f14 wt 2>&1)
+check "an unchanged waiting set past the stuck time is reported WAITING" grep -q '^WAITING piece-next' <<<"$out"
+out=$(watch f14 wt 2>&1)
+check "WAITING is reported once" test "$out" = ok
+jq -n '[{id: "piece-other", project: "p", status: "approved", owner_session: "none"}]' >"$PLANS_DATA/APPROVED.json"
+out=$(watch f14 wt 2>&1)
+check "a changed waiting set is not reported at once" test "$out" = ok
+sleep 3
+out=$(watch f14 wt 2>&1)
+check "the changed set is reported after the stuck time" grep -q '^WAITING piece-other' <<<"$out"
+rm "$PLANS_DATA/APPROVED.json"
+stuck=
+
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
