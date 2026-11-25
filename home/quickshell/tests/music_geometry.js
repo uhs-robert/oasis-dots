@@ -46,6 +46,7 @@ const cases = [
   ["bottom bar: bars stand under the hole's top edge at 8", () => on_edge(bottom_bar, "top").every(b => b.y === 8), true],
   ["no bar: bars use the thin band's edge", () => on_edge(no_bar, "top").every(b => b.y === 8), true],
   ["two strips: both stay free", () => strip_free(two, 40, 40), true],
+  ["real layout, both bars: no bar in either strip", () => { const lay = F.frame_layout(1000, 600, { top: 40, bottom: 30 }, kit); return M.music_bars_for_layout(lay, loud).every(b => b.y >= 40 && b.y + b.h <= 570); }, true],
   ["two strips: every edge still has bars", () => ["top", "right", "bottom", "left"].map(e => on_edge(two, e).length > 0), [true, true, true, true]],
   ["a strip overlapping the hole clips the bars", () => strip_free(M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 10, w: 984, h: 580 }, radius: 20, strips: [{ edge: "top", size: 40 }] }, loud, hole_opt), 40, 0), true],
   ["default grows into the band: right bars start at the hole and stop at the screen edge", () => on_edge(band_top, "right").every(b => b.x === 992 && b.x + b.w === 1000), true],

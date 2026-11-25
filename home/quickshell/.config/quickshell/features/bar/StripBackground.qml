@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell.Hyprland
 import qs.theme
 import "../../ui/frames/FrameGeometry.js" as FrameGeometry
+import "../../ui/frames/DrawerGeometry.js" as Drawer
 import "../../ui/frames/IslandOutlines.js" as Outlines
 
 // The strip (Island shapes "Full bar" and "Floating strip"): one band across the bar carrying the style's island look,
@@ -17,6 +18,11 @@ BandFill {
     // The frame from this strip's own edge, so a bottom bar under two bars draws its part of the line as the near strip.
     readonly property var own_frame: root.frame ? FrameGeometry.seen_from(root.frame, root.edge) : null
     property string screen_name: ""
+    // A far strip tiles its dither and scanlines in its own mirrored band frame, while the frame's bands tile from the
+    // canonical origin: its band row v is canonical row depth - 1 - v, read backwards, as a flipped drawer's rows are.
+    readonly property var mirrored_phase: root.frame && root.frame.edge !== root.edge ? Drawer.texture_phase({ x: 0, y: root.frame.depth - 1, flipped: true }, Style.scanline_period) : null
+    phase_y: root.mirrored_phase ? -root.mirrored_phase.first_scanline : 0
+    dither_phase_y: root.mirrored_phase ? root.mirrored_phase.dither_y : 0
     readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property color frame_rim_color: Style.screen_frame_rim_color(root.focused)
     property color frame_inset_color: Style.screen_frame_inset_color(root.focused)

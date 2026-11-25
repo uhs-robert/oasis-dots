@@ -10,15 +10,15 @@
 // `hole` is the window area in screen pixels, `radius` its corner radius, and each strip a bar band that bars never
 // cover (it spans the full width, `size` tall from its edge). Any number of strips on any edge works.
 
-// Layout fields read: edge, has_bar, length, depth, near, far, start, end, radius (the hole itself comes from
-// FrameGeometry.hole_rect, which reads edge, depth, near, far, start, end and length).
+// Layout fields read: bar_edges, length, depth, radius (the hole itself comes from FrameGeometry.hole_rect, which reads
+// edge, depth, near, far, start, end and length). bar_edges lists every bar strip, both of them with two bars.
 function frame_from_layout(lay) {
     return {
         w: lay.length,
         h: lay.depth,
         hole: Frame.hole_rect(lay),
         radius: lay.radius,
-        strips: lay.has_bar ? [{ edge: lay.edge, size: lay.near }] : []
+        strips: ["top", "bottom"].filter(e => lay.bar_edges[e] > 0).map(e => ({ edge: e, size: lay.bar_edges[e] }))
     };
 }
 

@@ -73,7 +73,7 @@ Scope {
                     }
                 }
 
-                // Dither and scanlines tile from the canonical origin, as the strip's do, so they run on across the join.
+                // Dither and scanlines tile from the canonical origin, as the strips do (a far strip through its phase), so they run on across the joins.
                 Repeater {
                     model: Style.dither.a > 0 || Style.bar_scanline_color.a > 0 ? Frame.frame_blocks(root.layout) : []
 
