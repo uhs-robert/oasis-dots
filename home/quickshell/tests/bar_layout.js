@@ -20,10 +20,28 @@ const rule_sys = { match: "*", left: [], center: [], right: ["tray", "system"] }
 const view_of = (r, state) => L.layout_of(L.effective(r, state, ""));
 const edited_layout = state => L.layout_of(L.effective(rule3, state, ""));
 const plain = obj => JSON.parse(JSON.stringify(obj));
+const dual = { match: "*", compact: false, bars: [{ left: ["start", "workspaces"], center: ["clock"], right: ["tray"] }, { left: ["media"], center: [], right: ["volume", "battery"] }] };
+const bars_of = (r, state = L.normalize(null), k = "") => L.bars_of(L.effective(r, state, k));
 
 const cases = [
   ["a framed lualine bar leaves its two sides to the frame band", () => side_spans(40, 960, 1000), [[0, 40], [960, 1000]]],
   ["a lualine bar with the frame at the screen edges has no side", () => side_spans(0, 1000, 1000), []],
+  ["an old single-bar rule draws one bar with its own lists", () => bars_of(rule3), { bars: [{ position: "top", left: ["start", "workspaces"], center: ["clock"], right: ["tray", "volume"] }], problems: [] }],
+  ["an old bottom rule draws one bottom bar", () => bars_of(Object.assign({}, rule3, { position: "bottom" })).bars.map(b => b.position), ["bottom"]],
+  ["a bars list folds into the old shape: the first bar at the root, the second apart", () => { const f = L.fold_bars(dual); return [L.layout_of(f), f.second_bar, "bars" in f, f.compact]; }, [{ left: ["start", "workspaces"], center: ["clock"], right: ["tray"] }, { left: ["media"], center: [], right: ["volume", "battery"] }, false, false]],
+  ["folding twice changes nothing, and an old rule folds to itself", () => [JSON.stringify(L.fold_bars(L.fold_bars(dual))) === JSON.stringify(L.fold_bars(dual)), L.fold_bars(rule3) === rule3], [true, true]],
+  ["a one-bar list reads the same as the old shape", () => { const r = { match: "*", bars: [{ position: "bottom", left: ["start"], center: ["clock"], right: ["tray"] }] }; return [bars_of(r), L.position_of(r), L.position_source(r, L.normalize(null), "")]; }, [{ bars: [{ position: "bottom", left: ["start"], center: ["clock"], right: ["tray"] }], problems: [] }, "bottom", "bars.json"]],
+  ["a bars list draws a top bar and a bottom bar", () => bars_of(dual), { bars: [{ position: "top", left: ["start", "workspaces"], center: ["clock"], right: ["tray"] }, { position: "bottom", left: ["media"], center: [], right: ["volume", "battery"] }], problems: [] }],
+  ["moving the first bar to the bottom puts the second on top", () => bars_of(dual, L.set_position(L.normalize(null), key, "bottom"), key).bars.map(b => b.position), ["bottom", "top"]],
+  ["a side bar ignores the second bar and says so", () => { const b = bars_of(dual, L.set_shared_position(L.normalize(null), "left")); return [b.bars.length, b.bars[0].position, b.problems.length]; }, [1, "left", 1]],
+  ["a module on both bars stays on the first only and is reported", () => { const r = { match: "*", bars: [{ left: ["start"], center: ["clock"], right: ["tray"] }, { left: ["clock"], center: [], right: ["tray", "volume"] }] }; const b = bars_of(r); return [b.bars[1].left, b.bars[1].right, b.problems.length]; }, [[], ["volume"], 2]],
+  ["system:cpu on the second bar counts as system on the first", () => { const r = { match: "*", bars: [{ left: [], center: [], right: ["system"] }, { left: [], center: [], right: ["system:cpu", "tray"] }] }; return bars_of(r).bars[1].right; }, ["tray"]],
+  ["a module the editor places on the first bar leaves the second", () => { const s = L.unhide_place([L.fold_bars(dual)], L.fold_bars(dual), L.normalize(null), "", "volume"); const b = bars_of(dual, s); return [b.bars[0].right.indexOf("volume") >= 0, b.bars[1].right]; }, [true, ["battery"]]],
+  ["an own layout replaces the first bar only", () => { const s = L.set_own(L.normalize(null), key, { left: ["workspaces"], center: [], right: [] }, false); const b = bars_of(dual, s, key); return [b.bars[0].left, b.bars[1].left]; }, [["workspaces"], ["media"]]],
+  ["a second bar naming the first bar's edge goes opposite with a warning", () => { const r = { match: "*", bars: [{ left: ["start"] }, { position: "top", left: ["tray"] }] }; const b = bars_of(r); return [b.bars[1].position, b.problems.length]; }, ["bottom", 1]],
+  ["a third bar is left out with a warning", () => { const r = { match: "*", bars: [{ left: ["start"] }, { left: ["tray"] }, { left: ["clock"] }] }; const b = bars_of(r); return [b.bars.length, b.problems.length]; }, [2, 1]],
+  ["bar_rules gives each bar the screen's rule with its own edge and lists", () => L.bar_rules(L.effective(dual, L.normalize(null), "")).map(r => [r.position, r.left, r.compact, "second_bar" in r]), [["top", ["start", "workspaces"], false, false], ["bottom", ["media"], false, false]]],
+  ["rule_lists reads a bars list's first bar", () => [L.rule_lists(dual, "clock"), L.rule_lists(dual, "media")], [true, false]],
   ["no position is top", () => L.position_of(rule), "top"],
   ["null rule is top", () => L.position_of(null), "top"],
   ["bottom kept", () => L.position_of({ position: "bottom" }), "bottom"],

@@ -16,6 +16,7 @@ Singleton {
     readonly property var emergency_rules: [{ match: "*", compact: true, left: ["workspaces"], center: ["clock"], right: ["tray"] }]
     property var warned_modules: ({})
     property var warned_positions: ({})
+    property var warned_bars: ({})
     property var state: BarLayout.normalize(null)
 
     FileView {
@@ -28,7 +29,8 @@ Singleton {
             try {
                 const parsed = JSON.parse(text());
                 if (!Array.isArray(parsed)) throw new Error("bars.json must be a JSON array of rules");
-                root.rules = parsed;
+                // A rule with a `bars` list reads as the old single-bar shape plus its second bar (BarLayout.fold_bars).
+                root.rules = parsed.map(BarLayout.fold_bars);
                 root.has_good_rules = true;
                 root.rules_loaded = true;
             } catch (e) {
@@ -176,12 +178,22 @@ Singleton {
         return BarLayout.position_of(rule);
     }
 
+    // One rule per bar the screen draws (BarLayout.bar_rules), the first on the rule's edge; warns once per bar left out.
+    function bars_for(rule) {
+        for (const problem of BarLayout.bars_of(rule).problems) {
+            if (root.warned_bars[problem]) continue;
+            root.warned_bars[problem] = true;
+            console.warn("BarSettings: " + problem);
+        }
+        return BarLayout.bar_rules(rule);
+    }
+
     // The screen height a bar on `position` takes; none for a side bar.
     function vertical_reserve(position, bar_thickness, float_gap) {
         return BarLayout.vertical_reserve(position, bar_thickness, float_gap);
     }
 
-    // The edge of the bar on a screen, for surfaces that place themselves against it; "top" when it has none.
+    // The edge of the screen's first bar, for surfaces that place themselves against it; "top" when it has none.
     function position_on(screen_name) {
         const screen = Quickshell.screens.find(s => s.name === screen_name);
         if (!screen || !root.rules_loaded) return "top";

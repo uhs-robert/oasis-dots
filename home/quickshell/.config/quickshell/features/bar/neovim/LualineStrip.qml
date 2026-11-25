@@ -186,7 +186,7 @@ Item {
                 wire: parent.wire
                 module_props: root.module_props
                 fill: Theme.bg_mantle
-                screen_name: root.screen_name
+                fill_key: LualineState.key_of(root.screen_name, root.edge)
             }
 
             LualineSection {

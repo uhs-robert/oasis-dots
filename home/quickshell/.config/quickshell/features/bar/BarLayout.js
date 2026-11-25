@@ -9,7 +9,8 @@ var positions = ["top", "bottom", "left", "right"];
 
 // The screen edge a rule puts its bar on; anything unknown falls back to top.
 function position_of(rule) {
-    const p = rule && rule.position;
+    const folded = fold_bars(rule);
+    const p = folded && folded.position;
     return positions.indexOf(p) >= 0 ? p : "top";
 }
 
@@ -47,7 +48,8 @@ function any_draws_frame(frame_on, screen_positions) {
 
 // Why a rule's position falls back to top, or "" when it is fine.
 function position_problem(rule) {
-    const p = rule ? rule.position : undefined;
+    const folded = fold_bars(rule);
+    const p = folded ? folded.position : undefined;
     if (p === undefined || positions.indexOf(p) >= 0) return "";
     return "unknown bar position " + JSON.stringify(p) + " in bars.json; using top";
 }
@@ -86,7 +88,8 @@ function lualine_draws_itself(entry) {
 // Whether a rule lists the module on any side, with or without an argument.
 function rule_lists(rule, base) {
     if (!rule) return false;
-    return [rule.left, rule.center, rule.right].some(list => (list || []).some(e => e.split(":")[0] === base));
+    const r = layout_of(rule);
+    return [r.left, r.center, r.right].some(list => (list || []).some(e => e.split(":")[0] === base));
 }
 
 // The stretches of a framed lualine bar's edge outside the strip, as [from, to] pairs: where the frame's own band shows. The strip fills `start` to `end` itself, so a translucent band under it would stack alpha on the strip's non-overlapping fills.
@@ -308,7 +311,62 @@ function migrate_cava_to_media(state) {
 }
 
 function layout_of(rule) {
-    return { left: unique(rule && rule.left), center: unique(rule && rule.center), right: unique(rule && rule.right) };
+    const r = fold_bars(rule);
+    return { left: unique(r && r.left), center: unique(r && r.center), right: unique(r && r.right) };
+}
+
+// A rule's `bars` list read into the single-bar shape every other function here takes: the first bar's lists and
+// position at the rule's root, the second bar's in `second_bar`. A rule without `bars` comes back as it is, so the
+// old shape and the new read the same, and folding twice changes nothing.
+function fold_bars(rule) {
+    if (!rule || !Array.isArray(rule.bars)) return rule;
+    const first = is_object(rule.bars[0]) ? rule.bars[0] : {};
+    const out = Object.assign({}, rule, layout_of(first));
+    delete out.bars;
+    if (first.position !== undefined) out.position = first.position;
+    if (is_object(rule.bars[1])) {
+        out.second_bar = layout_of(rule.bars[1]);
+        if (rule.bars[1].position !== undefined) out.second_bar.position = rule.bars[1].position;
+    }
+    if (rule.bars.length > 2) out.extra_bars = rule.bars.length - 2;
+    return out;
+}
+
+var opposite_edge = { top: "bottom", bottom: "top" };
+
+// The bars a screen draws from its effective rule, each { position, left, center, right }, and `problems`, what was left
+// out and why. The first bar sits on the rule's edge and the second on the opposite one. A side bar has no opposite
+// bar, and a module the first bar shows is dropped from the second, as a screen shows each module once.
+function bars_of(rule) {
+    if (!rule) return { bars: [], problems: [] };
+    const first = Object.assign({ position: position_of(rule) }, layout_of(rule));
+    const problems = [];
+    if (rule.extra_bars) problems.push("a bars.json rule lists " + (rule.extra_bars + 2) + " bars; drawing the first two");
+    const second = rule.second_bar;
+    if (!second) return { bars: [first], problems: problems };
+    if (is_vertical(first.position)) {
+        problems.push("a " + first.position + " bar has no second bar; ignoring the rule's second bar");
+        return { bars: [first], problems: problems };
+    }
+    const edge = opposite_edge[first.position];
+    if (second.position !== undefined && second.position !== edge) problems.push("the second bar goes on the edge opposite the first; drawing it on " + edge);
+    const on_first = sides.reduce((all, s) => all.concat(first[s]), []).map(plain_entry);
+    const out = { position: edge };
+    for (const s of sides) {
+        out[s] = second[s].filter(e => on_first.indexOf(plain_entry(e)) < 0);
+        second[s].filter(e => out[s].indexOf(e) < 0).forEach(e => problems.push("module \"" + e + "\" is on both bars; keeping it on the first"));
+    }
+    return { bars: [first, out], problems: problems };
+}
+
+// One rule per bar a screen draws (bars_of), for Bar.qml: the screen's rule with that bar's edge and lists.
+function bar_rules(rule) {
+    return bars_of(rule).bars.map(bar => {
+        const out = Object.assign({}, rule, bar);
+        delete out.second_bar;
+        delete out.extra_bars;
+        return out;
+    });
 }
 
 // Entries in `order` refill their own slots sorted by index there; the rest keep their slots.
@@ -332,12 +390,14 @@ function sort_side(list, order) {
 function position_source(rule, state, key) {
     if (key && state.positions[key]) return "monitor";
     if (state.shared.position) return "global";
+    rule = fold_bars(rule);
     return rule && rule.position !== undefined ? "bars.json" : "default";
 }
 
 // The tracked rule with the shared layout, or the monitor's own override, and its saved position applied. `state` must be normalized.
 function effective(rule, state, key) {
     if (!rule) return null;
+    rule = fold_bars(rule);
     const out = Object.assign({}, rule, layout_of(rule));
     if (key && state.positions[key]) out.position = state.positions[key];
     // A Settings override like the shared layout, so it wins over the tracked rule; unlike that layout it also reaches monitors with their own.
@@ -395,7 +455,8 @@ function hidden_entries(rules, state, layout) {
         if (all.indexOf(e) < 0 && aliases.indexOf(e) < 0) all.push(e);
     };
     for (const rule of rules) {
-        for (const s of sides) unique(rule[s]).forEach(add);
+        const lists = layout_of(rule);
+        for (const s of sides) lists[s].forEach(add);
     }
     Object.keys(state.shared.place).forEach(add);
     Object.keys(state.shared.last_side).forEach(add);

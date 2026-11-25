@@ -15,6 +15,8 @@ Item {
     property color island_color: "transparent"
     property int bar_height: 30
     property bool vertical: false
+    // Set by Bar.qml: the edge of the bar this sits on, which keys the buffer fill the chip joins in LualineState.
+    property string bar_edge: ""
 
     // Styles with a start well seat a smaller logo in a recessed circle.
     readonly property bool well: Style.bar_start_well.a > 0
@@ -38,7 +40,7 @@ Item {
             vertical: root.vertical
             // Start, and Style which drops from it, keep the chip lit while open.
             hovered: hover_handler.hovered || (Popups.open_name === "start" && Popups.open_screen_name === root.screen_name)
-            next_bg: { const c = LualineState.first_fill[root.screen_name]; return c && c.a > 0 ? c : Style.bar_side_bg; }
+            next_bg: { const c = LualineState.first_fill[LualineState.key_of(root.screen_name, root.bar_edge)]; return c && c.a > 0 ? c : Style.bar_side_bg; }
         }
     }
 

@@ -45,6 +45,54 @@ ShellRoot {
 
     BundledFonts {}
 
+    // One bar's window along its screen edge. A screen has one, or two with a rule's second bar.
+    component BarWindow: PanelWindow {
+        id: bar_window
+
+        // One bar's rule from BarSettings.bars_for.
+        property var rule: null
+        property var frame: null
+        property bool primary: true
+        property bool other_bar_lists_media: false
+        readonly property Item bar_item: bar
+        readonly property string edge: BarSettings.position_for(bar_window.rule)
+        readonly property bool vertical: BarLayout.is_vertical(bar_window.edge)
+
+        color: "transparent"
+        // The floating strip's set-in from the screen edge is part of the window, so it is reserved too.
+        // A side bar is that thick as a column; its length is the screen's (top and bottom both anchored).
+        readonly property real thickness: BarSettings.height_for(bar_window.rule) + (Style.strip_floats ? Style.bar_strip_inset : 0)
+        implicitHeight: bar_window.vertical ? 0 : thickness
+        implicitWidth: bar_window.vertical ? thickness : 0
+        // Under a frame its zone windows reserve the bar's edge too, so the bar ignores them all
+        // instead of shrinking between the side zones.
+        exclusiveZone: bar_window.frame ? -1 : thickness
+
+        // Each position anchors the three edges it spans: the screen edge and both neighbours.
+        anchors {
+            top: bar_window.edge !== "bottom"
+            bottom: bar_window.edge !== "top"
+            left: bar_window.edge !== "right"
+            right: bar_window.edge !== "left"
+        }
+
+        Bar {
+            id: bar
+            anchors.fill: parent
+            screen_name: bar_window.screen ? bar_window.screen.name : ""
+            rule: bar_window.rule
+            frame: bar_window.frame
+            primary: bar_window.primary
+            other_bar_lists_media: bar_window.other_bar_lists_media
+        }
+
+        StyleTransition {
+            anchors.fill: parent
+            target: bar
+            shown: true
+        }
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -58,8 +106,11 @@ ShellRoot {
                 readonly property string bar_position: screen_scope.has_bar ? BarSettings.position_for(screen_scope.rule) : "top"
                 readonly property bool bar_bottom: screen_scope.bar_position === "bottom"
                 readonly property bool bar_vertical: BarLayout.is_vertical(screen_scope.bar_position)
-                readonly property int bar_height: BarSettings.height_for(screen_scope.rule)
+                // One rule per bar: the first on the rule's edge, then the second on the opposite edge when the rule has one.
+                readonly property var bar_rules: screen_scope.has_bar ? BarSettings.bars_for(screen_scope.rule) : []
                 readonly property var frame: ScreenFrames.layout_for(screen_scope.modelData)
+                // The frame lays out one bar edge, so a framed screen draws its first bar only.
+                readonly property var second_rule: screen_scope.bar_rules.length > 1 && !screen_scope.frame ? screen_scope.bar_rules[1] : null
                 // The last frame, held so the frame's bindings never see null while its loader drops it.
                 property var drawn_frame: null
                 onFrameChanged: if (screen_scope.frame) screen_scope.drawn_frame = screen_scope.frame
@@ -69,41 +120,21 @@ ShellRoot {
                     id: bar_loader
                     active: screen_scope.has_bar
 
-                    PanelWindow {
-                        readonly property Item bar_item: bar
-
+                    BarWindow {
                         screen: screen_scope.modelData
-                        color: "transparent"
-                        // The floating strip's set-in from the screen edge is part of the window, so it is reserved too.
-                        // A side bar is that thick as a column; its length is the screen's (top and bottom both anchored).
-                        readonly property real thickness: screen_scope.bar_height + (Style.strip_floats ? Style.bar_strip_inset : 0)
-                        implicitHeight: screen_scope.bar_vertical ? 0 : thickness
-                        implicitWidth: screen_scope.bar_vertical ? thickness : 0
-                        // Under a frame its zone windows reserve the bar's edge too, so the bar ignores them all
-                        // instead of shrinking between the side zones.
-                        exclusiveZone: screen_scope.frame ? -1 : thickness
+                        rule: screen_scope.bar_rules[0] || null
+                        frame: screen_scope.frame
+                        other_bar_lists_media: BarLayout.rule_lists(screen_scope.second_rule, "media")
+                    }
+                }
 
-                        // Each position anchors the three edges it spans: the screen edge and both neighbours.
-                        anchors {
-                            top: screen_scope.bar_position !== "bottom"
-                            bottom: screen_scope.bar_position !== "top"
-                            left: screen_scope.bar_position !== "right"
-                            right: screen_scope.bar_position !== "left"
-                        }
+                LazyLoader {
+                    active: screen_scope.second_rule !== null
 
-                        Bar {
-                            id: bar
-                            anchors.fill: parent
-                            screen_name: screen_scope.modelData.name
-                            rule: screen_scope.rule
-                            frame: screen_scope.frame
-                        }
-
-                        StyleTransition {
-                            anchors.fill: parent
-                            target: bar
-                            shown: true
-                        }
+                    BarWindow {
+                        screen: screen_scope.modelData
+                        rule: screen_scope.second_rule
+                        primary: false
                     }
                 }
 

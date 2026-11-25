@@ -24,8 +24,8 @@ Item {
     property bool separators: true
     // A strong fill: modules with an `on_accent` property draw in ink colors on it.
     property bool accent: false
-    // Set on the island's first section: its first component's fill goes to LualineState for the island cap.
-    property string screen_name: ""
+    // Set on the island's first section (LualineState.key_of): its first component's fill goes to LualineState for the island cap.
+    property string fill_key: ""
     property bool vertical: false
     // Across the bar. The caller can give it from the bar, so it never reads the size it sets.
     property real thick: root.vertical ? root.width : root.height
@@ -57,7 +57,7 @@ Item {
     onFirst_litChanged: root.publish()
     Component.onCompleted: root.publish()
     function publish() {
-        if (root.screen_name !== "") LualineState.set_right_first_fill(root.screen_name, root.first_lit ? root.hover_fill : Qt.rgba(0, 0, 0, 0));
+        if (root.fill_key !== "") LualineState.set_right_first_fill(root.fill_key, root.first_lit ? root.hover_fill : Qt.rgba(0, 0, 0, 0));
     }
 
     visible: root.shown
