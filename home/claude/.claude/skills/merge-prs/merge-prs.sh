@@ -350,7 +350,12 @@ bare_login() {
   printf '%s\n' "${login%\[bot\]}"
 }
 
-suite_slugs="" suites_loaded=false history_logins="" history_loaded=false
+# Empties the reviewer discovery the gates cache. Every cached item is listed here and nowhere else, so one added to
+# infer_connected cannot be left stale after the lock wait.
+reset_discovery() {
+  suite_slugs="" suites_loaded=false history_logins="" history_loaded=false
+}
+reset_discovery
 
 # Whether a reviewer is installed on the repo, for a gate of auto. An app reviewer shows as a check suite on the default
 # branch head; the suite's own status stays queued for CodeRabbit, so only its slug counts. A reviewer that is only a
@@ -1079,7 +1084,7 @@ if $waited_for_lock; then
   wait_review=false
   request_review=false
   # A reviewer can have installed itself during the wait, so the discovery the first gate cached is read again.
-  suite_slugs="" suites_loaded=false history_logins="" history_loaded=false
+  reset_discovery
   check_reviews
 fi
 
