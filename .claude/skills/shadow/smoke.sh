@@ -201,12 +201,20 @@ sh_hyprctl() { "$shadow" hyprctl "$name" "$@"; }
 qlog() { sed 's/\x1b\[[0-9;]*m//g' "${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/logs/qs.log"; }
 
 # Quickshell reloads its config when a file in it changes, which also rereads the state files; the bar reads the frame
-# option and the bar position at load, so a patched state file takes effect by touching a source file.
+# option and the bar position at load, so a patched state file takes effect by changing a source file. A bare `touch`
+# does not reload (the content must change), so a comment line is appended to the shadow's own copy.
 reload_bar() {
-  touch "$qs_copy/shell.qml"
-  sleep 2
+  local loaded
+  loaded=$(qlog | grep -c 'Configuration Loaded')
+  echo "// reload $RANDOM$RANDOM" >>"$qs_copy/shell.qml"
+  # The old instance still answers IPC while the new one loads, so wait for the log line before asking it anything.
+  for _ in $(seq 150); do
+    (($(qlog | grep -c 'Configuration Loaded') > loaded)) && break
+    sleep 0.2
+  done
   for _ in $(seq 50); do
-    q style get >/dev/null 2>&1 && return 0
+    # The windows and the Hyprland event connection settle a moment after the log line.
+    q style get >/dev/null 2>&1 && { sleep 2; return 0; }
     sleep 0.2
   done
   return 1
@@ -244,7 +252,7 @@ orig_style=$(q style get)
 state_dir="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/home/.local/state/quickshell"
 qs_copy="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/shadow/$name/qs"
 state_backup="$out/state.orig"
-state_files=(bars.json theme_options.json)
+state_files=(bars.json theme_options.json typing.json)
 state_saved=0
 # shellcheck disable=SC2329
 restore() {
@@ -554,6 +562,8 @@ hint_shot() {
   # shellcheck disable=SC2016 # jq variable
   # A saved per-monitor position wins over the shared one (BarLayout.effective), so those are cleared too.
   patch_state bars.json '.positions = {} | .shared.position = $p' --arg p "$position"
+  # The owner's typing.json may hide the hint bars (show_hint_bars=false), which would leave every hint layer unmapped.
+  patch_state typing.json '.show_hint_bars = true'
   reload_bar || missing+=("MISS $style $tag (bar did not reload)")
   q submap_hints set "$(cat "$hint_json")" >/dev/null
   local has_frame=0
