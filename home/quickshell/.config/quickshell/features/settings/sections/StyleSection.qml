@@ -17,6 +17,12 @@ RowsSection {
     // Look mock: "grid" (variant A) or "carousel" (variant B). Change here to shoot the other.
     readonly property string gallery_variant: "grid"
     readonly property int grid_columns: 3
+    // The panel's room for the grid: all of it when the help sits beside the preview, else most of it.
+    readonly property real grid_max_height: {
+        const panel = root.popup && root.popup.preview_host ? root.popup.preview_host.parent : null;
+        if (!panel || !(panel.height > 0)) return Style.px(400);
+        return panel.stacked ? panel.height : Math.round(panel.height * 0.6);
+    }
     readonly property bool on_style: root.cursor_heading === "Style"
     // The gallery cursor: an index into Style.names, separate from the saved style.
     property int gallery_index: Math.max(0, Style.names.indexOf(Style.saved_name))
@@ -156,27 +162,53 @@ RowsSection {
         Layout.fillWidth: true
         spacing: 6
 
-        GridLayout {
+        // Scrolls when the panel is too short for every row, keeping the cursor card in view.
+        Flickable {
+            id: grid_flick
             visible: root.gallery_variant === "grid"
             Layout.fillWidth: true
-            columns: root.grid_columns
-            columnSpacing: 6
-            rowSpacing: 6
-            uniformCellWidths: true
+            Layout.preferredHeight: Math.min(grid.implicitHeight, root.grid_max_height)
+            contentWidth: width
+            contentHeight: grid.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
 
-            Repeater {
-                model: Style.names
+            function reveal() {
+                const rows = Math.ceil(Style.names.length / root.grid_columns);
+                const row_h = (grid.implicitHeight + grid.rowSpacing) / rows;
+                const top = Math.floor(root.gallery_index / root.grid_columns) * row_h;
+                const bottom = top + row_h - grid.rowSpacing;
+                if (top < grid_flick.contentY) grid_flick.contentY = top;
+                else if (bottom > grid_flick.contentY + grid_flick.height) grid_flick.contentY = bottom - grid_flick.height;
+            }
 
-                StyleCard {
-                    required property string modelData
-                    required property int index
-                    style_name: modelData
-                    st: root.st
-                    current: modelData === Style.saved_name
-                    picked: root.on_style && index === root.gallery_index
-                    onClicked: {
-                        root.gallery_index = index;
-                        Transitions.commit(modelData);
+            Connections {
+                target: root
+                function onGallery_indexChanged() { grid_flick.reveal(); }
+            }
+
+            GridLayout {
+                id: grid
+                width: grid_flick.width
+                columns: root.grid_columns
+                columnSpacing: 6
+                rowSpacing: 6
+                uniformCellWidths: true
+
+                Repeater {
+                    model: Style.names
+
+                    StyleCard {
+                        required property string modelData
+                        required property int index
+                        style_name: modelData
+                        st: root.st
+                        current: modelData === Style.saved_name
+                        picked: root.on_style && index === root.gallery_index
+                        onClicked: {
+                            root.gallery_index = index;
+                            Transitions.commit(modelData);
+                        }
                     }
                 }
             }
