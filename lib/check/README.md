@@ -167,7 +167,7 @@ The "needs" tools are optional unless stated. Each step's command and scope is i
 - `scroll-cue`: `home/quickshell/tests/scroll_cue.js`, which edges of a Settings list or browse picker hide content and that a revealed row stays clear of the scroll fade (`ui/scroll/ScrollCue.js`). Needs node.
 - `bar-layout`: `home/quickshell/tests/bar_layout.js`, the bar position in `features/bar/BarLayout.js` (rules, per-monitor overrides, the state file, the directory switches). Needs node.
 - `bar-vertical`: `home/quickshell/tests/bar_vertical.js`, the side-bar column helpers in `features/bar/VerticalLayout.js` (cross width, text fit, unit drop, stacked clock). Needs node.
-- `check-scope`, `check-cache`: which steps `--changed` picks (`lib/check/tests/scope.sh`), and the runner's scopes and slot lock (`lib/check/tests/test_*.py`, `lock.sh`), and `shaders.sh`, the shaders step's tests. Any file under `lib/check/` reaches them, this README included.
+- `check-scope`, `check-cache`: which steps `--changed` picks (`lib/check/tests/scope.sh`), and the runner's scopes and slot lock (`lib/check/tests/test_*.py`, `lock.sh`), and `shaders.sh`, the shaders step's tests, and `settings-skins.sh`, the settings-skins step's tests (scratch skin folders). Any file under `lib/check/` reaches them, this README included.
 - `packages`: duplicate package names across the manifests (`lib/check/steps/packages.sh`).
 - `symlinks`, `whitespace`, `conflicts`, `git-diff-check`: tracked symlinks that dangle or leave the repo; trailing whitespace; conflict markers; and `git diff --check HEAD`.
 - `ignored-integrations`: no voxcmd integration or replacement file is one git ignores (`lib/check/steps/ignored-integrations.sh`).

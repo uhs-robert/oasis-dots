@@ -26,13 +26,13 @@ fi
 # The text of one slot: from its declaration to the next slot declaration or the end of the file.
 slot_body() {
   awk -v slot="$2" '
-    /readonly property Component [a-z_]+:/ { in_slot = ($0 ~ ("Component " slot ":")) }
+    /(readonly )?property Component [a-z_]+:/ { in_slot = ($0 ~ ("Component " slot ":")) }
     in_slot { print }
   ' "$1"
 }
 
 for slot in $slots; do
-  if ! grep -q "readonly property Component $slot:" "$skins_dir/Default.qml"; then
+  if ! grep -qE "(readonly )?property Component $slot:" "$skins_dir/Default.qml"; then
     echo "settings skins: Default.qml does not define the $slot slot" >&2
     status=1
   fi
@@ -40,18 +40,18 @@ done
 
 for file in "$skins_dir"/*.qml; do
   name=$(basename "$file" .qml)
-  lower=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')
   rel="features/settings/skins/$name.qml"
-  if [ "$name" != Default ] && ! printf '%s\n' "$styles" | grep -qx "$lower"; then
+  if [ "$name" != Default ] && ! printf '%s\n' "$styles" | sed 's/^./\u&/' | grep -qx "$name"; then
     echo "settings skins: $rel matches no style in styles/index.js" >&2
     status=1
   fi
-  if grep -nE 'Keys\.|focus: *true|forceActiveFocus' "$file" >&2; then
+  # Comments are dropped first so a note about Keys. does not fail.
+  if sed 's,//.*,,' "$file" | grep -nE '\bKeys\.|focus: *true|forceActiveFocus' >&2; then
     echo "settings skins: $rel takes focus or keys; SettingsPopup owns both" >&2
     status=1
   fi
   # reveal_selected finds the nav row through its `selected` property.
-  if grep -q 'readonly property Component nav_item:' "$file" &&
+  if grep -qE '(readonly )?property Component nav_item:' "$file" &&
     ! slot_body "$file" nav_item | grep -qE '^ *(readonly )?(property +[a-z]+ +)?selected *:'; then
     echo "settings skins: the nav_item of $rel does not declare selected, so scroll-to-selection breaks" >&2
     status=1

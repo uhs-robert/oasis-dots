@@ -282,7 +282,7 @@ STEPS = [
     Step("voxtype-duck", VOX_DUCK, "bash ./home/voxtype/tests/run-duck.sh", ("python3",), skip_reason="the voxtype-duck tests need python3"),
     Step("voxcmd-rust", VOX_RUST, "sh ./lib/check/steps/voxcmd-rust.sh", ("cargo",), skip_reason="the voxcmd crate needs cargo"),
     Step("check-scope", "checkscope", "bash ./lib/check/tests/scope.sh"),
-    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh"),
+    Step("check-cache", "checkscope", "python3 -B -m unittest discover -s lib/check/tests -p 'test_*.py' && bash ./lib/check/tests/lock.sh && bash ./lib/check/tests/shaders.sh && bash ./lib/check/tests/settings-skins.sh"),
     # py_compile would drop a __pycache__ into the stow package, so this parses instead.
     Step("calendar-sync-syntax", "install", "python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' ./home/calendar/.local/bin/calendar-sync"),
     Step("plans", "install", "python3 -B -m unittest discover -s home/plans/tests -p 'test_*.py'", ("git",), skip_reason="the plans tests need git"),
