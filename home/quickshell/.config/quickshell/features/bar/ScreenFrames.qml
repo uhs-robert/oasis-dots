@@ -22,19 +22,27 @@ Singleton {
         return FrameGeometry.drawer_window_rects(root.drawer_windows, screen_name);
     }
 
-    // The screen's bar edge, "" with no bar.
+    // The screen's first bar's edge, "" with no bar: a side bar there means no frame on the screen.
     function position_for_screen(screen) {
         const rule = BarSettings.rule_for(screen);
         return rule !== null && rule.bar !== false ? BarSettings.position_for(rule) : "";
     }
 
-    function layout_for(screen) {
+    // The screen's bar strips by edge, as FrameGeometry.frame_layout takes them: each bar's height on its edge, 0 for none.
+    function bar_edges_for(screen) {
         const rule = BarSettings.rule_for(screen);
-        const position = root.position_for_screen(screen);
-        const has_bar = position !== "";
-        if (!BarLayout.draws_frame(Style.screen_frame_on, position)) return null;
-        const bar_edge = position === "bottom" ? "bottom" : has_bar ? "top" : "";
-        return FrameGeometry.frame_layout(screen.width, screen.height, bar_edge, BarSettings.height_for(rule), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile, { fill_overlap: Style.islands_translucent ? 0 : 1 }));
+        const edges = { top: 0, bottom: 0 };
+        if (rule === null || rule.bar === false) return edges;
+        for (const bar of BarSettings.bars_for(rule)) {
+            const edge = BarSettings.position_for(bar);
+            if (edge in edges) edges[edge] = BarSettings.height_for(bar);
+        }
+        return edges;
+    }
+
+    function layout_for(screen) {
+        if (!BarLayout.draws_frame(Style.screen_frame_on, root.position_for_screen(screen))) return null;
+        return FrameGeometry.frame_layout(screen.width, screen.height, root.bar_edges_for(screen), Object.assign({}, Style.screen_frame_kit, Style.screen_frame_profile, { fill_overlap: Style.islands_translucent ? 0 : 1 }));
     }
 
     // Whether any screen draws a frame, for what shapes the system around it (Hyprland's window rules, app corners).

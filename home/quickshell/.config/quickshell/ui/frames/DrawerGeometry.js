@@ -136,7 +136,7 @@ function outline_path(lay) {
 }
 
 // A line d px into the material from the outline (the rim at half its width, the inset line at its gap), as
-// FrameGeometry.frame_stroke moves the hole's outline into the bands.
+// FrameGeometry.frame_strokes moves the hole's outline into the bands.
 function stroke_path(lay, d) {
     return Outlines.inset(outline_path(lay), d);
 }

@@ -17,7 +17,7 @@ const M = T.api;
 
 // The real frame_layout on a 1000 x 600 screen with a 40 px bar (or none): hole inset 8, corner radius 20.
 const kit = { corner: "round", radius: 20, thickness: 8, ornament: "" };
-const layout = (edge, has_bar) => F.frame_layout(1000, 600, has_bar ? edge : "", 40, kit);
+const layout = (edge, has_bar) => F.frame_layout(1000, 600, has_bar ? { [edge]: 40 } : {}, kit);
 const loud = Array(48).fill(1);
 const quiet = Array(48).fill(0);
 const on_edge = (bars, e) => bars.filter(b => b.edge === e);

@@ -3,13 +3,14 @@ import Quickshell
 import Quickshell.Wayland
 
 // Below the bar's reserved zone, so bar clicks still switch popups. With a screen frame the bar reserves nothing, so
-// the scrim spans the screen, bands included, with the bar's rect cut out of its input instead.
+// the scrim spans the screen, bands included, with each bar's rect cut out of its input instead.
 PanelWindow {
     id: root
 
     // The screen frame's layout (FrameGeometry.frame_layout), or null.
     property var frame: null
-    readonly property real bar_depth: root.frame && root.frame.has_bar ? root.frame.near : 0
+    readonly property real top_bar_depth: root.frame ? root.frame.bar_edges.top : 0
+    readonly property real bottom_bar_depth: root.frame ? root.frame.bar_edges.bottom : 0
 
     anchors.top: true
     anchors.bottom: true
@@ -34,9 +35,17 @@ PanelWindow {
 
         Region {
             x: 0
-            y: root.frame && root.frame.edge === "bottom" ? root.height - root.bar_depth : 0
+            y: 0
             width: root.width
-            height: root.bar_depth
+            height: root.top_bar_depth
+            intersection: Intersection.Subtract
+        }
+
+        Region {
+            x: 0
+            y: root.height - root.bottom_bar_depth
+            width: root.width
+            height: root.bottom_bar_depth
             intersection: Intersection.Subtract
         }
     }

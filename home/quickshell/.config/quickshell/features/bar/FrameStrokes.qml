@@ -2,11 +2,12 @@ import QtQuick
 import QtQuick.Shapes
 import "../../ui/frames/FrameGeometry.js" as Frame
 
-// The rim and inset line round a screen frame's hole (FrameGeometry.frame_stroke), in the canonical frame. Both the
-// frame window and the bar's strip draw it, each clipped to its own side of `near`, so it reads as one line.
+// The rim and inset line round a screen frame's hole (FrameGeometry.frame_strokes), in the layout's canonical frame. The
+// frame window and each bar's strip draw them, each clipped to its own part, so they read as one line.
 Item {
     id: root
 
+    // Null for a moment while a frame goes off, before the strip drops this ornament.
     required property var layout
     property int rim_width: 0
     property color rim_color: "transparent"
@@ -27,8 +28,8 @@ Item {
                 capStyle: ShapePath.FlatCap
                 joinStyle: ShapePath.MiterJoin
                 miterLimit: 4
-                PathPolyline {
-                    path: Frame.frame_stroke(root.layout, root.inset_gap + root.inset_width / 2).map(p => Qt.point(p[0], p[1]))
+                PathMultiline {
+                    paths: (root.layout ? Frame.frame_strokes(root.layout, root.inset_gap + root.inset_width / 2) : []).map(line => line.map(p => Qt.point(p[0], p[1])))
                 }
             }
         }
@@ -46,8 +47,8 @@ Item {
                 capStyle: ShapePath.FlatCap
                 joinStyle: ShapePath.MiterJoin
                 miterLimit: 4
-                PathPolyline {
-                    path: Frame.frame_stroke(root.layout, root.rim_width / 2).map(p => Qt.point(p[0], p[1]))
+                PathMultiline {
+                    paths: (root.layout ? Frame.frame_strokes(root.layout, root.rim_width / 2) : []).map(line => line.map(p => Qt.point(p[0], p[1])))
                 }
             }
         }

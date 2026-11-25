@@ -9,16 +9,18 @@ import qs.ui.effects
 import "../../ui/frames/BandGeometry.js" as Band
 import "../../ui/frames/FrameGeometry.js" as Frame
 
-// A screen frame on one screen (FrameGeometry.js): one click-through window drawing every band but the bar's, and a
-// 1x1 window per screen edge reserving that edge's zone. The bar window reserves nothing while a frame is on, so the
+// A screen frame on one screen (FrameGeometry.js): one click-through window drawing every band but the bars', and a
+// 1x1 window per screen edge reserving that edge's zone. The bar windows reserve nothing while a frame is on, so the
 // zones add up the same whatever order Hyprland arranges the layers in.
 Scope {
     id: root
 
     required property ShellScreen screen
     required property var layout
+    // The screen's name, "" while a hot-unplug has already cleared `screen` and the frame is not yet torn down.
+    readonly property string screen_name: root.screen ? root.screen.name : ""
     // The line round the hole is lit on the focused monitor only, switching with the strip's (StripBackground).
-    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen.name
+    readonly property bool focused: !!Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === root.screen_name
     property color rim_color: Style.screen_frame_rim_color(root.focused)
     property color inset_color: Style.screen_frame_inset_color(root.focused)
     Behavior on rim_color {
@@ -41,7 +43,7 @@ Scope {
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-        // The transition captures this untransformed item, so a bottom bar's mirrored frame plays the right way up.
+        // The transition captures this untransformed item, so a lone bottom bar's mirrored frame plays the right way up.
         Item {
             id: drawing
             anchors.fill: parent
@@ -101,18 +103,18 @@ Scope {
                     }
                 }
 
-                // From Frame.stroke_clip_top down; the strip draws the rest of the line (StripBackground).
+                // Between Frame.stroke_clip_top and stroke_clip_bottom; the strips draw the rest of the line (StripBackground).
                 Item {
                     y: Frame.stroke_clip_top(root.layout)
                     width: root.layout.length
-                    height: root.layout.depth - y
+                    height: Frame.stroke_clip_bottom(root.layout) - y
                     clip: root.layout.has_bar
 
                     GapClip {
                         y: -parent.y
                         w: root.layout.length
                         h: root.layout.depth
-                        gaps: ScreenFrames.drawer_rects(root.screen.name).map(r => Frame.to_canonical_rect(root.layout, r))
+                        gaps: ScreenFrames.drawer_rects(root.screen_name).map(r => Frame.to_canonical_rect(root.layout, r))
                         source: Component {
                             FrameStrokes {
                                 layout: root.layout

@@ -22,9 +22,9 @@ const D = load("ui/frames/DrawerGeometry.js", { Outlines: O, Band: B, Corners: C
 const plain = v => JSON.parse(JSON.stringify(v));
 
 const kit = { corner: "round", radius: 12, thickness: 6, ornament: "" };
-const top_frame = F.frame_layout(1920, 1080, "top", 30, kit);
-const bottom_frame = F.frame_layout(1920, 1080, "bottom", 30, kit);
-const bare_frame = F.frame_layout(1920, 1080, "", 30, kit);
+const top_frame = F.frame_layout(1920, 1080, { top: 30 }, kit);
+const bottom_frame = F.frame_layout(1920, 1080, { bottom: 30 }, kit);
+const bare_frame = F.frame_layout(1920, 1080, {}, kit);
 const cover = D.cover_depth(2, 1, 1);
 const EDGES = ["top", "bottom", "left", "right"];
 const KINDS = [["fillet", "fillet"], ["pocket", "fillet"], ["fillet", "pocket"], ["pocket", "pocket"]];
@@ -142,8 +142,8 @@ cases.push(["extent never negative", () => lay_of({ extent: -4 }).body.d, 0]);
 for (const corner of ["round", "chamfer", "pixel", "square"]) {
   for (const d of [1, 2.5]) {
     cases.push(["frame stroke ends on the strip's line: " + corner + ", d " + d, () => {
-      const lay = F.frame_layout(1920, 1080, "top", 34, Object.assign({}, kit, { corner, step: 2 }));
-      const s = F.frame_stroke(lay, d), n = s.length;
+      const lay = F.frame_layout(1920, 1080, { top: 34 }, Object.assign({}, kit, { corner, step: 2 }));
+      const s = F.frame_strokes(lay, d)[0], n = s.length;
       const [lo, hi] = lay.straight, on_line = p => Math.abs(p[1] - (lay.near - d)) < 1e-6;
       return [s[0], s[1], s[n - 2], s[n - 1]].every(on_line)
         && Math.abs(s[0][0] - hi) < 1e-6 && Math.abs(s[n - 1][0] - lo) < 1e-6
@@ -153,7 +153,7 @@ for (const corner of ["round", "chamfer", "pixel", "square"]) {
 }
 
 // The rim meets the frame's own line. The window sits cover px up inside the band from the seam, so the outline's
-// seam at v = cover lands on the hole's edge and the rim a half-width in on the band side, like frame_stroke's.
+// seam at v = cover lands on the hole's edge and the rim a half-width in on the band side, like frame_strokes'.
 {
   const top = lay_of({ edge: "top" });
   const origin_y = top_frame.near - cover;
@@ -166,7 +166,7 @@ for (const corner of ["round", "chamfer", "pixel", "square"]) {
     // A bottom bar's seam is at depth - near on screen; the frame's line lies below it, at screen y + 1.
     const m = D.drawer_affine(bottom), p = apply(m, D.stroke_path(bottom, 1)[0]);
     const origin_y = F.seam_of(bottom_frame, "bottom") + cover - bottom.depth;
-    const f = F.to_screen(bottom_frame), g = F.frame_stroke(bottom_frame, 1)[0];
+    const f = F.to_screen(bottom_frame), g = F.frame_strokes(bottom_frame, 1)[0][0];
     const frame_y = f[1] * g[0] + f[3] * g[1] + f[5];
     return Math.abs(p[1] + origin_y - frame_y) < 0.1;
   }, true]);
@@ -362,7 +362,7 @@ cases.push(["round layouts are unchanged by profiles", () => {
     const l = D.drawer_layout({ edge: "top", body_length: 400, body_depth: 200, extent: e, radius: 12, fillet: 12, start_kind: k[0], end_kind: k[1], cover: 4 });
     out.push(D.fill_loop(l), D.hole_fill_loop(l), D.outline_path(l), D.stroke_path(l, 1));
   }
-  const lay = F.frame_layout(1920, 1080, "top", 30, { corner: "round", radius: 12, thickness: 6 });
+  const lay = F.frame_layout(1920, 1080, { top: 30 }, { corner: "round", radius: 12, thickness: 6 });
   out.push(F.hole_path(lay), F.frame_blocks(lay), F.frame_region(lay));
   return require("crypto").createHash("sha1").update(JSON.stringify(plain(out), (k, v) => typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v)).digest("hex");
 }, "88330700b3730de55ae9752fd4b17cc29acc7413"]);
@@ -393,7 +393,7 @@ cases.push(["a box corner never exceeds half the shorter side", () => { const p 
 for (const corner of PROFILES) {
   const kit_c = Object.assign({}, kit, { corner: corner, step: 2 });
   for (const [name, bar_edge] of [["top", "top"], ["bottom", "bottom"], ["no bar", ""]]) {
-    const lay = F.frame_layout(1920, 1080, bar_edge, 30, kit_c);
+    const lay = F.frame_layout(1920, 1080, bar_edge ? { [bar_edge]: 30 } : {}, kit_c);
     cases.push([`hole ${corner}, ${name}: ends on the straight stretch, loop clean`, () => {
       const path = F.hole_path(lay), loop = F.hole_loop(lay);
       return finite(path) && !self_intersects(loop) && (lay.radius === 0 || (path[0][0] === lay.straight[1] && path[path.length - 1][0] === lay.straight[0] && path[0][1] === lay.near && path[path.length - 1][1] === lay.near)) && !has_repeats(path) && (corner !== "pixel" || (is_int(path) && axis_aligned(path)));
@@ -410,7 +410,7 @@ for (const corner of PROFILES) {
       return b.every(r => [r.x, r.y, r.w, r.h].every(Number.isFinite)) && b.every((r, i) => b.every((q, j) => j <= i || r.x + r.w <= q.x + 1e-9 || q.x + q.w <= r.x + 1e-9 || r.y + r.h <= q.y + 1e-9 || q.y + q.h <= r.y + 1e-9));
     }, true]);
   }
-  cases.push([`hole radius ${corner}: capped to its profile and the room`, () => [F.frame_layout(1920, 1080, "top", 30, Object.assign({}, kit_c, { radius: 40 })).radius, F.frame_layout(200, 40, "top", 30, kit_c).radius <= 2], [{ round: 40, chamfer: 12, pixel: 18, square: 0 }[corner], true]]);
+  cases.push([`hole radius ${corner}: capped to its profile and the room`, () => [F.frame_layout(1920, 1080, { top: 30 }, Object.assign({}, kit_c, { radius: 40 })).radius, F.frame_layout(200, 40, { top: 30 }, kit_c).radius <= 2], [{ round: 40, chamfer: 12, pixel: 18, square: 0 }[corner], true]]);
 
   for (const [start_kind, end_kind] of KINDS) for (const extent of SIZES) {
     const lay = lay_of({ corner, step: 2, start_kind, end_kind, extent });
