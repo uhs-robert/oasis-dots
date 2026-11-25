@@ -15,7 +15,7 @@ RowsSection {
     readonly property string card_name: root.on_colors && root.highlighted_value !== undefined ? root.highlighted_value : Palettes.current
 
     // Look mock: "grid" (variant A) or "carousel" (variant B). Change here to shoot the other.
-    readonly property string gallery_variant: "carousel"
+    readonly property string gallery_variant: "grid"
     readonly property int grid_columns: 3
     readonly property bool on_style: root.cursor_heading === "Style"
     // The gallery cursor: an index into Style.names, separate from the saved style.
