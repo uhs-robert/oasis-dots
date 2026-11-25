@@ -75,7 +75,7 @@ The offered pieces stay yours until you hand them. Once the successor's `TAKEN` 
 
 ### 4. Finish the pieces you hold
 
-Carry each held piece on as usual until its break: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, and merges the existing approvals cover (`merge-prs.sh` holds a lock per repo, so merges through it take turns with the successor's). A repo's own merge command must call `merge-prs.sh` or hold its own lock.. Its break includes undoing what you set up for it; do that yourself, never leave it to the successor or the owner, who may be blocked from it. What does not continue is the next piece: the next `plans next` line, or a new direction the work turned up. Send it to the successor as a next step.
+Carry each held piece on as usual until its break: research feeding the plan or PR it was started for, implementation, review cycles and their fixes, and merges the existing approvals cover (`merge-prs.sh` holds a lock per repo, so merges through it take turns with the successor's). A repo's own merge command must call `merge-prs.sh` or hold its own lock. Its break includes undoing what you set up for it; do that yourself, never leave it to the successor or the owner, who may be blocked from it. What does not continue is the next piece: the next `plans next` line, or a new direction the work turned up. Send it to the successor as a next step.
 
 Stop nothing and rush nothing to reach the break. End the turn while things run and let the completion notices drive the next turns; never poll or sleep.
 
