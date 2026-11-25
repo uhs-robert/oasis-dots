@@ -100,7 +100,8 @@ Popup {
         in_pane: root.in_pane,
         nav_index: root.nav_index,
         body_width: body.width,
-        body_height: body.height
+        body_height: body.height,
+        help_below: body.help_below
     })
 
     Loader {
