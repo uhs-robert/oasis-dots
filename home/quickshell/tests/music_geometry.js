@@ -20,10 +20,14 @@ const on_edge = (bars, e) => bars.filter(b => b.edge === e);
 const hole = { x: 8, y: 40, w: 984, h: 552 };
 const strip_free = (bars, tops, bottoms) => bars.every(b => b.y >= tops && b.y + b.h <= 600 - bottoms);
 
-const top_bar = M.music_bars_for_layout(layout("top", true), loud);
-const bottom_bar = M.music_bars_for_layout(layout("bottom", true), loud);
-const no_bar = M.music_bars_for_layout(layout("top", false), loud);
-const two = M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 40, w: 984, h: 520 }, radius: 20, strips: [{ edge: "top", size: 40 }, { edge: "bottom", size: 40 }] }, loud);
+const hole_opt = { grow: "hole" };
+const top_bar = M.music_bars_for_layout(layout("top", true), loud, hole_opt);
+const band_top = M.music_bars_for_layout(layout("top", false), loud);
+const band_bar = M.music_bars_for_layout(layout("top", true), loud);
+const bottom_bar = M.music_bars_for_layout(layout("bottom", true), loud, hole_opt);
+const no_bar = M.music_bars_for_layout(layout("top", false), loud, hole_opt);
+const two = M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 40, w: 984, h: 520 }, radius: 20, strips: [{ edge: "top", size: 40 }, { edge: "bottom", size: 40 }] }, loud, hole_opt);
+const two_band = M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 40, w: 984, h: 520 }, radius: 20, strips: [{ edge: "top", size: 40 }, { edge: "bottom", size: 40 }] }, loud);
 
 const cases = [
   ["every edge gets bars", () => ["top", "right", "bottom", "left"].map(e => on_edge(top_bar, e).length > 0), [true, true, true, true]],
@@ -39,7 +43,14 @@ const cases = [
   ["no bar: bars use the thin band's edge", () => on_edge(no_bar, "top").every(b => b.y === 8), true],
   ["two strips: both stay free", () => strip_free(two, 40, 40), true],
   ["two strips: every edge still has bars", () => ["top", "right", "bottom", "left"].map(e => on_edge(two, e).length > 0), [true, true, true, true]],
-  ["a strip overlapping the hole clips the bars", () => strip_free(M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 10, w: 984, h: 580 }, radius: 20, strips: [{ edge: "top", size: 40 }] }, loud), 40, 0), true],
+  ["a strip overlapping the hole clips the bars", () => strip_free(M.music_bars({ w: 1000, h: 600, hole: { x: 8, y: 10, w: 984, h: 580 }, radius: 20, strips: [{ edge: "top", size: 40 }] }, loud, hole_opt), 40, 0), true],
+  ["default grows into the band: right bars start at the hole and stop at the screen edge", () => on_edge(band_top, "right").every(b => b.x === 992 && b.x + b.w === 1000), true],
+  ["default: left bars end at the hole and stop at the screen edge", () => on_edge(band_top, "left").every(b => b.x === 0 && b.x + b.w === 8), true],
+  ["default: top bars stand on the hole and grow up to the screen edge", () => on_edge(band_top, "top").every(b => b.y === 0 && b.y + b.h === 8), true],
+  ["default: bottom bars grow down to the screen edge", () => on_edge(band_top, "bottom").every(b => b.y === 592 && b.y + b.h === 600), true],
+  ["default: bars never pass the band depth", () => band_top.every(b => b.x >= 0 && b.y >= 0 && b.x + b.w <= 1000 && b.y + b.h <= 600), true],
+  ["default with a top bar: the strip side draws nothing and the strip stays free", () => [on_edge(band_bar, "top").length, strip_free(band_bar, 40, 0)], [0, true]],
+  ["default with two strips: top and bottom sides draw nothing, bars stay free", () => [on_edge(two_band, "top").length, on_edge(two_band, "bottom").length, strip_free(two_band, 40, 40), on_edge(two_band, "left").length > 0], [0, 0, true, true]],
   ["zero levels draw nothing", () => M.music_bars_for_layout(layout("top", true), quiet), []],
   ["no levels draw nothing", () => M.music_bars_for_layout(layout("top", true), []), []],
   ["non-numbers count as zero", () => M.music_bars_for_layout(layout("top", true), Array(48).fill(NaN)), []],
