@@ -68,7 +68,8 @@ QtObject {
             id: art
             property var ctx
             Rectangle {
-                anchors.left: parent.left
+                // Drawn in the gap left of the panel so it never touches the help text.
+                x: -Style.px(6)
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 1
