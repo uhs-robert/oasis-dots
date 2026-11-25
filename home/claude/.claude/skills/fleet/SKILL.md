@@ -107,7 +107,6 @@ A check prints `ok`, `all finished`, or one line per problem:
 - `WAITING <ids>`: an `approved` doc has had no owner for the stuck time. No session works on it, so the fleet cannot finish. Reported once per set of docs. Claim the doc, hold it or close it.
 - `STOPPED <fleet>`: the fleet's tmux session is gone.
 - `HUNG <name> <pid> <elapsed>`: a test or e2e runner (`node --test`, `npm test`, `npm run e2e`, `just test`, `labwc`, or Betterbird or Thunderbird on a `/tmp` profile) runs longer than 2 hours. Its cwd or command line is inside a worktree of that session. Set the time with `FLEET_HUNG_SECONDS`. The owner's own Betterbird and Firefox never match. Each pid is reported once.
-
 - `CI_RED <repo> <run url>`: the latest completed GitHub Actions run on the repo's default branch failed. Each head sha is reported once. The check is skipped when `gh` is missing or offline.
 
 A doc that is `approved` with no owner keeps the fleet from finishing, and the log shows `waiting: <ids>`. `all finished` means every session is finished and no such doc is left.
