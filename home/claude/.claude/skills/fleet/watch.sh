@@ -112,7 +112,7 @@ declare -A hash changed_at ever_owned acted_hash acted_at
 declare -A hung_reported hung_start ci_reported
 # The unowned approved docs that block finishing, since when the same set has stood, and whether it was reported. One
 # `@waiting` row.
-waiting_set= waiting_since=0 waiting_acted=0
+waiting_set='' waiting_since=0 waiting_acted=0
 load_state() {
   local name h c e ah aa
   [[ -f $state_file ]] || return 0
@@ -482,7 +482,7 @@ pass() {
           waiting_acted=1
         fi
       else
-        waiting_set= waiting_since=0 waiting_acted=0
+        waiting_set='' waiting_since=0 waiting_acted=0
       fi
     else
       log "unowned approved docs unreadable; fleet not finished"
