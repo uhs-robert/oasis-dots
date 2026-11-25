@@ -1244,6 +1244,21 @@ out=$(<"$root/run.out")
 show "$out"
 check "Codex's first summary during the wait blocks the merge" "[[ $code == 1 ]] && grep -qi 'codex' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
 
+echo "== lock: a check suite that appears during the wait gates the second check"
+gate_setup
+hold_lock
+PATH="$here:$PATH" MERGE_PRS_REVIEW_WAIT=1 timeout 30 "$script" 7 >"$root/run.out" 2>&1 &
+run=$!
+fixtures+=("$run")
+await "$run" "the run to report the wait" "grep -q 'waiting for the merge lock' '$root/run.out'" "$root/run.out"
+printf 'suites=coderabbitai\nhead_date=%s\n' "$(iso '-1 min')" >>"$GH_STATE"
+release_holder
+wait "$run"
+code=$?
+out=$(<"$root/run.out")
+show "$out"
+check "CodeRabbit's installation during the wait blocks the merge" "[[ $code != 0 ]] && grep -qi 'coderabbit' <<<\"\$out\" && ! grep -q '^7 merged' <<<\"\$out\""
+
 echo "== lock: the wait times out"
 setup
 hold_lock
