@@ -110,6 +110,9 @@ declare -A hash changed_at ever_owned acted_hash acted_at
 # Reported hung pids (pid -> session, pid -> process start time) and the last reported red head sha per repo. They ride in the state file as
 # `@hung` and `@ci` rows, apart from the per-window rows.
 declare -A hung_reported hung_start ci_reported
+# The unowned approved docs that block finishing, since when the same set has stood, and whether it was reported. One
+# `@waiting` row.
+waiting_set= waiting_since=0 waiting_acted=0
 load_state() {
   local name h c e ah aa
   [[ -f $state_file ]] || return 0
@@ -121,6 +124,10 @@ load_state() {
       continue
     elif [[ $name == @ci ]]; then
       ci_reported[$h]=$c
+      continue
+    elif [[ $name == @waiting ]]; then
+      [[ $h == - ]] && h=
+      waiting_set=$h waiting_since=$c waiting_acted=$e
       continue
     fi
     # An empty field is stored as "-": read with a tab separator folds empty fields and shifts the rest.
@@ -135,6 +142,7 @@ save_state() {
       printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "${hash[$name]:-}" "${changed_at[$name]:-0}" "${ever_owned[$name]:-0}" "${acted_hash[$name]:--}" "${acted_at[$name]:-0}"
     done
     for pid in "${!hung_reported[@]}"; do printf '@hung\t%s\t%s\t%s\n' "$pid" "${hung_reported[$pid]}" "${hung_start[$pid]:-}"; done
+    printf '@waiting\t%s\t%s\t%s\n' "${waiting_set:--}" "$waiting_since" "$waiting_acted"
     for repo in "${!ci_reported[@]}"; do printf '@ci\t%s\t%s\n' "$repo" "${ci_reported[$repo]}"; done
   } >"$state_file.tmp" && mv "$state_file.tmp" "$state_file"
 }
@@ -466,6 +474,15 @@ pass() {
       if [[ -n $ids ]]; then
         log "waiting: $ids"
         all_finished=0
+        # Nothing else wakes the planner for a doc no session owns, so a set that stands for the stuck time is reported once.
+        if [[ $ids != "$waiting_set" ]]; then
+          waiting_set=$ids waiting_since=$now waiting_acted=0
+        elif ((waiting_acted == 0 && now - waiting_since >= stuck_seconds)); then
+          problems+=("WAITING $ids: approved with no owner for $((now - waiting_since))s, so the fleet cannot finish")
+          waiting_acted=1
+        fi
+      else
+        waiting_set= waiting_since=0 waiting_acted=0
       fi
     else
       log "unowned approved docs unreadable; fleet not finished"

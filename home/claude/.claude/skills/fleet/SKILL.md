@@ -99,15 +99,16 @@ It sleeps first, so its first check does not compare against a manual run. It ch
 
 A check prints `ok`, `all finished`, or one line per problem:
 
-`all finished` means every session is finished and no `approved` doc in the project has an owner of `none`, so a session waiting for its next piece blocks it. A leftover approved doc blocks it too, and the log shows `waiting: <ids>`.
-
 - `STUCK <name>`: the session runs claude, sits idle with an empty prompt box and owns an unfinished piece (`building`, `review` or `approved` status) with `waiting_on` empty. For 30 minutes it shows no activity: no pane change, commit, plan doc change, new `.logs` file or changed file in its branch worktree. Set the time with `FLEET_STUCK_SECONDS`.
 - `PROMPT <name>`: the session waits on a permission prompt.
 - `LOST <name>`: claude exited while the session still owns unfinished pieces, or before its first claim. Such a session never counts as finished.
 - `EXITED <name>`: claude exited with nothing unfinished.
 - `GONE <name>`: the session's tmux window is gone while it still owns unfinished pieces, or never claimed. It never counts as finished.
+- `WAITING <ids>`: an `approved` doc has had no owner for the stuck time. No session works on it, so the fleet cannot finish. Reported once per set of docs. Claim the doc, hold it or close it.
 - `STOPPED <fleet>`: the fleet's tmux session is gone.
 - `HUNG <name> <pid> <elapsed>`: a test or e2e runner (`node --test`, `npm test`, `npm run e2e`, `just test`, `labwc`, or Betterbird or Thunderbird on a `/tmp` profile) runs longer than 2 hours. Its cwd or command line is inside a worktree of that session. Set the time with `FLEET_HUNG_SECONDS`. The owner's own Betterbird and Firefox never match. Each pid is reported once.
+
+A doc that is `approved` with no owner keeps the fleet from finishing, and the log shows `waiting: <ids>`. `all finished` means every session is finished and no such doc is left.
 - `CI_RED <repo> <run url>`: the latest completed GitHub Actions run on the repo's default branch failed. Each head sha is reported once. The check is skipped when `gh` is missing or offline.
 
 When the loop exits, read its output, then:
