@@ -112,6 +112,7 @@ remove_system_files() {
     /usr/local/bin/voxtype-gpu-setup
     /usr/lib/firefox/defaults/pref/autoconfig.js
     /usr/lib/firefox/mozilla.cfg
+    /usr/lib/firefox/bigicons.uc.js
     /etc/ssh/sshd_config.d/10-tailnet-only.conf
   )
   for f in "${files[@]}"; do
