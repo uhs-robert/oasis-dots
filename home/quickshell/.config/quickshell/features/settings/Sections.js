@@ -2,7 +2,7 @@
 
 // Settings sections in sidebar order; `source` is relative to the settings folder.
 var list = [
-    { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint hot corners overview osd volume brightness popup edge left right side colors color scheme palette oasis swatch neovim flush frame screen music", source: "sections/StyleSection.qml" },
+    { id: "style", group: "Appearance", label: "Style", glyph: "󰏘", keywords: "theme bar cava paint hot corners overview osd volume brightness popup edge left right side colors color scheme palette oasis swatch neovim flush frame screen", source: "sections/StyleSection.qml" },
     { id: "wallpaper", group: "Appearance", label: "Wallpaper", glyph: "󰋩", keywords: "background image rotate rotation interval pin pinned monitor season time of day weather hyprpaper", source: "sections/WallpaperSection.qml" },
     { id: "theme", group: "Appearance", label: "Theme options", glyph: "󰒓", keywords: "scanlines glow dither font effects style options opacity transparency islands frame corner skins picker overview osd workspaces icons text size", source: "sections/ThemeOptionsSection.qml" },
     { id: "audio", group: "Appearance", label: "Theme audio", glyph: "󰕾", keywords: "sound chiptune notification cursor confirm cancel volume effects pack", source: "sections/AudioSection.qml" },

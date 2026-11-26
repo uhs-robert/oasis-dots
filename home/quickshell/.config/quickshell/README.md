@@ -100,9 +100,6 @@ Every function the shell exposes, with its typed signature and, where an action 
 | `lock` | `preview_close(): string` |  |
 | `lock` | `state(): string` |  |
 | `media` | `jump_to_tab(): string` | `media.jump_to_tab` |
-| `music` | `set(on: bool): void` |  |
-| `music` | `toggle(): void` | `music.toggle` |
-| `music` | `state(): string` |  |
 | `notifications` | `toggle_dnd(): void` | `notifications.toggle_dnd` |
 | `notifications` | `get_dnd(): bool` |  |
 | `notifications` | `clear_all(): void` | `notifications.clear_all` |

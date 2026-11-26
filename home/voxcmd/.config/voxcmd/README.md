@@ -503,18 +503,6 @@ X is matched like other integrations' targets, against the names the launcher of
 
 Every phrase ends in "session" after a name, so "open the session launcher" still reaches the keybind, and "open a session", "start a new session" and the like (no name) open the Session Launcher to pick one. A phrase with "tmux" in it belongs to [Tmux](#tmux). "Switch to" and "go to" are not accepted, since those are for windows and agents.
 
-### Music
-
-`music.sh` switches the bar's music mode (the audio-reactive screen frame) over `qs-ipc`, so it needs the bar running:
-
-| Say                                              | Does                                         |
-| ------------------------------------------------ | -------------------------------------------- |
-| "music mode on", "turn on music mode", any `{activate}` | `qs-ipc call music set true`                 |
-| "music mode off" ("of" too), "turn off music mode", any `{deactivate}` | `qs-ipc call music set false`                |
-
-- The actions keep voxcmd's normal confirmation, since the frame may not draw. `set` takes a value, so saying "on" twice stays on.
-- Playback phrases ("toggle music", "pause music", "stop music") stay with [Media](#integrations); every music mode phrase has the word "mode", which no Media verb takes.
-
 ### Notifications
 
 `notifications.sh` drives the Quickshell bar, which is the notification daemon, over `qs-ipc` (`~/.config/hypr/scripts/qs-ipc`), so it needs the bar running:

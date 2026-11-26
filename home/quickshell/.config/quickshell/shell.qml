@@ -325,7 +325,6 @@ ShellRoot {
     ScreenFrameSync {}
     FrameExport {}
     PowerIpc {}
-    MusicModeIpc {}
     ConfirmIpc {}
     ScreenshotIpc {}
     ZoomIpc {}
