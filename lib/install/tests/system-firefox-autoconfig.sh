@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Tests that the installer ships the Firefox autoconfig pair only when a profile has the script, that mozilla.cfg loads
-# the one named script from the root-owned install dir and nothing else, and that uninstall.sh takes both files off.
+# Tests that the installer ships the Firefox autoconfig files only when a profile has the script, that mozilla.cfg loads
+# the one named script from the root-owned install dir and nothing else, and that uninstall.sh takes all three files off.
 set -u
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 
@@ -46,6 +46,10 @@ guard=$(grep -n 'firefox_bigicons_source); then' "$repo_dir/lib/install/system.s
 cfg_line=$(grep -n 'sudo install .*system/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 script_line=$(grep -n 'sudo install .*/usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 pref_line=$(grep -n 'sudo install .*system/usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+grep -qF 'sudo rm -f /usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer keeps a stale root-owned bigicons.uc.js when no profile has the script'
+else_line=$(grep -n 'sudo rm -f /usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+if [[ -z $else_line ]] || ! ((script_line < else_line)); then fail 'the stale-script removal is not in the no-source branch'; fi
+if grep -q 'rm .*/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh"; then fail 'installer removes mozilla.cfg while autoconfig.js stays'; fi
 if [[ -z $guard || -z $script_line ]] || ! ((guard < script_line)); then fail 'firefox install is not guarded by the script check'; fi
 if [[ -z $cfg_line ]] || ! ((script_line < cfg_line)); then fail 'mozilla.cfg is installed before the script it loads'; fi
 # autoconfig.js names mozilla.cfg, and Firefox will not start when it points at a missing file.

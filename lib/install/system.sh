@@ -43,6 +43,11 @@ install_system_files() {
     sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
   else
     info "No Firefox profile has chrome/bigicons.uc.js, skipping the Firefox autoconfig"
+    # A copy from an earlier run would keep running after its profile source went away. Only the script goes: mozilla.cfg skips
+    # a missing script without an error, and autoconfig.js plus mozilla.cfg stay as a pair, the way uninstall.sh keeps the cfg.
+    if [[ -f /usr/lib/firefox/bigicons.uc.js ]]; then
+      sudo rm -f /usr/lib/firefox/bigicons.uc.js && info "Removed the stale /usr/lib/firefox/bigicons.uc.js"
+    fi
   fi
   success "System config files installed"
 }
