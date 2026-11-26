@@ -11,7 +11,7 @@
 
 // The frame's measurements on a screen_w x screen_h screen. `bar_edges` is { top, bottom }: each the thickness of the
 // bar strip on that screen edge, 0 (or absent) where the edge has no bar. It lists every bar strip on the screen, so
-// whatever draws over the frame (music mode) skips exactly these; the layout carries it on as `bar_edges` with both
+// whatever draws over the frame skips exactly these; the layout carries it on as `bar_edges` with both
 // keys set. `kit` is Style.plain_frame_kit with the style's corner profile laid over it (Style.screen_frame_profile:
 // corner, radius, step). The hole runs from `start` to length - `end` along u and from `near` to `far` along v;
 // `straight` is the stretch of its near (and far) edge between the corners, which a strip's rim draws. `has_bar` and

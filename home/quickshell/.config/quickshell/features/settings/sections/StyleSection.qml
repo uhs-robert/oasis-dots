@@ -59,19 +59,6 @@ RowsSection {
             pick: false
         },
         {
-            label: "Music mode",
-            desc: "The screen frame shows the playing music as bars. Needs the screen frame (Theme options).",
-            // Fixed while the style's frame is off, like Flush single windows.
-            values: () => Style.screen_frame_on ? ["on", "off"] : ["off (needs the screen frame)"],
-            text: v => v,
-            value: () => Style.screen_frame_on ? (MusicModeSettings.on ? "on" : "off") : "off (needs the screen frame)",
-            set: v => {
-                if (Style.screen_frame_on) MusicModeSettings.set_on(v === "on");
-            },
-            cycle: Style.screen_frame_on,
-            pick: false
-        },
-        {
             label: "Hot corners",
             desc: "Moving the pointer into the top-left screen corner opens the workspace overview.",
             values: () => ["on", "off"],

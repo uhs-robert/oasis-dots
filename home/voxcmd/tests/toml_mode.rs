@@ -844,35 +844,3 @@ fn a_mode_s_handle_turn_is_not_run_while_the_click_overlay_is_open() {
             .contains("session: demo's handle_turn not run: the click overlay is open")
     );
 }
-
-/// Copies shipped integrations (and their hook libraries) into the rig's config dir.
-fn install_shipped(rig: &Rig, stems: &[&str]) {
-    let shipped = Path::new(env!("CARGO_MANIFEST_DIR")).join(".config/voxcmd/integrations");
-    for stem in stems {
-        for ext in ["toml", "sh"] {
-            std::fs::copy(
-                shipped.join(format!("{stem}.{ext}")),
-                rig.path().join(format!("config/integrations/{stem}.{ext}")),
-            )
-            .unwrap();
-        }
-    }
-}
-
-#[test]
-fn music_mode_runs_the_bars_set_with_a_bool() {
-    let rig = Rig::new();
-    install_shipped(&rig, &["music"]);
-    let scripts = rig.path().join("xdg/hypr/scripts");
-    std::fs::create_dir_all(&scripts).unwrap();
-    executable::write_executable(
-        &scripts.join("qs-ipc"),
-        &format!("#!/bin/sh\necho \"qs-ipc $*\" >> '{}'\n", rig.work("ipc").display()),
-    );
-    rig.run("music mode on");
-    rig.run("music mode off");
-    assert_eq!(
-        rig.read_work("ipc"),
-        "qs-ipc call music set true\nqs-ipc call music set false\n"
-    );
-}
