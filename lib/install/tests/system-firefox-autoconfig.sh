@@ -100,8 +100,8 @@ uninstall_block+=$'\nfi'
     local args=()
     while (($#)); do
       case $1 in
-        -o | -g) shift 2 ;;
-        *) args+=("$1") && shift ;;
+      -o | -g) shift 2 ;;
+      *) args+=("$1") && shift ;;
       esac
     done
     "${args[@]}"
