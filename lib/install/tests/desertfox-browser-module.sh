@@ -33,8 +33,8 @@ script=$DESERTFOX_DIR/browser_module/install.sh
 desertfox_module_script >/dev/null || fail 'module is not wanted with a checkout'
 install_desertfox_browser_module
 uninstall_desertfox_browser_module
-[[ $(sed -n 1p "$calls") == "bash $script" ]] || fail "install call is: $(sed -n 1p "$calls")"
-[[ $(sed -n 2p "$calls") == "bash $script --uninstall" ]] || fail "uninstall call is: $(sed -n 2p "$calls")"
+[[ $(sed -n 1p "$calls") == "bash -- $script" ]] || fail "install call is: $(sed -n 1p "$calls")"
+[[ $(sed -n 2p "$calls") == "bash -- $script --uninstall" ]] || fail "uninstall call is: $(sed -n 2p "$calls")"
 
 # The module never turns itself on from here.
 if grep -rn 'browser_module.enabled' "$repo_dir/lib/install" "$repo_dir/install.sh" "$repo_dir/uninstall.sh" | grep -v '/tests/' | grep -qv '^\S*:[0-9]*:\s*#'; then fail 'the installer touches the enable pref'; fi

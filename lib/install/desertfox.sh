@@ -26,11 +26,11 @@ install_desertfox_browser_module() {
     return 0
   fi
   info "Installing the DesertFox browser module..."
-  sudo bash "$script"
+  sudo bash -- "$script"
 }
 
 uninstall_desertfox_browser_module() {
   local script
   script=$(desertfox_module_script) || return 0
-  sudo bash "$script" --uninstall
+  sudo bash -- "$script" --uninstall
 }
