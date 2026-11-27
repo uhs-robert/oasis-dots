@@ -84,9 +84,9 @@ write_dropin owned "$work/fx/chrome.d/owned.js"
 chmod 644 "$work/fx/chrome.d/owned.js"
 chmod 444 "$work/fx/chrome.d/a.js" "$work/fx/chrome.d/b.js" "$work/fx/chrome.d/z.js" "$work/fx/chrome.d/aa_throws.js"
 write_dropin writable "$work/fx/chrome.d/writable.js"
-chmod 666 "$work/fx/chrome.d/writable.js"
+chmod 446 "$work/fx/chrome.d/writable.js"
 write_dropin group "$work/fx/chrome.d/group.js"
-chmod 664 "$work/fx/chrome.d/group.js"
+chmod 464 "$work/fx/chrome.d/group.js"
 write_dropin linked "$work/fx/linked_target.js"
 ln -s ../linked_target.js "$work/fx/chrome.d/linked.js"
 write_dropin text "$work/fx/chrome.d/note.txt"
@@ -106,7 +106,7 @@ done'
 
 refused='ERR chrome.d refused: not a real directory the browser user cannot write'
 
-chmod 775 "$work/fx/chrome.d"
+chmod 575 "$work/fx/chrome.d"
 run_firefox 'refused'
 expect_out 'group-writable folder' "$refused"
 chmod 755 "$work/fx/chrome.d"
