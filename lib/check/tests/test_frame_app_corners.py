@@ -56,11 +56,14 @@ class FirefoxCss(unittest.TestCase):
         css = gen.firefox_css(frame("chamfer", 12))
         self.assertIn("box#vertical-tabs {\n  overflow: clip !important;\n  overflow-clip-margin: var(--border-width, 1px) !important;\n  min-height: 0 !important;\n}", css)
 
-    def test_square_and_pixel_have_no_rounding(self):
-        for corner in ("square", "pixel"):
-            css = gen.firefox_css(frame(corner, 8))
-            self.assertIn("--tf-rounding: 0px;", css, corner)
-            self.assertNotIn("clip-path", css, corner)
+    def test_square_has_no_rounding(self):
+        css = gen.firefox_css(frame("square", 8))
+        self.assertIn("--tf-rounding: 0px;", css)
+        self.assertNotIn("clip-path", css)
+
+    def test_pixel_gets_the_chamfer_bevel(self):
+        self.assertEqual(gen.firefox_css(frame("pixel", 12)), gen.firefox_css(frame("chamfer", 12)))
+        self.assertIn("--tf-bevel-line", gen.firefox_css(frame("pixel", 12)))
 
     def test_chamfer_bevels_textfox_panes_only(self):
         css = gen.firefox_css(frame("chamfer", 12))
@@ -109,7 +112,10 @@ class FirefoxCss(unittest.TestCase):
             self.assertNotIn(text, css)
 
     def test_zero_radius_chamfer_does_not_clip(self):
-        self.assertNotIn("clip-path", gen.firefox_css(frame("chamfer", 0)))
+        for corner in ("chamfer", "pixel"):
+            css = gen.firefox_css(frame(corner, 0))
+            self.assertNotIn("clip-path", css, corner)
+            self.assertNotIn("--tf-bevel-line", css, corner)
 
     def test_no_corner_leaves_firefox_alone(self):
         self.assertNotIn("--tf-rounding", gen.firefox_css({"on": False, "corner": "", "radius": 0}))
