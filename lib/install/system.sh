@@ -35,17 +35,21 @@ install_system_files() {
   # Firefox autoconfig: the package owns neither path (pacman -Qo), so upgrades leave them alone and no pacman hook is needed.
   # It is a root-level chrome-code hook, so it goes in only for a user who has the script it loads, and the script is a root-owned
   # copy in chrome.d beside mozilla.cfg: the profile is user-writable, so loading from it would turn any user file write into chrome code.
-  # chrome.d is root, 0755 and made here whenever the autoconfig goes in; the gate has no "module wanted" leg yet (the DesertFox
-  # browser module adds it). The script goes in first, then mozilla.cfg: autoconfig.js names it, and Firefox refuses to start
-  # when that file is missing.
-  local bigicons_source
-  if [[ -d /usr/lib/firefox ]] && bigicons_source=$(firefox_bigicons_source); then
+  # chrome.d is root, 0755 and made here whenever the autoconfig goes in: for a profile script or for the DesertFox browser module
+  # (its install script is in the local checkout). The script goes in first, then mozilla.cfg: autoconfig.js names it, and
+  # Firefox refuses to start when that file is missing.
+  local bigicons_source=""
+  if [[ -d /usr/lib/firefox ]] && { bigicons_source=$(firefox_bigicons_source) || desertfox_module_script >/dev/null; }; then
     sudo install -d -o root -g root -m755 /usr/lib/firefox/chrome.d
-    sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js
+    if [[ -n $bigicons_source ]]; then
+      sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js
+    elif [[ -f /usr/lib/firefox/chrome.d/bigicons.uc.js ]]; then
+      sudo rm -f /usr/lib/firefox/chrome.d/bigicons.uc.js && info "Removed the stale /usr/lib/firefox/chrome.d/bigicons.uc.js"
+    fi
     sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg
     sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
   else
-    info "No Firefox profile has chrome/bigicons.uc.js, skipping the Firefox autoconfig"
+    info "No Firefox profile has chrome/bigicons.uc.js and no DesertFox browser module, skipping the Firefox autoconfig"
     # A copy from an earlier run would keep running after its profile source went away. Only the script goes: mozilla.cfg loads
     # whatever chrome.d holds without an error when it is empty, and autoconfig.js plus mozilla.cfg stay as a pair, the way
     # uninstall.sh keeps the cfg.

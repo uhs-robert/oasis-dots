@@ -151,6 +151,7 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_root_symlinks; fi
   bootstrap_neovim
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then install_system_files; fi
+  if [[ $OPT_SYSTEM_FILES -eq 1 && $OPT_SERVER -eq 0 ]]; then install_desertfox_browser_module || warn "The DesertFox browser module was not installed; fix the error above, then rerun ./install.sh"; fi
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_pacman_tweaks; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
