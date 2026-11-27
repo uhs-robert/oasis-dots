@@ -25,11 +25,15 @@ fx_pid=''
 cleanup() {
   [[ -n $fx_pid ]] && kill "$fx_pid" 2>/dev/null
   wait 2>/dev/null
+  chmod -R u+w "$work" 2>/dev/null
   rm -rf "$work"
 }
 trap cleanup EXIT
 
 cp -r --reflink=auto "$fx_src" "$work/fx" || exit 1
+# The copy must not depend on the host's install: a real chrome.d would load its scripts here, and the host may lack the autoconfig.
+rm -rf "$work/fx/chrome.d" "$work/fx/mozilla.cfg"
+install -Dm644 "$repo_dir/system/usr/lib/firefox/defaults/pref/autoconfig.js" "$work/fx/defaults/pref/autoconfig.js" || exit 1
 out=$work/out.txt
 
 # A drop-in appends its tag to out.txt. The block scope keeps tags from clashing in the shared window scope.
@@ -71,11 +75,14 @@ expect_out() { # label expected-text
 
 install_cfg
 mkdir "$work/fx/chrome.d"
-chmod 755 "$work/fx/chrome.d"
+# The copy is owned by the test user, who is the browser user, so a loadable drop-in is 0444 and the folder is 0555.
 write_dropin b "$work/fx/chrome.d/b.js"
 write_dropin a "$work/fx/chrome.d/a.js"
 write_dropin "done" "$work/fx/chrome.d/z.js"
 printf 'throw new Error("boom")\n' >"$work/fx/chrome.d/aa_throws.js"
+write_dropin owned "$work/fx/chrome.d/owned.js"
+chmod 644 "$work/fx/chrome.d/owned.js"
+chmod 444 "$work/fx/chrome.d/a.js" "$work/fx/chrome.d/b.js" "$work/fx/chrome.d/z.js" "$work/fx/chrome.d/aa_throws.js"
 write_dropin writable "$work/fx/chrome.d/writable.js"
 chmod 666 "$work/fx/chrome.d/writable.js"
 write_dropin group "$work/fx/chrome.d/group.js"
@@ -84,23 +91,28 @@ write_dropin linked "$work/fx/linked_target.js"
 ln -s ../linked_target.js "$work/fx/chrome.d/linked.js"
 write_dropin text "$work/fx/chrome.d/note.txt"
 mkdir "$work/fx/chrome.d/subdir.js"
+chmod 555 "$work/fx/chrome.d"
 
 run_firefox '^done$'
 expect_out 'safe folder' 'a
 ERR chrome.d/aa_throws.js failed to load: Error: boom
 b
-ERR chrome.d/group.js skipped: not a regular file that only its owner can write
-ERR chrome.d/linked.js skipped: not a regular file that only its owner can write
-ERR chrome.d/subdir.js skipped: not a regular file that only its owner can write
-ERR chrome.d/writable.js skipped: not a regular file that only its owner can write
+ERR chrome.d/group.js skipped: not a regular file the browser user cannot write
+ERR chrome.d/linked.js skipped: not a regular file the browser user cannot write
+ERR chrome.d/owned.js skipped: not a regular file the browser user cannot write
+ERR chrome.d/subdir.js skipped: not a regular file the browser user cannot write
+ERR chrome.d/writable.js skipped: not a regular file the browser user cannot write
 done'
 
-refused='ERR chrome.d refused: not a real directory that only its owner can write'
+refused='ERR chrome.d refused: not a real directory the browser user cannot write'
 
 chmod 775 "$work/fx/chrome.d"
 run_firefox 'refused'
 expect_out 'group-writable folder' "$refused"
 chmod 755 "$work/fx/chrome.d"
+run_firefox 'refused'
+expect_out 'folder the browser user can write' "$refused"
+chmod 555 "$work/fx/chrome.d"
 
 mv "$work/fx/chrome.d" "$work/fx/real_d"
 ln -s real_d "$work/fx/chrome.d"
@@ -109,6 +121,7 @@ expect_out 'symlinked folder' "$refused"
 rm "$work/fx/chrome.d"
 mv "$work/fx/real_d" "$work/fx/chrome.d"
 
+chmod 755 "$work/fx/chrome.d"
 rm -rf "$work/fx/chrome.d"
 install_cfg
 run_firefox never 15
