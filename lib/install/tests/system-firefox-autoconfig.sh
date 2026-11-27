@@ -95,7 +95,17 @@ uninstall_block=$(extract_block "$repo_dir/uninstall.sh" '# chrome.d holds the b
 uninstall_block+=$'\nfi'
 # shellcheck disable=SC2329 # the stubs are called by the eval-ed blocks
 {
-  sudo() { "$@"; }
+  # The test user cannot chown to root, so the stub drops "-o root -g root" and the real install keeps its own mode check.
+  sudo() {
+    local args=()
+    while (($#)); do
+      case $1 in
+        -o | -g) shift 2 ;;
+        *) args+=("$1") && shift ;;
+      esac
+    done
+    "${args[@]}"
+  }
   info() { :; }
   success() { :; }
   warn() { :; }
@@ -110,6 +120,7 @@ printf 'one\n' >"$home_dir/.mozilla/firefox/a.default/chrome/bigicons.uc.js"
 rm -f "$home_dir/.config/mozilla/firefox/b.default/chrome/bigicons.uc.js"
 printf 'legacy\n' >"$fx_root/bigicons.uc.js"
 run_install
+grep -qF 'sudo install -d -o root -g root -m755 /usr/lib/firefox/chrome.d' "$repo_dir/lib/install/system.sh" || fail 'installer does not reset the owner of chrome.d'
 [[ -d $fx_root/chrome.d ]] || fail 'installer does not create chrome.d'
 [[ $(stat -c %a "$fx_root/chrome.d") == 755 ]] || fail 'chrome.d is not 0755'
 [[ $(stat -c %a "$fx_root/chrome.d/bigicons.uc.js") == 644 ]] || fail 'chrome.d/bigicons.uc.js is not 0644'
