@@ -58,6 +58,7 @@ run_firefox() { # wait-pattern [seconds]
   mkdir "$work/prof"
   if [[ -n ${ro_mount:-} ]]; then
     # A user namespace lets the test user mount a read-only bind of one folder without sudo.
+    # shellcheck disable=SC2016 # $1 and $@ expand in the inner bash
     unshare -rm bash -c 'mount --bind "$1" "$1" && mount -o remount,bind,ro "$1" && shift && exec "$@"' _ "$ro_mount" \
       "$work/fx/firefox" --headless --no-remote --profile "$work/prof" about:blank >"$work/firefox.log" 2>&1 &
   else
