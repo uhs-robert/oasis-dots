@@ -15,14 +15,14 @@ Scope {
     readonly property var drawn: Corners.fit(root.profile.corner, root.profile.radius, root.profile.step)
     // `on` is whether a frame is drawn; the corner is always set.
     // Without a frame and without a picked Corner style the corner is empty, which leaves Firefox and yazi at their own.
-    readonly property var snapshot: Style.corner_sent ? { on: ScreenFrames.any_frame, corner: root.profile.corner, radius: root.drawn.radius } : { on: false, corner: "", radius: 0 }
+    readonly property var snapshot: Style.corner_sent ? { on: ScreenFrames.any_frame, corner: root.profile.corner, radius: root.drawn.radius, step: root.drawn.step } : { on: false, corner: "", radius: 0, step: 0 }
 
     onSnapshotChanged: if (store.loaded_once) store.replace(root.snapshot)
 
     JsonStore {
         id: store
         path: Paths.state_dir + "/frame.json"
-        defaults: ({ on: false, corner: "", radius: 0 })
+        defaults: ({ on: false, corner: "", radius: 0, step: 0 })
         watch: false
         // The style picker previews frames as it moves, so only the frame it settles on is written.
         debounce_ms: 300

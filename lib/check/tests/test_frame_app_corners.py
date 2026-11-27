@@ -14,8 +14,11 @@ SCRIPT = os.path.join(ROOT, "home/quickshell/.config/quickshell/scripts/frame-ap
 gen = SourceFileLoader("frame_app_corners", SCRIPT).load_module()
 
 
-def frame(corner, radius=12, on=True):
-    return {"on": on, "corner": corner, "radius": radius}
+def frame(corner, radius=12, on=True, step=None):
+    data = {"on": on, "corner": corner, "radius": radius}
+    if step is not None:
+        data["step"] = step
+    return data
 
 
 class YaziBorder(unittest.TestCase):
@@ -56,11 +59,49 @@ class FirefoxCss(unittest.TestCase):
         css = gen.firefox_css(frame("chamfer", 12))
         self.assertIn("box#vertical-tabs {\n  overflow: clip !important;\n  overflow-clip-margin: var(--border-width, 1px) !important;\n  min-height: 0 !important;\n}", css)
 
-    def test_square_and_pixel_have_no_rounding(self):
-        for corner in ("square", "pixel"):
-            css = gen.firefox_css(frame(corner, 8))
-            self.assertIn("--tf-rounding: 0px;", css, corner)
-            self.assertNotIn("clip-path", css, corner)
+    def test_square_has_no_rounding_or_bevel(self):
+        css = gen.firefox_css(frame("square", 8))
+        self.assertIn("--tf-rounding: 0px;", css)
+        self.assertNotIn("clip-path", css)
+        self.assertNotIn("--tf-bevel-line", css)
+
+    def stair_layers(self, css):
+        return css.split("background: ")[1].split(";")[0].split("no-repeat")[:-1]
+
+    def test_pixel_paints_stairs_without_clip_or_mask(self):
+        css = gen.firefox_css(frame("pixel", 12, step=2))
+        self.assertIn("--tf-rounding: 0px;", css)
+        self.assertNotIn("clip-path", css)
+        self.assertNotIn("mask", css)
+        self.assertIn("transition: --tf-bevel-line var(--tf-border-transition);", css)
+        self.assertIn(":root[inFullscreen] #nav-bar::after", css)
+        # 6 stairs of 2px, a fill and a line rectangle each, in 4 corners.
+        self.assertEqual(len(self.stair_layers(css)), 6 * 2 * 4)
+
+    def test_pixel_stairs_match_corner_points(self):
+        # Corners.corner_points: row i of a top-left corner removes (n - i) * step from the edge.
+        css = gen.firefox_css(frame("pixel", 6, step=2))
+        for i, cut in enumerate((6, 4, 2)):
+            self.assertIn(f"left 0px top {2 * i}px / {cut}px 2px no-repeat", css)
+            self.assertIn(f"right 0px bottom {2 * i}px / {cut}px 2px no-repeat", css)
+            self.assertIn(f"left 0px top {2 * i}px / calc({cut}px + var(--border-width, 1px)) calc(2px + var(--border-width, 1px)) no-repeat", css)
+        self.assertEqual(css.count("var(--tf-bevel-outside), var(--tf-bevel-outside)"), 12)
+
+    def test_pixel_step_halves_the_stairs(self):
+        one = len(self.stair_layers(gen.firefox_css(frame("pixel", 12, step=1))))
+        two = len(self.stair_layers(gen.firefox_css(frame("pixel", 12, step=2))))
+        self.assertEqual((one, two), (12 * 2 * 4, 6 * 2 * 4))
+
+    def test_pixel_without_a_usable_step_uses_one(self):
+        base = gen.firefox_css(frame("pixel", 4, step=1))
+        self.assertEqual(gen.firefox_css(frame("pixel", 4)), base)
+        self.assertEqual(gen.firefox_css(frame("pixel", 4, step=0)), base)
+        self.assertEqual(gen.firefox_css(frame("pixel", 4, step=3)), base)
+
+    def test_pixel_radius_zero_draws_nothing(self):
+        css = gen.firefox_css(frame("pixel", 0, step=0))
+        self.assertIn("--tf-rounding: 0px;", css)
+        self.assertNotIn("--tf-bevel-line", css)
 
     def test_chamfer_bevels_textfox_panes_only(self):
         css = gen.firefox_css(frame("chamfer", 12))
