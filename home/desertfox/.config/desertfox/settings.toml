@@ -17,5 +17,5 @@ newtab_weather_units = "imperial"
 newtab_closed_tabs = false
 font_family_mono = "Maple Mono NF"
 font_family = "Maple Mono NF"
-item_navigator = false
+item_navigator = "shipped"
 default_site_rows_off = []
