@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Runs the mozilla.cfg chrome.d loader in a private headless Firefox copy and checks which drop-ins load, in what order,
 # and that an unsafe chrome.d loads nothing. Skips when Firefox is not installed.
-# The copy is owned by the test user, not root, so the cfg's root uid is swapped for the test user's uid in the copy.
-# That swap is a text edit of the copy and not a runtime switch, so the shipped cfg has no way to change the expected owner.
-# Untested here: a real root-owned install (the swap proves the owner comparison, not that uid 0 is the value in the shipped cfg).
+# The loader has no owner check, so the copy owned by the test user behaves like an install.
 set -u
 repo_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/../../.." && pwd)
 cfg=$repo_dir/system/usr/lib/firefox/mozilla.cfg
@@ -15,7 +13,7 @@ fail() {
   failures=$((failures + 1))
 }
 
-grep -qxF '  const root_uid = 0;' "$cfg" || fail 'the shipped cfg does not expect uid 0'
+if grep -q 'ctypes\|root_uid' "$cfg"; then fail 'the shipped cfg has an owner check'; fi
 if [[ ! -x $fx_src/firefox ]]; then
   printf 'SKIP no Firefox at %s\n' "$fx_src"
   exit $((failures > 0))
@@ -39,14 +37,14 @@ write_dropin() { # tag path
   printf '{const f=Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsIFile);f.initWithPath("%s");const o=Components.classes["@mozilla.org/network/file-output-stream;1"].createInstance(Components.interfaces.nsIFileOutputStream);o.init(f,0x02|0x08|0x10,0o600,0);const s="%s\\n";o.write(s,s.length);o.close();}' "$out" "$1" >"$2"
 }
 
-# The test cfg is the shipped one with the owner swapped, and its error log goes to out.txt as "ERR <message>".
+# The test cfg is the shipped one, and its error log goes to out.txt as "ERR <message>".
 install_cfg() {
   local err_fn
   err_fn='var test_err=(m)=>{const f=Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsIFile);f.initWithPath("'$out'");const o=Components.classes["@mozilla.org/network/file-output-stream;1"].createInstance(Components.interfaces.nsIFileOutputStream);o.init(f,0x02|0x08|0x10,0o600,0);const s="ERR "+m+"\n";o.write(s,s.length);o.close();};'
   {
     head -n1 "$cfg"
     printf '%s\n' "$err_fn"
-    tail -n +2 "$cfg" | sed "s/const root_uid = 0;/const root_uid = $(id -u);/; s/Components.utils.reportError(/test_err(/"
+    tail -n +2 "$cfg" | sed 's/Components.utils.reportError(/test_err(/'
   } >"$work/fx/mozilla.cfg"
 }
 
@@ -91,13 +89,13 @@ run_firefox '^done$'
 expect_out 'safe folder' 'a
 ERR chrome.d/aa_throws.js failed to load: Error: boom
 b
-ERR chrome.d/group.js skipped: not a root-owned regular file that only root can write
-ERR chrome.d/linked.js skipped: not a root-owned regular file that only root can write
-ERR chrome.d/subdir.js skipped: not a root-owned regular file that only root can write
-ERR chrome.d/writable.js skipped: not a root-owned regular file that only root can write
+ERR chrome.d/group.js skipped: not a regular file that only its owner can write
+ERR chrome.d/linked.js skipped: not a regular file that only its owner can write
+ERR chrome.d/subdir.js skipped: not a regular file that only its owner can write
+ERR chrome.d/writable.js skipped: not a regular file that only its owner can write
 done'
 
-refused='ERR chrome.d refused: not a root-owned directory that only root can write'
+refused='ERR chrome.d refused: not a real directory that only its owner can write'
 
 chmod 775 "$work/fx/chrome.d"
 run_firefox 'refused'
@@ -110,11 +108,6 @@ run_firefox 'refused'
 expect_out 'symlinked folder' "$refused"
 rm "$work/fx/chrome.d"
 mv "$work/fx/real_d" "$work/fx/chrome.d"
-
-# Another owner: swap in a uid that is not the test user's.
-sed -i "s/const root_uid = $(id -u);/const root_uid = $(($(id -u) + 1));/" "$work/fx/mozilla.cfg"
-run_firefox 'refused'
-expect_out 'folder owned by another user' "$refused"
 
 rm -rf "$work/fx/chrome.d"
 install_cfg
