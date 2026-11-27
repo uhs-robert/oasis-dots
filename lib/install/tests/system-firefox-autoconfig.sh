@@ -19,14 +19,13 @@ grep -qxF 'pref("general.config.filename", "mozilla.cfg");' "$pref" || fail 'aut
 grep -qxF 'pref("general.config.obscure_value", 0);' "$pref" || fail 'autoconfig.js obscures the cfg'
 grep -qxF 'pref("general.config.sandbox_enabled", false);' "$pref" || fail 'autoconfig.js does not lift the sandbox'
 
-# Only the named script loads: no directory listing, no suffix match.
-grep -qF 'const script_name = "bigicons.uc.js";' "$cfg" || fail 'mozilla.cfg does not name bigicons.uc.js'
-if grep -q 'directoryEntries\|endsWith' "$cfg"; then fail 'mozilla.cfg globs a folder'; fi
-# The profile is user-writable, so the script must come from the install dir (GreD, where mozilla.cfg itself sits).
+# The loader reads one folder in the install dir, never the profile (user-writable, so any user-level write would run as chrome code).
+grep -qF 'const dir_name = "chrome.d";' "$cfg" || fail 'mozilla.cfg does not name chrome.d'
 if grep -q 'UChrm\|ProfD\|ProfLD' "$cfg"; then fail 'mozilla.cfg loads from the profile'; fi
 grep -qF 'Services.dirsvc.get("GreD"' "$cfg" || fail 'mozilla.cfg does not load from the install dir'
-grep -q 'script.exists()' "$cfg" || fail 'mozilla.cfg does not skip a missing script'
 grep -q 'reportError' "$cfg" || fail 'mozilla.cfg does not log load errors to the console'
+grep -qF 'AT_SYMLINK' "$cfg" || grep -qF 'at_symlink_nofollow' "$cfg" || fail 'mozilla.cfg follows symlinks when it checks a file'
+# The real checks run in a private Firefox: see firefox-chrome-d-loader.sh.
 # A syntax error is not caught by the cfg's own try, and Firefox then refuses to start.
 if command -v node >/dev/null; then
   node -e 'new Function(require("fs").readFileSync(process.argv[1], "utf8"))' "$cfg" || fail 'mozilla.cfg does not parse'
@@ -41,13 +40,13 @@ if [[ -e $repo_dir/system/etc/pacman.d/hooks/firefox-autoconfig.hook ]]; then fa
 grep -qF 'sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" || fail 'installer does not install autoconfig.js'
 grep -qF 'sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" || fail 'installer does not install mozilla.cfg'
 # shellcheck disable=SC2016 # the literal $bigicons_source is what system.sh contains
-grep -qF 'sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer does not install the root-owned bigicons.uc.js'
+grep -qF 'sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer does not install the root-owned chrome.d/bigicons.uc.js'
 guard=$(grep -n 'firefox_bigicons_source); then' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 cfg_line=$(grep -n 'sudo install .*system/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
-script_line=$(grep -n 'sudo install .*/usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+script_line=$(grep -n 'sudo install .*/usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 pref_line=$(grep -n 'sudo install .*system/usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
-grep -qF 'sudo rm -f /usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer keeps a stale root-owned bigicons.uc.js when no profile has the script'
-else_line=$(grep -n 'sudo rm -f /usr/lib/firefox/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+grep -qF 'sudo rm -f /usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer keeps a stale root-owned bigicons.uc.js when no profile has the script'
+else_line=$(grep -n 'sudo rm -f /usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 if [[ -z $else_line ]] || ! ((script_line < else_line)); then fail 'the stale-script removal is not in the no-source branch'; fi
 if grep -q 'rm .*/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh"; then fail 'installer removes mozilla.cfg while autoconfig.js stays'; fi
 if [[ -z $guard || -z $script_line ]] || ! ((guard < script_line)); then fail 'firefox install is not guarded by the script check'; fi
@@ -75,11 +74,57 @@ firefox_bigicons_source >/dev/null || fail 'script under ~/.config/mozilla/firef
 
 # uninstall.sh runs main when sourced and removes only paths it lists, so the list is what is checked.
 grep -q 'firefox' "$repo_dir/uninstall.sh" || fail 'uninstall.sh does not list the firefox files'
-for f in /usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/mozilla.cfg /usr/lib/firefox/bigicons.uc.js; do
+for f in /usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/mozilla.cfg /usr/lib/firefox/bigicons.uc.js; do # the last is the pre-chrome.d path
   grep -qxF "    $f" "$repo_dir/uninstall.sh" || fail "uninstall.sh does not remove $f"
 done
 
 # Removing mozilla.cfg while autoconfig.js stays leaves Firefox unable to start.
 grep -qF 'kept: autoconfig.js is still installed' "$repo_dir/uninstall.sh" || fail 'uninstall.sh removes mozilla.cfg while autoconfig.js stays'
+
+grep -qF 'rm -rf -- /usr/lib/firefox/chrome.d' "$repo_dir/uninstall.sh" || fail 'uninstall.sh does not remove chrome.d'
+
+# Run the installer's Firefox block and uninstall.sh's chrome.d block against a temp tree: sudo becomes a plain call and
+# /usr/lib/firefox becomes the temp tree, so nothing near the real install dir is touched.
+fx_root=$home_dir/fx
+extract_block() { # file start-pattern end-pattern
+  awk -v s="$2" -v e="$3" 'index($0, s) { on = 1 } on { print } on && index($0, e) { exit }' "$1" | sed "s# /usr/lib/firefox# $fx_root#g"
+}
+install_block=$(extract_block "$repo_dir/lib/install/system.sh" 'local bigicons_source' 'Removed the old')
+install_block+=$'\n  fi'
+uninstall_block=$(extract_block "$repo_dir/uninstall.sh" '# chrome.d holds the bigicons copy' 'chrome.d not found')
+uninstall_block+=$'\nfi'
+# shellcheck disable=SC2329 # the stubs are called by the eval-ed blocks
+{
+  sudo() { "$@"; }
+  info() { :; }
+  success() { :; }
+  warn() { :; }
+}
+run_install() {
+  cd "$repo_dir" || return 1
+  eval "$install_block"
+}
+
+mkdir -p "$fx_root" "$home_dir/.mozilla/firefox/a.default/chrome"
+printf 'one\n' >"$home_dir/.mozilla/firefox/a.default/chrome/bigicons.uc.js"
+rm -f "$home_dir/.config/mozilla/firefox/b.default/chrome/bigicons.uc.js"
+printf 'legacy\n' >"$fx_root/bigicons.uc.js"
+run_install
+[[ -d $fx_root/chrome.d ]] || fail 'installer does not create chrome.d'
+[[ $(stat -c %a "$fx_root/chrome.d") == 755 ]] || fail 'chrome.d is not 0755'
+[[ $(stat -c %a "$fx_root/chrome.d/bigicons.uc.js") == 644 ]] || fail 'chrome.d/bigicons.uc.js is not 0644'
+[[ $(cat "$fx_root/chrome.d/bigicons.uc.js") == one ]] || fail 'chrome.d/bigicons.uc.js is not the profile copy'
+[[ -e $fx_root/bigicons.uc.js ]] && fail 'installer keeps the old copy beside mozilla.cfg'
+[[ -f $fx_root/mozilla.cfg && -f $fx_root/defaults/pref/autoconfig.js ]] || fail 'installer does not install the cfg and the pref'
+: >"$fx_root/chrome.d/other.uc.js"
+rm "$home_dir/.mozilla/firefox/a.default/chrome/bigicons.uc.js"
+run_install
+[[ -e $fx_root/chrome.d/bigicons.uc.js ]] && fail 'installer keeps the stale chrome.d/bigicons.uc.js'
+[[ -e $fx_root/chrome.d/other.uc.js ]] || fail 'installer removes a drop-in it did not install'
+[[ -f $fx_root/mozilla.cfg ]] || fail 'installer removes mozilla.cfg when no profile has the script'
+
+eval "$uninstall_block"
+[[ -e $fx_root/chrome.d ]] && fail 'uninstall.sh leaves chrome.d behind'
+eval "$uninstall_block"
 
 exit $((failures > 0))

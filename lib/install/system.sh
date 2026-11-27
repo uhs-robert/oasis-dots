@@ -3,7 +3,7 @@
 
 # Prints the first profile copy of bigicons.uc.js (under either root) and returns 0, or returns 1 when no profile has one.
 # -e follows symlinks, so a chrome folder linked into a private repo counts. The profile copy is only the source the owner edits:
-# mozilla.cfg runs the root-owned copy that install_system_files makes from it.
+# mozilla.cfg runs the root-owned copy in chrome.d that install_system_files makes from it.
 firefox_bigicons_source() {
   local script
   # Both roots Firefox uses: ~/.config/mozilla/firefox (XDG, newer builds) and ~/.mozilla/firefox.
@@ -34,20 +34,28 @@ install_system_files() {
   sudo install -Dm755 system/usr/local/bin/voxtype-gpu-setup /usr/local/bin/voxtype-gpu-setup
   # Firefox autoconfig: the package owns neither path (pacman -Qo), so upgrades leave them alone and no pacman hook is needed.
   # It is a root-level chrome-code hook, so it goes in only for a user who has the script it loads, and the script is a root-owned
-  # copy beside mozilla.cfg: the profile is user-writable, so loading from it would turn any user file write into chrome code.
-  # The script goes in first, then mozilla.cfg: autoconfig.js names it, and Firefox refuses to start when that file is missing.
+  # copy in chrome.d beside mozilla.cfg: the profile is user-writable, so loading from it would turn any user file write into chrome code.
+  # chrome.d is root, 0755 and made here whenever the autoconfig goes in; the gate has no "module wanted" leg yet (the DesertFox
+  # browser module adds it). The script goes in first, then mozilla.cfg: autoconfig.js names it, and Firefox refuses to start
+  # when that file is missing.
   local bigicons_source
   if [[ -d /usr/lib/firefox ]] && bigicons_source=$(firefox_bigicons_source); then
-    sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/bigicons.uc.js
+    sudo install -dm755 /usr/lib/firefox/chrome.d
+    sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js
     sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg
     sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js
   else
     info "No Firefox profile has chrome/bigicons.uc.js, skipping the Firefox autoconfig"
-    # A copy from an earlier run would keep running after its profile source went away. Only the script goes: mozilla.cfg skips
-    # a missing script without an error, and autoconfig.js plus mozilla.cfg stay as a pair, the way uninstall.sh keeps the cfg.
-    if [[ -f /usr/lib/firefox/bigicons.uc.js ]]; then
-      sudo rm -f /usr/lib/firefox/bigicons.uc.js && info "Removed the stale /usr/lib/firefox/bigicons.uc.js"
+    # A copy from an earlier run would keep running after its profile source went away. Only the script goes: mozilla.cfg loads
+    # whatever chrome.d holds without an error when it is empty, and autoconfig.js plus mozilla.cfg stay as a pair, the way
+    # uninstall.sh keeps the cfg.
+    if [[ -f /usr/lib/firefox/chrome.d/bigicons.uc.js ]]; then
+      sudo rm -f /usr/lib/firefox/chrome.d/bigicons.uc.js && info "Removed the stale /usr/lib/firefox/chrome.d/bigicons.uc.js"
     fi
+  fi
+  # The copy that older installs put beside mozilla.cfg is no longer loaded, so it only misleads.
+  if [[ -f /usr/lib/firefox/bigicons.uc.js ]]; then
+    sudo rm -f /usr/lib/firefox/bigicons.uc.js && info "Removed the old /usr/lib/firefox/bigicons.uc.js"
   fi
   success "System config files installed"
 }

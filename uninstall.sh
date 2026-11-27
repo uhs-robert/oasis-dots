@@ -125,6 +125,12 @@ remove_system_files() {
       warn "$f not found, skipping"
     fi
   done
+  # chrome.d holds the bigicons copy and any drop-in another installer added: it goes whole. rm -rf on a symlink removes only the link.
+  if [[ -e /usr/lib/firefox/chrome.d || -L /usr/lib/firefox/chrome.d ]]; then
+    sudo rm -rf -- /usr/lib/firefox/chrome.d && success "Removed /usr/lib/firefox/chrome.d"
+  else
+    warn "/usr/lib/firefox/chrome.d not found, skipping"
+  fi
   # The removed uinput rule stays loaded in udev, and its ACL stays on /dev/uinput, until udev reloads and replays the
   # node's add event (the mirror of install_system_files).
   sudo udevadm control --reload
