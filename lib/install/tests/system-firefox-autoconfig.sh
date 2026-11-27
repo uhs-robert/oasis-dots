@@ -24,7 +24,7 @@ grep -qF 'const dir_name = "chrome.d";' "$cfg" || fail 'mozilla.cfg does not nam
 if grep -q 'UChrm\|ProfD\|ProfLD' "$cfg"; then fail 'mozilla.cfg loads from the profile'; fi
 grep -qF 'Services.dirsvc.get("GreD"' "$cfg" || fail 'mozilla.cfg does not load from the install dir'
 grep -q 'reportError' "$cfg" || fail 'mozilla.cfg does not log load errors to the console'
-grep -qF 'AT_SYMLINK' "$cfg" || grep -qF 'at_symlink_nofollow' "$cfg" || fail 'mozilla.cfg follows symlinks when it checks a file'
+grep -qF 'isSymlink()' "$cfg" || fail 'mozilla.cfg follows symlinks when it checks a file'
 # The real checks run in a private Firefox: see firefox-chrome-d-loader.sh.
 # A syntax error is not caught by the cfg's own try, and Firefox then refuses to start.
 if command -v node >/dev/null; then
