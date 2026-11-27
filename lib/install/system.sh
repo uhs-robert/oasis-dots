@@ -40,7 +40,7 @@ install_system_files() {
   # when that file is missing.
   local bigicons_source
   if [[ -d /usr/lib/firefox ]] && bigicons_source=$(firefox_bigicons_source); then
-    sudo install -dm755 /usr/lib/firefox/chrome.d
+    sudo install -d -o root -g root -m755 /usr/lib/firefox/chrome.d
     sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js
     sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg
     sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js /usr/lib/firefox/defaults/pref/autoconfig.js

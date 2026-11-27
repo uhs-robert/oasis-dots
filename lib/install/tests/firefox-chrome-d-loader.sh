@@ -56,7 +56,13 @@ install_cfg() {
 run_firefox() { # wait-pattern [seconds]
   rm -rf "$work/prof" "$out"
   mkdir "$work/prof"
-  "$work/fx/firefox" --headless --no-remote --profile "$work/prof" about:blank >"$work/firefox.log" 2>&1 &
+  if [[ -n ${ro_mount:-} ]]; then
+    # A user namespace lets the test user mount a read-only bind of one folder without sudo.
+    unshare -rm bash -c 'mount --bind "$1" "$1" && mount -o remount,bind,ro "$1" && shift && exec "$@"' _ "$ro_mount" \
+      "$work/fx/firefox" --headless --no-remote --profile "$work/prof" about:blank >"$work/firefox.log" 2>&1 &
+  else
+    "$work/fx/firefox" --headless --no-remote --profile "$work/prof" about:blank >"$work/firefox.log" 2>&1 &
+  fi
   fx_pid=$!
   local i
   for ((i = 0; i < ${2:-40}; i++)); do
@@ -120,6 +126,15 @@ run_firefox 'refused'
 expect_out 'symlinked folder' "$refused"
 rm "$work/fx/chrome.d"
 mv "$work/fx/real_d" "$work/fx/chrome.d"
+
+# A read-only mount makes isWritable throw instead of answering. Skipped where user namespaces are off.
+# Nobody can write there, so even the user-owned 0644 file loads.
+if unshare -rm true 2>/dev/null; then
+  ro_mount=$work/fx/chrome.d
+  run_firefox '^done$'
+  expect_out 'read-only mount' "$(printf 'a\nERR chrome.d/aa_throws.js failed to load: Error: boom\nb\nERR chrome.d/group.js skipped: not a regular file the browser user cannot write\nERR chrome.d/linked.js skipped: not a regular file the browser user cannot write\nowned\nERR chrome.d/subdir.js skipped: not a regular file the browser user cannot write\nERR chrome.d/writable.js skipped: not a regular file the browser user cannot write\ndone')"
+  ro_mount=''
+fi
 
 chmod 755 "$work/fx/chrome.d"
 rm -rf "$work/fx/chrome.d"
