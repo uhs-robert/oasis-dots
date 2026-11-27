@@ -5,7 +5,7 @@ Usage: frame-app-corners [frame.json] [--yazi-dir DIR] [--firefox-dirs DIR...]
 
 FIREFOX_CHROME_DIRS (colon-separated chrome directories) replaces the default profile search.
 
-Reads frame.json ({ "on", "corner", "radius", "step" }, written by FrameExport.qml) and writes
+Reads frame.json ({ "on", "corner", "radius" }, written by FrameExport.qml) and writes
 yazi's frame-border.lua and each Firefox profile's chrome/frame.css. Both apps read them at start-up only. The corner
 applies with the screen frame on or off (`on` only says a frame is drawn); an empty corner, as an older Quickshell wrote
 for no frame, leaves the apps at their own.
@@ -23,56 +23,24 @@ def yazi_border(frame):
     return YAZI_BORDER.get(frame.get("corner"), "plain")
 
 
-# TextFox's bordered panes, the only things a chamfer or pixel corner touches. Their own border-radius is --tf-rounding, so
-# each is --tf-rounding 0 plus a bevel (a diagonal, or stacked stair rectangles for pixel) drawn over each corner of these. It is painted by an ::after rather than cut with
+# TextFox's bordered panes, the only things a chamfer touches. Their own border-radius is --tf-rounding, so a chamfer
+# is --tf-rounding 0 plus a bevel drawn over each corner of these. It is painted by an ::after rather than cut with
 # clip-path or mask, because those also clip what overflows the pane: the URL bar's results, TextFox's title labels.
 # (Firefox 158 has no `corner-shape: bevel`.)
 TEXTFOX_PANES = ["#tabbrowser-tabbox", "#sidebar-box", ".buttons-wrapper", "findbar", "#nav-bar", "#PersonalToolbar", "#TabsToolbar", "box#vertical-tabs"]
 
 
-def chamfer_corners(radius):
-    r = f"{radius}px"
-    w = "var(--border-width, 1px)"
-    # Each corner square is the window's background up to the diagonal, then the border-coloured stroke on the pane's
-    # side of it. The gradient's 50% mark is the diagonal.
-    corner = lambda angle, at: f"linear-gradient({angle}deg, var(--tf-bevel-outside) 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
-    return ", ".join([corner(135, "left top"), corner(225, "right top"), corner(315, "right bottom"), corner(45, "left bottom")])
-
-
-def pixel_corners(radius, step):
-    # frame.json carries the fitted step, which cannot be recovered from the radius (see Corners.fit), so a missing or
-    # non-dividing one reads as 1px steps.
-    if not isinstance(step, (int, float)) or step <= 0 or radius % step:
-        step = 1
-    stairs = int(radius // step)
-    w = "var(--border-width, 1px)"
-    fills, lines = [], []
-    # Row i of a top-left corner cuts (stairs - i) * step from the edge. The fill hides all but a border-wide riser and
-    # tread of the line rectangle under it. Every fill sits above every line, since a line's tread runs under the next row.
-    for i in range(stairs):
-        cut = (stairs - i) * step
-        for side in ("left", "right"):
-            for edge in ("top", "bottom"):
-                at = f"{side} 0px {edge} {i * step}px"
-                fills.append(f"linear-gradient(var(--tf-bevel-outside), var(--tf-bevel-outside)) {at} / {cut}px {step}px no-repeat")
-                lines.append(f"linear-gradient(var(--tf-bevel-line), var(--tf-bevel-line)) {at} / calc({cut}px + {w}) calc({step}px + {w}) no-repeat")
-    return ", ".join(fills + lines)
-
-
-def pixel_css(radius, step):
-    return bevel_css(pixel_corners(radius, step))
-
-
 def chamfer_css(radius):
-    return bevel_css(chamfer_corners(radius))
-
-
-def bevel_css(corners):
+    r = f"{radius}px"
     w = "var(--border-width, 1px)"
     panes = ",\n".join(TEXTFOX_PANES)
     hovered = ",\n".join(f"{pane}:hover" for pane in TEXTFOX_PANES)
     after = ",\n".join(f"{pane}::after" for pane in TEXTFOX_PANES)
     fullscreen = ",\n".join(f":root[inFullscreen] {pane}::after" for pane in TEXTFOX_PANES)
+    # Each corner square is the window's background up to the diagonal, then the border-coloured stroke on the pane's
+    # side of it. The gradient's 50% mark is the diagonal.
+    corner = lambda angle, at: f"linear-gradient({angle}deg, var(--tf-bevel-outside) 50%, var(--tf-bevel-line) 50%, var(--tf-bevel-line) calc(50% + {w}), transparent calc(50% + {w})) {at} / {r} {r} no-repeat"
+    corners = ", ".join([corner(135, "left top"), corner(225, "right top"), corner(315, "right bottom"), corner(45, "left bottom")])
     return f"""
 /* Registered so the stroke colour interpolates; a plain custom property would flip at once while the border fades. */
 @property --tf-bevel-line {{
@@ -136,7 +104,7 @@ box#vertical-tabs {{
 }}
 
 /* Firefox sets inFullscreen for F11 and for DOM (video) fullscreen alike. TextFox zeroes the content box's border there but
-   never touches ::after, so the bevels would sit over the video. The toolbars hide the same way, by owner choice. */
+   never touches ::after, so the bevel triangles would sit over the video. The toolbars hide the same way, by owner choice. */
 {fullscreen} {{
   display: none;
 }}
@@ -153,11 +121,11 @@ def firefox_css(frame):
     if corner is None:
         return "/* Generated by frame-app-corners; no corner style is set. */\n"
     radius = max(0, round(frame.get("radius") or 0))
-    # Only a round corner is a border radius; every other profile is square to CSS, and a chamfer or pixel bevel is drawn on top.
+    # Only a round corner is a border radius; every other profile is square to CSS, and a chamfer is drawn on top.
     rounding = radius if corner == "round" else 0
     # Firefox declares the urlbar radii on :root and derives the focus ring, the open outline and the dropdown's corners
     # from them. A userChrome sheet is user-origin, which loses to Firefox's own author rules, so only !important wins.
-    # A chamfer or pixel corner is 0 here; its bevel is drawn over it.
+    # A chamfer is 0 here until its bevel is drawn.
     css = (
         "/* Generated by frame-app-corners from the Corner style; do not edit. */\n"
         f":root {{\n  --tf-rounding: {rounding}px;\n  --urlbar-border-radius: {rounding}px !important;\n  --urlbarview-border-radius: {rounding}px !important;\n}}\n"
@@ -166,8 +134,6 @@ def firefox_css(frame):
     )
     if corner == "chamfer" and radius > 0:
         css += chamfer_css(radius)
-    elif corner == "pixel" and radius > 0:
-        css += pixel_css(radius, frame.get("step"))
     return css
 
 
