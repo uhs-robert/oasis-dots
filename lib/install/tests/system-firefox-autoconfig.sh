@@ -41,7 +41,7 @@ grep -qF 'sudo install -Dm644 system/usr/lib/firefox/defaults/pref/autoconfig.js
 grep -qF 'sudo install -Dm644 system/usr/lib/firefox/mozilla.cfg /usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" || fail 'installer does not install mozilla.cfg'
 # shellcheck disable=SC2016 # the literal $bigicons_source is what system.sh contains
 grep -qF 'sudo install -Dm644 "$bigicons_source" /usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" || fail 'installer does not install the root-owned chrome.d/bigicons.uc.js'
-guard=$(grep -n 'firefox_bigicons_source); then' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
+guard=$(grep -n 'firefox_bigicons_source) || desertfox_module_script' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 cfg_line=$(grep -n 'sudo install .*system/usr/lib/firefox/mozilla.cfg' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 script_line=$(grep -n 'sudo install .*/usr/lib/firefox/chrome.d/bigicons.uc.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
 pref_line=$(grep -n 'sudo install .*system/usr/lib/firefox/defaults/pref/autoconfig.js' "$repo_dir/lib/install/system.sh" | head -n1 | cut -d: -f1)
@@ -110,6 +110,9 @@ uninstall_block+=$'\nfi'
   success() { :; }
   warn() { :; }
 }
+# The module leg of the gate reads the DesertFox checkout; this test has none.
+DOTFILES_DIR=$repo_dir DESERTFOX_DIR=$home_dir/no-desertfox
+source "$repo_dir/lib/install/desertfox.sh"
 run_install() {
   cd "$repo_dir" || return 1
   eval "$install_block"

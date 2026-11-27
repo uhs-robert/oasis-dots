@@ -125,6 +125,8 @@ remove_system_files() {
       warn "$f not found, skipping"
     fi
   done
+  # The module's own script removes its files first, while chrome.d still exists; it refuses a chrome.d it cannot trust.
+  if [[ -d /usr/lib/firefox/chrome.d ]]; then uninstall_desertfox_browser_module || warn "DesertFox browser module not removed by its script; chrome.d is removed below"; fi
   # chrome.d holds the bigicons copy and any drop-in another installer added: it goes whole. rm -rf on a symlink removes only the link.
   if [[ -e /usr/lib/firefox/chrome.d || -L /usr/lib/firefox/chrome.d ]]; then
     sudo rm -rf -- /usr/lib/firefox/chrome.d && success "Removed /usr/lib/firefox/chrome.d"
