@@ -197,6 +197,19 @@ under_prefix() {
   return 1
 }
 
+# Whether the file is one of the paths given after it or sits inside one as a directory. Unlike under_prefix it does not
+# match a sibling that merely starts with the same letters (out vs outline.c): it decides whose side wins a conflict, so a
+# wrong match would silently drop a source edit. A string prefix that is not a whole path never matches, which stops the run.
+within_path() {
+  local file=$1 path
+  shift
+  for path in "$@"; do
+    path=${path%/}
+    [[ -n $path && ( $file == "$path" || $file == "$path/"* ) ]] && return 0
+  done
+  return 1
+}
+
 commit_rows='.commits[] | [.sha, (.commit.message | split("\n")[0])] | @tsv'
 # The same with each commit's merged-in parents between, "-" for an ordinary commit (read collapses an empty tab field).
 head_rows='.commits[] | [.sha, (if (.parents | length) > 1 then (.parents[1:] | map(.sha) | join(" ")) else "-" end), (.commit.message | split("\n")[0])] | @tsv'
@@ -961,7 +974,7 @@ merge_base_into_head() {
     [[ -x $main_dir/.claude/pre-merge ]] && mapfile -t prefixes < <(generated_prefixes)
     mapfile -t files < <(git -C "$wt" diff --name-only --diff-filter=U)
     for file in "${files[@]}"; do
-      if ((${#prefixes[@]} == 0)) || ! under_prefix "$file" "${prefixes[@]}"; then
+      if ((${#prefixes[@]} == 0)) || ! within_path "$file" "${prefixes[@]}"; then
         git -C "$wt" merge --abort >/dev/null 2>&1 || true
         remove_tmp
         die "#$pr conflicts with $base; merge origin/$base into $head by hand, then rerun for #$pr and the PRs after it"
@@ -971,10 +984,10 @@ merge_base_into_head() {
       git -C "$wt" checkout -q --theirs -- "$file" 2>/dev/null || git -C "$wt" rm -q -- "$file" >/dev/null 2>&1
       git -C "$wt" add -- "$file" >/dev/null 2>&1 || true
     done
-    git -C "$wt" commit -q --no-edit >/dev/null 2>&1 || {
+    err=$(git -C "$wt" commit -q --no-edit 2>&1) || {
       git -C "$wt" merge --abort >/dev/null 2>&1 || true
       remove_tmp
-      die "cannot finish the merge of origin/$base into $head for #$pr"
+      die "cannot finish the merge of origin/$base into $head for #$pr: $err"
     }
   fi
   merged_oid=$(git -C "$wt" rev-parse HEAD)
@@ -1065,7 +1078,7 @@ run_pre_merge() {
   # GitHub reports the old head, and an unknown mergeable state, for a moment after a push.
   case $(await_mergeable "$pr" "$head_oid") in
   MERGEABLE) ;;
-  CONFLICTING) die "the pre-merge commit ${head_oid:0:7} on #$pr conflicts with $base; rebase $head onto origin/$base by hand, rerun its pre-merge step, then rerun for #$pr and the PRs after it" ;;
+  CONFLICTING) die "the pre-merge commit ${head_oid:0:7} on #$pr conflicts with $base; $([[ $method == rebase ]] && echo rebase || echo merge) $([[ $method == rebase ]] && echo "$head onto origin/$base" || echo "origin/$base into $head") by hand, rerun its pre-merge step, then rerun for #$pr and the PRs after it" ;;
   *) die "GitHub has not caught up with the pre-merge commit $head_oid on #$pr; rerun for #$pr and the PRs after it" ;;
   esac
 }
