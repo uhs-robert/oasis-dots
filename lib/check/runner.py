@@ -700,10 +700,15 @@ def use_check_cache_as_tmpdir():
         os.makedirs(folder, exist_ok=True)
     except OSError:
         return
+    sweep_stale(folder)
+    # A folder that exists but takes no new entries would fail a shell mktemp, which unlike tempfile has no /tmp fallback.
+    try:
+        os.rmdir(tempfile.mkdtemp(dir=folder))
+    except OSError:
+        return
     os.environ["TMPDIR"] = folder
     # tempfile caches its answer at the first call.
     tempfile.tempdir = None
-    sweep_stale(folder)
 
 
 def main(argv):

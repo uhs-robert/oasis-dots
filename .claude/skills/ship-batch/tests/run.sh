@@ -178,7 +178,11 @@ check "a second removal is harmless" "remove_temp_worktree"
   remove_temp_worktree
 )
 read -r cache_dir cache_worktree cache_file <"$root/cache-paths"
-check "use_check_tmpdir makes an absolute cache folder the temporary worktree and mktemp land in" "[[ '$cache_dir' == '$root/xdg-cache/dotfiles/check' && '$cache_worktree' == '$root/xdg-cache/dotfiles/check/'* && '$cache_file' == '$root/xdg-cache/dotfiles/check/'* ]]"
+# use_check_tmpdir answers with the physical path, and $root may spell a symlinked TMPDIR.
+physical_cache=$(cd "$root/xdg-cache/dotfiles/check" && pwd -P)
+check "use_check_tmpdir makes an absolute cache folder the temporary worktree and mktemp land in" "[[ '$cache_dir' == '$physical_cache' && '$cache_worktree' == '$physical_cache/'* && '$cache_file' == '$physical_cache/'* ]]"
+mkdir -p "$root/ro-cache/dotfiles/check" && chmod 555 "$root/ro-cache/dotfiles/check"
+check "use_check_tmpdir leaves TMPDIR alone when the cache folder is read-only" "[[ \$(export TMPDIR=/keep XDG_CACHE_HOME='$root/ro-cache'; use_check_tmpdir; echo \$TMPDIR) == /keep ]]"
 check "use_check_tmpdir leaves TMPDIR alone for a relative cache path" "[[ \$(export TMPDIR=/keep XDG_CACHE_HOME=rel; use_check_tmpdir; echo \$TMPDIR) == /keep ]]"
 check "an unknown ref fails without leaving a worktree" "! add_temp_worktree '$work' pull/99/head && [[ -z \$temp_worktree ]]"
 (

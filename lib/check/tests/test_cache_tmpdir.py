@@ -98,6 +98,16 @@ class CacheTmpdirTest(unittest.TestCase):
         self.assertEqual(parents[0], self.folder)
         self.assertEqual(os.listdir(self.folder), [])
 
+    @unittest.skipIf(os.geteuid() == 0, "root writes to a read-only folder")
+    def test_tmpdir_is_unchanged_when_the_folder_takes_no_new_entries(self):
+        os.makedirs(self.folder)
+        os.chmod(self.folder, 0o555)
+        self.addCleanup(os.chmod, self.folder, 0o755)
+        with self.env():
+            os.environ["TMPDIR"] = "/somewhere"
+            runner.use_check_cache_as_tmpdir()
+            self.assertEqual(os.environ["TMPDIR"], "/somewhere")
+
     def test_tmpdir_is_unchanged_when_no_folder_is_usable(self):
         with self.env(XDG_CACHE_HOME="relative", HOME=""):
             os.environ["TMPDIR"] = "/somewhere"

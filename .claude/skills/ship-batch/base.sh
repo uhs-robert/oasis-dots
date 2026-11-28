@@ -146,10 +146,13 @@ rebuild_crates() {
 # runner uses, because the /tmp tmpfs fills up and fails the check with "No space left on device". The runner sweeps old
 # entries; here the folder is only made. Left on TMPDIR as it was when HOME is unset or the folder cannot be made.
 use_check_tmpdir() {
-  local cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+  local cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}} folder
   [[ $cache == /* ]] || return 0
   mkdir -p "$cache/dotfiles/check" || return 0
-  TMPDIR=$(cd "$cache/dotfiles/check" && pwd -P)
+  folder=$(cd "$cache/dotfiles/check" && pwd -P) || return 0
+  # An existing folder that takes no new entries would fail every later mktemp.
+  [[ -w $folder && -x $folder ]] || return 0
+  TMPDIR=$folder
   export TMPDIR
 }
 
