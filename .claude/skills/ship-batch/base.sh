@@ -142,6 +142,17 @@ rebuild_crates() {
   done < <(crate_rebuilds <<<"$changed")
 }
 
+# Sends this script's temp files (the check log, the temporary worktree and its build) to the same disk folder the check
+# runner uses, because the /tmp tmpfs fills up and fails the check with "No space left on device". The runner sweeps old
+# entries; here the folder is only made. Left on TMPDIR as it was when HOME is unset or the folder cannot be made.
+use_check_tmpdir() {
+  local cache=${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}
+  [[ $cache == /* ]] || return 0
+  mkdir -p "$cache/dotfiles/check" || return 0
+  TMPDIR=$(cd "$cache/dotfiles/check" && pwd -P)
+  export TMPDIR
+}
+
 # A PR whose branch has no local worktree (pushed from a cloud session) is checked in a temporary one. The caller traps
 # EXIT, INT and TERM to remove_temp_worktree, so every way out of the script removes it.
 temp_worktree='' temp_repo=''

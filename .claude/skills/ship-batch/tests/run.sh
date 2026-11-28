@@ -171,6 +171,15 @@ tmp_path=$temp_worktree
 remove_temp_worktree
 check "removing it deletes the directory and the registration" "[[ ! -e '$tmp_path' ]] && ! git -C '$work' worktree list | grep -q '$tmp_path'"
 check "a second removal is harmless" "remove_temp_worktree"
+(
+  XDG_CACHE_HOME="$root/xdg-cache" use_check_tmpdir
+  add_temp_worktree "$work" pull/7/head
+  echo "$TMPDIR $temp_worktree $(mktemp)" >"$root/cache-paths"
+  remove_temp_worktree
+)
+read -r cache_dir cache_worktree cache_file <"$root/cache-paths"
+check "use_check_tmpdir makes an absolute cache folder the temporary worktree and mktemp land in" "[[ '$cache_dir' == '$root/xdg-cache/dotfiles/check' && '$cache_worktree' == '$root/xdg-cache/dotfiles/check/'* && '$cache_file' == '$root/xdg-cache/dotfiles/check/'* ]]"
+check "use_check_tmpdir leaves TMPDIR alone for a relative cache path" "[[ \$(export TMPDIR=/keep XDG_CACHE_HOME=rel; use_check_tmpdir; echo \$TMPDIR) == /keep ]]"
 check "an unknown ref fails without leaving a worktree" "! add_temp_worktree '$work' pull/99/head && [[ -z \$temp_worktree ]]"
 (
   add_temp_worktree "$work" pull/7/head

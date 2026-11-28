@@ -12,6 +12,7 @@ repo=$(git -C "$(dirname "$0")" worktree list --porcelain | awk '/^worktree /{pr
 script_dir=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=base.sh
 source "$script_dir/base.sh"
+use_check_tmpdir
 
 die() {
   echo "ship-batch: $*" >&2

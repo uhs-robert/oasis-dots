@@ -653,6 +653,59 @@ def abort_on_signals(pool):
             signal.signal(signum, abort_on_signal)
 
 
+STALE_SECS = 24 * 60 * 60
+
+
+def check_cache_dir():
+    """The absolute folder for every temp file of a check, or None when no safe one exists. Resolved from the caller's
+    XDG_CACHE_HOME, so it must run before a temp_home step replaces that variable."""
+    home = os.environ.get("HOME", "")
+    cache = os.environ.get("XDG_CACHE_HOME") or (os.path.join(home, ".cache") if home else "")
+    if not cache or not os.path.isabs(cache):
+        return None
+    path = os.path.realpath(os.path.join(cache, "dotfiles", "check"))
+    if path == "/" or (home and path == os.path.realpath(home)):
+        return None
+    return path
+
+
+def sweep_stale(folder, now=None):
+    """Removes what a killed run left: entries directly inside folder whose own mtime is over a day old. A symlink is
+    unlinked, never followed. Each run lives in one fresh top-level entry and lasts well under a day, so the entry's
+    mtime (set when the run created it, moved when a direct child is made) never passes a live run's."""
+    now = time.time() if now is None else now
+    try:
+        entries = list(os.scandir(folder))
+    except OSError:
+        return
+    for entry in entries:
+        try:
+            if now - entry.stat(follow_symlinks=False).st_mtime <= STALE_SECS:
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                shutil.rmtree(entry.path, ignore_errors=True)
+            else:
+                os.unlink(entry.path)
+        except OSError:
+            pass
+
+
+def use_check_cache_as_tmpdir():
+    """Points every temp file of this run and its steps at disk, not at the /tmp tmpfs that other sessions can fill.
+    Without a usable folder, TMPDIR stays as it was."""
+    folder = check_cache_dir()
+    if folder is None:
+        return
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except OSError:
+        return
+    os.environ["TMPDIR"] = folder
+    # tempfile caches its answer at the first call.
+    tempfile.tempdir = None
+    sweep_stale(folder)
+
+
 def main(argv):
     try:
         options = Options(argv)
@@ -672,6 +725,7 @@ def main(argv):
     os.chdir(REPO_DIR)
     if not options.plan:
         lower_priority()
+    use_check_cache_as_tmpdir()
     logs = tempfile.mkdtemp()
     pool = StepPool(logs, job_count())
 

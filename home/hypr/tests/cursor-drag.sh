@@ -6,7 +6,9 @@ set -u
 
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 repo=$(git -C "$here" rev-parse --show-toplevel) || exit 1
-work=$(mktemp -d)
+# Kept on /tmp, not the check's TMPDIR: the daemon socket path ($work/run/hypr-cursor-drag/<uuid>-<n>/sock) is over the
+# 107-byte unix socket limit under ~/.cache/dotfiles/check.
+work=$(mktemp -d /tmp/cursor-drag.XXXXXX)
 trap 'pkill -f "$work" 2>/dev/null; rm -rf "$work"' EXIT
 
 stub="$work/stub"
