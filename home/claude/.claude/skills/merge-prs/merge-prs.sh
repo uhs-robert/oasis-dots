@@ -109,7 +109,11 @@ if ! $check_only && [[ ${MERGE_PRS_FROM_REPO_TOOL-} != 1 ]]; then
     -f query='query($owner: String!, $name: String!, $expr: String!) {
       repository(owner: $owner, name: $name) { object(expression: $expr) { ... on Blob { text } } } }' \
     --jq '.data.repository.object.text // ""') || die "cannot read whether $slug merges through its own tool"
-  [[ -n $refuse_text || ! -f $main_dir/.claude/merge-prs-refuse ]] || refuse_text=$(<"$main_dir/.claude/merge-prs-refuse")
+  # The local copy is a fallback for the repo the checkout belongs to: with GH_REPO aimed elsewhere it is another repo's marker.
+  # A checkout whose repo cannot be read keeps the fallback, so a lookup failure never weakens the refusal.
+  local_slug=$(env -u GH_REPO gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null) || local_slug=$slug
+  [[ -n $refuse_text || $local_slug != "$slug" || ! -f $main_dir/.claude/merge-prs-refuse ]] ||
+    refuse_text=$(<"$main_dir/.claude/merge-prs-refuse")
   [[ -z $refuse_text ]] || die "$slug refuses merges by merge-prs.sh (.claude/merge-prs-refuse): $refuse_text"
 fi
 
