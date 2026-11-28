@@ -68,8 +68,19 @@ function zvm_config() {
 }
 
 # Completion
+# One dump under the cache dir. -C skips the security scan and rebuild, so
+# the dump is regenerated only when missing or older than a day.
+typeset -U path
+_zcomp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+[[ -d $_zcomp_dir ]] || mkdir -p "$_zcomp_dir"
+_zcomp_dump="$_zcomp_dir/zcompdump"
 autoload -Uz compinit
-compinit
+if [[ -n $_zcomp_dump(#qN.mh-24) ]]; then
+  compinit -C -d "$_zcomp_dump"
+else
+  compinit -d "$_zcomp_dump"
+fi
+unset _zcomp_dir _zcomp_dump
 
 # Antidote plugin manager
 source "/usr/share/zsh-antidote/antidote.zsh"
@@ -138,7 +149,7 @@ unsetopt BEEP
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 export FZF_DEFAULT_OPTS="--height=80% --layout=reverse --border --preview 'bat --style=numbers --color=always {} || sed -n \"1,200p\" -- {}' --preview-window=right:60%:border-left --bind=ctrl-p:toggle-preview"
 export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
-f(){ "${EDITOR:-nvim}" -- "$(fzf)"; }
+f(){ local file; file="$(fzf)" && [[ -n $file ]] && "${EDITOR:-nvim}" -- "$file"; }
 
 # Disable auto-pagination (prevents big dumps)
 zstyle ':completion:*' list-colors ''
@@ -149,7 +160,6 @@ export PATH="$HOME/.config/hypr/scripts:$PATH"
 export PATH="$HOME/.tmuxifier/bin:$PATH"
 
 # Add language directories to PATH
-export PATH="$(npm root -g)/.bin:$PATH"
 export PATH="$HOME/.local/share/npm/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 # Ruby user gem executables. Globs every installed version and skips silently
