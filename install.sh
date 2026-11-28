@@ -90,6 +90,23 @@ print_next_steps() {
   fi
 }
 
+# Runs an optional step in a subshell with errexit on and turns a failure into a warning. "step || warn" would disable
+# errexit inside the step, so a failed command in the middle would be ignored and the step would print a false success.
+# errexit is switched off around the subshell, not inherited into a || list, for the same reason. The subshell drops the
+# step's variable changes, which is safe: none of the optional steps sets a variable that a later step reads.
+run_optional_step() {
+  local step=$1 message=$2 status=0
+  set +e
+  (
+    set -e
+    "$step"
+  )
+  status=$?
+  set -e
+  if [[ $status -ne 0 ]]; then warn "$message"; fi
+  return 0
+}
+
 main() {
   parse_args "$@"
   trap print_failed_packages EXIT
@@ -155,22 +172,22 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_pacman_tweaks; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
-    setup_snapper || warn "Snapper was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_snapper "Snapper was not set up; fix the error above, then run: just snapper"
     setup_tailnet_ssh
-    setup_syncthing || warn "Syncthing was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_syncthing "Syncthing was not set up; fix the error above, then run: just syncthing"
     if [[ $OPT_AGENT_HOST -eq 1 ]]; then setup_agent_host; fi
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
-    install_greetd || warn "greetd was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step install_greetd "greetd was not set up; fix the error above, then rerun ./install.sh"
     set_default_shell
-    enable_keyd || warn "keyd was not enabled; fix the error above, then rerun ./install.sh"
-    enable_power_profiles || warn "power-profiles-daemon was not enabled; fix the error above, then rerun ./install.sh"
-    setup_snapper || warn "Snapper was not set up; fix the error above, then rerun ./install.sh"
-    install_steam || warn "Steam was not installed; fix the error above, then rerun ./install.sh"
-    install_nvidia || warn "The NVIDIA setup did not finish; fix the error above, then rerun ./install.sh"
-    setup_voxtype || warn "voxtype was not set up; fix the error above, then rerun ./install.sh"
-    setup_calendar_timer || warn "The calendar timer was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step enable_keyd "keyd was not enabled; fix the error above, then rerun ./install.sh"
+    run_optional_step enable_power_profiles "power-profiles-daemon was not enabled; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_snapper "Snapper was not set up; fix the error above, then run: just snapper"
+    run_optional_step install_steam "Steam was not installed; fix the error above, then rerun ./install.sh"
+    run_optional_step install_nvidia "The NVIDIA setup did not finish; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_voxtype "voxtype was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_calendar_timer "The calendar timer was not set up; fix the error above, then rerun ./install.sh"
     setup_tailnet_ssh
-    setup_syncthing || warn "Syncthing was not set up; fix the error above, then rerun ./install.sh"
+    run_optional_step setup_syncthing "Syncthing was not set up; fix the error above, then run: just syncthing"
   fi
 
   # Outside the services branch, so --minimal and --no-services installs drop the home leftovers too. The system ones
