@@ -19,25 +19,25 @@ BarModule {
     readonly property bool dim: !PowerSource.on_ac
 
     readonly property string glyph: root.show_temp ? "" : (root.show_mem ? "" : "")
-    readonly property bool hot: root.show_temp && SysStats.temp_c >= 80
+    readonly property bool hot: root.show_temp && SysStats.has_temp_sample && SysStats.temp_c >= 80
     readonly property color temp_color: root.hot ? Theme.theme_label : Theme.theme_primary
     readonly property color value_color: root.show_temp ? root.temp_color : Style.bar_fg
 
     readonly property string value_text: {
-        if (root.show_temp) return SysStats.temp_c + "°C";
-        if (root.show_mem) return SysStats.mem_percent + "%";
-        return SysStats.cpu_percent + "%";
+        if (root.show_temp) return SysStats.temp_text;
+        if (root.show_mem) return SysStats.mem_text;
+        return SysStats.cpu_text;
     }
 
-    tooltip_text: "CPU " + SysStats.cpu_percent + "%  RAM " + SysStats.mem_percent + "%"
-        + (SysStats.has_temp ? "  Temp " + SysStats.temp_c + "°C" : "")
+    tooltip_text: "CPU " + SysStats.cpu_text + "  RAM " + SysStats.mem_text
+        + (SysStats.has_temp ? "  Temp " + SysStats.temp_text : "")
 
     shown: !root.compact && (!root.show_temp || SysStats.has_temp)
     implicitWidth: root.shown ? row.implicitWidth : 0
     implicitHeight: row.implicitHeight
     opacity: root.dim ? 0.4 : 1
 
-    readonly property string short_value_text: root.show_temp ? SysStats.temp_c + "°" : (root.show_mem ? SysStats.mem_percent : SysStats.cpu_percent) + ""
+    readonly property string short_value_text: root.show_temp ? (SysStats.has_temp_sample ? SysStats.temp_c + "°" : "n/a") : root.show_mem ? (SysStats.has_mem_sample ? SysStats.mem_percent + "" : "n/a") : (SysStats.has_cpu_sample ? SysStats.cpu_percent + "" : "n/a")
 
     ModuleRow {
         id: row
