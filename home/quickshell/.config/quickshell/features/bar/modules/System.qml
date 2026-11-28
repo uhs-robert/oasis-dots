@@ -37,7 +37,7 @@ BarModule {
     implicitHeight: row.implicitHeight
     opacity: root.dim ? 0.4 : 1
 
-    readonly property string short_value_text: root.show_temp ? (SysStats.has_temp_sample ? SysStats.temp_c + "°" : "n/a") : root.show_mem ? (SysStats.has_mem_sample ? SysStats.mem_percent + "" : "n/a") : (SysStats.has_cpu_sample ? SysStats.cpu_percent + "" : "n/a")
+    readonly property string short_value_text: root.show_temp ? (SysStats.has_temp_sample ? SysStats.temp_c + "°" : "n/a") : root.show_mem ? (SysStats.has_mem_sample ? SysStats.mem_percent + "" : "n/a") : (SysStats.cpu_live ? SysStats.cpu_percent + "" : "n/a")
 
     ModuleRow {
         id: row
