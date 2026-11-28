@@ -1586,6 +1586,35 @@ check "says to merge by hand" "grep -q '#7 conflicts with main; merge origin/mai
 check "pushes nothing" "[[ \$(git -C '$ORIGIN' rev-parse c) == $before ]]"
 check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
 
+echo "== squash: a generated entry without a slash does not claim a source file that starts with its name"
+init_build_repo
+git -C "$ORIGIN" config receive.denyNonFastForwards true
+printf 'out\n' >.claude/generated-paths
+echo base >outline.c
+g add outline.c
+g commit -qm "add outline"
+g push -q origin main
+g switch -qc c main
+edit_src 7 7c "feat: c"
+echo branch >outline.c
+g commit -qam "edit outline on c"
+eval "$minify"
+g push -q origin c
+g switch -q main
+edit_src 2 2a "feat: a"
+echo main >outline.c
+g commit -qam "edit outline on main"
+eval "$minify"
+g push -q origin main
+before=$(git -C "$ORIGIN" rev-parse c)
+printf 'head=c\nbase=main\nstate=OPEN\nreal_merge=1\nconflicting_oid=%s\n' "$before" >"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --method squash 7 2>&1)
+code=$?
+show "$out"
+check "stops" "[[ $code != 0 ]]"
+check "says to merge by hand" "grep -q '#7 conflicts with main; merge origin/main into c by hand' <<<\"\$out\""
+check "pushes nothing" "[[ \$(git -C '$ORIGIN' rev-parse c) == $before ]]"
+
 echo "== squash: a merge that fails for a reason other than a conflict shows git's message"
 init_merge_commit_repo
 pre_merge_hook ''
