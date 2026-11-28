@@ -32,26 +32,8 @@ else
   set -- --chooser-file="$out" "$path"
 fi
 
-# Ghostty parses its arguments through a shell again, so for it each argument gets one more layer of quoting.
-single_quote() {
-  # The trailing x keeps $(...) from dropping a newline that ends the argument.
-  quoted=$(
-    printf '%s' "$1" | sed "s/'/'\\\\''/g"
-    printf x
-  )
-  printf "'%s'" "${quoted%x}"
-}
-
-case "$termcmd" in
-*"ghostty"*)
-  for arg in "$@"; do
-    set -- "$@" "$(single_quote "$arg")"
-    shift
-  done
-  ;;
-esac
-
 # The arguments reach the terminal as positionals, so a path is never parsed as shell code. Only TERMCMD is parsed.
+# Ghostty 1.2.0 and later also takes `-e` arguments as a plain argv; older releases joined them and re-parsed them.
 sh -c "$termcmd \"\$@\"" sh "$cmd" "$@"
 
 if [ "$directory" = "1" ]; then
