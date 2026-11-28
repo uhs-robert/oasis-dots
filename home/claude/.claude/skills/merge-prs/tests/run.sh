@@ -1350,7 +1350,10 @@ fixtures=()
 
 # A repo that merges through its own tool: the marker is read from the repo the merge goes to, wherever the run starts.
 refused() { # name, output, exit code
-  check "$1: refused" "[[ $3 != 0 ]] && grep -qF 'me/repo refuses merges by merge-prs.sh (.claude/merge-prs-refuse): use ship-it' <<<\"\$2\""
+  # check evals its expression with check's own $2, so the output goes through a named variable.
+  # shellcheck disable=SC2034 # read inside the evaluated expression
+  local refusal_output=$2
+  check "$1: refused" "[[ $3 != 0 ]] && grep -qF 'me/repo refuses merges by merge-prs.sh (.claude/merge-prs-refuse): use ship-it' <<<\"\$refusal_output\""
   check "$1: nothing merged" "grep -q '^state=OPEN' '$GH_STATE' && [[ \$(git -C '$ORIGIN' log -1 --format=%s main) != C ]]"
 }
 echo "== merge refused in a repo with .claude/merge-prs-refuse"
