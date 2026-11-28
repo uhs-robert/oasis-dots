@@ -37,9 +37,9 @@ Popup {
     }
 
     function value_text(kind) {
-        if (kind === "cpu") return SysStats.cpu_percent + "%";
-        if (kind === "memory") return SysStats.mem_percent + "%";
-        if (kind === "temperature") return SysStats.temp_c + "°C";
+        if (kind === "cpu") return SysStats.cpu_text;
+        if (kind === "memory") return SysStats.mem_text;
+        if (kind === "temperature") return SysStats.temp_text;
         return "";
     }
 
