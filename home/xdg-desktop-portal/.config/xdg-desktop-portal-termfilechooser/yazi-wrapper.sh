@@ -5,8 +5,8 @@
 
 set -e
 
-if [ "$6" -ge 4 ]; then
-    set -x
+if [ "${6:-0}" -ge 4 ]; then
+  set -x
 fi
 
 multiple="$1"
@@ -19,39 +19,28 @@ cmd="yazi"
 termcmd="${TERMCMD:-kitty --title 'termfilechooser'}"
 
 if [ "$save" = "1" ]; then
-    # save a file
-    set -- --chooser-file="$out" "$path"
+  # save a file
+  set -- --chooser-file="$out" "$path"
 elif [ "$directory" = "1" ]; then
-    # upload files from a directory
-    set -- --chooser-file="$out" --cwd-file="$out"".1" "$path"
+  # upload files from a directory
+  set -- --chooser-file="$out" --cwd-file="$out"".1" "$path"
 elif [ "$multiple" = "1" ]; then
-    # upload multiple files
-    set -- --chooser-file="$out" "$path"
+  # upload multiple files
+  set -- --chooser-file="$out" "$path"
 else
-    # upload only 1 file
-    set -- --chooser-file="$out" "$path"
+  # upload only 1 file
+  set -- --chooser-file="$out" "$path"
 fi
 
-command="$termcmd $cmd"
-for arg in "$@"; do
-    # escape double quotes
-    escaped=$(printf "%s" "$arg" | sed 's/"/\\"/g')
-    # escape special
-    case "$termcmd" in
-	*"ghostty"*)
-	    command="$command \"\\\"$escaped\\\"\"";;
-	*)
-	    command="$command \"$escaped\"";;
-    esac
-done
-
-sh -c "$command"
+# The arguments reach the terminal as positionals, so a path is never parsed as shell code. Only TERMCMD is parsed.
+# Ghostty 1.2.0 and later also takes `-e` arguments as a plain argv; older releases joined them and re-parsed them.
+sh -c "$termcmd \"\$@\"" sh "$cmd" "$@"
 
 if [ "$directory" = "1" ]; then
-    if [ ! -s "$out" ] && [ -s "$out"".1" ]; then
-        cat "$out"".1" > "$out"
-        rm "$out"".1"
-    else
-        rm "$out"".1"
-    fi
+  if [ ! -s "$out" ] && [ -s "$out"".1" ]; then
+    cat "$out"".1" >"$out"
+    rm -f "$out"".1"
+  else
+    rm -f "$out"".1"
+  fi
 fi

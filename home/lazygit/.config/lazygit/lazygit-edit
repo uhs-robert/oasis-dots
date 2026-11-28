@@ -1,20 +1,30 @@
 #!/bin/sh
+# Called by lazygit as `lazygit-edit <file> [line]`. Lazygit shell-quotes {{filename}}, so $1 is the plain name,
+# relative to lazygit's working directory.
 
 file="$1"
 line="${2:-}"
 
 if [ -n "$NVIM" ] && nvim --server "$NVIM" --remote-expr '1' >/dev/null 2>&1; then
-  goto_line=""
-  [ -n "$line" ] && goto_line=":${line}<CR>"
+  # The server resolves a relative name against its own directory, not lazygit's.
+  case "$file" in
+  /*) abs="$file" ;;
+  *) abs="$PWD/$file" ;;
+  esac
 
-  nvim --server "$NVIM" --remote-send \
-    "<C-\><C-N>:close<CR>:edit $(printf '%s' "$file")<CR>${goto_line}"
+  # One call, so nvim runs the close before the edit. silent! keeps a close that fails (last window) from stopping the edit.
+  # --remote-expr takes no key notation, and fnameescape guards the Ex command line (space, |, %, #).
+  # Doubling the single quotes makes the name a Vim string literal.
+  quoted=$(printf '%s' "$abs" | sed "s/'/''/g")
+  goto_line=""
+  [ -n "$line" ] && goto_line=" . '|${line}'"
+  nvim --server "$NVIM" --remote-expr "execute('silent! close') . execute('edit ' . fnameescape('${quoted}')${goto_line})" >/dev/null
 else
   unset NVIM
 
   if [ -n "$line" ]; then
-    nvim "+${line}" "$file"
+    nvim "+${line}" -- "$file"
   else
-    nvim "$file"
+    nvim -- "$file"
   fi
 fi

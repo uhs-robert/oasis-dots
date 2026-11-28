@@ -193,6 +193,8 @@ PATH_SCOPES = [
     ("home/calendar/*", "install"),
     ("home/agents/*", "install"),
     ("home/plans/*", "install"),
+    ("home/lazygit/*", "install"),
+    ("home/xdg-desktop-portal/*", "install"),
     # hooks: the agent hooks, the owner-test-bar and orchestrator (reviewers) tests. skills: the ship-batch and merge-prs
     # suites, which take minutes where the hook tests take seconds.
     ("home/claude/.claude/hooks/*", "hooks"),
@@ -339,6 +341,8 @@ STEPS += discovered("home/quickshell/tests/*.js", "quickshell", "node %s", alway
 STEPS += discovered("home/quickshell/tests/*/run.sh", "quickshell", "bash %s", maybe_needs=("qs", "python3"))
 STEPS += discovered("lib/install/tests/*.sh", "install", "bash %s", "install-", maybe_needs=("jq", "zsh", "gpg"), extra_needs={"install-greeter-stage-zsh": ("jq",)})
 STEPS += discovered("home/agents/tests/*.sh", "install", "bash %s", maybe_needs=("python3",))
+STEPS += discovered("home/xdg-desktop-portal/tests/*.sh", "install", "bash %s")
+STEPS += discovered("home/lazygit/tests/*.sh", "install", "bash %s", always_needs=("nvim",))
 STEPS += discovered(".claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 STEPS += discovered("home/claude/.claude/hooks/tests/*.sh", "hooks", "bash %s", "hook-", always_needs=("jq",), maybe_needs=("tmux", "flock"))
 
@@ -377,6 +381,10 @@ SHELL_GROUPS = {
         "home/agents/.local/bin/agent-shims",
         "home/agents/tests/*.sh",
         "home/voxcmd/tests/*.sh",
+        "home/lazygit/.config/lazygit/lazygit-edit",
+        "home/lazygit/tests/*.sh",
+        "home/xdg-desktop-portal/.config/*/yazi-wrapper.sh",
+        "home/xdg-desktop-portal/tests/*.sh",
         "lib/check/*.sh",
         "lib/check/steps/*.sh",
         "lib/check/tests/*.sh",
