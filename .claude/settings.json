@@ -18,11 +18,6 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-in-background.sh",
             "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-merge-prs.sh",
-            "timeout": 10
           }
         ]
       }
@@ -31,7 +26,8 @@
   "permissions": {
     "deny": [
       "Bash(gh pr merge*)",
-      "Bash(gh * pr merge*)"
+      "Bash(gh * pr merge*)",
+      "Bash(*MERGE_PRS_FROM_REPO_TOOL*)"
     ]
   }
 }

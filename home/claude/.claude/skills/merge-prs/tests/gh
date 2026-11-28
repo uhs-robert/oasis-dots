@@ -33,7 +33,7 @@ fi
 number=""
 case "$args" in
 "pr view "* | "pr merge "* | "pr comment "*) number=$3 ;;
-"api graphql"*) number=$(grep -o 'number=[0-9]*' <<<"$args" | cut -d= -f2) ;;
+"api graphql"*) number=$(grep -o 'number=[0-9]*' <<<"$args" | cut -d= -f2 || true) ;;
 esac
 state_file=$GH_STATE
 [[ -n $number && -f $GH_STATE.$number ]] && state_file=$GH_STATE.$number
@@ -156,7 +156,8 @@ case "$args" in
   ;;
 esac
 case "$args" in
-"repo view"*) printf 'me/repo\tmain\ttrue\ttrue\ttrue\n' ;;
+# GH_REPO picks the repo, as it does for the real gh.
+"repo view"*) printf '%s\tmain\ttrue\ttrue\ttrue\n' "${GH_REPO:-me/repo}" ;;
 # Each side of a compare against main: reviewed_subjects/reviewed_files for the commit Codex reviewed, head_subjects/
 # head_files for anything else, as ;-separated lists.
 "api repos/"*"/compare/"*)
@@ -207,6 +208,14 @@ case "$args" in
   put codex_running_reads 1
   # codex_never_reviews=1: Codex answers with a summary that records no commit, as it does out of quota.
   [[ $(get codex_never_reviews || true) == 1 ]] || put codex_commit "$(head_oid | cut -c1-7)"
+  ;;
+# refuse: the text of the committed .claude/merge-prs-refuse of refuse_repo (default me/repo); none when a test leaves
+# it out.
+*"merge-prs-refuse"*)
+  gate_state
+  refuse_repo=$(get refuse_repo)
+  refuse_repo=${refuse_repo:-me/repo}
+  [[ $args != *"owner=${refuse_repo%%/*} "*"name=${refuse_repo#*/} "* ]] || get refuse
   ;;
 "api graphql"*)
   # codex_pending_reads=N reports no Codex review yet on a fresh PR for N reads, then completed.

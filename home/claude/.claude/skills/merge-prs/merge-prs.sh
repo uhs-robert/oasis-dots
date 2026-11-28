@@ -98,6 +98,21 @@ repo_info=$(gh repo view --json nameWithOwner,defaultBranchRef,rebaseMergeAllowe
   --jq '[.nameWithOwner, .defaultBranchRef.name, .rebaseMergeAllowed, .squashMergeAllowed, .mergeCommitAllowed] | @tsv') ||
   die "cannot read the repository settings"
 IFS=$'\t' read -r slug default rebase_ok squash_ok merge_ok <<<"$repo_info"
+
+# A repo with its own merge tool commits .claude/merge-prs-refuse (text naming that tool), and the tool calls merge-prs.sh
+# with MERGE_PRS_FROM_REPO_TOOL=1. A committed marker survives forks and renames, where a hardcoded slug would not. It is
+# read from the default branch of $slug, the repo the merge writes to, so a cwd, worktree, GIT_DIR or GH_REPO that
+# retargets the run moves the check with it, and deleting the local copy does not lift it.
+if ! $check_only && [[ ${MERGE_PRS_FROM_REPO_TOOL-} != 1 ]]; then
+  # shellcheck disable=SC2016 # GraphQL variables, not shell ones.
+  refuse_text=$(retry_gh api graphql -F owner="${slug%%/*}" -F name="${slug#*/}" -f expr="$default:.claude/merge-prs-refuse" \
+    -f query='query($owner: String!, $name: String!, $expr: String!) {
+      repository(owner: $owner, name: $name) { object(expression: $expr) { ... on Blob { text } } } }' \
+    --jq '.data.repository.object.text // ""') || die "cannot read whether $slug merges through its own tool"
+  [[ -n $refuse_text || ! -f $main_dir/.claude/merge-prs-refuse ]] || refuse_text=$(<"$main_dir/.claude/merge-prs-refuse")
+  [[ -z $refuse_text ]] || die "$slug refuses merges by merge-prs.sh (.claude/merge-prs-refuse): $refuse_text"
+fi
+
 if ! $check_only; then
   declare -A allowed=([rebase]=$rebase_ok [squash]=$squash_ok [merge]=$merge_ok)
   if [[ -n $method ]]; then

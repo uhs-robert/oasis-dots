@@ -1348,6 +1348,53 @@ check "the lock is free while the hook may still run" "timeout 5 flock -w 3 '$(l
 touch "$root/release"
 fixtures=()
 
+# A repo that merges through its own tool: the marker is read from the repo the merge goes to, wherever the run starts.
+refused() { # name, output, exit code
+  check "$1: refused" "[[ $3 != 0 ]] && grep -qF 'me/repo refuses merges by merge-prs.sh (.claude/merge-prs-refuse): use ship-it' <<<\"\$2\""
+  check "$1: nothing merged" "grep -q '^state=OPEN' '$GH_STATE' && [[ \$(git -C '$ORIGIN' log -1 --format=%s main) != C ]]"
+}
+echo "== merge refused in a repo with .claude/merge-prs-refuse"
+setup
+echo 'refuse=use ship-it' >>"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+refused "main checkout" "$out" $?
+show "$out"
+g worktree add -q --detach "$root/wt"
+out=$(cd "$root/wt" && PATH="$here:$PATH" "$script" 7 2>&1)
+refused "worktree" "$out" $?
+mkdir -p "$root/main/sub"
+out=$(cd "$root/main/sub" && PATH="$here:$PATH" "$script" 7 2>&1)
+refused "subdirectory" "$out" $?
+out=$(PATH="$here:$PATH" "$script" --check 7 2>&1)
+code=$?
+check "--check still runs" "[[ $code == 0 ]] && ! grep -q refuses <<<\"\$out\""
+out=$(PATH="$here:$PATH" MERGE_PRS_FROM_REPO_TOOL=1 "$script" 7 2>&1)
+code=$?
+check "the repo's own tool merges" "[[ $code == 0 ]] && grep -q '^7 merged (rebase)' <<<\"\$out\""
+
+echo "== merge refused when only the local checkout has .claude/merge-prs-refuse"
+setup
+mkdir -p .claude
+echo 'use ship-it' >.claude/merge-prs-refuse
+out=$(PATH="$here:$PATH" "$script" 7 2>&1)
+refused "local marker" "$out" $?
+# From an unrelated cwd, merge-prs.sh resolves its main checkout through GIT_DIR and finds the marker there.
+other=$(mktemp -d -p "$suite")
+git init -q "$other"
+out=$(cd "$other" && GIT_DIR=$root/main/.git PATH="$here:$PATH" "$script" 7 2>&1)
+refused "GIT_DIR from another repo" "$out" $?
+
+echo "== GH_REPO picks which repo's marker counts"
+setup
+echo 'refuse=use ship-it' >>"$GH_STATE"
+out=$(GH_REPO=elsewhere/repo PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+check "a merge into another repo goes ahead" "[[ $code == 0 ]] && grep -q '^7 merged (rebase)' <<<\"\$out\""
+setup
+echo 'refuse=use ship-it' >>"$GH_STATE"
+out=$(cd "$other" && GH_REPO=me/repo PATH="$here:$PATH" "$script" 7 2>&1)
+refused "GH_REPO from another repo" "$out" $?
+
 echo "== resolve-thread.sh"
 bash "$here/resolve-thread.sh" || fail=$((fail + 1))
 
