@@ -64,7 +64,7 @@ New install behaviour goes in the matching `lib/install/` function, and a new pa
 
 ## Merging
 
-Every PR merge goes through `.claude/skills/ship-batch/ship-batch.sh <n>...` (PRs in merge order), whether the owner said "merge N" or a standing approval covers it. `merge-prs.sh` is for `--check` only; `permissions.deny` rules in `.claude/settings.json` block it and the `gh` merge command otherwise. After a PR was merged on GitHub by hand, run `ship-batch.sh` with no arguments for the post-merge steps.
+Every PR merge goes through `.claude/skills/ship-batch/ship-batch.sh <n>...` (PRs in merge order), whether the owner said "merge N" or a standing approval covers it. `merge-prs.sh` is for `--check` only in this repo; the `guard-merge-prs.sh` hook blocks a merging call that targets this repo (any checkout or worktree) and `permissions.deny` rules in `.claude/settings.json` block the `gh` merge command. `merge-prs.sh` merges in other repos as usual. After a PR was merged on GitHub by hand, run `ship-batch.sh` with no arguments for the post-merge steps.
 
 ## The live desktop
 
