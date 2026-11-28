@@ -4,6 +4,10 @@ if [[ ":$FPATH:" != *":$HOME/.zsh/completions:"* ]]; then export FPATH="$HOME/.z
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
 
+# Drop duplicate entries from PATH. PATH and path are tied, but the flag is
+# set on both so the scalar export lines below stay deduplicated.
+typeset -U PATH path
+
 # History
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=10000
@@ -68,19 +72,21 @@ function zvm_config() {
 }
 
 # Completion
-# One dump under the cache dir. -C skips the security scan and rebuild, so
-# the dump is regenerated only when missing or older than a day.
-typeset -U path
+# One dump under the cache dir. -C skips the scan and rebuild, so the full
+# compinit runs only when the dump is missing, empty or older than a day.
 _zcomp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 [[ -d $_zcomp_dir ]] || mkdir -p "$_zcomp_dir"
 _zcomp_dump="$_zcomp_dir/zcompdump"
+_zcomp_fresh=( $_zcomp_dump(N.L+0mh-24) )
 autoload -Uz compinit
-if [[ -n $_zcomp_dump(#qN.mh-24) ]]; then
+if (( $#_zcomp_fresh )); then
   compinit -C -d "$_zcomp_dump"
 else
   compinit -d "$_zcomp_dump"
+  # compinit keeps the old mtime when the dump is unchanged, so refresh it.
+  touch "$_zcomp_dump"
 fi
-unset _zcomp_dir _zcomp_dump
+unset _zcomp_dir _zcomp_dump _zcomp_fresh
 
 # Antidote plugin manager
 source "/usr/share/zsh-antidote/antidote.zsh"
