@@ -32,12 +32,12 @@ termcmd="${TERMCMD:-/usr/bin/kitty --class yazi}"
 case "$BDUS_METHOD" in
 # Since yazi can handle both files, folders
 "ShowFolders" | "ShowItems")
-  eval "$termcmd -- $cmd ${item[@]}" &
+  eval "$termcmd -- $cmd ${item[*]}" &
   disown
   ;;
 "ShowItemProperties")
   YAZI_ID=999999
-  eval "$termcmd -- $cmd --client-id $YAZI_ID ${item[@]}" &
+  eval "$termcmd -- $cmd --client-id $YAZI_ID ${item[*]}" &
   disown
   # Increase this if yazi take too long to load
   sleep 0.5
