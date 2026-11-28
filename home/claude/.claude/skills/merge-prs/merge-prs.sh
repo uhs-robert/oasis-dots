@@ -943,18 +943,42 @@ rebase_head() {
 
 # Squash and merge need no linear head, and fleet sessions cannot force-push, so the head is brought up to date by merging
 # origin/$base into it and pushing without force: a head that moved meanwhile makes the push fail instead of losing a
-# commit. Sets merged_oid. A real conflict stays with the owner.
+# commit. Sets merged_oid. With a pre-merge step, a conflict only in generated paths takes the base's side of them (the
+# step rebuilds them), as the rebase drops a generated-only commit; any other conflict stays with the owner.
 merge_base_into_head() {
-  local pr=$1 head=$2 old=$3 base=$4
+  local pr=$1 head=$2 old=$3 base=$4 err file wt conflicted
+  local -a prefixes=() files=()
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
-  git worktree add -q --detach "$tmp_root/wt" "$old" || die "cannot create a worktree for $head"
-  if ! git -C "$tmp_root/wt" merge -q --no-edit "origin/$base" >/dev/null 2>&1; then
-    git -C "$tmp_root/wt" merge --abort >/dev/null 2>&1 || true
-    remove_tmp
-    die "#$pr conflicts with $base; merge origin/$base into $head by hand, then rerun for #$pr and the PRs after it"
+  wt=$tmp_root/wt
+  git worktree add -q --detach "$wt" "$old" || die "cannot create a worktree for $head"
+  if ! err=$(git -C "$wt" merge -q --no-edit "origin/$base" 2>&1); then
+    conflicted=$(git -C "$wt" ls-files -u)
+    if [[ -z $conflicted ]]; then
+      git -C "$wt" merge --abort >/dev/null 2>&1 || true
+      remove_tmp
+      die "cannot merge origin/$base into $head for #$pr: $err"
+    fi
+    [[ -x $main_dir/.claude/pre-merge ]] && mapfile -t prefixes < <(generated_prefixes)
+    mapfile -t files < <(git -C "$wt" diff --name-only --diff-filter=U)
+    for file in "${files[@]}"; do
+      if ((${#prefixes[@]} == 0)) || ! under_prefix "$file" "${prefixes[@]}"; then
+        git -C "$wt" merge --abort >/dev/null 2>&1 || true
+        remove_tmp
+        die "#$pr conflicts with $base; merge origin/$base into $head by hand, then rerun for #$pr and the PRs after it"
+      fi
+    done
+    for file in "${files[@]}"; do
+      git -C "$wt" checkout -q --theirs -- "$file" 2>/dev/null || git -C "$wt" rm -q -- "$file" >/dev/null 2>&1
+      git -C "$wt" add -- "$file" >/dev/null 2>&1 || true
+    done
+    git -C "$wt" commit -q --no-edit >/dev/null 2>&1 || {
+      git -C "$wt" merge --abort >/dev/null 2>&1 || true
+      remove_tmp
+      die "cannot finish the merge of origin/$base into $head for #$pr"
+    }
   fi
-  merged_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
-  git -C "$tmp_root/wt" push -q origin "HEAD:refs/heads/$head" || {
+  merged_oid=$(git -C "$wt" rev-parse HEAD)
+  git -C "$wt" push -q origin "HEAD:refs/heads/$head" || {
     remove_tmp
     die "cannot push the merge of $base into $head (it moved?); rerun for #$pr and the PRs after it"
   }
