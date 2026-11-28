@@ -31,18 +31,22 @@ Singleton {
     property real prev_total: -1
     property real prev_idle: -1
 
-    // False until a sample lands, so the bar shows n/a instead of a made-up 0. CPU needs two reads to make a delta.
-    readonly property bool has_cpu_sample: root.cpu_history.length > 0
+    // False until a sample lands, so the bar shows n/a instead of a made-up 0.
+    // cpu_live is also cleared whenever polling resumes: CPU needs two reads for a delta, and until the first new one the old cpu_percent is stale.
+    property bool cpu_live: false
     readonly property bool has_mem_sample: root.mem_history.length > 0
     readonly property bool has_temp_sample: root.temp_history.length > 0
 
-    readonly property string cpu_text: root.has_cpu_sample ? root.cpu_percent + "%" : "n/a"
+    readonly property string cpu_text: root.cpu_live ? root.cpu_percent + "%" : "n/a"
     readonly property string mem_text: root.has_mem_sample ? root.mem_percent + "%" : "n/a"
     readonly property string temp_text: root.has_temp_sample ? root.temp_c + "°C" : "n/a"
 
     // On battery nothing polls, except while the system popup is open and shows the numbers.
     readonly property bool polling: PowerSource.on_ac || Popups.open_name === "system"
-    onPollingChanged: if (root.polling) root.prev_total = -1;
+    onPollingChanged: if (root.polling) {
+        root.prev_total = -1;
+        root.cpu_live = false;
+    }
 
     // Prefers k10temp/coretemp (real CPU die sensor) over acpitz (chassis).
     Process {
@@ -57,8 +61,8 @@ Singleton {
     onTemp_pathChanged: if (root.has_temp) temp_file.reload();
 
     Timer {
-        // Retries fast until the first CPU delta exists, so a resume does not show n/a for a full period.
-        interval: root.has_cpu_sample && root.prev_total >= 0 ? 10000 : 1000
+        // Polls every second until the first CPU delta after a resume (the first read only primes prev_total), then every 10 s.
+        interval: root.cpu_live ? 10000 : 1000
         running: root.polling
         repeat: true
         triggeredOnStart: true
@@ -85,6 +89,7 @@ Singleton {
                 if (dt > 0) {
                     root.cpu_percent = Math.round((1 - di / dt) * 100);
                     root.cpu_history = root.pushed(root.cpu_history, root.cpu_percent);
+                    root.cpu_live = true;
                 }
             }
             root.prev_total = total;

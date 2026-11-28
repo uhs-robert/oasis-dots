@@ -44,14 +44,14 @@ Popup {
     }
 
     function meter_value(kind) {
-        if (kind === "cpu") return SysStats.cpu_percent / 100;
+        if (kind === "cpu") return SysStats.cpu_live ? SysStats.cpu_percent / 100 : 0;
         if (kind === "memory") return SysStats.mem_percent / 100;
         if (kind === "temperature") return Math.min(1, SysStats.temp_c / 100);
         return 0;
     }
 
     function meter_hot(kind) {
-        if (kind === "cpu" || kind === "memory") return SysStats[kind === "cpu" ? "cpu_percent" : "mem_percent"] >= 90;
+        if (kind === "cpu" || kind === "memory") return kind === "cpu" ? SysStats.cpu_live && SysStats.cpu_percent >= 90 : SysStats.mem_percent >= 90;
         if (kind === "temperature") return SysStats.temp_c >= 80;
         return false;
     }
@@ -101,7 +101,7 @@ Popup {
                     Layout.fillWidth: true
                     interactive: false
                     glyph: modelData.glyph
-                    label: modelData.kind === "memory" ? "RAM  " + SysStats.mem_used_gb.toFixed(1) + " / " + SysStats.mem_total_gb.toFixed(1) + " GB" : modelData.label
+                    label: modelData.kind === "memory" && SysStats.has_mem_sample ? "RAM  " + SysStats.mem_used_gb.toFixed(1) + " / " + SysStats.mem_total_gb.toFixed(1) + " GB" : modelData.label
                     readout_text: root.value_text(modelData.kind)
                     value: root.meter_value(modelData.kind)
                     spark: {
@@ -162,7 +162,7 @@ Popup {
                         Text {
                             visible: !stat_row.is_btop
                             text: root.value_text(stat_row.modelData.kind)
-                                + (stat_row.modelData.kind === "memory" ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
+                                + (stat_row.modelData.kind === "memory" && SysStats.has_mem_sample ? " (" + SysStats.mem_used_gb.toFixed(1) + "/" + SysStats.mem_total_gb.toFixed(1) + "GB)" : "")
                             color: stat_row.fg(root.st.text_muted)
                             font.family: root.st.font_family
                             font.pixelSize: root.st.fs(-2)
