@@ -1459,12 +1459,18 @@ for method in squash merge; do
   check "the pushed head extends the old one (no force)" "[[ \$(origin_head) != $before ]] && git -C '$ORIGIN' merge-base --is-ancestor $before br"
 done
 
-echo "== squash: a pre-merge head that was updated is the head merged, and its merge commit is not held to the gate"
+echo "== squash: the head the script pushed is merged although the gate ran on the old head"
 init_merge_commit_repo
 pre_merge_hook ''
-out=$(PATH="$here:$PATH" "$script" --method squash 7 2>&1)
+gated=$(origin_head)
+main_before=$(git -C "$ORIGIN" rev-parse main)
+out=$(PATH="$here:$PATH" "$script" --method squash --keep-branch 7 2>&1)
+code=$?
+show "$out"
+check "exits 0" "[[ $code == 0 ]]"
 check "no pushed-after-review stop" "! grep -q 'after its reviewers passed' <<<\"\$out\""
-check "the merged oid was pinned to the pushed head" "grep -q '^7 merged (squash)' <<<\"\$out\""
+check "the head moved past the gated one" "[[ \$(origin_head) != $gated ]] && git -C '$ORIGIN' merge-base --is-ancestor $gated br"
+check "the pushed head carries the base as it stood" "git -C '$ORIGIN' merge-base --is-ancestor $main_before br"
 
 echo "== rebase: a merge-commit head behind its base still rebases and stops as before"
 init_merge_commit_repo
@@ -1535,6 +1541,66 @@ check "does not merge" "grep -q '^state=OPEN' '$GH_STATE'"
 check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
 check "the lock is free" "flock -n '$(lock_path)' true"
 
+for method in squash merge; do
+  echo "== $method: a conflict only in generated paths takes the base's side and the pre-merge step rebuilds them"
+  init_build_repo
+  git -C "$ORIGIN" config receive.denyNonFastForwards true
+  g switch -qc c main
+  edit_src 7 7c "feat: c"
+  eval "$minify"
+  g push -q origin c
+  g switch -q main
+  edit_src 2 2a "feat: a"
+  eval "$minify"
+  g push -q origin main
+  printf 'head=c\nbase=main\nstate=OPEN\nreal_merge=1\nconflicting_oid=%s\n' "$(git -C "$ORIGIN" rev-parse c)" >"$GH_STATE"
+  out=$(PATH="$here:$PATH" "$script" --method "$method" 7 2>&1)
+  code=$?
+  show "$out"
+  check "exits 0" "[[ $code == 0 ]]"
+  check "merges the base in" "grep -q '^#7 merged main into c' <<<\"\$out\""
+  check "merges with the method" "grep -q '^7 merged ($method)' <<<\"\$out\""
+  check "never rebases" "! grep -q 'rebase' <<<\"\$out\""
+  check "the output matches the merged source" "[[ \$(git -C '$ORIGIN' show main:out/src.min) == \$(git -C '$ORIGIN' show main:src | tr '\n' ' ') ]]"
+  check "main has both edits" "[[ \$(git -C '$ORIGIN' show main:src | sed -n '2p;7p' | paste -sd,) == 2a,7c ]]"
+done
+
+echo "== squash: a source conflict next to a generated one still stops for the owner"
+init_build_repo
+git -C "$ORIGIN" config receive.denyNonFastForwards true
+g switch -qc c main
+edit_src 2 2c "feat: c"
+eval "$minify"
+g push -q origin c
+g switch -q main
+edit_src 2 2a "feat: a"
+eval "$minify"
+g push -q origin main
+before=$(git -C "$ORIGIN" rev-parse c)
+printf 'head=c\nbase=main\nstate=OPEN\nreal_merge=1\nconflicting_oid=%s\n' "$before" >"$GH_STATE"
+out=$(PATH="$here:$PATH" "$script" --method squash 7 2>&1)
+code=$?
+show "$out"
+check "stops" "[[ $code != 0 ]]"
+check "says to merge by hand" "grep -q '#7 conflicts with main; merge origin/main into c by hand' <<<\"\$out\""
+check "pushes nothing" "[[ \$(git -C '$ORIGIN' rev-parse c) == $before ]]"
+check "removes the temporary worktree" "[[ \$(git worktree list | wc -l) == 1 ]]"
+
+echo "== squash: a merge that fails for a reason other than a conflict shows git's message"
+init_merge_commit_repo
+pre_merge_hook ''
+before=$(origin_head)
+git config user.useConfigOnly true
+git config --unset user.name 2>/dev/null
+git config --unset user.email 2>/dev/null
+out=$(env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL HOME=/nonexistent GIT_CONFIG_NOSYSTEM=1 PATH="$here:$PATH" "$script" --method squash 7 2>&1)
+code=$?
+show "$out"
+check "stops" "[[ $code != 0 ]]"
+check "does not blame a conflict" "! grep -q 'conflicts with' <<<\"\$out\""
+check "names the failed merge" "grep -q 'cannot merge origin/main into br for #7' <<<\"\$out\""
+check "pushes nothing" "[[ \$(origin_head) == $before ]]"
+
 echo "== squash: a push to the head while the merge of the base is pushed is refused, not overwritten"
 init_merge_commit_repo
 pre_merge_hook ''
@@ -1601,6 +1667,7 @@ printf 'head=br7\nbase=main\nstate=OPEN\nreal_merge=1\n' >"$GH_STATE.7"
 printf 'head=br8\nbase=main\nstate=OPEN\nreal_merge=1\n' >"$GH_STATE.8"
 rm -f "$GH_STATE"
 before8=$(git -C "$ORIGIN" rev-parse br8)
+main_before=$(git -C "$ORIGIN" rev-parse main)
 # shellcheck disable=SC2016 # The hook's own source.
 pre_merge_hook 'echo "start $MERGE_PRS_PR" >>"'"$root"'/order"; touch "'"$root"'/started.$MERGE_PRS_PR"
 for i in $(seq 300); do [ -e "'"$root"'/release" ] && break; sleep 0.1; done
@@ -1623,7 +1690,7 @@ fixtures=()
 show "$(<"$root/run8.out")"
 check "both exit 0" "[[ $code7 == 0 && $code8 == 0 ]]"
 check "the hooks ran one after the other" "[[ \$(paste -sd, '$root/order') == 'start 7,end 7,start 8,end 8' ]]"
-check "the second head took in the base after the first merged" "git -C '$ORIGIN' show br8:seven >/dev/null 2>&1 || git -C '$ORIGIN' merge-base --is-ancestor $before8 br8"
+check "the second head took in the base as it stood before the run" "git -C '$ORIGIN' merge-base --is-ancestor $main_before br8"
 check "the second head contains the first PR's squash" "git -C '$ORIGIN' merge-base --is-ancestor \$(git -C '$ORIGIN' log --format=%H --grep='^squash: br7' main) br8"
 check "main has both squashes, one each" "[[ \$(git -C '$ORIGIN' log --format=%s main | grep -c '^squash: ') == 2 ]]"
 
