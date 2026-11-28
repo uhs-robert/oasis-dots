@@ -155,22 +155,22 @@ main() {
   if [[ $OPT_SYSTEM_FILES -eq 1 ]]; then setup_pacman_tweaks; fi
   if [[ $OPT_SERVER -eq 1 && $OPT_SERVICES -eq 1 ]]; then
     set_default_shell
-    setup_snapper
+    setup_snapper || warn "Snapper was not set up; fix the error above, then rerun ./install.sh"
     setup_tailnet_ssh
-    setup_syncthing
+    setup_syncthing || warn "Syncthing was not set up; fix the error above, then rerun ./install.sh"
     if [[ $OPT_AGENT_HOST -eq 1 ]]; then setup_agent_host; fi
   elif [[ $OPT_SERVER -eq 0 && $OPT_SERVICES -eq 1 ]]; then
-    install_greetd
+    install_greetd || warn "greetd was not set up; fix the error above, then rerun ./install.sh"
     set_default_shell
-    enable_keyd
-    enable_power_profiles
-    setup_snapper
-    install_steam
-    install_nvidia
-    setup_voxtype
-    setup_calendar_timer
+    enable_keyd || warn "keyd was not enabled; fix the error above, then rerun ./install.sh"
+    enable_power_profiles || warn "power-profiles-daemon was not enabled; fix the error above, then rerun ./install.sh"
+    setup_snapper || warn "Snapper was not set up; fix the error above, then rerun ./install.sh"
+    install_steam || warn "Steam was not installed; fix the error above, then rerun ./install.sh"
+    install_nvidia || warn "The NVIDIA setup did not finish; fix the error above, then rerun ./install.sh"
+    setup_voxtype || warn "voxtype was not set up; fix the error above, then rerun ./install.sh"
+    setup_calendar_timer || warn "The calendar timer was not set up; fix the error above, then rerun ./install.sh"
     setup_tailnet_ssh
-    setup_syncthing
+    setup_syncthing || warn "Syncthing was not set up; fix the error above, then rerun ./install.sh"
   fi
 
   # Outside the services branch, so --minimal and --no-services installs drop the home leftovers too. The system ones
