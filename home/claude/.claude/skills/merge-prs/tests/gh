@@ -157,6 +157,7 @@ case "$args" in
 esac
 case "$args" in
 # GH_REPO picks the repo, as it does for the real gh.
+"repo view --json nameWithOwner --jq"*) echo "${GH_REPO:-me/repo}" ;;
 "repo view"*) printf '%s\tmain\ttrue\ttrue\ttrue\n' "${GH_REPO:-me/repo}" ;;
 # Each side of a compare against main: reviewed_subjects/reviewed_files for the commit Codex reviewed, head_subjects/
 # head_files for anything else, as ;-separated lists.

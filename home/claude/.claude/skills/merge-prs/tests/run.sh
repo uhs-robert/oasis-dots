@@ -1395,6 +1395,14 @@ echo 'refuse=use ship-it' >>"$GH_STATE"
 out=$(cd "$other" && GH_REPO=me/repo PATH="$here:$PATH" "$script" 7 2>&1)
 refused "GH_REPO from another repo" "$out" $?
 
+# The local marker is only a fallback for the repo the checkout belongs to; another repo's marker must not refuse this one.
+setup
+mkdir -p .claude
+echo 'use ship-it' >.claude/merge-prs-refuse
+out=$(GH_REPO=elsewhere/repo PATH="$here:$PATH" "$script" 7 2>&1)
+code=$?
+check "GH_REPO to another repo ignores the checkout's marker" "[[ $code == 0 ]] && grep -q '^7 merged (rebase)' <<<\"\$out\""
+
 echo "== resolve-thread.sh"
 bash "$here/resolve-thread.sh" || fail=$((fail + 1))
 
