@@ -3,6 +3,7 @@ is under a scratch dir; the owner's real cache and HOME are never touched."""
 
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import time
@@ -77,10 +78,25 @@ class CacheTmpdirTest(unittest.TestCase):
         self.assertEqual(os.path.dirname(made), self.folder)
 
     def test_main_exports_the_cache_tmpdir_before_its_first_temp_file(self):
-        with self.env(), mock.patch("sys.stdout"):
+        parents = []
+        real_mkdtemp = tempfile.mkdtemp
+
+        def recording_mkdtemp(*args, **kwargs):
+            made = real_mkdtemp(*args, **kwargs)
+            parents.append(os.path.dirname(made))
+            return made
+
+        cwd = os.getcwd()
+        self.addCleanup(os.chdir, cwd)
+        for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            self.addCleanup(signal.signal, signum, signal.getsignal(signum))
+        with self.env(), mock.patch("sys.stdout"), mock.patch.object(tempfile, "mkdtemp", recording_mkdtemp):
+            os.environ.pop("TMPDIR", None)
+            tempfile.tempdir = None
             self.assertEqual(runner.main(["--plan"]), 0)
             self.assertEqual(os.environ["TMPDIR"], self.folder)
-            self.assertEqual(os.listdir(self.folder), [])
+        self.assertEqual(parents[0], self.folder)
+        self.assertEqual(os.listdir(self.folder), [])
 
     def test_tmpdir_is_unchanged_when_no_folder_is_usable(self):
         with self.env(XDG_CACHE_HOME="relative", HOME=""):
@@ -153,13 +169,13 @@ class CacheTmpdirTest(unittest.TestCase):
         self.assertTrue(os.path.isdir(first), "a second run's sweep removed the first run's folder")
 
     def test_temp_home_steps_keep_the_resolved_folder(self):
-        # A temp_home step replaces XDG_CACHE_HOME, but TMPDIR was resolved first and stays absolute.
+        # A temp_home step replaces XDG_CACHE_HOME, but the env it gets still names the folder resolved first.
         with self.env():
             runner.use_check_cache_as_tmpdir()
-            resolved = os.environ["TMPDIR"]
-            os.environ["XDG_CACHE_HOME"] = "/some/temp/home/.cache"
-            self.assertEqual(os.environ["TMPDIR"], resolved)
-            self.assertTrue(os.path.isabs(resolved))
+            pool = runner.StepPool(self.scratch, 1)
+            step_env = runner.temp_home_env(pool.env, os.path.join(self.scratch, "step_home"))
+        self.assertEqual(step_env["XDG_CACHE_HOME"], os.path.join(self.scratch, "step_home", ".cache"))
+        self.assertEqual(step_env["TMPDIR"], self.folder)
 
 
 if __name__ == "__main__":
