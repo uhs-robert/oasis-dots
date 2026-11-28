@@ -1622,7 +1622,7 @@ before=$(origin_head)
 git config user.useConfigOnly true
 git config --unset user.name 2>/dev/null
 git config --unset user.email 2>/dev/null
-out=$(env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL HOME=/nonexistent GIT_CONFIG_NOSYSTEM=1 PATH="$here:$PATH" "$script" --method squash 7 2>&1)
+out=$(env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL GIT_CONFIG_GLOBAL=/dev/null HOME=/nonexistent GIT_CONFIG_NOSYSTEM=1 PATH="$here:$PATH" "$script" --method squash 7 2>&1)
 code=$?
 show "$out"
 check "stops" "[[ $code != 0 ]]"

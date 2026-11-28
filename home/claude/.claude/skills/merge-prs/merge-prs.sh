@@ -205,7 +205,7 @@ within_path() {
   shift
   for path in "$@"; do
     path=${path%/}
-    [[ -n $path && ( $file == "$path" || $file == "$path/"* ) ]] && return 0
+    [[ -n $path && ($file == "$path" || $file == "$path/"*) ]] && return 0
   done
   return 1
 }
