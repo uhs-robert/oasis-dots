@@ -1,0 +1,1 @@
+merge dotfiles PRs with .claude/skills/ship-batch/ship-batch.sh <n>..., the only way to merge here; merge-prs.sh --check still works

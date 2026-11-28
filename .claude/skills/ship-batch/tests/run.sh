@@ -206,6 +206,8 @@ if [[ \$1 == --check ]]; then
   exit
 fi
 echo "merge \$* $lock_state" >>"\$SHIP_LOG"
+# As the real merge-prs.sh does in a repo with .claude/merge-prs-refuse.
+[[ \${MERGE_PRS_FROM_REPO_TOOL:-} == 1 ]] || { echo "merge-prs: refuses merges" >&2; exit 1; }
 while [[ -e $e2e/merge_hold ]]; do sleep 0.2; done
 [[ ! -e $e2e/merge_removes_wt ]] || git -C "$e2e/main" worktree remove --force "$e2e/wt-1"
 [[ -z \${STUB_MERGE_FAIL:-} ]] || exit 1

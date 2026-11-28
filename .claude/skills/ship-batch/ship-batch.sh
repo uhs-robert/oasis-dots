@@ -72,7 +72,7 @@ for pr in "$@"; do
   (cd "$worktree" && exec setsid bash -c 'source "$1" && check_branch_here' _ "$script_dir/base.sh" >"$check_log" 2>&1) 9>&- &
   check_pid=$!
   gate_passed=true
-  (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr") || gate_passed=false
+  (cd "$repo" && MERGE_PRS_FROM_REPO_TOOL=1 "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${gate_flags[@]}" "$pr") || gate_passed=false
   # The group exists only once setsid has run; before that the pid is the subshell, and `wait` would block for the whole check.
   $gate_passed || {
     kill -TERM -- "-$check_pid" 2>/dev/null
@@ -127,7 +127,9 @@ if [[ -n $stale ]]; then
   not_ready="${not_ready:+$not_ready; }$stale"
 fi
 # The reviews were waited for above, so the gate here only confirms them and never waits under the lock.
-((${#ready[@]} == 0)) || (cd "$repo" && "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
+# merge-prs.sh refuses to merge this repo's PRs (.claude/merge-prs-refuse) without MERGE_PRS_FROM_REPO_TOOL=1, which a
+# permissions.deny rule keeps agents from setting by hand.
+((${#ready[@]} == 0)) || (cd "$repo" && MERGE_PRS_FROM_REPO_TOOL=1 "$HOME/.claude/skills/merge-prs/merge-prs.sh" "${skip_gate[@]}" "${ready[@]}") 9>&- || die "merge-prs failed; nothing after the merge ran"
 git -C "$repo" pull -q --ff-only 9>&-
 # The lock is released first: post-merge takes it itself, so keeping it here would deadlock. With no PR numbers this is a
 # plain pull plus post-merge. The script runs from the main checkout, which now holds the merged version.
