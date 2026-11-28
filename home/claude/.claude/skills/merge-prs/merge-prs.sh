@@ -795,6 +795,8 @@ check_reviews() {
 
 tmp_root=""
 rebased_oid=""
+merged_oid=""
+updated_oid=""
 wait_s=${MERGE_PRS_WAIT:-600}
 poll_s=${MERGE_PRS_POLL:-10}
 known_heads=()
@@ -939,6 +941,42 @@ rebase_head() {
   echo "$msg"
 }
 
+# Squash and merge need no linear head, and fleet sessions cannot force-push, so the head is brought up to date by merging
+# origin/$base into it and pushing without force: a head that moved meanwhile makes the push fail instead of losing a
+# commit. Sets merged_oid. A real conflict stays with the owner.
+merge_base_into_head() {
+  local pr=$1 head=$2 old=$3 base=$4
+  tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
+  git worktree add -q --detach "$tmp_root/wt" "$old" || die "cannot create a worktree for $head"
+  if ! git -C "$tmp_root/wt" merge -q --no-edit "origin/$base" >/dev/null 2>&1; then
+    git -C "$tmp_root/wt" merge --abort >/dev/null 2>&1 || true
+    remove_tmp
+    die "#$pr conflicts with $base; merge origin/$base into $head by hand, then rerun for #$pr and the PRs after it"
+  fi
+  merged_oid=$(git -C "$tmp_root/wt" rev-parse HEAD)
+  git -C "$tmp_root/wt" push -q origin "HEAD:refs/heads/$head" || {
+    remove_tmp
+    die "cannot push the merge of $base into $head (it moved?); rerun for #$pr and the PRs after it"
+  }
+  pushed_heads[$head]=$merged_oid
+  known_heads+=("$merged_oid")
+  remove_tmp
+  echo "#$pr merged $base into $head"
+}
+
+# Brings a PR head up to date with its base the way the merge method allows: a rebase and force-push for rebase, a merge
+# of the base and a plain push for squash and merge. Sets updated_oid.
+update_head() {
+  local pr=$1 head=$2 old=$3 base=$4 require_generated=$5
+  if [[ $method == rebase ]]; then
+    rebase_head "$pr" "$head" "$old" "$base" "$require_generated"
+    updated_oid=$rebased_oid
+  else
+    merge_base_into_head "$pr" "$head" "$old" "$base"
+    updated_oid=$merged_oid
+  fi
+}
+
 pr_state() {
   gh pr view "$1" --json state --jq .state || die "cannot read the state of $1"
 }
@@ -968,14 +1006,13 @@ run_pre_merge() {
   local pr=$1 head=$2 base=$3 hook new_oid pre_merge_oid=$head_oid
   hook=$main_dir/.claude/pre-merge
   [[ -x $hook ]] || return 0
-  # Output built on a head that is behind its base would conflict with what the base already built. A merge commit keeps
-  # the head as it is, so it is left alone.
-  if [[ $method != merge ]] && ! git merge-base --is-ancestor "origin/$base" "$head_oid"; then
-    rebase_head "$pr" "$head" "$head_oid" "$base" false
-    head_oid=$rebased_oid
+  # Output built on a head that is behind its base would conflict with what the base already built.
+  if ! git merge-base --is-ancestor "origin/$base" "$head_oid"; then
+    update_head "$pr" "$head" "$head_oid" "$base" false
+    head_oid=$updated_oid
     pre_merge_oid=$head_oid
     [[ $(await_mergeable "$pr" "$head_oid") != UNKNOWN ]] ||
-      die "GitHub has not caught up with the rebased $head on #$pr; rerun for #$pr and the PRs after it"
+      die "GitHub has not caught up with the $([[ $method == rebase ]] && echo rebased || echo updated) $head on #$pr; rerun for #$pr and the PRs after it"
   fi
   tmp_root=$(mktemp -d "${TMPDIR:-/tmp}/merge-prs.XXXXXX")
   git worktree add -q --detach "$tmp_root/wt" "$head_oid" || die "cannot create a worktree for $head"
@@ -1032,8 +1069,8 @@ merge_pr() {
 
   # A stale build commit makes the PR conflict with the base's newer build; rebasing without it, then rebuilding, fixes that.
   if [[ $(await_mergeable "$pr" "$head_oid") == CONFLICTING ]]; then
-    rebase_head "$pr" "$head" "$head_oid" "$base" true
-    head_oid=$rebased_oid
+    update_head "$pr" "$head" "$head_oid" "$base" true
+    head_oid=$updated_oid
     known_heads+=("$head_oid")
     await_mergeable "$pr" "$head_oid" >/dev/null
   fi

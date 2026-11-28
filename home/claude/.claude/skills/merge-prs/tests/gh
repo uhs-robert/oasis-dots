@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fake gh for merge-prs.sh, backed by the bare repo $ORIGIN. Each PR's fields live in $GH_STATE.<number>, or in
 # $GH_STATE for a single-PR test. A PR with lag_reads=N reports stale_oid as its head for N reads after a push,
-# the way GitHub can for a moment after a force-push.
+# the way GitHub can for a moment after a force-push. A merge honors the method flag: --squash, --merge or (default)
+# --rebase.
 set -euo pipefail
 args="$*"
 # resolve-thread.sh tests: log every call to $GH_LOG and answer from FAKE_* variables. The thread list is raw JSON, so
@@ -286,7 +287,18 @@ case "$args" in
   }
   w=$(mktemp -d)
   git clone -q "$ORIGIN" "$w/c"
-  git -C "$w/c" -c user.name=t -c user.email=t@t cherry-pick "origin/main..origin/$(get head)" >/dev/null
+  # The method decides how the head lands, as on GitHub: --squash one commit of the head's diff, --merge a merge commit
+  # (both fail on a real conflict, and neither needs a linear head), --rebase replays the commits.
+  case "$args" in
+  *" --squash"*)
+    git -C "$w/c" -c user.name=t -c user.email=t@t merge -q --squash "origin/$(get head)" >/dev/null
+    git -C "$w/c" -c user.name=t -c user.email=t@t commit -qm "squash: $(get head)"
+    ;;
+  *" --merge"*)
+    git -C "$w/c" -c user.name=t -c user.email=t@t merge -q --no-ff -m "merge: $(get head)" "origin/$(get head)" >/dev/null
+    ;;
+  *) git -C "$w/c" -c user.name=t -c user.email=t@t cherry-pick "origin/main..origin/$(get head)" >/dev/null ;;
+  esac
   git -C "$w/c" push -q origin HEAD:main
   [[ $args != *--delete-branch* ]] || git -C "$ORIGIN" branch -q -D "$(get head)"
   rm -rf "$w"
