@@ -12,15 +12,13 @@ if [ -n "$NVIM" ] && nvim --server "$NVIM" --remote-expr '1' >/dev/null 2>&1; th
   *) abs="$PWD/$file" ;;
   esac
 
-  # Close is a separate call because it fails on the last window and would stop the edit with it.
-  nvim --server "$NVIM" --remote-send '<C-\><C-N>:close<CR>'
-
+  # One call, so nvim runs the close before the edit. silent! keeps a close that fails (last window) from stopping the edit.
   # --remote-expr takes no key notation, and fnameescape guards the Ex command line (space, |, %, #).
   # Doubling the single quotes makes the name a Vim string literal.
   quoted=$(printf '%s' "$abs" | sed "s/'/''/g")
   goto_line=""
   [ -n "$line" ] && goto_line=" . '|${line}'"
-  nvim --server "$NVIM" --remote-expr "execute('edit ' . fnameescape('${quoted}')${goto_line})" >/dev/null
+  nvim --server "$NVIM" --remote-expr "execute('silent! close') . execute('edit ' . fnameescape('${quoted}')${goto_line})" >/dev/null
 else
   unset NVIM
 

@@ -45,6 +45,16 @@ check() {
   fi
 }
 
+# lazygit runs in a terminal window beside the editor. The close must run before the edit, so the terminal window is gone
+# and one window shows the file.
+nvim --server "$sock" --remote-expr "execute('only | vsplit | terminal')" >/dev/null
+check "terminal window closed first" fromterm.md
+windows=$(nvim --server "$sock" --remote-expr "winnr('\$')")
+if [ "$windows" != "1" ]; then
+  printf 'FAIL terminal window not closed (%s windows)\n' "$windows" >&2
+  failures=$((failures + 1))
+fi
+
 check "plain name" plain.md
 check "space" "my file.md"
 check "pipe" "a|b.md"
