@@ -32,6 +32,14 @@ The parallel output of a step is buffered and a passing step prints one line; af
 - `CHECK_HEAVY_SLOTS` (default 1) and `CHECK_LOCK_WAIT_SECS` (default 1200): see "Slots". `CHECK_NO_LOCK=1` runs the heavy steps without a slot, for a check that must never wait.
 - Everything runs at nice 19 in the idle IO class.
 
+### Temp files
+
+`main()` sets `TMPDIR` to `${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/check` (absolute, made if missing) before its first temp file, so the step logs, every step's `mktemp` and the scratch repo copies of `check-scope` land on disk, not on the `/tmp` tmpfs that other sessions fill (a full `/tmp` failed checks with "No space left on device"). The path is resolved once, before a temp HOME step replaces `XDG_CACHE_HOME`. With no usable path (`HOME` unset, a relative cache path, or a path that resolves to `/` or `$HOME`) `TMPDIR` stays as it was. Each run takes a unique `mkdtemp` name, so runs side by side never collide.
+
+At the start of a run the runner deletes the entries directly inside that folder whose own mtime is over a day old (what a killed run left behind). It unlinks a symlink and never follows it. A run lasts well under a day, so its entry never counts as stale. `ship-batch.sh` runs outside the runner and exports the same `TMPDIR` itself (`use_check_tmpdir` in `.claude/skills/ship-batch/base.sh`) for its check log and temporary worktree. `lib/check/tests/test_cache_tmpdir.py` pins this.
+
+Still on `/tmp` by design: the `/tmp/shadow-*` dirs (`shadow.sh` matches that name), the `lock.sh` fallback when `XDG_RUNTIME_DIR` is unset, the scratch dir of `cursor-drag` (its daemon socket path is over the 107-byte limit under the cache folder) and the shadow runtime of the ship-batch tests. The longest unix socket path under the new folder is 103 bytes (`qs` in `restarting-stream`) of the 107 allowed, so a longer home path can break the Quickshell tests.
+
 ### Temp HOME
 
 A step with `temp_home` set in its `Step` entry runs with `HOME` and the XDG config, state, cache and data dirs under a fresh temp dir, seeded with an empty `.config/quickshell`. The runner removes it when the step ends, on a timeout and on Ctrl-C too. If the dir cannot be made, the step fails. The hypr Lua steps (not the `stylua` and `luacheck` lints), `registry`, `docs-generated`, `action-registry` and `check-cache` have it (`TEMP_HOME_STEPS` in `scopes.py`), since loading the theme module there runs generators that write the owner's live `theme.json`, rofi colors and hypr `theme.conf`. `lib/check/tests/test_temp_home.py` pins it.
